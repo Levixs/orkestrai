@@ -1,0 +1,31 @@
+node_modules
+.svelte-kit
+build
+dist
+.env
+.env.*
+*.db
+*.db-*
+data/*.sqlite*
+!.env.example
+
+# Agent Room runtime data
+data/*
+!data/.gitkeep
+projects/*
+!projects/.gitkeep
+
+# Storage (keep dirs, ignore contents)
+storage/logs/*
+storage/cache/*
+storage/uploads/*
+storage/sessions/*
+!storage/**/.gitkeep
+
+# Infrastructure (contains server IPs and SSH key paths)
+infra/droplet.env
+
+# Testing
+test-results/
+playwright-report/
+coverage/

@@ -1,0 +1,29 @@
+{
+  "default": "sqlite",
+  "connections": {
+    "sqlite": {
+      "driver": "sqlite",
+      "filename": "database.db"
+    },
+    "postgres": {
+      "driver": "postgres",
+      "host": "localhost",
+      "port": 5432,
+      "database": "svelar_db",
+      "user": "postgres",
+      "password": "secret"
+    },
+    "mysql": {
+      "driver": "mysql",
+      "host": "localhost",
+      "port": 3306,
+      "database": "svelar_db",
+      "user": "root",
+      "password": "secret"
+    }
+  },
+  "migrations": {
+    "table": "migrations",
+    "path": "src/lib/database/migrations"
+  }
+}

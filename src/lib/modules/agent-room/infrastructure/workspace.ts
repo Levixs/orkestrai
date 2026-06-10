@@ -1,0 +1,73 @@
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { basename, relative, resolve } from 'node:path';
+
+const workspaceRoot = process.cwd();
+export const dataRoot = resolve(workspaceRoot, 'data');
+export const projectsRoot = resolve(workspaceRoot, 'projects');
+
+export function ensureLocalStorage() {
+  mkdirSync(dataRoot, { recursive: true });
+  mkdirSync(projectsRoot, { recursive: true });
+}
+
+export function isInside(parent: string, child: string) {
+  const parentPath = resolve(parent);
+  const childPath = resolve(child);
+  const rel = relative(parentPath, childPath);
+  return rel === '' || (!rel.startsWith('..') && !rel.startsWith('/') && rel !== '..');
+}
+
+export function resolveSafeProjectPath(input?: string | null) {
+  ensureLocalStorage();
+
+  if (!input) {
+    return projectsRoot;
+  }
+
+  const resolved = resolve(input);
+  if (!isInside(projectsRoot, resolved)) {
+    throw new Error(`workingDirectory precisa ficar dentro de ${projectsRoot}`);
+  }
+
+  return resolved;
+}
+
+export function assertWritableProjectPath(input?: string | null) {
+  const resolved = resolveSafeProjectPath(input);
+
+  if (resolved === projectsRoot) {
+    throw new Error('Chamadas com escrita exigem um projeto selecionado em projects/.');
+  }
+
+  mkdirSync(resolved, { recursive: true });
+  return resolved;
+}
+
+export function slugifyProjectName(value: string) {
+  const slug = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+
+  return slug || `project-${Date.now()}`;
+}
+
+export function listProjectDirectories() {
+  ensureLocalStorage();
+
+  return readdirSync(projectsRoot)
+    .map((name) => {
+      const path = resolve(projectsRoot, name);
+      if (!existsSync(path) || !statSync(path).isDirectory()) return null;
+      return {
+        name: basename(path),
+        path,
+        createdAt: statSync(path).birthtime.toISOString(),
+      };
+    })
+    .filter((project): project is { name: string; path: string; createdAt: string } => Boolean(project))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
