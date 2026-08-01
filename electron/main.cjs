@@ -120,9 +120,30 @@ async function waitForServer(url, timeoutMs = 30_000) {
   throw new Error(`Servidor interno nao respondeu em ${url}`);
 }
 
+/** Extrai o node-pty para o userData (macOS 15+ mata o spawn-helper dentro do bundle). */
+function ensureNativePty(userDataDir) {
+  if (!app.isPackaged) return null;
+  const src = path.join(runtimeRoot, 'node_modules', 'node-pty');
+  const dest = path.join(userDataDir, 'native', 'node-pty');
+  try {
+    const srcVersion = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8')).version;
+    const destPkg = path.join(dest, 'package.json');
+    const destVersion = fs.existsSync(destPkg) ? JSON.parse(fs.readFileSync(destPkg, 'utf8')).version : null;
+    if (srcVersion !== destVersion) {
+      fs.rmSync(dest, { recursive: true, force: true });
+      fs.cpSync(src, dest, { recursive: true });
+    }
+    return dest;
+  } catch (error) {
+    console.warn('[orkestrai] falha ao extrair node-pty para userData:', error?.message ?? error);
+    return null;
+  }
+}
+
 async function startServer(port) {
   const serverEntry = path.join(runtimeRoot, 'scripts', 'orkestrai-server.mjs');
   const dotEnv = app.isPackaged ? {} : loadDotEnv(path.join(appRoot, '.env'));
+  const ptyModuleDir = ensureNativePty(app.getPath('userData'));
   serverProcess = spawn(process.execPath, [serverEntry], {
     cwd: runtimeRoot,
     env: {
@@ -132,6 +153,7 @@ async function startServer(port) {
       ELECTRON_RUN_AS_NODE: '1',
       HOST: '127.0.0.1',
       PORT: String(port),
+      ...(ptyModuleDir ? { ORKESTRAI_PTY_MODULE: ptyModuleDir } : {}),
       // Em Electron, o banco e os dados ficam na pasta do usuario em producao;
       // em dev, usa a pasta do projeto como sempre.
       ...(app.isPackaged ? { ORKESTRAI_DATA_DIR: app.getPath('userData') } : {}),

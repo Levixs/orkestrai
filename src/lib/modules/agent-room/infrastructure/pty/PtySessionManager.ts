@@ -258,7 +258,13 @@ export class PtySessionManager {
 }
 
 // Import dinamico adiado para nao carregar o nativo fora do servidor.
-import { spawn } from 'node-pty';
+// Em producao empacotada (macOS 15+), o spawn-helper do node-pty nao executa
+// de dentro do bundle nao-notarizado — o Electron extrai o modulo para o
+// userData e aponta ORKESTRAI_PTY_MODULE para la.
+import { createRequire } from 'node:module';
+
+const nodeRequire = createRequire(import.meta.url);
+const { spawn: ptySpawn } = nodeRequire(process.env.ORKESTRAI_PTY_MODULE ?? 'node-pty') as typeof import('node-pty');
 
 /**
  * Singleton process-wide via globalThis: o codigo SSR e bundlado pelo vite
@@ -267,4 +273,4 @@ import { spawn } from 'node-pty';
  * PTY criadas pelo WS ficariam invisiveis para os services (rotinas, bridge).
  */
 const globalRef = globalThis as unknown as { __orkestraiPtyManager?: PtySessionManager };
-export const ptySessionManager = (globalRef.__orkestraiPtyManager ??= new PtySessionManager(spawn));
+export const ptySessionManager = (globalRef.__orkestraiPtyManager ??= new PtySessionManager(ptySpawn));
