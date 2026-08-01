@@ -110,7 +110,11 @@
     ],
     "asarUnpack": [
       "**/node-pty/**",
-      "**/better-sqlite3/**"
+      "**/better-sqlite3/**",
+      "build/**",
+      "scripts/orkestrai-server.mjs",
+      "src/lib/database/migrations/**",
+      "src/lib/modules/agent-room/infrastructure/pty/**"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

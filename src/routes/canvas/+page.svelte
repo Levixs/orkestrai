@@ -1280,6 +1280,7 @@
       </SvelteFlow>
     {:else}
       <div class="canvas-empty">
+        <img src="/brand/icon.svg" width="56" height="56" alt="" />
         <p>Crie ou selecione um workspace para abrir o canvas.</p>
       </div>
     {/if}
@@ -1765,11 +1766,19 @@
   }
 
   .canvas-empty {
+    flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 10px;
     height: 100%;
+    text-align: center;
     color: #6d6d78;
+  }
+
+  .canvas-empty img {
+    opacity: 0.55;
   }
 
   .error-banner {

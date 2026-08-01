@@ -16,6 +16,9 @@ const net = require('node:net');
 
 const isDev = !app.isPackaged;
 const appRoot = path.resolve(__dirname, '..');
+// Processos filhos (ELECTRON_RUN_AS_NODE) nao leem dentro do asar: o servidor
+// roda a partir dos arquivos unpacked quando empacotado.
+const runtimeRoot = app.isPackaged ? appRoot.replace('app.asar', 'app.asar.unpacked') : appRoot;
 
 let serverProcess = null;
 let mainWindow = null;
@@ -118,10 +121,10 @@ async function waitForServer(url, timeoutMs = 30_000) {
 }
 
 async function startServer(port) {
-  const serverEntry = path.join(appRoot, 'scripts', 'orkestrai-server.mjs');
+  const serverEntry = path.join(runtimeRoot, 'scripts', 'orkestrai-server.mjs');
   const dotEnv = app.isPackaged ? {} : loadDotEnv(path.join(appRoot, '.env'));
   serverProcess = spawn(process.execPath, [serverEntry], {
-    cwd: appRoot,
+    cwd: runtimeRoot,
     env: {
       ...dotEnv,
       ...process.env,
