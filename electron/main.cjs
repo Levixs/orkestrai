@@ -19,9 +19,37 @@ const appRoot = path.resolve(__dirname, '..');
 
 let serverProcess = null;
 let mainWindow = null;
+let splashWindow = null;
 let serverPort = null;
 let tray = null;
 let pendingNotifications = 0;
+
+/** Splash animada com o logo enquanto o servidor sobe. */
+function createSplash() {
+  if (splashWindow) return;
+  splashWindow = new BrowserWindow({
+    width: 420,
+    height: 340,
+    frame: false,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    transparent: true,
+    backgroundColor: '#0D0B2E',
+    webPreferences: { contextIsolation: true },
+  });
+  splashWindow.center();
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+  splashWindow.once('ready-to-show', () => splashWindow?.show());
+}
+
+function closeSplash() {
+  if (!splashWindow) return;
+  splashWindow.close();
+  splashWindow = null;
+}
 
 /**
  * Carrega variaveis do .env do projeto (o adapter-node nao carrega .env
@@ -171,7 +199,10 @@ async function createWindow() {
     mainWindow = null;
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.once('ready-to-show', () => {
+    closeSplash();
+    mainWindow?.show();
+  });
 
   await mainWindow.loadURL(`http://127.0.0.1:${port}/`);
 }
@@ -256,10 +287,12 @@ if (!gotLock) {
     if (process.platform === 'darwin' && !app.isPackaged) {
       app.dock.setIcon(path.join(appRoot, 'electron', 'resources', 'icon.png'));
     }
+    createSplash();
     createTray();
     return createWindow();
   }).catch((error) => {
     console.error('Falha ao iniciar o Orkestrai:', error);
+    closeSplash();
     app.exit(1);
   });
 
@@ -274,7 +307,10 @@ if (!gotLock) {
   });
 
   app.on('before-quit', stopServer);
-  app.on('quit', stopServer);
+  app.on('quit', () => {
+    closeSplash();
+    stopServer();
+  });
 }
 
 if (isDev) {

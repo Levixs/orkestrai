@@ -8,9 +8,9 @@
  * modulos .ts do PTY).
  */
 import http from 'node:http';
-import { existsSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, resolve } from 'node:path';
+import { basename, delimiter, dirname, isAbsolute, resolve } from 'node:path';
 import { WebSocketServer } from 'ws';
 
 // App Electron aberto pelo Finder recebe um PATH minimo do macOS; sem os
@@ -48,6 +48,34 @@ if (existsSync(dotEnvPath)) {
   }
 }
 
+// Diretorio de dados do app empacotado (userData): o SQLite e os arquivos
+// de runtime nao podem ficar dentro do asar (somente leitura).
+if (process.env.ORKESTRAI_DATA_DIR) {
+  const dataDir = process.env.ORKESTRAI_DATA_DIR;
+  mkdirSync(dataDir, { recursive: true });
+  const dbPath = process.env.DB_PATH ?? 'database.db';
+  if (!isAbsolute(dbPath)) process.env.DB_PATH = resolve(dataDir, dbPath);
+}
+
+const dbFile = process.env.DB_PATH ?? resolve('database.db');
+
+// Backup rotativo do SQLite no boot (mantem os ultimos 5) — protege contra
+// corrupcao em quedas de energia/updates problematicos.
+if (existsSync(dbFile)) {
+  try {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    copyFileSync(dbFile, `${dbFile}.bak-${stamp}`);
+    const backups = readdirSync(dirname(dbFile))
+      .filter((name) => name.startsWith(`${basename(dbFile)}.bak-`))
+      .sort();
+    for (const old of backups.slice(0, Math.max(0, backups.length - 5))) {
+      rmSync(resolve(dirname(dbFile), old), { force: true });
+    }
+  } catch {
+    // backup e conveniencia; nao bloqueia o boot
+  }
+}
+
 // Import tardio: o handler avalia APP_KEY e ORIGIN na carga, entao so depois
 // do .env e da definicao de ORIGIN abaixo.
 
@@ -63,6 +91,20 @@ const port = Number(process.env.PORT ?? 4173);
 process.env.ORIGIN ??= `http://${host}:${port}`;
 
 const { handler } = await import('../build/handler.js');
+
+// Migrações no boot: em userData novo (primeira execucao empacotada) o banco
+// nasce vazio — sobe o schema completo antes de abrir o handler.
+{
+  const migrationsDir = resolve('src/lib/database/migrations');
+  const files = readdirSync(migrationsDir).filter((file) => file.endsWith('.ts')).sort();
+  const migrations = [];
+  for (const file of files) {
+    const mod = await import(resolve(migrationsDir, file));
+    migrations.push({ name: file.replace(/\.ts$/, ''), migration: new mod.default() });
+  }
+  const { Migrator } = await import('@beeblock/svelar/database');
+  await new Migrator().run(migrations);
+}
 
 const server = http.createServer(handler);
 const wss = new WebSocketServer({ noServer: true });

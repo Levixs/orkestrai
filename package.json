@@ -35,6 +35,7 @@
     "@tanstack/table-core": "^8.21.3",
     "@types/ws": "^8.18.1",
     "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "tailwindcss": "^4.2.2",
@@ -91,5 +92,43 @@
   "main": "electron/main.cjs",
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "build": {
+    "appId": "com.orkestrai.desktop",
+    "productName": "Orkestrai",
+    "icon": "electron/resources/icon.png",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "build/**",
+      "electron/**",
+      "scripts/orkestrai-server.mjs",
+      "src/lib/database/migrations/**",
+      "src/lib/modules/agent-room/infrastructure/pty/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node-pty/**",
+      "**/better-sqlite3/**"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg"],
+      "icon": "electron/resources/icon.png"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "electron/resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Orkestrai"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Development"
+    }
+  }
 }
