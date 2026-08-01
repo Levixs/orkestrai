@@ -1374,7 +1374,7 @@
 
   .sidebar {
     /* Largura para o cabecalho caber em UMA linha: titulo + 7 icones. */
-    width: 300px;
+    width: 316px;
     flex-shrink: 0;
     border-right: 1px solid #2c2c36;
     padding: 10px;
@@ -1400,9 +1400,10 @@
   .sidebar-header h2 {
     font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     color: #9a9aa5;
     margin: 0;
+    white-space: nowrap;
   }
 
   .brand-row {

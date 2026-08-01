@@ -190,7 +190,6 @@ body:has(.agent-room-shell) {
   overflow: hidden;
 }
 
-.sidebar-header,
 .chat-header,
 .project-panel header {
   min-height: 72px;
@@ -202,7 +201,6 @@ body:has(.agent-room-shell) {
   border-bottom: 1px solid #dedbd2;
 }
 
-.sidebar-header strong,
 .chat-header strong,
 .project-panel header strong {
   display: block;
@@ -210,7 +208,6 @@ body:has(.agent-room-shell) {
   line-height: 1.2;
 }
 
-.sidebar-header span,
 .chat-header span,
 .project-panel header span,
 .file-list span,
