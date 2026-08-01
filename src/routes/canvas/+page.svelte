@@ -1069,7 +1069,7 @@
   <aside class="sidebar">
     {#if !sidebarCollapsed}
       <div class="brand-row">
-        <img src="/brand/icon.svg" width="18" height="18" alt="Orkestrai" />
+        <img src="/brand/icon.svg" width="22" height="22" alt="Orkestrai" />
         <span class="brand-name">Orkestrai</span>
       </div>
     {/if}
@@ -1416,7 +1416,7 @@
 
   .brand-name {
     font-family: 'Sora', 'Inter', sans-serif;
-    font-size: 15px;
+    font-size: 16.5px;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: #e5e1ff;
