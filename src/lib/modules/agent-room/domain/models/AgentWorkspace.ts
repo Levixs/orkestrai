@@ -1,0 +1,25 @@
+import { Model } from '@beeblock/svelar/orm';
+
+export class AgentWorkspace extends Model {
+  static table = 'agent_workspaces';
+  static primaryKey = 'id';
+  static incrementing = false;
+  static timestamps = true;
+  static fillable = ['id', 'name', 'working_dir', 'icon', 'instructions', 'sync_agent_instruction_files', 'bridge_token', 'hooks_json'];
+
+  static casts = {
+    sync_agent_instruction_files: 'boolean' as const,
+    created_at: 'date' as const,
+    updated_at: 'date' as const,
+  };
+
+  declare id: string;
+  declare name: string;
+  declare working_dir: string;
+  declare icon: string | null;
+  declare instructions: string | null;
+  declare sync_agent_instruction_files: boolean;
+  declare hooks_json: string | null;
+  declare created_at: Date;
+  declare updated_at: Date;
+}

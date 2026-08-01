@@ -8,7 +8,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
   return createAgentRoomStream((emit) =>
     handleRunAgent(
-      params.id,
+      params.id!,
       {
         message: String(body.message ?? ''),
         target: body.target ?? 'codex',

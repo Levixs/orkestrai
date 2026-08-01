@@ -1,0 +1,267 @@
+import { uuidv7 } from '@beeblock/svelar/support';
+import type {
+  CanvasEdge,
+  WorkspaceHooks,
+  CanvasEdgeStyle,
+  CanvasNode,
+  CanvasNodePayload,
+  CanvasNodeType,
+  Workspace,
+} from '../../domain/types.js';
+import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
+import { AgentCanvasNode } from '../../domain/models/AgentCanvasNode.js';
+import { AgentCanvasEdge } from '../../domain/models/AgentCanvasEdge.js';
+import { AgentFloor } from '../../domain/models/AgentFloor.js';
+import { AgentRoutine } from '../../domain/models/AgentRoutine.js';
+import { AgentRoutineRun } from '../../domain/models/AgentRoutineRun.js';
+import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
+
+function toIso(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  return String(value);
+}
+
+function parseJsonObject(value: string | null): WorkspaceHooks {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? (parsed as WorkspaceHooks) : {};
+  } catch {
+    return {};
+  }
+}
+
+function mapWorkspace(model: AgentWorkspace): Workspace {
+  return {
+    id: model.getAttribute('id'),
+    name: model.getAttribute('name'),
+    workingDir: model.getAttribute('working_dir'),
+    icon: model.getAttribute('icon'),
+    instructions: model.getAttribute('instructions'),
+    syncAgentInstructionFiles: Boolean(model.getAttribute('sync_agent_instruction_files')),
+    hooks: parseJsonObject(model.getAttribute('hooks_json') as string | null),
+    createdAt: toIso(model.getAttribute('created_at')),
+    updatedAt: toIso(model.getAttribute('updated_at')),
+  };
+}
+
+function mapNode(model: AgentCanvasNode): CanvasNode {
+  const payloadJson = model.getAttribute('payload_json') as string | null;
+  let payload: CanvasNodePayload = {};
+  if (payloadJson) {
+    try {
+      payload = JSON.parse(payloadJson);
+    } catch {
+      payload = {};
+    }
+  }
+  return {
+    id: model.getAttribute('id'),
+    workspaceId: model.getAttribute('workspace_id'),
+    type: model.getAttribute('type'),
+    title: model.getAttribute('title'),
+    x: model.getAttribute('x'),
+    y: model.getAttribute('y'),
+    width: model.getAttribute('width'),
+    height: model.getAttribute('height'),
+    zIndex: model.getAttribute('z_index'),
+    payload,
+    floorId: model.getAttribute('floor_id'),
+    createdAt: toIso(model.getAttribute('created_at')),
+    updatedAt: toIso(model.getAttribute('updated_at')),
+  };
+}
+
+function mapEdge(model: AgentCanvasEdge): CanvasEdge {
+  return {
+    id: model.getAttribute('id'),
+    workspaceId: model.getAttribute('workspace_id'),
+    sourceNodeId: model.getAttribute('source_node_id'),
+    targetNodeId: model.getAttribute('target_node_id'),
+    style: model.getAttribute('style'),
+    createdAt: toIso(model.getAttribute('created_at')),
+  };
+}
+
+/**
+ * Repositorio de workspaces e do canvas (nos e arestas) do Agent Room.
+ * Ids UUID v7; layout persistido a cada mudanca (posicao, tamanho, payload).
+ */
+export class WorkspaceRepository {
+  // -- Workspaces -----------------------------------------------------------
+
+  async listWorkspaces(): Promise<Workspace[]> {
+    const rows = await AgentWorkspace.query().orderBy('updated_at', 'desc').get();
+    return rows.map(mapWorkspace);
+  }
+
+  async getWorkspace(id: string): Promise<Workspace | null> {
+    const model = await AgentWorkspace.find(id);
+    return model ? mapWorkspace(model) : null;
+  }
+
+  async createWorkspace(input: {
+    name: string;
+    workingDir: string;
+    icon?: string | null;
+    instructions?: string | null;
+  }): Promise<Workspace> {
+    const name = input.name.trim();
+    const workingDir = input.workingDir.trim();
+    if (!name) throw new Error('O nome do workspace nao pode ficar vazio.');
+    if (!workingDir) throw new Error('Informe o diretorio de trabalho do workspace.');
+
+    const model = await AgentWorkspace.create({
+      id: uuidv7(),
+      name,
+      working_dir: workingDir,
+      icon: input.icon ?? null,
+      instructions: input.instructions ?? null,
+    });
+    return mapWorkspace(model);
+  }
+
+  async updateWorkspace(
+    id: string,
+    input: Partial<Pick<Workspace, 'name' | 'workingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles' | 'hooks'>>
+  ): Promise<Workspace | null> {
+    const existing = await this.getWorkspace(id);
+    if (!existing) return null;
+
+    const model = await AgentWorkspace.find(id);
+    if (!model) return null;
+    await model.update({
+      name: input.name?.trim() || existing.name,
+      working_dir: input.workingDir?.trim() || existing.workingDir,
+      icon: input.icon === undefined ? existing.icon : input.icon,
+      instructions: input.instructions === undefined ? existing.instructions : input.instructions,
+      sync_agent_instruction_files: input.syncAgentInstructionFiles ?? existing.syncAgentInstructionFiles,
+      hooks_json: input.hooks === undefined ? JSON.stringify(existing.hooks) : JSON.stringify(input.hooks),
+    });
+    return this.getWorkspace(id);
+  }
+
+  async deleteWorkspace(id: string): Promise<boolean> {
+    await AgentCanvasEdge.query().where('workspace_id', id).delete();
+    await AgentCanvasNode.query().where('workspace_id', id).delete();
+    await AgentFloor.query().where('workspace_id', id).delete();
+    await AgentBoardTask.query().where('workspace_id', id).delete();
+    const routineIds = await AgentRoutine.query().where('workspace_id', id).pluck('id');
+    for (const routineId of routineIds) {
+      await AgentRoutineRun.query().where('routine_id', routineId).delete();
+    }
+    await AgentRoutine.query().where('workspace_id', id).delete();
+    const deleted = await AgentWorkspace.query().where('id', id).delete();
+    return deleted > 0;
+  }
+
+  // -- Nos do canvas ----------------------------------------------------------
+
+  async listNodes(workspaceId: string, floorId?: string | null): Promise<CanvasNode[]> {
+    const query = AgentCanvasNode.query().where('workspace_id', workspaceId).orderBy('created_at', 'asc');
+    if (floorId === null) query.whereNull('floor_id');
+    else if (floorId) query.where('floor_id', floorId);
+    const rows = await query.get();
+    return rows.map(mapNode);
+  }
+
+  async getNode(id: string): Promise<CanvasNode | null> {
+    const model = await AgentCanvasNode.find(id);
+    return model ? mapNode(model) : null;
+  }
+
+  async createNode(input: {
+    workspaceId: string;
+    type: CanvasNodeType;
+    title?: string | null;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    zIndex?: number;
+    payload?: CanvasNodePayload;
+    floorId?: string | null;
+  }): Promise<CanvasNode> {
+    const model = await AgentCanvasNode.create({
+      id: uuidv7(),
+      workspace_id: input.workspaceId,
+      type: input.type,
+      title: input.title ?? null,
+      x: input.x ?? 0,
+      y: input.y ?? 0,
+      width: input.width ?? 560,
+      height: input.height ?? 360,
+      z_index: input.zIndex ?? 0,
+      payload_json: input.payload ? JSON.stringify(input.payload) : null,
+      floor_id: input.floorId ?? null,
+    });
+    return mapNode(model);
+  }
+
+  async updateNode(
+    id: string,
+    input: Partial<Pick<CanvasNode, 'title' | 'x' | 'y' | 'width' | 'height' | 'zIndex' | 'type'>> & { payload?: CanvasNodePayload }
+  ): Promise<CanvasNode | null> {
+    const existing = await this.getNode(id);
+    if (!existing) return null;
+
+    const model = await AgentCanvasNode.find(id);
+    if (!model) return null;
+    await model.update({
+      title: input.title === undefined ? existing.title : input.title,
+      type: input.type ?? existing.type,
+      x: input.x ?? existing.x,
+      y: input.y ?? existing.y,
+      width: input.width ?? existing.width,
+      height: input.height ?? existing.height,
+      z_index: input.zIndex ?? existing.zIndex,
+      payload_json: input.payload === undefined ? JSON.stringify(existing.payload) : JSON.stringify(input.payload),
+    });
+    return this.getNode(id);
+  }
+
+  async deleteNode(id: string): Promise<boolean> {
+    await AgentCanvasEdge.query().where('source_node_id', id).orWhere('target_node_id', id).delete();
+    const deleted = await AgentCanvasNode.query().where('id', id).delete();
+    return deleted > 0;
+  }
+
+  // -- Arestas do canvas --------------------------------------------------------
+
+  async listEdges(workspaceId: string): Promise<CanvasEdge[]> {
+    const rows = await AgentCanvasEdge.query().where('workspace_id', workspaceId).orderBy('created_at', 'asc').get();
+    return rows.map(mapEdge);
+  }
+
+  async createEdge(input: {
+    workspaceId: string;
+    sourceNodeId: string;
+    targetNodeId: string;
+    style?: CanvasEdgeStyle;
+  }): Promise<CanvasEdge> {
+    const model = await AgentCanvasEdge.create({
+      id: uuidv7(),
+      workspace_id: input.workspaceId,
+      source_node_id: input.sourceNodeId,
+      target_node_id: input.targetNodeId,
+      style: input.style ?? 'cord',
+      created_at: new Date(),
+    });
+    return mapEdge(model);
+  }
+
+  async updateEdgeStyle(id: string, style: CanvasEdgeStyle): Promise<CanvasEdge | null> {
+    const model = await AgentCanvasEdge.find(id);
+    if (!model) return null;
+    await model.update({ style });
+    const updated = await AgentCanvasEdge.find(id);
+    return updated ? mapEdge(updated) : null;
+  }
+
+  async deleteEdge(id: string): Promise<boolean> {
+    const deleted = await AgentCanvasEdge.query().where('id', id).delete();
+    return deleted > 0;
+  }
+}
+
+export const workspaceRepository = new WorkspaceRepository();

@@ -1,17 +1,17 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { agentRoomRepository } from '$lib/modules/agent-room/infrastructure/db.js';
+import { agentRoomRepository } from '$lib/modules/agent-room/infrastructure/repositories/AgentRoomRepository.js';
 
 export const GET: RequestHandler = async ({ params }) => {
-  const conversation = agentRoomRepository.getConversation(params.id);
+  const conversation = await agentRoomRepository.getConversation(params.id!);
   if (!conversation) {
     return json({ error: 'Conversa nao encontrada.' }, { status: 404 });
   }
 
-  return json({ data: agentRoomRepository.listMessages(params.id) });
+  return json({ data: await agentRoomRepository.listMessages(params.id!) });
 };
 
 export const POST: RequestHandler = async ({ params, request }) => {
-  const conversation = agentRoomRepository.getConversation(params.id);
+  const conversation = await agentRoomRepository.getConversation(params.id!);
   if (!conversation) {
     return json({ error: 'Conversa nao encontrada.' }, { status: 404 });
   }
@@ -22,8 +22,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
     return json({ error: 'A mensagem nao pode ficar vazia.' }, { status: 400 });
   }
 
-  const message = agentRoomRepository.addMessage({
-    conversationId: params.id,
+  const message = await agentRoomRepository.addMessage({
+    conversationId: params.id!,
     participant: 'user',
     content,
   });
