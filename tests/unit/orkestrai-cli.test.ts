@@ -78,6 +78,22 @@ describe('orkestrai CLI', () => {
     expect(requests.at(-1).body.content).toBe('novo texto');
   });
 
+  it('note create repassa content e connect (parseFlags generico)', async () => {
+    const { out } = capture();
+    await run(['note', 'create', 'Minha nota', '--content', 'corpo da nota', '--connect', 'Claude'], { env: {}, cwd, out });
+    const request = requests.find((entry) => entry.url === '/api/agent-room/bridge/notes' && entry.method === 'POST');
+    expect(request.body.title).toBe('Minha nota');
+    expect(request.body.content).toBe('corpo da nota');
+    expect(request.body.connect).toBe('Claude');
+  });
+
+  it('task assign usa o flag --assign', async () => {
+    const { out } = capture();
+    await run(['task', 'add', 'Revisar PR', '--assign', 'Claude'], { env: {}, cwd, out });
+    const request = requests.find((entry) => entry.url === '/api/agent-room/bridge/tasks' && entry.method === 'POST');
+    expect(request.body.assignee).toBe('Claude');
+  });
+
   it('sem token retorna erro claro', async () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'orkestrai-cli-empty-'));
     await expect(run(['list'], { cwd: emptyDir, out: () => {}, env: {} })).rejects.toThrow('Token');

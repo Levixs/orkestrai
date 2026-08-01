@@ -278,8 +278,38 @@
 
   let appSettings = $state<Record<string, string>>({});
 
+  // Live refresh: a bridge (CLI dos agentes) escreve direto no banco; o
+  // servidor avisa via WS e a pagina recarrega nos/edges/andares do workspace
+  // ativo — sem precisar trocar de andar ou recarregar a pagina.
+  let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  function connectWorkspaceEvents() {
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket = new WebSocket(`${protocol}://${location.host}/ws/agent-room/pty`);
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(String(event.data));
+        if (message.type === 'workspaceChanged' && message.workspaceId === activeWorkspace?.id) {
+          if (refreshDebounce) clearTimeout(refreshDebounce);
+          refreshDebounce = setTimeout(() => {
+            refreshDebounce = null;
+            if (activeWorkspace) selectWorkspace(activeWorkspace.id, { force: true });
+          }, 250);
+        }
+      } catch {
+        // frame nao-JSON: ignora
+      }
+    };
+    socket.onclose = () => {
+      // Reconecta com backoff simples enquanto a pagina estiver aberta.
+      setTimeout(connectWorkspaceEvents, 3_000);
+    };
+    return socket;
+  }
+
   onMount(async () => {
     document.documentElement.classList.add('dark');
+    const eventsSocket = connectWorkspaceEvents();
     const [workspaceList, status, settingsResponse] = await Promise.all([
       api<Workspace[]>('/api/agent-room/workspaces'),
       api<{ providers: AgentProviderInfo[] }>('/api/agent-room/status'),
@@ -314,6 +344,8 @@
     }
     return () => {
       if (activityTimer) clearInterval(activityTimer);
+      eventsSocket.onclose = null;
+      eventsSocket.close();
     };
   });
 
@@ -443,10 +475,11 @@
     };
   }
 
-  async function selectWorkspace(id: string) {
+  async function selectWorkspace(id: string, options: { force?: boolean } = {}) {
     // Recarregar o workspace ja ativo pode sobrescrever estado mais novo
-    // (ex.: um no criado enquanto o fetch estava em voo).
-    if (activeWorkspace?.id === id) return;
+    // (ex.: um no criado enquanto o fetch estava em voo) — exceto com force
+    // (refresh disparado pela bridge, que e a fonte da verdade).
+    if (!options.force && activeWorkspace?.id === id) return;
     // So a selecao mais recente pode aplicar seu resultado: fetches antigos
     // (ex.: o auto-select do mount) nao sobrescrevem escolhas posteriores.
     const requestId = ++selectionRequestId;
@@ -461,9 +494,11 @@
       if (requestId !== selectionRequestId) return;
       activeWorkspace = workspace;
       floors = floorList;
-      queueMicrotask(() => {
-        if (canvasNodes.length) zoomApi?.fitView({ duration: 0, maxZoom: 1 } as never);
-      });
+      if (!options.force) {
+        queueMicrotask(() => {
+          if (canvasNodes.length) zoomApi?.fitView({ duration: 0, maxZoom: 1 } as never);
+        });
+      }
       nodes = canvasNodes
         .filter((node) => (node.floorId ?? null) === visibleFloorId)
         .map(toFlowNode);

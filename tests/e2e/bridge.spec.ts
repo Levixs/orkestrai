@@ -156,4 +156,32 @@ test.describe('ponte CLI (bridge)', () => {
 
     await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
   });
+
+  test('canvas atualiza sozinho quando a bridge cria conteudo (live refresh)', async ({ page, request }) => {
+    const workspaceName = `E2E live ${Date.now()}`;
+
+    await page.goto('/canvas');
+    await page.getByRole('button', { name: 'Novo workspace' }).click();
+    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Diretorio de trabalho').fill('/tmp');
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+    await expect(page.locator('.canvas-note')).toHaveCount(0);
+
+    // Cria uma nota via bridge (como um agente faz) — precisa aparecer sozinha.
+    const list = await request.get('/api/agent-room/workspaces');
+    const workspace = ((await list.json()).data as Array<{ id: string; name: string }>).find((item) => item.name === workspaceName)!;
+    const tokenResponse = await request.get(`/api/agent-room/workspaces/${workspace.id}/bridge-token`);
+    const { token } = (await tokenResponse.json()).data as { token: string };
+    const created = await request.post('/api/agent-room/bridge/notes', {
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      data: { title: 'Nota da bridge', content: 'apareci sem reload' },
+    });
+    expect(created.status()).toBe(201);
+
+    await expect(page.locator('.canvas-note')).toHaveCount(1, { timeout: 5_000 });
+    await expect(page.locator('.canvas-note')).toContainText('Nota da bridge');
+
+    await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+  });
 });

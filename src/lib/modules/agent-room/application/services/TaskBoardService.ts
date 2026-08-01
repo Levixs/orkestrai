@@ -38,6 +38,12 @@ const VALID_STATUS = new Set(['todo', 'doing', 'done']);
  * cria tarefas, atribui a um agente e o agente recebe o prompt na hora no
  * seu terminal — e o "loop continuo": tarefa atribuida dispara trabalho.
  */
+/** Avisa o canvas para recarregar o workspace (via broadcast WS global). */
+function notifyWorkspaceChanged(workspaceId: string) {
+  const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
+  broadcast?.({ type: 'workspaceChanged', workspaceId });
+}
+
 export class TaskBoardService {
   async list(workspaceId: string): Promise<BoardTask[]> {
     const rows = await AgentBoardTask.query().where('workspace_id', workspaceId).orderBy('created_at', 'asc').get();
@@ -79,6 +85,7 @@ export class TaskBoardService {
     if (input.assigneeNodeId) {
       await this.dispatch(workspaceId, id).catch(() => {});
     }
+    notifyWorkspaceChanged(workspaceId);
     return mapTask(task);
   }
 
@@ -111,12 +118,14 @@ export class TaskBoardService {
     if (assignedNow) {
       await this.dispatch(workspaceId, taskId).catch(() => {});
     }
+    notifyWorkspaceChanged(workspaceId);
     return mapTask(await this.requireTask(workspaceId, taskId));
   }
 
   async remove(workspaceId: string, taskId: string): Promise<boolean> {
     await this.requireTask(workspaceId, taskId);
     await AgentBoardTask.query().where('id', taskId).delete();
+    notifyWorkspaceChanged(workspaceId);
     return true;
   }
 

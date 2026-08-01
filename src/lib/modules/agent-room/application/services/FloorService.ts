@@ -44,6 +44,12 @@ function slugify(text: string): string {
  * workspace em `.orkestrai/floors/<slug>` com sua propria branch.
  * Aterrissagem = merge da branch do andar de volta no checkout principal.
  */
+/** Avisa o canvas para recarregar o workspace (via broadcast WS global). */
+function notifyWorkspaceChanged(workspaceId: string) {
+  const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
+  broadcast?.({ type: 'workspaceChanged', workspaceId });
+}
+
 export class FloorService {
   private async workspace(workspaceId: string): Promise<Workspace> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
@@ -146,6 +152,7 @@ export class FloorService {
       await this.runHooks(floor, workspace, hooks.setup).catch(() => {});
     }
 
+    notifyWorkspaceChanged(workspaceId);
     return floor;
   }
 
@@ -225,6 +232,7 @@ export class FloorService {
     }
 
     await this.removeWorktree(floor, false);
+    notifyWorkspaceChanged(floor.workspaceId);
     return { merged: true, branch: floor.branch, into: target };
   }
 
@@ -241,6 +249,7 @@ export class FloorService {
 
     await this.removeWorktree(floor, deleteBranch);
     await AgentFloor.query().where('id', id).update({ status: 'deleted' });
+    notifyWorkspaceChanged(floor.workspaceId);
     return { removed: true };
   }
 

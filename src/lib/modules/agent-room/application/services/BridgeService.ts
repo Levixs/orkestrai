@@ -131,6 +131,12 @@ export class BridgeService {
     broadcast?.({ type: 'talking', workspaceId, from, to, talking });
   }
 
+  /** Avisa o canvas para recarregar o conteudo do workspace (nos/edges/andares). */
+  notifyWorkspaceChanged(workspaceId: string) {
+    const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
+    broadcast?.({ type: 'workspaceChanged', workspaceId });
+  }
+
   async readNote(workspaceId: string, nodeId: string): Promise<{ nodeId: string; title: string; content: string }> {
     const node = await this.requireNoteNode(workspaceId, nodeId);
     return { nodeId: node.id, title: node.title ?? 'nota', content: String((node.payload as { content?: string }).content ?? '') };
@@ -159,6 +165,7 @@ export class BridgeService {
       await workspaceRepository.createEdge({ workspaceId, sourceNodeId: note.id, targetNodeId: agent.nodeId });
       connectedTo = agent.title;
     }
+    this.notifyWorkspaceChanged(workspaceId);
     return { nodeId: note.id, title: note.title ?? input.title, connectedTo };
   }
 
@@ -258,6 +265,7 @@ export class BridgeService {
       };
       delete payload.sessionId;
       const updated = await workspaceRepository.updateNode(node.id, { payload, title: input.title || node.title });
+      this.notifyWorkspaceChanged(workspaceId);
       return { nodeId: updated!.id, title: updated!.title, replaced: true };
     }
 
@@ -272,6 +280,7 @@ export class BridgeService {
       payload: { ...command, provider: input.provider ?? null, role: input.role ?? null },
       floorId: input.floorId ?? null,
     });
+    this.notifyWorkspaceChanged(workspaceId);
     return { nodeId: node.id, title: node.title, replaced: false };
   }
 
@@ -283,6 +292,7 @@ export class BridgeService {
     if (target.nodeId === origin.nodeId) throw new Error('O maestro nao pode dispensar a si mesmo.');
     if (target.sessionId) ptySessionManager.kill(target.sessionId);
     await workspaceRepository.deleteNode(target.nodeId);
+    this.notifyWorkspaceChanged(workspaceId);
     return { dismissed: target.title };
   }
 
@@ -309,6 +319,7 @@ export class BridgeService {
       sourceNodeId: origin.nodeId,
       targetNodeId: target.nodeId,
     });
+    this.notifyWorkspaceChanged(workspaceId);
     return { edgeId: edge.id, from: origin.title, to: target.title };
   }
 

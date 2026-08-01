@@ -86,16 +86,26 @@ async function bridge(config, method, path, body) {
 function parseFlags(args) {
   const flags = {};
   const positional = [];
+  const known = new Set(['raw', 'json', 'from', 'provider', 'role', 'replace', 'timeout']);
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
-    if (arg === '--raw') flags.raw = true;
-    else if (arg === '--json') flags.json = true;
-    else if (arg === '--from') flags.from = args[++i];
-    else if (arg === '--provider') flags.provider = args[++i];
-    else if (arg === '--role') flags.role = args[++i];
-    else if (arg === '--replace') flags.replace = args[++i];
-    else if (arg === '--timeout') flags.timeout = Number(args[++i]);
-    else positional.push(arg);
+    if (known.has(arg.slice(2))) {
+      if (arg === '--raw') flags.raw = true;
+      else if (arg === '--json') flags.json = true;
+      else if (arg === '--timeout') flags.timeout = Number(args[++i]);
+      else flags[arg.slice(2)] = args[++i];
+    } else if (arg.startsWith('--')) {
+      // Flags genericos (--content, --connect, --assign, --branch, --clone,
+      // --existing, --target, --delete-branch, --agent...): --nome valor ou --nome sozinho.
+      const name = arg.slice(2);
+      const next = args[i + 1];
+      if (next !== undefined && !next.startsWith('--')) {
+        flags[name] = next;
+        i += 1;
+      } else {
+        flags[name] = true;
+      }
+    } else positional.push(arg);
   }
   return { flags, positional };
 }
