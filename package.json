@@ -1,5 +1,5 @@
 {
-  "name": "orkestrai-agent-room",
+  "name": "orkestrai",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -118,11 +118,15 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "electron/resources/icon.png"
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "electron/resources/icon.png"
     },
     "nsis": {
@@ -131,7 +135,9 @@
       "shortcutName": "Orkestrai"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "Development"
     }
   }
