@@ -1,0 +1,9 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:5199",
+      "localStorage": [{ "name": "orkestrai.onboarded", "value": "1" }]
+    }
+  ]
+}

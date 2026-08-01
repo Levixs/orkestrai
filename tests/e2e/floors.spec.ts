@@ -1,0 +1,94 @@
+import { expect, test } from '@playwright/test';
+import { createNodeOnCanvas } from './helpers.js';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+async function createWorkspaceIn(page: import('@playwright/test').Page, name: string, dir: string) {
+  await page.goto('/canvas');
+  await page.getByRole('button', { name: 'Novo workspace' }).click();
+  await page.getByPlaceholder('Nome').fill(name);
+  await page.getByPlaceholder('Diretorio de trabalho').fill(dir);
+  await page.getByRole('button', { name: 'Criar' }).click();
+  await page.locator('.workspace-list .workspace-item', { hasText: name }).click();
+  await expect(page.locator('.workspace-list li.active')).toContainText(name, { timeout: 15_000 });
+}
+
+async function cleanup(request: import('@playwright/test').APIRequestContext, name: string) {
+  const list = await request.get('/api/agent-room/workspaces');
+  const workspaces = (await list.json()).data as Array<{ id: string; name: string }>;
+  const created = workspaces.find((workspace) => workspace.name === name);
+  if (created) await request.delete(`/api/agent-room/workspaces/${created.id}`);
+}
+
+test.describe('andares e rotinas', () => {
+  test('cria andar, alterna visao e exclui', async ({ page, request }) => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-e2e-floor-'));
+    const { execFileSync } = await import('node:child_process');
+    execFileSync('git', ['init', '-b', 'main'], { cwd: dir });
+    execFileSync('git', ['config', 'user.email', 'e2e@orkestrai.local'], { cwd: dir });
+    execFileSync('git', ['config', 'user.name', 'E2E'], { cwd: dir });
+    writeFileSync(join(dir, 'README.md'), '# x\n');
+    execFileSync('git', ['add', '.'], { cwd: dir });
+    execFileSync('git', ['commit', '-m', 'init'], { cwd: dir });
+
+    const workspaceName = `E2E floor ${Date.now()}`;
+    await createWorkspaceIn(page, workspaceName, dir);
+
+    // Adiciona uma nota no terreo
+    await createNodeOnCanvas(page, 'Nota');
+    await expect(page.locator('.canvas-note')).toHaveCount(1);
+
+    // Abre o painel e cria um andar
+    await page.getByRole('button', { name: /Andares/ }).click();
+    const panel = page.locator('.side-panel');
+    await expect(panel).toBeVisible();
+    await panel.getByPlaceholder('Nome do andar').fill('feature-x');
+    await panel.getByRole('button', { name: 'Criar andar' }).click();
+    await expect(panel.locator('.floor-item', { hasText: 'feature-x' })).toBeVisible({ timeout: 10_000 });
+
+    // Alterna para o andar: canvas vazio (layout nao clonado)
+    await panel.locator('.floor-open', { hasText: 'feature-x' }).click();
+    await expect(page.locator('.canvas-note')).toHaveCount(0);
+
+    // Volta ao terreo: nota reaparece
+    await panel.locator('.floor-item', { hasText: 'Térreo' }).click();
+    await expect(page.locator('.canvas-note')).toHaveCount(1);
+
+    // Exclui o andar
+    await panel.locator('.floor-open', { hasText: 'feature-x' }).click();
+    await page.locator('.floor-item', { hasText: 'feature-x' }).getByRole('button', { name: 'Excluir (manter branch)' }).click();
+    await expect(panel.locator('.floor-item', { hasText: 'feature-x' })).toHaveCount(0);
+
+    await cleanup(request, workspaceName);
+  });
+
+  test('rotina dispara prompt no terminal alvo', async ({ page, request }) => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-e2e-routine-'));
+    const workspaceName = `E2E routine ${Date.now()}`;
+    await createWorkspaceIn(page, workspaceName, dir);
+
+    // Abre um shell para ser o alvo
+    await createNodeOnCanvas(page, 'Shell');
+    await expect(page.locator('.canvas-terminal .xterm')).toBeVisible({ timeout: 10_000 });
+    // Aguarda a sessao PTY ser criada e o payload.sessionId ser persistido
+    await page.waitForTimeout(2_500);
+
+    // Cria rotina com prompt marcador e roda agora
+    await page.getByRole('button', { name: 'Rotinas' }).click();
+    const panel = page.locator('.side-panel');
+    await expect(panel).toBeVisible();
+    const marker = `rotina-${Date.now()}`;
+    // Select shadcn: abre o trigger e escolhe a opcao pelo texto
+    await panel.locator('[data-slot="select-trigger"]').click();
+    await page.locator('[data-slot="select-item"]', { hasText: 'Shell' }).click();
+    await panel.locator('textarea').fill(`echo ${marker}`);
+    await panel.getByRole('button', { name: 'Criar rotina' }).click();
+    await expect(panel.locator('.routine-item')).toHaveCount(1);
+
+    await panel.locator('.routine-item').first().getByRole('button', { name: 'Rodar agora' }).click();
+    await expect(page.locator('.canvas-terminal .terminal-container')).toContainText(marker, { timeout: 10_000 });
+
+    await cleanup(request, workspaceName);
+  });
+});
