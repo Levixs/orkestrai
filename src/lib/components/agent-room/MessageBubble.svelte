@@ -4,14 +4,20 @@
 
   let { message }: { message: ChatMessage } = $props();
 
-  const participantMeta = {
+  const participantMeta: Record<string, { label: string; className: string; icon: typeof Bot }> = {
     user: { label: 'Usuario', className: 'message-user', icon: UserRound },
     codex: { label: 'Codex', className: 'message-codex', icon: Cpu },
     claude: { label: 'Claude', className: 'message-claude', icon: Bot },
     system: { label: 'Sistema', className: 'message-system', icon: AlertTriangle },
   };
 
-  let meta = $derived(participantMeta[message.participant]);
+  let meta = $derived(
+    participantMeta[message.participant] ?? {
+      label: message.participant,
+      className: 'message-claude',
+      icon: Bot,
+    }
+  );
   let Icon = $derived(meta.icon);
 </script>
 

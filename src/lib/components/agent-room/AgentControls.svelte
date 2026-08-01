@@ -1,12 +1,19 @@
 <script lang="ts">
   import { Bot, CheckCheck, Cpu, GitCompare, MessagesSquare, Repeat2, Send, ShieldCheck, Users } from '@lucide/svelte';
-  import type { AgentTarget, ConversationMode } from '$lib/modules/agent-room/domain/types.js';
+  import type { AgentProviderInfo, AgentTarget, ConversationMode, ExecutionMode } from '$lib/modules/agent-room/domain/types.js';
+
+  const DEFAULT_PROVIDERS: AgentProviderInfo[] = [
+    { id: 'codex', displayName: 'Codex', supportsResume: false },
+    { id: 'claude', displayName: 'Claude', supportsResume: false },
+  ];
 
   let {
     mode = $bindable<Exclude<ConversationMode, 'project'>>('chat'),
     target = $bindable<AgentTarget>('codex'),
     allowWrites = $bindable(false),
     loopMaxRounds = $bindable(6),
+    executionMode = $bindable<ExecutionMode>('sequential'),
+    providers = DEFAULT_PROVIDERS,
     busy = false,
     onRun,
     onDebate,
@@ -16,6 +23,8 @@
     target: AgentTarget;
     allowWrites: boolean;
     loopMaxRounds: number;
+    executionMode: ExecutionMode;
+    providers?: AgentProviderInfo[];
     busy?: boolean;
     onRun: () => void;
     onDebate: () => void;
@@ -29,15 +38,20 @@
     { value: 'review', label: 'Revisar' },
   ];
 
-  const targets: Array<{ value: AgentTarget; label: string; icon: typeof Cpu }> = [
-    { value: 'codex', label: 'Codex', icon: Cpu },
-    { value: 'claude', label: 'Claude', icon: Bot },
+  const providerIcon = (id: string) => (id === 'codex' ? Cpu : Bot);
+
+  const targets = $derived<Array<{ value: AgentTarget; label: string; icon: typeof Cpu }>>([
+    ...providers.map((provider) => ({ value: provider.id, label: provider.displayName, icon: providerIcon(provider.id) })),
     { value: 'both', label: 'Sala 3 vias', icon: MessagesSquare },
     { value: 'codex_then_claude_review', label: 'Codex, Claude revisa', icon: GitCompare },
     { value: 'claude_then_codex_review', label: 'Claude, Codex revisa', icon: CheckCheck },
-  ];
+  ]);
 
   const loopRoundOptions = [3, 6, 9, 12];
+  const executionModes: Array<{ value: ExecutionMode; label: string }> = [
+    { value: 'sequential', label: 'Sequencial' },
+    { value: 'parallel', label: 'Paralelo worktree' },
+  ];
 </script>
 
 <section class="control-panel">
@@ -69,6 +83,15 @@
     <select bind:value={loopMaxRounds} disabled={busy} aria-label="Rodadas do loop">
       {#each loopRoundOptions as rounds}
         <option value={rounds}>{rounds}</option>
+      {/each}
+    </select>
+  </label>
+
+  <label class="loop-control">
+    <span>Execucao</span>
+    <select bind:value={executionMode} disabled={busy} aria-label="Modo de execucao">
+      {#each executionModes as item}
+        <option value={item.value}>{item.label}</option>
       {/each}
     </select>
   </label>
