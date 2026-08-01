@@ -15,8 +15,34 @@ import { WebSocketServer } from 'ws';
 
 // App Electron aberto pelo Finder recebe um PATH minimo do macOS; sem os
 // locais comuns de CLIs a deteccao e o spawn dos agentes falham com ENOENT.
+// Estrategia em camadas: PATH do login shell do usuario (cobre nvm, mise,
+// shims e setups custom) + diretorios conhecidos + globs do nvm.
+async function pathFromLoginShell() {
+  try {
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const shell = process.env.SHELL ?? '/bin/zsh';
+    const { stdout } = await promisify(execFile)(shell, ['-l', '-c', 'echo $PATH'], { timeout: 5_000 });
+    return stdout.trim().split(delimiter).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function nvmBins() {
+  try {
+    const root = `${homedir()}/.nvm/versions/node`;
+    return readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${root}/${entry.name}/bin`)
+      .filter((dir) => existsSync(dir));
+  } catch {
+    return [];
+  }
+}
+
 {
-  const extra = [
+  const staticExtras = [
     '/opt/homebrew/bin',
     '/opt/homebrew/sbin',
     '/usr/local/bin',
@@ -27,10 +53,16 @@ import { WebSocketServer } from 'ws';
     `${homedir()}/.deno/bin`,
     `${homedir()}/.cargo/bin`,
     `${homedir()}/.npm-global/bin`,
+    `${homedir()}/.kimi-code/bin`,
     `${homedir()}/bin`,
   ];
-  const current = (process.env.PATH ?? '').split(delimiter).filter(Boolean);
-  process.env.PATH = [...current, ...extra.filter((dir) => !current.includes(dir))].join(delimiter);
+  const merged = new Set([
+    ...(await pathFromLoginShell()),
+    ...(process.env.PATH ?? '').split(delimiter).filter(Boolean),
+    ...staticExtras,
+    ...nvmBins(),
+  ]);
+  process.env.PATH = [...merged].join(delimiter);
 }
 
 // Carrega .env do projeto sem sobrescrever variaveis ja definidas

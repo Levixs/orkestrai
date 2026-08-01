@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
+import { readdirSync } from 'node:fs';
 import { delimiter } from 'node:path';
 import type { IPty } from 'node-pty';
 
@@ -17,14 +18,26 @@ const EXTRA_PATH_DIRS = [
   `${homedir()}/.deno/bin`,
   `${homedir()}/.cargo/bin`,
   `${homedir()}/.npm-global/bin`,
+  `${homedir()}/.kimi-code/bin`,
   `${homedir()}/bin`,
 ];
+
+function nvmBins(): string[] {
+  try {
+    const root = `${homedir()}/.nvm/versions/node`;
+    return readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${root}/${entry.name}/bin`);
+  } catch {
+    return [];
+  }
+}
 
 function augmentedEnv(): Record<string, string> {
   const env = { ...process.env } as Record<string, string>;
   const current = (env.PATH ?? '').split(delimiter).filter(Boolean);
-  const merged = [...current, ...EXTRA_PATH_DIRS.filter((dir) => !current.includes(dir))];
-  env.PATH = merged.join(delimiter);
+  const merged = [...current, ...EXTRA_PATH_DIRS.filter((dir) => !current.includes(dir)), ...nvmBins()];
+  env.PATH = [...new Set(merged)].join(delimiter);
   return env;
 }
 
