@@ -29,3 +29,4 @@ infra/droplet.env
 test-results/
 playwright-report/
 coverage/
+.DS_Store
