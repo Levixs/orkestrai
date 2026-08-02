@@ -153,6 +153,9 @@ async function startServer(port) {
       ELECTRON_RUN_AS_NODE: '1',
       HOST: '127.0.0.1',
       PORT: String(port),
+      // A porta e livre (muda a cada execucao): configs da ponte gravados em
+      // workspaces precisam da URL atual (ver tambem ~/.orkestrai/runtime.json).
+      ORKESTRAI_API_URL: `http://127.0.0.1:${port}`,
       ...(ptyModuleDir ? { ORKESTRAI_PTY_MODULE: ptyModuleDir } : {}),
       // Em Electron, o banco e os dados ficam na pasta do usuario em producao;
       // em dev, usa a pasta do projeto como sempre.

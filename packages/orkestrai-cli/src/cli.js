@@ -6,6 +6,7 @@
  * ORKESTRAI_TOKEN e ORKESTRAI_API_URL tem precedencia.
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 
 const USAGE = `orkestrai — ponte entre agentes do Orkestrai
@@ -34,6 +35,7 @@ Uso:
   orkestrai floor remove <floorId> [--delete-branch]
 
 Config: .orkestrai/workspace.json (token, apiUrl) ou env ORKESTRAI_TOKEN/ORKESTRAI_API_URL.
+Identidade: ORKESTRAI_NODE_ID/ORKESTRAI_AGENT_TITLE no ambiente ja definem --from e --agent.
 `;
 
 function findBridgeConfig(startDir) {
@@ -57,10 +59,27 @@ function findBridgeConfig(startDir) {
   return null;
 }
 
+function findRuntimeConfig(env) {
+  try {
+    // ORKESTRAI_RUNTIME_FILE sobrepoe o caminho ('' desativa — usado em testes).
+    const custom = env.ORKESTRAI_RUNTIME_FILE;
+    if (custom === '') return {};
+    if (!custom && process.env.VITEST) return {};
+    const candidate = custom ?? resolve(homedir(), '.orkestrai', 'runtime.json');
+    if (existsSync(candidate)) return JSON.parse(readFileSync(candidate, 'utf8'));
+  } catch {
+    // ignora — cai no workspace.json/default
+  }
+  return {};
+}
+
 function resolveConfig(env, cwd) {
   const fileConfig = findBridgeConfig(cwd) ?? {};
+  const runtimeConfig = findRuntimeConfig(env);
   const token = env.ORKESTRAI_TOKEN ?? fileConfig.token;
-  const apiUrl = (env.ORKESTRAI_API_URL ?? fileConfig.apiUrl ?? 'http://127.0.0.1:4173').replace(/\/$/, '');
+  // A porta do app empacotado e livre (muda a cada execucao): o runtime.json
+  // e regravado a cada boot e tem precedencia sobre o apiUrl do workspace.json.
+  const apiUrl = (env.ORKESTRAI_API_URL ?? runtimeConfig.apiUrl ?? fileConfig.apiUrl ?? 'http://127.0.0.1:4173').replace(/\/$/, '');
   if (!token) {
     throw new Error('Token da ponte nao encontrado (.orkestrai/workspace.json ou ORKESTRAI_TOKEN).');
   }
@@ -121,6 +140,14 @@ export async function run(argv, options = {}) {
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     out(USAGE);
     return 0;
+  }
+
+  // Identidade do agente no ambiente (injetada no spawn do terminal): a CLI
+  // ja sabe "quem eu sou" — --from e --agent viram opcionais.
+  const selfAgent = env.ORKESTRAI_NODE_ID ?? env.ORKESTRAI_AGENT_TITLE;
+  if (selfAgent) {
+    flags.from = flags.from ?? selfAgent;
+    flags.agent = flags.agent ?? selfAgent;
   }
 
   const config = resolveConfig(env, cwd);

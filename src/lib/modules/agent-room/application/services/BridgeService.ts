@@ -336,14 +336,15 @@ export class BridgeService {
   provisionSkill(workspace: Workspace, token: string): void {
     const skill = `---
 name: orkestrai-bridge
-description: Comunicacao entre agentes e notas no canvas do Orkestrai. Use quando precisar perguntar algo a outro agente, listar agentes do workspace ou ler/editar notas conectadas.
+description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, montar/orquestrar um time de agentes, recrutar ou dispensar agentes, distribuir tarefas no quadro (kanban), criar notas, controlar portais (browser) ou gerenciar andares (worktrees git).
 ---
 
 # Ponte Orkestrai
 
-Voce esta rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` da acesso a ponte:
+Voce esta rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` da acesso a ponte.
+Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce e, entao \`--from\` e \`--agent\` sao opcionais.
 
-- \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva). Com \`--agent <seuNodeId>\` mostra SUAS notas e portais conectados.
+- \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
 - \`orkestrai note read <nodeId>\` — le uma nota conectada a voce.
 - \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"]\` — cria uma nota no canvas (e ja conecta).
@@ -362,14 +363,15 @@ Voce esta rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` da ac
 
 Ao aterrissar (land), conflitos NAO sao resolvidos automaticamente — o erro lista os arquivos em conflito; resolva-os voce mesmo no checkout principal (ou atribua a um agente) e repita o land.
 
-As notas e portais conectados a voce aparecem em \`orkestrai list --agent <seuNodeId>\`. Use \`--json\` para saida estruturada.
+Use \`--json\` para saida estruturada em qualquer comando.
 
-## Orquestrar times (Modo Maestro)
+## Orquestrar times (Modo Maestro) — OBRIGATORIO para o lider
 
-Se voce e o lider (Modo Maestro) e o usuario pedir para orquestrar um projeto/fluxo:
+Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce orquestra. Ao receber um projeto/tarefa grande:
 1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao.
-2. Aprovado, crie com \`orkestrai recruit "<Titulo>" --from "<voce>" [--provider claude|codex|kimi] [--role <papel>]\`, conecte-os a voce com \`orkestrai connect\` e distribua o trabalho com \`orkestrai task add --assign\` ou \`orkestrai ask\`.
-3. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss\` — o time nasce e morre sob demanda.
+2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`, conecte-os a voce com \`orkestrai connect <voce> <Agente>\` e distribua o trabalho com \`orkestrai task add --assign\`, notas com \`orkestrai note create\` e \`orkestrai ask\`.
+3. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`.
+4. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
 Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instrucoes). Skills novas sao descobertas nas proximas sessoes do agente.
 `;

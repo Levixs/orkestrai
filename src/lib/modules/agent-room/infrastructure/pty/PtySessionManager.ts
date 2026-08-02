@@ -36,7 +36,8 @@ function nvmBins(): string[] {
 function augmentedEnv(): Record<string, string> {
   const env = { ...process.env } as Record<string, string>;
   const current = (env.PATH ?? '').split(delimiter).filter(Boolean);
-  const merged = [...current, ...EXTRA_PATH_DIRS.filter((dir) => !current.includes(dir)), ...nvmBins()];
+  const shimDir = env.ORKESTRAI_SHIM_DIR ? [env.ORKESTRAI_SHIM_DIR] : [];
+  const merged = [...shimDir, ...current, ...EXTRA_PATH_DIRS.filter((dir) => !current.includes(dir)), ...nvmBins()];
   env.PATH = [...new Set(merged)].join(delimiter);
   return env;
 }

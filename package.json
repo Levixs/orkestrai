@@ -104,8 +104,10 @@
       "build/**",
       "electron/**",
       "scripts/orkestrai-server.mjs",
+      "scripts/install-orkestrai-shim.mjs",
       "src/lib/database/migrations/**",
       "src/lib/modules/agent-room/infrastructure/pty/**",
+      "packages/orkestrai-cli/**",
       "package.json"
     ],
     "asarUnpack": [
@@ -113,8 +115,10 @@
       "**/better-sqlite3/**",
       "build/**",
       "scripts/orkestrai-server.mjs",
+      "scripts/install-orkestrai-shim.mjs",
       "src/lib/database/migrations/**",
-      "src/lib/modules/agent-room/infrastructure/pty/**"
+      "src/lib/modules/agent-room/infrastructure/pty/**",
+      "packages/orkestrai-cli/**"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

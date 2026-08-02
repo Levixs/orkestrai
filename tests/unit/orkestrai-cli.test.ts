@@ -21,7 +21,7 @@ describe('orkestrai CLI', () => {
       req.on('end', () => {
         requests.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : undefined, auth: req.headers.authorization });
         res.setHeader('content-type', 'application/json');
-        if (req.url === '/api/agent-room/bridge/agents') {
+        if (req.url?.startsWith('/api/agent-room/bridge/agents')) {
           res.end(JSON.stringify({ data: { workspace: { id: 'w1', name: 'Teste' }, agents: [{ nodeId: 'n1', title: 'Claude', provider: 'claude', sessionAlive: true }], notes: [] } }));
         } else if (req.url === '/api/agent-room/bridge/ask') {
           res.end(JSON.stringify({ data: { to: 'Claude', reply: 'resposta do claude', timedOut: false } }));
@@ -104,5 +104,39 @@ describe('orkestrai CLI', () => {
     await run(['list'], { cwd, out, env: { ORKESTRAI_TOKEN: 'env-tok', ORKESTRAI_API_URL: apiUrl } });
     expect(requests.at(-1).auth).toBe('Bearer env-tok');
     expect(lines.length).toBeGreaterThan(0);
+  });
+
+  it('recruit usa ORKESTRAI_NODE_ID como --from padrao', async () => {
+    const { out } = capture();
+    await run(['recruit', 'Dev Frontend', '--provider', 'claude'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
+    const request = requests.find((entry) => entry.url === '/api/agent-room/bridge/recruit');
+    expect(request.body.from).toBe('n1');
+  });
+
+  it('flag --from explicito tem precedencia sobre o env', async () => {
+    const { out } = capture();
+    await run(['recruit', 'QA', '--from', 'Outro'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
+    const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/recruit').at(-1);
+    expect(request.body.from).toBe('Outro');
+  });
+
+  it('list usa ORKESTRAI_NODE_ID como --agent padrao', async () => {
+    const { out } = capture();
+    await run(['list'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
+    expect(requests.at(-1).url).toContain('agentNodeId=n1');
+  });
+
+  it('runtime.json tem precedencia sobre o apiUrl do workspace.json', async () => {
+    // workspace.json com porta obsoleta; runtime.json aponta o servidor atual.
+    const staleDir = mkdtempSync(join(tmpdir(), 'orkestrai-cli-stale-'));
+    mkdirSync(join(staleDir, '.orkestrai'));
+    writeFileSync(join(staleDir, '.orkestrai', 'workspace.json'), JSON.stringify({ token: 'tok123', apiUrl: 'http://127.0.0.1:1' }));
+    const runtimeFile = join(staleDir, 'runtime.json');
+    writeFileSync(runtimeFile, JSON.stringify({ apiUrl }));
+
+    const { lines, out } = capture();
+    const code = await run(['list'], { cwd: staleDir, out, env: { ORKESTRAI_RUNTIME_FILE: runtimeFile } });
+    expect(code).toBe(0);
+    expect(lines.join('\n')).toContain('Claude');
   });
 });

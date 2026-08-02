@@ -12,6 +12,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync 
 import { homedir } from 'node:os';
 import { basename, delimiter, dirname, isAbsolute, resolve } from 'node:path';
 import { WebSocketServer } from 'ws';
+import { installOrkestraiShim, writeOrkestraiRuntimeFile } from './install-orkestrai-shim.mjs';
 
 // App Electron aberto pelo Finder recebe um PATH minimo do macOS; sem os
 // locais comuns de CLIs a deteccao e o spawn dos agentes falham com ENOENT.
@@ -89,6 +90,9 @@ if (process.env.ORKESTRAI_DATA_DIR) {
   if (!isAbsolute(dbPath)) process.env.DB_PATH = resolve(dataDir, dbPath);
 }
 
+// Shim da CLI `orkestrai` no PATH dos terminais (ver install-orkestrai-shim.mjs).
+installOrkestraiShim();
+
 const dbFile = process.env.DB_PATH ?? resolve('database.db');
 
 // Backup rotativo do SQLite no boot (mantem os ultimos 5) — protege contra
@@ -156,6 +160,7 @@ server.on('upgrade', (request, socket, head) => {
 
 server.listen(port, host, () => {
   console.log(`Orkestrai ouvindo em http://${host}:${port}`);
+  writeOrkestraiRuntimeFile(`http://${host}:${port}`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

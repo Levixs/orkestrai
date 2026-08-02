@@ -171,6 +171,7 @@
 
   // Resume exato quando temos o session-id real da CLI; senao, fallback
   // para "a sessao mais recente do diretorio".
+  const agentEnv = $derived({ ORKESTRAI_NODE_ID: id, ORKESTRAI_AGENT_TITLE: data.title });
   const respawnRequest = $derived.by(() => {
     const payload = data.payload as TerminalNodePayload & { agentSessionId?: string };
     const exactId = payload.agentSessionId ?? respawnAgentSessionId;
@@ -180,6 +181,7 @@
         command: data.payload.command ?? '',
         args: [...(data.payload.args ?? []), ...exactArgs],
         cwd: data.workingDir,
+        env: agentEnv,
       };
     }
     const genericArgs = data.resumeArgsFor?.() ?? null;
@@ -190,6 +192,7 @@
           ? [...(data.payload.args ?? []), ...genericArgs]
           : (data.payload.args ?? []),
       cwd: data.workingDir,
+      env: agentEnv,
     };
   });
 </script>
@@ -271,7 +274,7 @@
       />
     {:else if data.payload.command}
       <TerminalNode
-        createRequest={forceRespawn ? respawnRequest : { command: data.payload.command, args: data.payload.args ?? [], cwd: data.workingDir }}
+        createRequest={forceRespawn ? respawnRequest : { command: data.payload.command, args: data.payload.args ?? [], cwd: data.workingDir, env: agentEnv }}
         workspaceId={data.workspaceId}
         sessionLabel={data.title}
         workspaceName={data.workspaceName}

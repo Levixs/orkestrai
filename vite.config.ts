@@ -6,6 +6,10 @@ import { createRequire } from 'module';
 import { dirname, resolve } from 'path';
 import { WebSocketServer } from 'ws';
 import { handlePtyConnection, isAllowedPtyWsOrigin, isPtyWsPath } from './src/lib/modules/agent-room/infrastructure/pty/pty-ws.ts';
+import { installOrkestraiShim, writeOrkestraiRuntimeFile } from './scripts/install-orkestrai-shim.mjs';
+
+// Shim da CLI `orkestrai` acessivel nos terminais PTY tambem em dev.
+installOrkestraiShim();
 
 /** Expoe o WebSocket de PTY no servidor de dev do vite. */
 function ptyWebSocketPlugin(): Plugin {
@@ -21,6 +25,13 @@ function ptyWebSocketPlugin(): Plugin {
           return;
         }
         wss.handleUpgrade(request, socket, head, (ws) => handlePtyConnection(ws));
+      });
+      // Anuncia a porta real do dev server para a CLI orkestrai.
+      server.httpServer?.on('listening', () => {
+        const address = server.httpServer?.address();
+        if (address && typeof address === 'object' && address.port) {
+          writeOrkestraiRuntimeFile(`http://127.0.0.1:${address.port}`);
+        }
       });
     },
   };

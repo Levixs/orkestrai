@@ -18,6 +18,9 @@ import type {
  * sincroniza CLAUDE.md/AGENTS.md e delega ao WorkspaceRepository.
  */
 export class WorkspaceService {
+  /** Workspaces ja verificados neste processo (evita statSync a cada chamada). */
+  private provisionChecked = new Set<string>();
+
   async list() {
     return workspaceRepository.listWorkspaces();
   }
@@ -25,7 +28,23 @@ export class WorkspaceService {
   async get(id: string) {
     const workspace = await workspaceRepository.getWorkspace(id);
     if (!workspace) throw new Error('Workspace nao encontrado.');
+    await this.ensureProvisioned(workspace);
     return workspace;
+  }
+
+  /**
+   * Reparo idempotente: workspaces criados antes do provisionamento zero-config
+   * (ou cujos arquivos foram apagados) recuperam skill + token da ponte ao
+   * serem abertos — sem isso o lider nascia sem saber que e orquestrador.
+   */
+  private async ensureProvisioned(workspace: Workspace) {
+    if (this.provisionChecked.has(workspace.id)) return;
+    this.provisionChecked.add(workspace.id);
+    const hasSkill = existsSync(resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md'));
+    const hasConfig = existsSync(resolve(workspace.workingDir, '.orkestrai', 'workspace.json'));
+    if (hasSkill && hasConfig) return;
+    const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
+    if (token) bridgeService.provisionSkill(workspace, token);
   }
 
   async create(dto: CreateWorkspaceDto) {
