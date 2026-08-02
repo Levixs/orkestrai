@@ -7,12 +7,15 @@
 #   ./scripts/package-cross.sh linux     # AppImage x64
 #   ./scripts/package-cross.sh windows   # NSIS x64 (imagem wine; emulada em Mac ARM)
 #   ./scripts/package-cross.sh all       # os dois
+#   ./scripts/package-cross.sh clean     # remove imagens dos builders + camadas dangling
 #
 # Notas:
 # - O staging NAO leva node_modules do host (ABI do macOS) — npm ci roda
 #   dentro do container. node-pty/better-sqlite3 usam prebuilds (x64).
+# - Containers rodam com --rm e o staging e removido via trap no EXIT:
+#   o script nao deixa lixo para tras.
 # - Caches do electron/electron-builder ficam em ~/.cache para builds
-#   subsequentes serem rapidos.
+#   subsequentes serem rapidos (usados tambem pelo build mac local).
 set -euo pipefail
 
 TARGET="${1:-all}"
@@ -21,6 +24,23 @@ STAGE="$(mktemp -d /tmp/orkestrai-cross-XXXXXX)"
 CACHE_ELECTRON="$HOME/.cache/electron"
 CACHE_BUILDER="$HOME/.cache/electron-builder"
 mkdir -p "$CACHE_ELECTRON" "$CACHE_BUILDER" "$ROOT/release"
+
+# Limpeza garantida: staging sempre removido (sucesso ou falha) e camadas
+# dangling podadas ao final — nada de lixo para tras.
+cleanup() {
+  rm -rf "$STAGE"
+  docker image prune -f > /dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+if [[ "$TARGET" == "clean" ]]; then
+  echo "==> Removendo imagens dos builders e caches de cross-build"
+  docker rmi electronuserland/builder:latest electronuserland/builder:wine 2>/dev/null || true
+  docker image prune -f || true
+  rm -rf "$STAGE"
+  echo "Pronto. (~/.cache/electron* mantidos: aceleram TODOS os builds, mac incluso)"
+  exit 0
+fi
 
 echo "==> Build web (vite)"
 (cd "$ROOT" && npm run build)
