@@ -31,3 +31,4 @@ playwright-report/
 coverage/
 .DS_Store
 release/
+*.db.bak-*
