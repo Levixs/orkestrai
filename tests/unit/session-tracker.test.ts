@@ -36,6 +36,46 @@ describe('AgentSessionTracker', () => {
     const tracker = new AgentSessionTracker();
     expect(tracker.findAgentSessionId('claude', join(tmpdir(), 'nao-existe-' + Date.now()), Date.now())).toBeNull();
   });
+
+  it('atribui ids distintos a agentes no mesmo diretorio (mais antigo nao reivindicado)', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), 'projeto-multi-' + Date.now());
+    const tracker = new AgentSessionTracker();
+
+    const home = process.env.HOME!;
+    const claudeDir = join(home, '.claude', 'projects', `-${cwd.replace(/[/\\]/g, '-').replace(/^-/, '')}`);
+    mkdirSync(claudeDir, { recursive: true });
+    const first = join(claudeDir, 'sessao-a.jsonl');
+    const second = join(claudeDir, 'sessao-b.jsonl');
+    touch(first, new Date(Date.now() - 10_000));
+    touch(second, new Date());
+
+    // Primeiro agente pega a mais antiga; o id fica reivindicado...
+    const foundA = tracker.findAgentSessionId('claude', cwd, since);
+    expect(foundA).toBe('sessao-a');
+    tracker.claim(foundA!);
+
+    // ...e o segundo agente NAO recebe o mesmo id.
+    const foundB = tracker.findAgentSessionId('claude', cwd, since);
+    expect(foundB).toBe('sessao-b');
+    expect(foundB).not.toBe(foundA);
+  });
+
+  it('findLatestUnclaimedSessionId retorna a mais recente fora da exclusao', () => {
+    const cwd = join(tmpdir(), 'projeto-respawn-' + Date.now());
+    const tracker = new AgentSessionTracker();
+
+    const home = process.env.HOME!;
+    const claudeDir = join(home, '.claude', 'projects', `-${cwd.replace(/[/\\]/g, '-').replace(/^-/, '')}`);
+    mkdirSync(claudeDir, { recursive: true });
+    touch(join(claudeDir, 'velha.jsonl'), new Date(Date.now() - 3_600_000));
+    touch(join(claudeDir, 'media.jsonl'), new Date(Date.now() - 60_000));
+    touch(join(claudeDir, 'nova.jsonl'), new Date());
+
+    // Sem exclusao: a mais recente. Excluindo-a: a segunda mais recente.
+    expect(tracker.findLatestUnclaimedSessionId('claude', cwd)).toBe('nova');
+    expect(tracker.findLatestUnclaimedSessionId('claude', cwd, new Set(['nova']))).toBe('media');
+  });
 });
 
 describe('resume exato dos adapters', () => {

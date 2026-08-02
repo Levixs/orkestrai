@@ -53,7 +53,7 @@
     if (!respawnAgentSessionId && payload.provider && !payload.agentSessionId) {
       try {
         const response = await fetch(
-          `/api/agent-room/sessions/latest?provider=${encodeURIComponent(payload.provider)}&cwd=${encodeURIComponent(data.workingDir)}`
+          `/api/agent-room/sessions/latest?provider=${encodeURIComponent(payload.provider)}&cwd=${encodeURIComponent(data.workingDir)}&workspaceId=${encodeURIComponent(data.workspaceId)}`
         );
         const result = await response.json();
         respawnAgentSessionId = result.data?.agentSessionId ?? null;
