@@ -34,7 +34,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/table-core": "^8.21.3",
     "@types/ws": "^8.18.1",
-    "electron": "^43.2.0",
+    "electron": "^42.8.0",
     "electron-builder": "^26.15.3",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
@@ -97,6 +97,7 @@
     "appId": "com.orkestrai.desktop",
     "productName": "Orkestrai",
     "icon": "electron/resources/icon.png",
+    "asar": false,
     "directories": {
       "output": "release"
     },
@@ -109,16 +110,6 @@
       "src/lib/modules/agent-room/infrastructure/pty/**",
       "packages/orkestrai-cli/**",
       "package.json"
-    ],
-    "asarUnpack": [
-      "**/node-pty/**",
-      "**/better-sqlite3/**",
-      "build/**",
-      "scripts/orkestrai-server.mjs",
-      "scripts/install-orkestrai-shim.mjs",
-      "src/lib/database/migrations/**",
-      "src/lib/modules/agent-room/infrastructure/pty/**",
-      "packages/orkestrai-cli/**"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

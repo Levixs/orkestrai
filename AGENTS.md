@@ -46,7 +46,10 @@
 
 - `electron/main.cjs` spawns the adapter-node server (`build/index.js`) as a child process with `ELECTRON_RUN_AS_NODE=1` and loads it in a BrowserWindow.
 - After changing native deps (better-sqlite3, node-pty), run `npm run electron:rebuild` to rebuild them for the Electron ABI.
-- Dev: `npm run electron:dev` (build + launch). Distribution/packaging is Phase 7 — do not add electron-builder config yet.
+- Dev: `npm run electron:dev` (build + launch).
+- Packaging: `asar` is OFF on purpose — the production server (`scripts/orkestrai-server.mjs`) is ESM and Node's ESM loader cannot resolve packages inside an asar; with asar enabled the app only worked because the source repo's `node_modules` happened to be nearby. Do not re-enable it.
+- Electron is pinned to v42 (ABI 146) because better-sqlite3 only publishes Electron prebuilds up to ABI 146 — upgrading Electron means compiling better-sqlite3 for every target (mac needs `electron:rebuild`; Linux/Windows cross-builds break).
+- macOS: `npx electron-builder --mac dmg` (local). Linux/Windows locally via Docker: `scripts/package-cross.sh linux|windows|all` (official electronuserland images, staging without host `node_modules`, npm pinned to the host version). Same commands work in CI later.
 
 ## Verification
 
