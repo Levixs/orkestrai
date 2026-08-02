@@ -32,3 +32,4 @@ coverage/
 .DS_Store
 release/
 *.db.bak-*
+storage/bin/
