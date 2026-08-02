@@ -329,12 +329,9 @@ export class BridgeService {
     return { command: spec.command, args: spec.args };
   }
 
-  /**
-   * Provisiona a skill da ponte nos diretorios convencionais dos agentes
-   * (.claude/skills e .orkestrai) ao conectar dois terminais.
-   */
-  provisionSkill(workspace: Workspace, token: string): void {
-    const skill = `---
+  /** Conteudo da skill da ponte (extraido para comparar/atualizar installs antigas). */
+  bridgeSkillContent(): string {
+    return `---
 name: orkestrai-bridge
 description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, montar/orquestrar um time de agentes, recrutar ou dispensar agentes, distribuir tarefas no quadro (kanban), criar notas, controlar portais (browser) ou gerenciar andares (worktrees git).
 ---
@@ -368,6 +365,9 @@ Use \`--json\` para saida estruturada em qualquer comando.
 ## Orquestrar times (Modo Maestro) — OBRIGATORIO para o lider
 
 Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce orquestra. Ao receber um projeto/tarefa grande:
+
+PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NAO aparecem no canvas, NAO tem terminal proprio e o usuario nao ve nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
+
 1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao.
 2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`, conecte-os a voce com \`orkestrai connect <voce> <Agente>\` e distribua o trabalho com \`orkestrai task add --assign\`, notas com \`orkestrai note create\` e \`orkestrai ask\`.
 3. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`.
@@ -375,6 +375,14 @@ Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce or
 
 Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instrucoes). Skills novas sao descobertas nas proximas sessoes do agente.
 `;
+  }
+
+  /**
+   * Provisiona a skill da ponte nos diretorios convencionais dos agentes
+   * (.claude/skills e .orkestrai) ao conectar dois terminais.
+   */
+  provisionSkill(workspace: Workspace, token: string): void {
+    const skill = this.bridgeSkillContent();
     try {
       const dirs = [
         resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai'),

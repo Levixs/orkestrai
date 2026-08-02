@@ -36,4 +36,21 @@ describe('WorkspaceService — provisionamento da ponte', () => {
     const config = JSON.parse(readFileSync(join(dir, '.orkestrai', 'workspace.json'), 'utf8'));
     expect(config.token).toBeTruthy();
   });
+
+  it('atualiza skill com conteudo antigo ao abrir o workspace', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-prov-stale-'));
+    const workspace = await workspaceService.create({ name: 'stale', workingDir: dir, icon: null, instructions: null });
+    // Envelhece a skill (simula template de versao anterior).
+    const skillPath = join(dir, '.claude', 'skills', 'orkestrai', 'SKILL.md');
+    const { writeFileSync: write, mkdirSync: mkdir } = await import('node:fs');
+    mkdir(join(dir, '.claude', 'skills', 'orkestrai'), { recursive: true });
+    write(skillPath, '---\nname: orkestrai-bridge\n---\nskill antiga\n');
+
+    const staleService = new (await import('$lib/modules/agent-room/application/services/WorkspaceService.js')).WorkspaceService();
+    await staleService.get(workspace.id);
+
+    const skill = readFileSync(skillPath, 'utf8');
+    expect(skill).toContain('Modo Maestro');
+    expect(skill).not.toContain('skill antiga');
+  });
 });

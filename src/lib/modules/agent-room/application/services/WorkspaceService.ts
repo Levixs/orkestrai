@@ -1,4 +1,4 @@
-import { existsSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Workspace } from '../../domain/types.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
@@ -36,13 +36,15 @@ export class WorkspaceService {
    * Reparo idempotente: workspaces criados antes do provisionamento zero-config
    * (ou cujos arquivos foram apagados) recuperam skill + token da ponte ao
    * serem abertos — sem isso o lider nascia sem saber que e orquestrador.
+   * Skill com conteudo antigo e regravada (o template evolui com o app).
    */
   private async ensureProvisioned(workspace: Workspace) {
     if (this.provisionChecked.has(workspace.id)) return;
     this.provisionChecked.add(workspace.id);
-    const hasSkill = existsSync(resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md'));
+    const skillPath = resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md');
+    const skillCurrent = existsSync(skillPath) && readFileSync(skillPath, 'utf8') === bridgeService.bridgeSkillContent();
     const hasConfig = existsSync(resolve(workspace.workingDir, '.orkestrai', 'workspace.json'));
-    if (hasSkill && hasConfig) return;
+    if (skillCurrent && hasConfig) return;
     const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
     if (token) bridgeService.provisionSkill(workspace, token);
   }

@@ -33,11 +33,12 @@
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
   import RoutinePanel from '$lib/components/agent-room/canvas/RoutinePanel.svelte';
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
+  import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
   import CommandPalette, { type PaletteAction } from '$lib/components/agent-room/canvas/CommandPalette.svelte';
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
   import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, CalendarClock, CodeXml, Download, FileDiff, Folder, FolderTree, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, CalendarClock, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -263,6 +264,7 @@
   let showFloorPanel = $state(false);
   let showRoutinePanel = $state(false);
   let showRolesPanel = $state(false);
+  let showUsagePanel = $state(false);
   let sidebarCollapsed = $state(false);
   let importInput: HTMLInputElement;
   let visibleFloorId = $state<string | null>(null);
@@ -1321,8 +1323,11 @@
             <button onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>
               <CalendarClock size={15} class="tool-icon-svg" /> Rotinas
             </button>
-            <button onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; }}>
+            <button onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; }}>
               <BadgeCheck size={15} class="tool-icon-svg" /> Roles
+            </button>
+            <button class:active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
+              <Gauge size={15} class="tool-icon-svg" /> Usage
             </button>
           </div>
         </Panel>
@@ -1355,6 +1360,9 @@
         onClose={() => (showRoutinePanel = false)}
         {api}
       />
+    {/if}
+    {#if showUsagePanel}
+      <UsagePanel onClose={() => (showUsagePanel = false)} />
     {/if}
     <AgentCreateDialog
       open={pendingAgentCreation !== null}
@@ -1765,6 +1773,16 @@
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(12px);
     margin-bottom: 14px;
+    /* Muitos botoes (providers + paineis): rola em vez de cortar fora da tela.
+       O painel do xyflow nao tem largura propria — limita pelo viewport
+       (sidebar 332 + painel lateral 300 + margens). */
+    max-width: max(320px, calc(100vw - 680px));
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
   }
 
   .toolbar button {
@@ -1782,6 +1800,7 @@
     font-size: 10.5px;
     font-weight: 500;
     line-height: 1.1;
+    flex-shrink: 0;
   }
 
   .toolbar .tool-icon {
