@@ -24,6 +24,18 @@ function stripAnsi(text: string): string {
   return text.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n').trim();
 }
 
+/** Titulo curto de no: primeira linha, max 48 chars (titulos-frase quebram o header). */
+function shortTitle(title: string, max = 48): string {
+  const first = title.split('\n')[0].trim();
+  return first.length > max ? `${first.slice(0, max - 1).trimEnd()}…` : first;
+}
+
+/** URL sem esquema: http para hosts locais (dev server), https para o resto. */
+function defaultPortalUrl(url: string): string {
+  const local = /^(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/.test(url);
+  return `${local ? 'http' : 'https'}://${url}`;
+}
+
 /**
  * Ponte agente<->app: autentica chamadas da CLI `orkestrai` por token de
  * workspace, lista agentes, injeta mensagens em terminais PTY (ask com
@@ -109,6 +121,7 @@ export class BridgeService {
     }
 
     const origin = input.from ? this.findAgent(agents, input.from) : null;
+    if (origin) await this.ensureEdge(workspaceId, origin.nodeId, target.nodeId);
     this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, true);
     let reply: { text: string; timedOut: boolean };
     try {
@@ -142,7 +155,7 @@ export class BridgeService {
     return { nodeId: node.id, title: node.title ?? 'nota', content: String((node.payload as { content?: string }).content ?? '') };
   }
 
-  /** Cria uma nota no canvas (e opcionalmente ja conecta a um agente). */
+  /** Cria uma nota no canvas (e opcionalmente ja conecta a um agente ou a todos). */
   async createNote(
     workspaceId: string,
     input: { title: string; content?: string; connect?: string | null }
@@ -159,10 +172,17 @@ export class BridgeService {
       payload: { content: input.content ?? '' },
     });
     let connectedTo: string | null = null;
-    if (input.connect) {
+    if (input.connect === 'all') {
+      // Specs/briefs do lider: visiveis para o time inteiro.
+      const agents = await this.listAgents(workspaceId);
+      for (const agent of agents) {
+        await this.ensureEdge(workspaceId, note.id, agent.nodeId);
+      }
+      connectedTo = 'todos os agentes';
+    } else if (input.connect) {
       const agents = await this.listAgents(workspaceId);
       const agent = this.findAgent(agents, input.connect);
-      await workspaceRepository.createEdge({ workspaceId, sourceNodeId: note.id, targetNodeId: agent.nodeId });
+      await this.ensureEdge(workspaceId, note.id, agent.nodeId);
       connectedTo = agent.title;
     }
     this.notifyWorkspaceChanged(workspaceId);
@@ -249,7 +269,7 @@ export class BridgeService {
     workspaceId: string,
     input: { from: string; title: string; provider?: string | null; role?: string | null; x?: number; y?: number; replace?: string | null; floorId?: string | null }
   ) {
-    await this.requireMaestro(workspaceId, input.from);
+    const origin = await this.requireMaestro(workspaceId, input.from);
 
     const command = this.commandForProvider(input.provider);
 
@@ -269,19 +289,121 @@ export class BridgeService {
       return { nodeId: updated!.id, title: updated!.title, replaced: true };
     }
 
+    // Sem coordenadas explicitas: organograma — fileira abaixo do maestro.
+    const position = input.x == null || input.y == null
+      ? await this.orgChartPosition(workspaceId, origin.nodeId, input.floorId)
+      : null;
+
     const node = await workspaceRepository.createNode({
       workspaceId,
       type: 'terminal',
-      title: input.title,
-      x: input.x ?? 120,
-      y: input.y ?? 120,
+      title: shortTitle(input.title),
+      x: input.x ?? position!.x,
+      y: input.y ?? position!.y,
       width: 640,
       height: 400,
       payload: { ...command, provider: input.provider ?? null, role: input.role ?? null },
       floorId: input.floorId ?? null,
     });
+    // Recruta nasce conectado ao maestro (canal de comunicacao visual).
+    await this.ensureEdge(workspaceId, origin.nodeId, node.id);
     this.notifyWorkspaceChanged(workspaceId);
     return { nodeId: node.id, title: node.title, replaced: false };
+  }
+
+  /** Cria a aresta se o par ainda nao estiver conectado (qualquer direcao). */
+  private async ensureEdge(workspaceId: string, a: string, b: string): Promise<string | null> {
+    if (a === b) return null;
+    const edges = await workspaceRepository.listEdges(workspaceId);
+    const existing = edges.find(
+      (edge) =>
+        (edge.sourceNodeId === a && edge.targetNodeId === b) ||
+        (edge.sourceNodeId === b && edge.targetNodeId === a)
+    );
+    if (existing) return existing.id;
+    const created = await workspaceRepository.createEdge({ workspaceId, sourceNodeId: a, targetNodeId: b });
+    return created.id;
+  }
+
+  /**
+   * Posicao de organograma para um novo recruta: fileiras de 3 abaixo do
+   * maestro, offsets estaveis (nos ja postos nunca se movem). O maestro so
+   * recruta reports diretos, entao uma arvore de 1 nivel basta.
+   */
+  private async orgChartPosition(workspaceId: string, maestroNodeId: string, floorId?: string | null) {
+    const maestro = await workspaceRepository.getNode(maestroNodeId);
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    const targetFloor = floorId !== undefined ? floorId : ((maestro as { floorId?: string | null } | null)?.floorId ?? null);
+    const recruits = nodes.filter(
+      (node) => node.type === 'terminal' && node.id !== maestroNodeId && ((node as { floorId?: string | null }).floorId ?? null) === targetFloor
+    );
+    const index = recruits.length;
+    const perRow = 3;
+    const row = Math.floor(index / perRow);
+    const col = index % perRow;
+    const leaderCenterX = (maestro?.x ?? 0) + (maestro?.width ?? 640) / 2;
+    const leaderBottomY = (maestro?.y ?? 0) + (maestro?.height ?? 400);
+    return {
+      x: Math.round(leaderCenterX + (col - 1) * 700 - 320),
+      y: Math.round(leaderBottomY + 80 + row * 480),
+    };
+  }
+
+  /** Cria um portal (browser embutido) no canvas e conecta a um agente (default: o maestro). */
+  async createPortal(
+    workspaceId: string,
+    input: { from: string; url: string; title?: string | null; connect?: string | null }
+  ): Promise<{ nodeId: string; title: string; url: string; connectedTo: string | null }> {
+    const maestro = await this.requireMaestro(workspaceId, input.from);
+    const maestroNode = await workspaceRepository.getNode(maestro.nodeId);
+    const url = input.url.startsWith('http') ? input.url : defaultPortalUrl(input.url);
+    const node = await workspaceRepository.createNode({
+      workspaceId,
+      type: 'portal',
+      title: shortTitle(input.title?.trim() || new URL(url).hostname),
+      x: (maestroNode?.x ?? 0) + (maestroNode?.width ?? 640) + 80,
+      y: maestroNode?.y ?? 120,
+      width: 560,
+      height: 400,
+      payload: { url },
+    });
+    let connectedTo = maestro.title;
+    if (input.connect && input.connect !== 'all') {
+      const agents = await this.listAgents(workspaceId);
+      const agent = this.findAgent(agents, input.connect);
+      await this.ensureEdge(workspaceId, agent.nodeId, node.id);
+      connectedTo = agent.title;
+    } else {
+      if (input.connect === 'all') {
+        const agents = await this.listAgents(workspaceId);
+        for (const agent of agents) await this.ensureEdge(workspaceId, agent.nodeId, node.id);
+        connectedTo = 'todos os agentes';
+      }
+      await this.ensureEdge(workspaceId, maestro.nodeId, node.id);
+    }
+    this.notifyWorkspaceChanged(workspaceId);
+    return { nodeId: node.id, title: node.title ?? url, url, connectedTo };
+  }
+
+  /**
+   * Garante que existe um no de quadro (tasks) no canvas — criado na primeira
+   * tarefa para o kanban nao ficar invisivel "por baixo dos panos".
+   */
+  async ensureTasksBoard(workspaceId: string): Promise<void> {
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    if (nodes.some((node) => node.type === 'tasks')) return;
+    const maestro = nodes.find((node) => node.type === 'terminal' && Boolean((node.payload as { maestro?: boolean }).maestro));
+    await workspaceRepository.createNode({
+      workspaceId,
+      type: 'tasks',
+      title: 'Tarefas',
+      x: (maestro?.x ?? 0) + (maestro?.width ?? 640) + 80,
+      y: (maestro?.y ?? 120) + 80,
+      width: 480,
+      height: 360,
+      payload: {},
+    });
+    this.notifyWorkspaceChanged(workspaceId);
   }
 
   /** Dispensa um recruta: mata a sessao PTY e remove o no do canvas. */
@@ -314,13 +436,9 @@ export class BridgeService {
     const agents = await this.listAgents(workspaceId);
     const origin = input.source ? this.findAgent(agents, input.source) : maestro;
     const target = this.findAgent(agents, input.to);
-    const edge = await workspaceRepository.createEdge({
-      workspaceId,
-      sourceNodeId: origin.nodeId,
-      targetNodeId: target.nodeId,
-    });
+    const edgeId = await this.ensureEdge(workspaceId, origin.nodeId, target.nodeId);
     this.notifyWorkspaceChanged(workspaceId);
-    return { edgeId: edge.id, from: origin.title, to: target.title };
+    return { edgeId, from: origin.title, to: target.title };
   }
 
   private commandForProvider(provider?: string | null): { command: string; args: string[] } {
@@ -344,12 +462,13 @@ Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce 
 - \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
 - \`orkestrai note read <nodeId>\` — le uma nota conectada a voce.
-- \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"]\` — cria uma nota no canvas (e ja conecta).
+- \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta a voce; \`all\` conecta ao time inteiro).
 - \`orkestrai note write <nodeId> "<conteudo>"\` — substitui o conteudo da nota.
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edicao pontual.
 - \`orkestrai task list\` — quadro de tarefas do workspace.
 - \`orkestrai task add "<titulo>" --assign "<Agente>"\` — cria tarefa e ja despacha para o agente.
 - \`orkestrai task done <taskId>\` — marca tarefa atribuida a voce como concluida.
+- \`orkestrai portal create "<url>" [--title "<t>"] [--connect "<Agente>"|all]\` — cria um portal (browser) no canvas.
 - \`orkestrai portal <nodeId> navigate "<url>"\` — abre uma URL no portal conectado.
 - \`orkestrai portal <nodeId> eval "<js>"\` — executa JS na pagina e retorna o resultado.
 - \`orkestrai portal <nodeId> dom\` — devolve o HTML atual (ler telas, pesquisar, testar o que voce esta construindo).
@@ -369,9 +488,12 @@ Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce or
 PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NAO aparecem no canvas, NAO tem terminal proprio e o usuario nao ve nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
 
 1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao.
-2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`, conecte-os a voce com \`orkestrai connect <voce> <Agente>\` e distribua o trabalho com \`orkestrai task add --assign\`, notas com \`orkestrai note create\` e \`orkestrai ask\`.
-3. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`.
-4. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
+2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`. Recrutas nascem CONECTADOS a voce no organograma (nao precisa de \`connect\`). Use titulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") — descricoes longas vao no \`--role\`.
+3. Escreva o spec/briefing do projeto numa nota VISIVEL PARA O TIME INTEIRO: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota conecta so a voce).
+4. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente).
+5. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time esta construindo.
+6. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`.
+7. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
 Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instrucoes). Skills novas sao descobertas nas proximas sessoes do agente.
 `;
@@ -412,8 +534,7 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
 
   // -- Internos ---------------------------------------------------------------
 
-  private findAgent(agents: BridgeAgent[], query: string): BridgeAgent {
-    const normalized = query.trim().toLowerCase();
+  private findAgent(agents: BridgeAgent[], query: string): BridgeAgent {    const normalized = query.trim().toLowerCase();
     const agent =
       agents.find((item) => item.nodeId === query) ??
       agents.find((item) => item.title.toLowerCase() === normalized) ??

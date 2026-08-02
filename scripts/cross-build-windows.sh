@@ -18,4 +18,10 @@ curl -fsSL "$URL" | tar xz -C node_modules/better-sqlite3
 ls -la node_modules/better-sqlite3/build/Release/better_sqlite3.node
 ls node_modules/node-pty/prebuilds/win32-x64/
 
+# Sem certificado real: a imagem wine traz um cert de teste que liga a
+# assinatura — e o passo de assinar o desinstalador executa o instalador
+# inteiro no wine (crash do qemu em Mac ARM). Sem CSC_*, a assinatura e
+# pulada e o instalador sai completo (unsigned).
+unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD CSC_NAME || true
 npx electron-builder --win nsis --x64 --publish never -c.npmRebuild=false
+

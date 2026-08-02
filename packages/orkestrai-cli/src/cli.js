@@ -17,8 +17,9 @@ Uso:
   orkestrai note read <nodeId>
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
-  orkestrai note create <titulo> [--content <texto>] [--connect <agente>]
+  orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
   orkestrai role show [nome] | role write <nome> <prompt> | role edit <nome> <antigo> <novo>
+  orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]
   orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
   orkestrai notify <mensagem>
   orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--role <papel>] [--replace <agente>] [--json]
@@ -222,11 +223,12 @@ export async function run(argv, options = {}) {
       const [action, nodeId, ...values] = rest;
       if (action === 'create') {
         const title = [nodeId, ...values].join(' ');
-        if (!title) throw new Error('Uso: orkestrai note create <titulo> [--content <texto>] [--connect <agente>]');
+        if (!title) throw new Error('Uso: orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]');
         const data = await bridge(config, 'POST', '/api/agent-room/bridge/notes', {
           title,
           content: flags.content,
-          connect: flags.connect,
+          // Default: conecta a nota a quem a criou (identidade do ambiente).
+          connect: flags.connect ?? selfAgent,
         });
         out(`Nota criada: "${data.title}" (${data.nodeId})${data.connectedTo ? ` — conectada a ${data.connectedTo}` : ''}`);
         return 0;
@@ -283,6 +285,18 @@ export async function run(argv, options = {}) {
     }
     case 'portal': {
       const [nodeId, action, ...values] = rest;
+      if (nodeId === 'create') {
+        const url = action;
+        if (!url) throw new Error('Uso: orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]');
+        const data = await bridge(config, 'POST', '/api/agent-room/bridge/portal/create', {
+          url,
+          title: flags.title,
+          connect: flags.connect,
+          from: flags.from,
+        });
+        out(`Portal criado: "${data.title}" (${data.nodeId}) — conectado a ${data.connectedTo}`);
+        return 0;
+      }
       if (!nodeId || !action) throw new Error('Uso: orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>');
       const args = action === 'navigate' ? { url: values.join(' ') } : action === 'eval' ? { js: values.join(' ') } : {};
       const data = await bridge(config, 'POST', '/api/agent-room/bridge/portal', { nodeId, action, args });

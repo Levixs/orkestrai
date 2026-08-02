@@ -219,6 +219,31 @@ export class BridgeController extends Controller {
     }
   }
 
+  /** Cria um portal no canvas (o portal em si so abre URL depois, via `portal`). */
+  async portalCreate(event: any) {
+    try {
+      const input = z
+        .object({
+          token: z.string().trim().min(1).nullish(),
+          from: z.string().trim().min(1, 'Informe o agente maestro (from).'),
+          url: z.string().trim().min(1, 'Informe a URL do portal.'),
+          title: z.string().trim().nullish(),
+          connect: z.string().trim().nullish(),
+        })
+        .parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
+      const result = await bridgeService.createPortal(workspace.id, {
+        from: input.from,
+        url: input.url,
+        title: input.title,
+        connect: input.connect,
+      });
+      return this.json({ data: result }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao criar portal.');
+    }
+  }
+
   /** Token da ponte de um workspace (para a UI exibir/copiar). */
   async workspaceToken(event: any) {
     try {
@@ -262,6 +287,8 @@ export class BridgeController extends Controller {
         assigneeNodeId: await this.assigneeNodeId(workspace.id, input.assignee),
         createdBy: input.from ?? 'agente',
       });
+      // O quadro aparece no canvas junto com a primeira tarefa.
+      await bridgeService.ensureTasksBoard(workspace.id).catch(() => {});
       return this.json({ data: task }, 201);
     } catch (error) {
       return this.errorResponse(error, 'Falha ao criar tarefa.');

@@ -158,4 +158,72 @@ describe('Modo Maestro', () => {
     expect((node!.payload as { command?: string }).command).toBe('claude');
     expect((node!.payload as { sessionId?: string }).sessionId).toBeUndefined();
   });
+
+  it('recruta nasce conectado ao maestro e com titulo curto', async () => {
+    const { workspace, leader } = await setupMaestro(true);
+    const longTitle = 'Arquiteto frontend scaffold Vite+ReactTS, estrutura de pastas, estado global, integracao final do time';
+    const recruited = await bridgeService.recruit(workspace.id, { from: 'Lider', title: longTitle, provider: 'kimi' });
+
+    expect(recruited.title!.length).toBeLessThanOrEqual(48);
+    expect(recruited.title).toContain('…');
+
+    const edges = await workspaceRepository.listEdges(workspace.id);
+    expect(edges).toHaveLength(1);
+    expect([edges[0].sourceNodeId, edges[0].targetNodeId].sort()).toEqual([leader.id, recruited.nodeId].sort());
+  });
+
+  it('nota com --connect all conecta a todos os agentes', async () => {
+    const { workspace } = await setupMaestro(true);
+    await bridgeService.recruit(workspace.id, { from: 'Lider', title: 'A1', provider: 'kimi' });
+    await bridgeService.recruit(workspace.id, { from: 'Lider', title: 'A2', provider: 'codex' });
+
+    const note = await bridgeService.createNote(workspace.id, { title: 'Spec', content: 'x', connect: 'all' });
+    expect(note.connectedTo).toBe('todos os agentes');
+    // 2 edges do recruit + 3 da nota (lider + 2 recrutas)
+    expect(await workspaceRepository.listEdges(workspace.id)).toHaveLength(2 + 3);
+  });
+
+  it('quadro de tarefas aparece sozinho na primeira tarefa (idempotente)', async () => {
+    const { workspace } = await setupMaestro(true);
+    expect((await workspaceRepository.listNodes(workspace.id)).some((node) => node.type === 'tasks')).toBe(false);
+
+    await bridgeService.ensureTasksBoard(workspace.id);
+    await bridgeService.ensureTasksBoard(workspace.id);
+
+    const nodes = await workspaceRepository.listNodes(workspace.id);
+    expect(nodes.filter((node) => node.type === 'tasks')).toHaveLength(1);
+  });
+
+  it('portal create exige maestro, cria no com url e conecta', async () => {
+    const { workspace, leader } = await setupMaestro(true);
+    const portal = await bridgeService.createPortal(workspace.id, { from: 'Lider', url: 'localhost:5173' });
+    expect(portal.url).toBe('http://localhost:5173');
+    expect(portal.connectedTo).toBe('Lider');
+
+    const node = await workspaceRepository.getNode(portal.nodeId);
+    expect(node!.type).toBe('portal');
+    expect((node!.payload as { url?: string }).url).toBe('http://localhost:5173');
+
+    const edges = await workspaceRepository.listEdges(workspace.id);
+    expect(edges).toHaveLength(1);
+    expect([edges[0].sourceNodeId, edges[0].targetNodeId].sort()).toEqual([leader.id, portal.nodeId].sort());
+  });
+
+  it('ask cria aresta entre os agentes que conversam', async () => {
+    const { workspace, leader } = await setupMaestro(true);
+    const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    await workspaceRepository.updateNode(leader.id, { payload: { command: 'claude', provider: 'claude', maestro: true, sessionId: session.id } });
+    const recruited = await bridgeService.recruit(workspace.id, { from: 'Lider', title: 'Recruta', provider: 'kimi' });
+    const sessionB = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    await workspaceRepository.updateNode(recruited.nodeId, { payload: { command: 'kimi', provider: 'kimi', sessionId: sessionB.id } });
+
+    const before = await workspaceRepository.listEdges(workspace.id);
+    await bridgeService.ask(workspace.id, { to: 'Recruta', message: 'ping', from: 'Lider', timeoutMs: 15_000 });
+    const after = await workspaceRepository.listEdges(workspace.id);
+
+    expect(after.length).toBe(before.length); // aresta do recruit ja cobre o par (dedup)
+    expect(after.some((edge) => [edge.sourceNodeId, edge.targetNodeId].includes(recruited.nodeId))).toBe(true);
+    ptySessionManager.kill(session.id);
+    ptySessionManager.kill(sessionB.id);
+  });
 });
