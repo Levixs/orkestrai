@@ -63,8 +63,10 @@ fi
 
 if [[ "$TARGET" == "windows" || "$TARGET" == "all" ]]; then
   echo "==> Windows (NSIS x64) — imagem wine; em Mac ARM roda emulada, demora"
+  # Sem rebuild nativo (node-gyp nao cross-compila): prebuilds semeados —
+  # ver scripts/cross-build-windows.sh.
   run_builder electronuserland/builder:wine \
-    "npm install -g $NPM_PIN && cd /project && npm ci --no-audit --no-fund && npx electron-builder --win nsis --x64 --publish never"
+    "npm install -g $NPM_PIN && bash scripts/cross-build-windows.sh"
 fi
 
 echo "==> Copiando artefatos para release/"
