@@ -5,9 +5,12 @@
   import { SearchAddon } from '@xterm/addon-search';
   import { Mic, Square } from '@lucide/svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import * as Select from '$lib/components/ui/select';
   import HeaderIconButton from './canvas/HeaderIconButton.svelte';
   import '@xterm/xterm/css/xterm.css';
   import { TERMINAL_THEMES, type TerminalThemeName } from './terminal-themes.js';
+  import { whisperDictation, type WhisperLanguage } from './whisper-dictation.js';
+  import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -50,68 +53,73 @@
   let exited = $state<number | null>(null);
   let waiting = $state(false);
 
-  // -- Ditado por voz (Web Speech API) ------------------------------------
-  type SpeechRecognitionLike = {
-    lang: string;
-    continuous: boolean;
-    interimResults: boolean;
-    onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-    onend: (() => void) | null;
-    onerror: ((event: { error?: string }) => void) | null;
-    start: () => void;
-    stop: () => void;
-  };
-
+  // -- Ditado por voz (whisper.cpp WASM offline) ----------------------------
   let dictating = $state(false);
-  let dictateLang = $state<'pt-BR' | 'en-US'>('pt-BR');
+  let transcribing = $state(false);
+  let dictateLang = $state<WhisperLanguage>('pt');
   let dictateError = $state('');
-  let recognition: SpeechRecognitionLike | null = null;
+  let dictateStatus = $state('');
+  let dictateHotkey = $state(DEFAULT_DICTATION_HOTKEY);
+  let mediaRecorder: MediaRecorder | null = null;
+  let mediaStream: MediaStream | null = null;
+  let audioChunks: Blob[] = [];
   let sendInput: ((data: string) => void) | null = null;
 
-  const speechSupported = typeof window !== 'undefined' &&
-    Boolean((window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition ??
-      (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition);
+  const dictationSupported = typeof window !== 'undefined' &&
+    typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
 
-  function toggleDictation() {
+  function stopTracks() {
+    mediaStream?.getTracks().forEach((track) => track.stop());
+    mediaStream = null;
+  }
+
+  async function toggleDictation() {
     dictateError = '';
     if (dictating) {
-      recognition?.stop();
+      mediaRecorder?.stop();
       return;
     }
-    const Ctor = (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike })
-      .SpeechRecognition ??
-      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition;
-    if (!Ctor) {
-      dictateError = 'Ditado nao suportado neste navegador.';
-      return;
-    }
-    recognition = new Ctor();
-    recognition.lang = dictateLang;
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map((result) => result[0]?.transcript ?? '')
-        .join(' ')
-        .trim();
-      if (transcript) sendInput?.(transcript);
+    if (transcribing) return;
+    // Status deste no (o singleton e compartilhado entre os terminais).
+    whisperDictation.onStatus = (text) => {
+      dictateStatus = text;
     };
-    recognition.onend = () => {
-      dictating = false;
-      recognition = null;
-    };
-    recognition.onerror = (event) => {
-      dictateError = event.error ? `Erro no ditado: ${event.error}` : 'Erro no ditado.';
-      dictating = false;
-      recognition = null;
+    whisperDictation.onProgress = (percent) => {
+      dictateStatus = `Baixando modelo ${percent}%`;
     };
     try {
-      recognition.start();
-      dictating = true;
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      dictateError = 'Falha ao iniciar o ditado.';
-      recognition = null;
+      dictateError = 'Sem acesso ao microfone. Verifique as permissoes do sistema.';
+      return;
     }
+    audioChunks = [];
+    const recorder = new MediaRecorder(mediaStream);
+    mediaRecorder = recorder;
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) audioChunks.push(event.data);
+    };
+    recorder.onstop = async () => {
+      stopTracks();
+      mediaRecorder = null;
+      dictating = false;
+      transcribing = true;
+      try {
+        const blob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' });
+        const text = await whisperDictation.transcribe(blob, dictateLang);
+        if (text) sendInput?.(text);
+        else dictateError = 'Nada foi transcrito. Tente falar mais perto do microfone.';
+      } catch (error) {
+        dictateError = error instanceof Error ? error.message : 'Erro no ditado.';
+      } finally {
+        transcribing = false;
+        dictateStatus = '';
+      }
+    };
+    // Pre-carrega runtime+modelo em paralelo com a gravacao (1o uso baixa ~57 MB).
+    whisperDictation.ensureReady(dictateLang).catch(() => {});
+    recorder.start();
+    dictating = true;
   }
 
   let searchOpen = $state(false);
@@ -119,7 +127,7 @@
   let searchAddon: SearchAddon | null = null;
 
   function handleDictateHotkey(event: KeyboardEvent) {
-    if (event.altKey && event.code === 'Space') {
+    if (matchesCombo(event, dictateHotkey)) {
       event.preventDefault();
       toggleDictation();
       return;
@@ -163,6 +171,7 @@
         const nextSize = Number(settingsPayload.data?.terminalFontSize) || 13;
         const nextFamily = settingsPayload.data?.terminalFontFamily || fontFamily;
         terminalPaddingPx = Number(settingsPayload.data?.terminalPadding ?? 6);
+        dictateHotkey = settingsPayload.data?.dictationHotkey || DEFAULT_DICTATION_HOTKEY;
         terminal.options.fontSize = nextSize;
         terminal.options.fontFamily = nextFamily;
       } catch {
@@ -308,7 +317,8 @@
     });
 
     return () => {
-      recognition?.stop();
+      mediaRecorder?.stop();
+      stopTracks();
       resizeObserver.disconnect();
       socket.close();
       terminal.dispose();
@@ -334,19 +344,20 @@
         <Tooltip.Content side="left">Aguardando atencao</Tooltip.Content>
       </Tooltip.Root>
   {/if}
-  {#if speechSupported}
+  {#if dictationSupported}
     <div class="dictate-controls">
-      <select
-        class="dictate-lang"
-        bind:value={dictateLang}
-        aria-label="Idioma do ditado"
-        disabled={dictating}
-      >
-        <option value="pt-BR">PT</option>
-        <option value="en-US">EN</option>
-      </select>
+      <Select.Root type="single" value={dictateLang} onValueChange={(value: string) => (dictateLang = value as WhisperLanguage)} disabled={dictating || transcribing}>
+        <Select.Trigger class="dictate-lang" aria-label="Idioma do ditado">
+          {dictateLang === 'auto' ? 'Auto' : dictateLang.toUpperCase()}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="pt">PT</Select.Item>
+          <Select.Item value="en">EN</Select.Item>
+          <Select.Item value="auto">Auto</Select.Item>
+        </Select.Content>
+      </Select.Root>
       <HeaderIconButton
-        label={dictating ? 'Parar ditado (Alt+Espaco)' : 'Ditar (Alt+Espaco)'}
+        label={dictating ? `Parar ditado (${comboLabel(dictateHotkey)})` : transcribing ? 'Transcrevendo...' : `Ditar (${comboLabel(dictateHotkey)})`}
         class="dictate-btn"
         side="left"
         active={dictating}
@@ -369,6 +380,9 @@
   {/if}
   {#if dictateError}
     <p class="terminal-status">{dictateError}</p>
+  {/if}
+  {#if dictateStatus && !dictateError}
+    <p class="terminal-status">{dictateStatus}</p>
   {/if}
   {#if statusMessage}
     <p class="terminal-status">{statusMessage}</p>
@@ -436,13 +450,18 @@
     align-items: center;
   }
 
-  .dictate-lang {
+  :global(.dictate-lang) {
+    height: 22px;
+    min-height: 0;
+    width: auto;
+    gap: 2px;
     background: rgba(23, 23, 29, 0.9);
     border: 1px solid #2c2c36;
     border-radius: 6px;
     color: #9a9aa5;
     font-size: 10px;
-    padding: 2px 4px;
+    padding: 2px 6px;
+    box-shadow: none;
   }
 
   :global(.dictate-btn) {

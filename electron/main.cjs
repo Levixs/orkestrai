@@ -7,7 +7,7 @@
  * node-pty) precisam estar rebuildados para o ABI do Electron
  * (npm run electron:rebuild).
  */
-const { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, session } = require('electron');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -312,6 +312,12 @@ if (!gotLock) {
     if (process.platform === 'darwin' && !app.isPackaged) {
       app.dock.setIcon(path.join(appRoot, 'electron', 'resources', 'icon.png'));
     }
+    // Ditado por voz: permite microfone so para o proprio app (localhost).
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      const url = webContents?.getURL?.() ?? '';
+      const own = url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1') || url.startsWith('file://');
+      callback(own && permission === 'media');
+    });
     createSplash();
     createTray();
     return createWindow();

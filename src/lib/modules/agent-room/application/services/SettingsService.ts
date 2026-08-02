@@ -11,6 +11,7 @@ const DEFAULTS: Record<string, string> = {
   newTerminalHeight: '340',
   newNoteWidth: '320',
   newNoteHeight: '220',
+  dictationHotkey: 'alt+space',
 };
 
 /** Configuracoes globais do app (chave/valor, com defaults). */

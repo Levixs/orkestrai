@@ -6,9 +6,27 @@
   import * as Select from '$lib/components/ui/select';
   import { Separator } from '$lib/components/ui/separator';
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
+  import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
 
   let settings = $state<Record<string, string>>({});
   let saved = $state(false);
+  let capturingHotkey = $state(false);
+
+  const hotkeyLabel = $derived(comboLabel(settings.dictationHotkey || DEFAULT_DICTATION_HOTKEY));
+
+  function captureHotkey(event: KeyboardEvent) {
+    if (!capturingHotkey) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+      capturingHotkey = false;
+      return;
+    }
+    const combo = comboFromEvent(event);
+    if (!combo) return; // modificador puro — espera a tecla principal
+    settings = { ...settings, dictationHotkey: combo };
+    capturingHotkey = false;
+  }
 
   onMount(async () => {
     document.documentElement.classList.add('dark');
@@ -27,7 +45,7 @@
     setTimeout(() => (saved = false), 2000);
   }
 
-  const SHORTCUTS: Array<[string, string]> = [
+  const SHORTCUTS = $derived<Array<[string, string]>>([
     ['Cmd/Ctrl+P', 'Paleta de comandos'],
     ['Cmd/Ctrl+Shift+A', 'Proximo agente com atencao'],
     ['Cmd/Ctrl+Shift+T', 'Organizar selecao em grade'],
@@ -37,15 +55,17 @@
     ['N', 'Nova nota'],
     ['L', 'Conectar selecionados'],
     ['Alt+1..9', 'Focar terminal por indice'],
-    ['Alt+Espaco', 'Ditado por voz (terminal focado)'],
+    [hotkeyLabel, 'Ditado por voz (terminal focado)'],
     ['Cmd/Ctrl+S', 'Salvar arquivo (editor)'],
     ['Backspace/Delete', 'Excluir no selecionado'],
-  ];
+  ]);
 </script>
 
 <svelte:head>
   <title>Orkestrai — Configuracoes</title>
 </svelte:head>
+
+<svelte:window onkeydown={captureHotkey} />
 
 <main class="settings-page">
   <header class="settings-header">
@@ -140,6 +160,36 @@
   <Separator />
 
   <section class="settings-section">
+    <h2>Ditado por voz</h2>
+    <div class="field">
+      <span class="field-label">Tecla de atalho (terminal focado)</span>
+      <div class="hotkey-row">
+        <Button
+          variant="outline"
+          size="sm"
+          class={capturingHotkey ? 'hotkey-capture capturing' : 'hotkey-capture'}
+          onclick={() => (capturingHotkey = true)}
+        >
+          {capturingHotkey ? 'Pressione as teclas... (Esc cancela)' : hotkeyLabel}
+        </Button>
+        {#if settings.dictationHotkey && settings.dictationHotkey !== DEFAULT_DICTATION_HOTKEY}
+          <Button variant="ghost" size="sm" onclick={() => (settings = { ...settings, dictationHotkey: DEFAULT_DICTATION_HOTKEY })}>
+            Restaurar padrao
+          </Button>
+        {/if}
+      </div>
+      <p class="field-hint">
+        Transcricao 100% offline (whisper.cpp no navegador). No primeiro uso o modelo de ~57 MB e
+        baixado uma unica vez e fica em cache. Se outro app do sistema usa o mesmo atalho global,
+        escolha uma combinacao diferente aqui.
+      </p>
+    </div>
+    <Button size="sm" onclick={save}>{saved ? 'Salvo!' : 'Salvar'}</Button>
+  </section>
+
+  <Separator />
+
+  <section class="settings-section">
     <h2>Atalhos</h2>
     <table class="shortcuts">
       <tbody>
@@ -220,6 +270,29 @@
   .field-label {
     font-size: 12px;
     color: #8b8c96;
+  }
+
+  .field-hint {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #6d6d78;
+  }
+
+  .hotkey-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  :global(.hotkey-capture) {
+    min-width: 150px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  :global(.hotkey-capture.capturing) {
+    border-color: #7c4dff;
+    color: #b79cff;
   }
 
   .shortcuts {

@@ -121,7 +121,10 @@
       "target": [
         "dmg"
       ],
-      "icon": "electron/resources/icon.png"
+      "icon": "electron/resources/icon.png",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "O Orkestrai usa o microfone para o ditado por voz nos terminais."
+      }
     },
     "win": {
       "target": [

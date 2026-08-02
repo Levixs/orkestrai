@@ -95,7 +95,7 @@
       id: 'atalhos',
       icon: BookOpen,
       title: 'Atalhos',
-      body: `⌘P paleta · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. Lista completa em Configurações.`,
+      body: `⌘P paleta · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz (configurável em Configurações) · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. Lista completa em Configurações.`,
     },
   ];
 
