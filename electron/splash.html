@@ -21,11 +21,30 @@
         cursor: default;
       }
 
+      .stage {
+        position: relative;
+        width: 250px;
+        height: 152px;
+      }
+
       .logo {
-        width: 92px;
-        height: 92px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 84px;
+        height: 84px;
         animation: logo-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) both, logo-breathe 3.2s ease-in-out 900ms infinite;
         filter: drop-shadow(0 0 18px rgba(124, 77, 255, 0.45));
+      }
+
+      .nodo {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 148px;
+        height: 148px;
+        animation: nodo-enter 750ms cubic-bezier(0.22, 1, 0.36, 1) 350ms both, nodo-float 3.6s ease-in-out 1200ms infinite;
+        filter: drop-shadow(0 6px 22px rgba(13, 11, 46, 0.6));
       }
 
       @keyframes logo-enter {
@@ -36,6 +55,16 @@
       @keyframes logo-breathe {
         0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(124, 77, 255, 0.35)); }
         50% { transform: scale(1.045); filter: drop-shadow(0 0 26px rgba(124, 77, 255, 0.6)); }
+      }
+
+      @keyframes nodo-enter {
+        from { opacity: 0; transform: translateY(22px) scale(0.7); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      @keyframes nodo-float {
+        0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+        50% { transform: translateY(-9px) rotate(1.5deg); }
       }
 
       .wordmark {
@@ -81,14 +110,17 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .logo, .wordmark, .tagline, .loader, .loader span { animation: none !important; }
+        .logo, .nodo, .wordmark, .tagline, .loader, .loader span { animation: none !important; }
       }
     </style>
   </head>
   <body>
-    <img class="logo" src="./resources/icon.svg" alt="" width="92" height="92" />
+    <div class="stage">
+      <img class="logo" src="./resources/icon.svg" alt="" width="84" height="84" />
+      <img class="nodo" src="./resources/nodo.png" alt="" width="148" height="148" />
+    </div>
     <div class="wordmark">Orkestrai</div>
-    <div class="tagline">Orchestrate everything. Achieve anything.</div>
+    <div class="tagline">Orquestre tudo. Conquiste qualquer coisa.</div>
     <div class="loader" aria-label="Carregando…"><span></span><span></span><span></span></div>
   </body>
 </html>
