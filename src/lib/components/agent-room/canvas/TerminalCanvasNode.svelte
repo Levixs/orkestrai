@@ -15,11 +15,13 @@
     workingDir: string;
     workspaceId: string;
     payload: TerminalNodePayload;
-    /** Args de resume do provider deste terminal (null = sem suporte). */
-    resumeArgs?: string[] | null;
-    /** Args de resume exato por session-id (null = sem suporte). */
-    exactResumeArgs?: (agentSessionId: string) => string[] | null;
+    /** Avalia os args de resume do provider NA HORA do respawn. */
+    resumeArgsFor?: () => string[] | null;
+    /** Avalia os args de resume exato por session-id NA HORA do respawn. */
+    exactResumeArgsFor?: (agentSessionId: string) => string[] | null;
     onAgentSessionFound?: (id: string, agentSessionId: string) => void;
+    /** Promise da pagina: providers carregados (para o respawn nao correr a race). */
+    providersReady?: Promise<void>;
     onRoleChange?: (id: string, role: string | null) => void;
     onDelete: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
@@ -39,6 +41,29 @@
   // Quando a sessao morre (restart do app), recria com os args de resume do
   // provider para retomar o contexto da conversa anterior.
   let forceRespawn = $state(false);
+  /** Session-id descoberto no momento do respawn (cobre o caso do watch ter
+      expirado antes da primeira mensagem — Claude grava o jsonl so na 1a msg). */
+  let respawnAgentSessionId = $state<string | null>(null);
+
+  async function resolveRespawn() {
+    const payload = data.payload as TerminalNodePayload & { provider?: string };
+    // Espera os providers carregarem — sem eles o respawn sairia sem os args
+    // de resume (race no restart do app: attach falha antes do status voltar).
+    await (data.providersReady ?? Promise.resolve());
+    if (!respawnAgentSessionId && payload.provider && !payload.agentSessionId) {
+      try {
+        const response = await fetch(
+          `/api/agent-room/sessions/latest?provider=${encodeURIComponent(payload.provider)}&cwd=${encodeURIComponent(data.workingDir)}`
+        );
+        const result = await response.json();
+        respawnAgentSessionId = result.data?.agentSessionId ?? null;
+        if (respawnAgentSessionId) data.onAgentSessionFound?.(id, respawnAgentSessionId);
+      } catch {
+        // sem id: cai no resume generico do provider
+      }
+    }
+    forceRespawn = true;
+  }
 
   // -- Role do terminal ---------------------------------------------------------
   let roles = $state<AgentRole[]>([]);
@@ -148,21 +173,21 @@
   // para "a sessao mais recente do diretorio".
   const respawnRequest = $derived.by(() => {
     const payload = data.payload as TerminalNodePayload & { agentSessionId?: string };
-    if (payload.agentSessionId && data.exactResumeArgs) {
-      const exact = data.exactResumeArgs(payload.agentSessionId);
-      if (exact) {
-        return {
-          command: data.payload.command ?? '',
-          args: [...(data.payload.args ?? []), ...exact],
-          cwd: data.workingDir,
-        };
-      }
+    const exactId = payload.agentSessionId ?? respawnAgentSessionId;
+    const exactArgs = exactId ? (data.exactResumeArgsFor?.(exactId) ?? null) : null;
+    if (exactArgs) {
+      return {
+        command: data.payload.command ?? '',
+        args: [...(data.payload.args ?? []), ...exactArgs],
+        cwd: data.workingDir,
+      };
     }
+    const genericArgs = data.resumeArgsFor?.() ?? null;
     return {
       command: data.payload.command ?? '',
       args:
-        data.resumeArgs && data.resumeArgs.length
-          ? [...(data.payload.args ?? []), ...data.resumeArgs]
+        genericArgs && genericArgs.length
+          ? [...(data.payload.args ?? []), ...genericArgs]
           : (data.payload.args ?? []),
       cwd: data.workingDir,
     };
@@ -240,7 +265,7 @@
         workspaceName={data.workspaceName}
         onOpenPath={(path) => data.onOpenFile?.(path)}
         themeName={data.payload.theme ?? 'dark'}
-        onRespawn={() => (forceRespawn = true)}
+        onRespawn={resolveRespawn}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
       />

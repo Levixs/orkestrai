@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -22,7 +22,7 @@ export class AgentSessionTracker {
     cwd: string,
     startedAt: number,
     onFound: (agentSessionId: string) => void,
-    timeoutMs = 120_000
+    timeoutMs = 1_800_000
   ): void {
     this.unwatch(ptySessionId);
     const started = Date.now();
@@ -67,9 +67,18 @@ export class AgentSessionTracker {
     }
   }
 
+  /** Caminho real do cwd (resolve symlinks como /tmp -> /private/tmp no macOS). */
+  private realCwd(cwd: string): string {
+    try {
+      return realpathSync(cwd);
+    } catch {
+      return resolve(cwd);
+    }
+  }
+
   // ~/.claude/projects/<path-com-hifens>/<sessionId>.jsonl
   private findClaudeSession(cwd: string, since: number): string | null {
-    const slug = resolve(cwd).replace(/[/\\]/g, '-').replace(/^-/, '');
+    const slug = this.realCwd(cwd).replace(/[/\\]/g, '-').replace(/^-/, '');
     const dir = join(homedir(), '.claude', 'projects', `-${slug}`);
     const newest = this.newestFile(dir, since, (name) => name.endsWith('.jsonl'));
     return newest ? newest.replace(/\.jsonl$/, '') : null;
@@ -88,7 +97,7 @@ export class AgentSessionTracker {
   private findKimiSession(cwd: string, since: number): string | null {
     const root = join(homedir(), '.kimi-code', 'sessions');
     if (!existsSync(root)) return null;
-    const dirName = resolve(cwd).split(/[/\\]/).filter(Boolean).at(-1) ?? '';
+    const dirName = this.realCwd(cwd).split(/[/\\]/).filter(Boolean).at(-1) ?? '';
     const candidates = readdirSync(root, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.includes(dirName))
       .map((entry) => join(root, entry.name));

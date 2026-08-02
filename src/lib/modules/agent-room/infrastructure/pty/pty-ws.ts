@@ -146,8 +146,18 @@ export function handlePtyConnection(socket: WebSocket): void {
             typeof message.provider === 'string' && ['claude', 'codex', 'kimi', 'opencode'].includes(message.provider)
               ? message.provider
               : null;
+          console.log('[dbg-create] provider na mensagem:', JSON.stringify(message.provider), '->', provider);
           if (provider) {
             agentSessionTracker.watch(session.id, provider, session.cwd, Date.now(), (agentSessionId) => {
+              // Broadcast global: o socket criador pode ja ter sido fechado
+              // (o no remonta em modo attach ao receber o sessionId).
+              wsGlobal.__orkestraiBroadcast?.({
+                type: 'agentSession',
+                workspaceId: typeof message.workspace === 'string' ? message.workspace : null,
+                sessionId: session.id,
+                agentSessionId,
+                provider,
+              });
               send({ type: 'agentSession', sessionId: session.id, agentSessionId, provider });
             });
           }
@@ -171,6 +181,7 @@ export function handlePtyConnection(socket: WebSocket): void {
         }
         case 'kill': {
           const killed = ptySessionManager.kill(message.sessionId);
+          agentSessionTracker.unwatch(message.sessionId);
           detachers.get(message.sessionId)?.();
           detachers.delete(message.sessionId);
           send({ type: 'killed', sessionId: message.sessionId, killed });

@@ -262,7 +262,9 @@
           onExit?.(message.exitCode);
           break;
         case 'agentSession':
-          onAgentSession?.(String(message.agentSessionId));
+          if (!message.sessionId || message.sessionId === currentSessionId()) {
+            onAgentSession?.(String(message.agentSessionId));
+          }
           break;
         case 'talking':
           if (!workspaceId || message.workspaceId === workspaceId) {

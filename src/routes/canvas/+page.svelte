@@ -72,6 +72,13 @@
 
   let workspaces = $state<Workspace[]>([]);
   let workspaceQuery = $state('');
+
+  /** Resolve quando os providers (com resumeArgs) terminam de carregar — o
+      respawn de sessao nao pode disparar antes disso ou perde os args de resume. */
+  let providersReadyResolve: () => void = () => {};
+  const providersReady = new Promise<void>((resolve) => {
+    providersReadyResolve = resolve;
+  });
   /** Lista filtrada pelo campo de busca da sidebar (por nome, case-insensitive). */
   const visibleWorkspaces = $derived(
     workspaceQuery.trim()
@@ -323,6 +330,7 @@
       if (workspaceList.length) await selectWorkspace(workspaceList[0].id);
     }
     providers = status.providers ?? [];
+    providersReadyResolve();
     // Indicador de workspaces ativos (sessoes PTY vivas em background).
     const refreshActivity = async () => {
       activity = await api<Record<string, number>>('/api/agent-room/workspaces/activity').catch(() => ({}));
@@ -360,10 +368,13 @@
         title: node.title ?? '',
         workspaceId: activeWorkspace?.id ?? '',
         workspaceName: activeWorkspace?.name ?? '',
+        providersReady,
         workingDir: floorPath(node.floorId) ?? activeWorkspace?.workingDir ?? '.',
         payload: node.payload,
-        resumeArgs: resumeArgsFor(node),
-        exactResumeArgs: exactResumeArgsFor(node),
+        // Closures: avaliadas na hora do respawn (providers ja carregados) —
+        // avaliar aqui congelaria undefined no restart (providers ainda vazios).
+        resumeArgsFor: () => resumeArgsFor(node),
+        exactResumeArgsFor: (agentSessionId: string) => exactResumeArgsFor(node)?.(agentSessionId) ?? null,
         onAgentSessionFound: (id: string, agentSessionId: string) => updateNodePayload(id, { agentSessionId }),
         connections: connectionsFor(node.id),
         onJumpToNode: jumpToNode,
