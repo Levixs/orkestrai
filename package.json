@@ -132,6 +132,18 @@
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Orkestrai"
     },
+    "dmg": {
+      "background": "electron/resources/dmg-background.png",
+      "iconSize": 96,
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        { "x": 130, "y": 200, "type": "file" },
+        { "x": 410, "y": 200, "type": "link", "path": "/Applications" }
+      ]
+    },
     "linux": {
       "target": [
         "AppImage"
