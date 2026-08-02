@@ -227,8 +227,8 @@ export async function run(argv, options = {}) {
         const data = await bridge(config, 'POST', '/api/agent-room/bridge/notes', {
           title,
           content: flags.content,
-          // Default: conecta a nota a quem a criou (identidade do ambiente).
-          connect: flags.connect ?? selfAgent,
+          // Default: nota visivel para o time inteiro (specs/briefs).
+          connect: flags.connect ?? 'all',
         });
         out(`Nota criada: "${data.title}" (${data.nodeId})${data.connectedTo ? ` — conectada a ${data.connectedTo}` : ''}`);
         return 0;

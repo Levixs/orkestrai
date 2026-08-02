@@ -302,7 +302,7 @@ export class BridgeService {
       y: input.y ?? position!.y,
       width: 640,
       height: 400,
-      payload: { ...command, provider: input.provider ?? null, role: input.role ?? null },
+      payload: { ...command, provider: input.provider ?? null, role: input.role ? shortTitle(input.role, 60) : null },
       floorId: input.floorId ?? null,
     });
     // Recruta nasce conectado ao maestro (canal de comunicacao visual).
@@ -387,22 +387,25 @@ export class BridgeService {
 
   /**
    * Garante que existe um no de quadro (tasks) no canvas — criado na primeira
-   * tarefa para o kanban nao ficar invisivel "por baixo dos panos".
+   * tarefa para o kanban nao ficar invisivel "por baixo dos panos". O quadro
+   * nasce conectado ao maestro (ou ao primeiro terminal).
    */
   async ensureTasksBoard(workspaceId: string): Promise<void> {
     const nodes = await workspaceRepository.listNodes(workspaceId);
     if (nodes.some((node) => node.type === 'tasks')) return;
-    const maestro = nodes.find((node) => node.type === 'terminal' && Boolean((node.payload as { maestro?: boolean }).maestro));
-    await workspaceRepository.createNode({
+    const anchor = nodes.find((node) => node.type === 'terminal' && Boolean((node.payload as { maestro?: boolean }).maestro))
+      ?? nodes.find((node) => node.type === 'terminal');
+    const board = await workspaceRepository.createNode({
       workspaceId,
       type: 'tasks',
       title: 'Tarefas',
-      x: (maestro?.x ?? 0) + (maestro?.width ?? 640) + 80,
-      y: (maestro?.y ?? 120) + 80,
+      x: (anchor?.x ?? 0) + (anchor?.width ?? 640) + 80,
+      y: (anchor?.y ?? 120) + 80,
       width: 480,
       height: 360,
       payload: {},
     });
+    if (anchor) await this.ensureEdge(workspaceId, anchor.id, board.id);
     this.notifyWorkspaceChanged(workspaceId);
   }
 
@@ -462,7 +465,7 @@ Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce 
 - \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
 - \`orkestrai note read <nodeId>\` — le uma nota conectada a voce.
-- \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta a voce; \`all\` conecta ao time inteiro).
+- \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
 - \`orkestrai note write <nodeId> "<conteudo>"\` — substitui o conteudo da nota.
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edicao pontual.
 - \`orkestrai task list\` — quadro de tarefas do workspace.
@@ -475,7 +478,7 @@ Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce 
 - \`orkestrai portal <nodeId> screenshot\` — captura a tela do portal.
 - \`orkestrai floor create "<nome>" [--clone]\` — cria um andar (worktree git com branch propria) para trabalho isolado.
 - \`orkestrai floor list\` / \`floor preview <id>\` / \`floor land <id>\` / \`floor remove <id>\` — gerencia andares; preview mostra conflitos ANTES do merge.
-- \`orkestrai notify "<mensagem>"\` — notifica o usuario quando precisar de atencao.
+- \`orkestrai notify "<mensagem>"\` — notificacao NATIVA no desktop do usuario (use ao concluir ou ao precisar de atencao).
 
 Ao aterrissar (land), conflitos NAO sao resolvidos automaticamente — o erro lista os arquivos em conflito; resolva-os voce mesmo no checkout principal (ou atribua a um agente) e repita o land.
 
@@ -487,13 +490,15 @@ Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce or
 
 PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NAO aparecem no canvas, NAO tem terminal proprio e o usuario nao ve nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
 
-1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao.
-2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`. Recrutas nascem CONECTADOS a voce no organograma (nao precisa de \`connect\`). Use titulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") — descricoes longas vao no \`--role\`.
-3. Escreva o spec/briefing do projeto numa nota VISIVEL PARA O TIME INTEIRO: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota conecta so a voce).
-4. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente).
-5. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time esta construindo.
-6. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`.
-7. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
+1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao. VARIE os providers: times com 3+ agentes devem misturar claude, codex e kimi (ex.: codex implementa, claude revisa/arquiteta, kimi cuida de design/docs) — NUNCA crie o time inteiro com um provider so.
+2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`. Recrutas nascem CONECTADOS a voce no organograma (nao precisa de \`connect\`). Use titulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descricoes longas vao na nota de briefing.
+3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota ja conecta ao time inteiro por padrao).
+4. Trabalho em codigo? Cada agente trabalha no PROPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente comecar — NUNCA deixe varios agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (ve conflitos) e \`orkestrai floor land\`.
+5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente).
+6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time esta construindo.
+7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`.
+8. AO CONCLUIR (ou quando precisar de atencao/aprovacao do usuario), chame \`orkestrai notify "<resumo do que foi entregue>"\` — vira notificacao nativa no desktop do usuario. NUNCA termine em silencio.
+9. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
 Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instrucoes). Skills novas sao descobertas nas proximas sessoes do agente.
 `;

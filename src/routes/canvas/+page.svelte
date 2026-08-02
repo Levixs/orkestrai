@@ -1246,6 +1246,8 @@
         connectionMode={ConnectionMode.Loose}
         zIndexMode="basic"
         proOptions={{ hideAttribution: true }}
+        minZoom={0.05}
+        maxZoom={4}
         panOnDrag={drawTool === null ? true : [1, 2]}
         deleteKey={['Backspace', 'Delete']}
         onconnect={handleConnect}

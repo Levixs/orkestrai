@@ -87,11 +87,11 @@ describe('orkestrai CLI', () => {
     expect(request.body.connect).toBe('Claude');
   });
 
-  it('note create conecta por padrao ao agente do ambiente', async () => {
+  it('note create conecta por padrao ao time inteiro', async () => {
     const { out } = capture();
     await run(['note', 'create', 'Spec X'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
     const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/notes' && entry.method === 'POST').at(-1);
-    expect(request.body.connect).toBe('n1');
+    expect(request.body.connect).toBe('all');
   });
 
   it('task assign usa o flag --assign', async () => {

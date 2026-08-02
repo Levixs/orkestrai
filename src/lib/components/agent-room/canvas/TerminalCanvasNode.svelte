@@ -70,6 +70,8 @@
   let rolesLoaded = false;
 
   const currentRole = $derived((data.payload as TerminalNodePayload).role ?? null);
+  /** Role exibida no header: curta (o nome completo fica no dropdown/aria). */
+  const roleLabel = $derived(currentRole && currentRole.length > 24 ? `${currentRole.slice(0, 23).trimEnd()}…` : currentRole);
 
   async function loadRoles() {
     if (rolesLoaded) return;
@@ -217,8 +219,8 @@
     <DropdownMenu.Root onOpenChange={(open: boolean) => open && loadRoles()}>
       <DropdownMenu.Trigger class={currentRole ? 'role-trigger has-role' : 'role-trigger'} aria-label={currentRole ? `Role: ${currentRole}` : 'Atribuir role'}>
         <BadgeCheck size={13} />
-        {#if currentRole}
-          <span class="role-name">{currentRole}</span>
+        {#if roleLabel}
+          <span class="role-name">{roleLabel}</span>
         {/if}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content class="w-44">
@@ -418,6 +420,7 @@
   }
 
   .role-name {
+    display: inline-block;
     font-size: 10px;
     max-width: 90px;
     overflow: hidden;
