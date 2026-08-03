@@ -170,11 +170,14 @@ async function startServer(port) {
     for (const line of text.split(/\r?\n/)) {
       const notifyMatch = line.match(/\[orkestrai:notify\] \[(.+?)\] (.+)/);
       if (notifyMatch) {
-        showNativeNotification(notifyMatch[1], notifyMatch[2]);
+        showNativeNotification(`Orkestrai — ${notifyMatch[1]}`, notifyMatch[2]);
       }
-      const attentionMatch = line.match(/\[orkestrai:attention\] (.+)/);
+      // Formatos: "[ws] Titulo do no" (novo) ou "Terminal cmd (cwd)" (legado).
+      const attentionMatch = line.match(/\[orkestrai:attention\](?: \[(.+?)\])? (.+)/);
       if (attentionMatch) {
-        showNativeNotification('Agente aguardando atencao', attentionMatch[1]);
+        const workspace = attentionMatch[1];
+        const who = attentionMatch[2];
+        showNativeNotification(workspace ? `Orkestrai — ${workspace}` : 'Orkestrai', `${who} aguardando atencao`);
       }
     }
   });
@@ -248,7 +251,13 @@ function showNativeNotification(title, body) {
   if (!Notification.isSupported()) return;
   pendingNotifications += 1;
   updateTrayTitle();
-  const notification = new Notification({ title, body: String(body).slice(0, 200) });
+  const notification = new Notification({
+    title,
+    body: String(body).slice(0, 200),
+    // Icone da marca no toast (Win/macOS) em vez do generico do sistema.
+    icon: nativeImage.createFromPath(path.join(appRoot, 'electron', 'resources', 'icon.png')),
+    silent: false,
+  });
   notification.on('click', () => {
     pendingNotifications = 0;
     updateTrayTitle();

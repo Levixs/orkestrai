@@ -123,6 +123,8 @@ export function handlePtyConnection(socket: WebSocket): void {
             cols: message.cols,
             rows: message.rows,
             env: message.env,
+            label: typeof message.label === 'string' ? message.label : null,
+            workspace: typeof message.workspace === 'string' ? message.workspace : null,
           });
           const scrollback = attachSession(session.id);
           send({ type: 'created', session, scrollback });
@@ -146,7 +148,6 @@ export function handlePtyConnection(socket: WebSocket): void {
             typeof message.provider === 'string' && ['claude', 'codex', 'kimi', 'opencode'].includes(message.provider)
               ? message.provider
               : null;
-          console.log('[dbg-create] provider na mensagem:', JSON.stringify(message.provider), '->', provider);
           if (provider) {
             agentSessionTracker.watch(session.id, provider, session.cwd, Date.now(), (agentSessionId) => {
               // Broadcast global: o socket criador pode ja ter sido fechado

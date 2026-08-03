@@ -18,6 +18,9 @@ export type PtySessionInfo = {
   exitCode: number | null;
   /** true quando a sessao parou de produzir saida (agente aguardando atencao). */
   waiting: boolean;
+  /** Rotulos humanos (titulo do no / workspace) para notificacoes. */
+  label?: string | null;
+  workspace?: string | null;
 };
 
 export type PtySessionListener = (data: string) => void;
@@ -40,6 +43,9 @@ export type CreatePtySessionInput = {
   cols?: number;
   rows?: number;
   env?: Record<string, string>;
+  /** Rotulos humanos (titulo do no / workspace) para notificacoes. */
+  label?: string | null;
+  workspace?: string | null;
 };
 
 const SCROLLBACK_LIMIT = 256 * 1024; // 256 KB por sessao
@@ -86,6 +92,8 @@ export class PtySessionManager {
       exited: false,
       exitCode: null,
       waiting: false,
+      label: input.label ?? null,
+      workspace: input.workspace ?? null,
       pty: ptyProcess,
       scrollback: '',
       listeners: new Set(),
@@ -197,7 +205,9 @@ export class PtySessionManager {
     session.waiting = waiting;
     if (waiting) {
       // O processo principal do Electron converte isso em notificacao nativa.
-      console.log(`[orkestrai:attention] Terminal ${session.command} (${session.cwd})`);
+      const who = session.label ?? `Terminal ${session.command}`;
+      const where = session.workspace ? ` [${session.workspace}]` : '';
+      console.log(`[orkestrai:attention]${where} ${who}`);
     }
     for (const listener of session.attentionListeners) listener(waiting);
   }
