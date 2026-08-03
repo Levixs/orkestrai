@@ -125,7 +125,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "electron/resources/icon.png"
+      "icon": "electron/resources/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -148,7 +148,8 @@
       "target": [
         "AppImage"
       ],
-      "category": "Development"
+      "category": "Development",
+      "icon": "electron/resources/icons"
     }
   }
 }
