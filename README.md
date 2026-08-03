@@ -22,8 +22,9 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
   autenticada em todo workspace, sem configurar nada.
 - **Multi-workspace**: vários projetos abertos ao mesmo tempo, com indicador
   de atividade e notificações nativas quando algo termina ou precisa de você.
-- **Ditado por voz offline** (whisper.cpp WASM) com atalho configurável —
-  nada sai da sua máquina.
+- **Ditado e voz de volta**: ditado por voz com atalho configurável e agentes
+  que leem respostas em voz alta (pt-BR) — tudo via o sidecar local
+  `voice-stack` (STT faster-whisper + TTS Kokoro, API compatível com OpenAI).
 - **Marketplace de skills**: busque e instale skills do skills.sh direto no
   workspace.
 - **Painel de usage**: cota de cada provider (5h/semanal, plano, data de
@@ -46,6 +47,11 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
 npm install
 npm run dev            # web (SvelteKit) em http://localhost:5173
 npm run electron:dev   # app desktop (build + Electron)
+
+# Voz (ditado + agentes falando em pt-BR) — sidecar local:
+cd /caminho/para/voiceproject && docker compose up --build
+# API em http://localhost:8000 (health: /health). Configuravel em
+# Configuracoes > Voz (URL, modelo STT, voz TTS + botao "Testar conexao").
 ```
 
 ## Empacotar

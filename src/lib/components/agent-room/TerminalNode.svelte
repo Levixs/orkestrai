@@ -9,8 +9,8 @@
   import HeaderIconButton from './canvas/HeaderIconButton.svelte';
   import '@xterm/xterm/css/xterm.css';
   import { TERMINAL_THEMES, type TerminalThemeName } from './terminal-themes.js';
-  import { whisperDictation, type WhisperLanguage } from './whisper-dictation.js';
   import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
+  import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -40,11 +40,13 @@
     onAgentSession?: (agentSessionId: string) => void;
     /** Edge conversando (bridge ask) — repassado pela pagina do canvas. */
     onTalking?: (payload: { from: string | null; to: string; talking: boolean }) => void;
+    /** Resposta de um ask destinada a este no (para voz de volta, TTS). */
+    onAgentReply?: (payload: { to: string; from: string | null; text: string }) => void;
     /** Tema do terminal (payload.theme). */
     themeName?: TerminalThemeName;
   };
 
-  let { sessionId, createRequest, provider, workspaceId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, themeName = 'dark' }: Props = $props();
+  let { sessionId, createRequest, provider, workspaceId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, themeName = 'dark' }: Props = $props();
 
   let container: HTMLDivElement;
   let xtermInstance: Terminal | null = null;
@@ -53,13 +55,14 @@
   let exited = $state<number | null>(null);
   let waiting = $state(false);
 
-  // -- Ditado por voz (whisper.cpp WASM offline) ----------------------------
+  // -- Ditado por voz (sidecar voice-stack: faster-whisper/Kokoro) ----------
   let dictating = $state(false);
   let transcribing = $state(false);
-  let dictateLang = $state<WhisperLanguage>('pt');
+  let dictateLang = $state<'auto' | 'pt' | 'en'>('pt');
   let dictateError = $state('');
   let dictateStatus = $state('');
-  let dictateHotkey = $state(DEFAULT_DICTATION_HOTKEY);
+  /** Atalho REATIVO da store global (mudanca em Configuracoes aplica na hora). */
+  const dictateHotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
   let mediaRecorder: MediaRecorder | null = null;
   let mediaStream: MediaStream | null = null;
   let audioChunks: Blob[] = [];
@@ -80,13 +83,6 @@
       return;
     }
     if (transcribing) return;
-    // Status deste no (o singleton e compartilhado entre os terminais).
-    whisperDictation.onStatus = (text) => {
-      dictateStatus = text;
-    };
-    whisperDictation.onProgress = (percent) => {
-      dictateStatus = `Baixando modelo ${percent}%`;
-    };
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
@@ -104,9 +100,16 @@
       mediaRecorder = null;
       dictating = false;
       transcribing = true;
+      dictateStatus = 'Transcrevendo no sidecar de voz...';
       try {
         const blob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' });
-        const text = await whisperDictation.transcribe(blob, dictateLang);
+        const form = new FormData();
+        form.append('file', blob, 'ditado.webm');
+        if (dictateLang !== 'auto') form.append('language', dictateLang);
+        const response = await fetch('/api/agent-room/voice/transcribe', { method: 'POST', body: form });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.error) throw new Error(payload.error || `Erro ${response.status}`);
+        const text = String(payload.data?.text ?? '').trim();
         if (text) sendInput?.(text);
         else dictateError = 'Nada foi transcrito. Tente falar mais perto do microfone.';
       } catch (error) {
@@ -116,8 +119,6 @@
         dictateStatus = '';
       }
     };
-    // Pre-carrega runtime+modelo em paralelo com a gravacao (1o uso baixa ~57 MB).
-    whisperDictation.ensureReady(dictateLang).catch(() => {});
     recorder.start();
     dictating = true;
   }
@@ -166,12 +167,10 @@
 
     (async () => {
       try {
-        const settingsResponse = await fetch('/api/agent-room/settings');
-        const settingsPayload = await settingsResponse.json();
-        const nextSize = Number(settingsPayload.data?.terminalFontSize) || 13;
-        const nextFamily = settingsPayload.data?.terminalFontFamily || fontFamily;
-        terminalPaddingPx = Number(settingsPayload.data?.terminalPadding ?? 6);
-        dictateHotkey = settingsPayload.data?.dictationHotkey || DEFAULT_DICTATION_HOTKEY;
+        const settings = await getAppSettings(true);
+        const nextSize = Number(settings.terminalFontSize) || 13;
+        const nextFamily = settings.terminalFontFamily || fontFamily;
+        terminalPaddingPx = Number(settings.terminalPadding ?? 6);
         terminal.options.fontSize = nextSize;
         terminal.options.fontFamily = nextFamily;
       } catch {
@@ -278,6 +277,11 @@
         case 'talking':
           if (!workspaceId || message.workspaceId === workspaceId) {
             onTalking?.({ from: message.from ?? null, to: String(message.to), talking: Boolean(message.talking) });
+          }
+          break;
+        case 'agentReply':
+          if (!workspaceId || message.workspaceId === workspaceId) {
+            onAgentReply?.({ to: String(message.to), from: message.from ?? null, text: String(message.text ?? '') });
           }
           break;
         case 'killed':

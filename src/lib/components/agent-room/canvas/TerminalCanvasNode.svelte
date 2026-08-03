@@ -1,11 +1,12 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { BadgeCheck, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { BadgeCheck, SendHorizontal, SquareTerminal, Star, SwatchBook, Volume2, VolumeX, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
   import TerminalNode from '../TerminalNode.svelte';
+  import { speakText } from '../voice-speech.js';
   import type { TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
 
   export type MentionTarget = { id: string; title: string; type: string };
@@ -171,6 +172,20 @@
     }
   }
 
+  // -- Voz de volta (TTS pt-BR) ------------------------------------------------
+  /** Le respostas de asks destinadas a este no em voz alta (toggle no header). */
+  let voiceOn = $state(false);
+  let voiceError = $state('');
+
+  function handleAgentReply(payload: { to: string; from: string | null; text: string }) {
+    if (payload.to !== id || !voiceOn || !payload.text.trim()) return;
+    voiceError = '';
+    speakText(payload.text).catch((error) => {
+      voiceError = error instanceof Error ? error.message : 'Falha na voz.';
+      setTimeout(() => (voiceError = ''), 6_000);
+    });
+  }
+
   // Resume exato quando temos o session-id real da CLI; senao, fallback
   // para "a sessao mais recente do diretorio".
   const agentEnv = $derived({ ORKESTRAI_NODE_ID: id, ORKESTRAI_AGENT_TITLE: data.title });
@@ -238,6 +253,9 @@
     </DropdownMenu.Root>
     <IconAction label="Trocar tema" onclick={() => data.onCycleTheme?.(id)}>
       <SwatchBook size={13} /></IconAction>
+    <IconAction label={voiceOn ? 'Voz ativada (le respostas em voz alta)' : 'Ativar voz (TTS pt-BR)'} active={voiceOn} onclick={() => (voiceOn = !voiceOn)}>
+      {#if voiceOn}<Volume2 size={13} />{:else}<VolumeX size={13} />{/if}
+    </IconAction>
     <button
       class="node-action-btn"
       class:active={data.payload.maestro}
@@ -273,6 +291,7 @@
         onRespawn={resolveRespawn}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
+        onAgentReply={handleAgentReply}
       />
     {:else if data.payload.command}
       <TerminalNode
@@ -289,11 +308,15 @@
         provider={data.payload.provider}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
+        onAgentReply={handleAgentReply}
       />
     {:else}
       <p class="terminal-empty">Sem comando associado.</p>
     {/if}
   </div>
+  {#if voiceError}
+    <p class="voice-error">{voiceError}</p>
+  {/if}
 
   <div class="composer nodrag">
     <input
@@ -320,6 +343,14 @@
     color: #6d6d78;
     font-size: 12px;
     padding: 10px;
+  }
+
+  .voice-error {
+    margin: 0;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #ffc857;
+    background: rgba(226, 185, 61, 0.08);
   }
 
   .composer {

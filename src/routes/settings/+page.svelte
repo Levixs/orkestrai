@@ -7,6 +7,7 @@
   import { Separator } from '$lib/components/ui/separator';
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
+  import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
 
   let settings = $state<Record<string, string>>({});
   let saved = $state(false);
@@ -41,8 +42,29 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(settings),
     });
+    // Invalida a store reativa: terminais aplicam o novo atalho na hora.
+    invalidateAppSettings();
+    await getAppSettings(true);
     saved = true;
     setTimeout(() => (saved = false), 2000);
+  }
+
+  type VoiceHealth = { ok: boolean; url: string; detail?: string };
+  let voiceHealth = $state<VoiceHealth | null>(null);
+  let checkingVoice = $state(false);
+
+  async function checkVoiceStack() {
+    checkingVoice = true;
+    try {
+      // Salva antes de testar (a URL testada e a das settings salvas).
+      await save();
+      const response = await fetch('/api/agent-room/voice/health');
+      voiceHealth = (await response.json()).data ?? null;
+    } catch {
+      voiceHealth = { ok: false, url: settings.voiceStackUrl ?? '', detail: 'falha na consulta' };
+    } finally {
+      checkingVoice = false;
+    }
   }
 
   const SHORTCUTS = $derived<Array<[string, string]>>([
@@ -190,6 +212,51 @@
   <Separator />
 
   <section class="settings-section">
+    <h2>Voz (sidecar voice-stack)</h2>
+    <p class="field-hint">
+      Ditado e voz de volta rodam no sidecar local (API compativel com OpenAI, STT
+      faster-whisper + TTS Kokoro com vozes pt-BR). Suba com
+      <code>cd voice-stack && docker compose up --build</code>.
+    </p>
+    <div class="field">
+      <span class="field-label">URL do sidecar</span>
+      <Input bind:value={settings.voiceStackUrl} placeholder="http://localhost:8000" />
+    </div>
+    <div class="field-row">
+      <div class="field" style="flex:1">
+        <span class="field-label">Modelo STT (transcricao)</span>
+        <Input bind:value={settings.voiceSttModel} placeholder="whisper-large-v3-turbo" />
+      </div>
+      <div class="field">
+        <span class="field-label">Voz TTS (respostas)</span>
+        <Select.Root type="single" value={settings.voiceTtsVoice} onValueChange={(value: string) => (settings = { ...settings, voiceTtsVoice: value })}>
+          <Select.Trigger class="w-40" data-slot="select-trigger">
+            {settings.voiceTtsVoice ?? 'pf_dora'}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="pf_dora">pf_dora (feminina)</Select.Item>
+            <Select.Item value="pm_alex">pm_alex (masculina)</Select.Item>
+            <Select.Item value="pm_santa">pm_santa (masculina)</Select.Item>
+          </Select.Content>
+        </Select.Root>
+      </div>
+    </div>
+    <div class="hotkey-row">
+      <Button variant="outline" size="sm" disabled={checkingVoice} onclick={checkVoiceStack}>
+        {checkingVoice ? 'Testando...' : 'Testar conexao'}
+      </Button>
+      {#if voiceHealth}
+        <span class="voice-status" class:ok={voiceHealth.ok}>
+          {voiceHealth.ok ? `Sidecar no ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}` : `Fora do ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}`}
+        </span>
+      {/if}
+    </div>
+    <Button size="sm" onclick={save}>{saved ? 'Salvo!' : 'Salvar'}</Button>
+  </section>
+
+  <Separator />
+
+  <section class="settings-section">
     <h2>Atalhos</h2>
     <table class="shortcuts">
       <tbody>
@@ -283,6 +350,22 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .voice-status {
+    font-size: 11px;
+    color: #e5484d;
+  }
+
+  .voice-status.ok {
+    color: #3dd68c;
+  }
+
+  .field-hint code {
+    background: #262155;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
   }
 
   :global(.hotkey-capture) {

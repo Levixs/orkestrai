@@ -135,6 +135,11 @@ export class BridgeService {
       ptySessionManager.write(origin.sessionId, injection);
     }
 
+    // Voz de volta: o no alvo pode ler a resposta em voz alta (toggle por
+    // terminal; TTS pt-BR via sidecar — ver /api/agent-room/voice/speak).
+    const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
+    broadcast?.({ type: 'agentReply', workspaceId, to: target.nodeId, from: origin?.title ?? null, text: reply.text });
+
     return { to: target.title, reply: reply.text, timedOut: reply.timedOut };
   }
 
