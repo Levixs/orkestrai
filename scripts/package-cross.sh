@@ -4,10 +4,11 @@
 # Silicon); em CI depois e so reusar os mesmos comandos.
 #
 # Uso:
-#   ./scripts/package-cross.sh linux     # AppImage x64
-#   ./scripts/package-cross.sh windows   # NSIS x64 (imagem wine; emulada em Mac ARM)
-#   ./scripts/package-cross.sh all       # os dois
-#   ./scripts/package-cross.sh clean     # remove imagens dos builders + camadas dangling
+#   ./scripts/package-cross.sh linux        # AppImage x64
+#   ./scripts/package-cross.sh windows      # NSIS x64 (imagem wine; emulada em Mac ARM)
+#   ./scripts/package-cross.sh windows-zip  # zip portatil x64 (nao precisa de wine)
+#   ./scripts/package-cross.sh all          # os dois
+#   ./scripts/package-cross.sh clean        # remove imagens dos builders + camadas dangling
 #
 # Notas:
 # - O staging NAO leva node_modules do host (ABI do macOS) — npm ci roda
@@ -81,12 +82,14 @@ if [[ "$TARGET" == "linux" || "$TARGET" == "all" ]]; then
     "npm install -g $NPM_PIN && cd /project && npm ci --no-audit --no-fund && npx electron-builder --linux AppImage --x64 --publish never"
 fi
 
-if [[ "$TARGET" == "windows" || "$TARGET" == "all" ]]; then
-  echo "==> Windows (NSIS x64) — imagem wine; em Mac ARM roda emulada, demora"
+if [[ "$TARGET" == "windows" || "$TARGET" == "windows-zip" || "$TARGET" == "all" ]]; then
+  WIN_TARGET="nsis"
+  [[ "$TARGET" == "windows-zip" ]] && WIN_TARGET="zip"
+  echo "==> Windows ($WIN_TARGET x64) — imagem wine; em Mac ARM roda emulada, demora"
   # Sem rebuild nativo (node-gyp nao cross-compila): prebuilds semeados —
   # ver scripts/cross-build-windows.sh.
   run_builder electronuserland/builder:wine \
-    "npm install -g $NPM_PIN && bash scripts/cross-build-windows.sh"
+    "npm install -g $NPM_PIN && bash scripts/cross-build-windows.sh $WIN_TARGET"
 fi
 
 echo "==> Copiando artefatos para release/"

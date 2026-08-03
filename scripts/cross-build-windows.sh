@@ -23,5 +23,8 @@ ls node_modules/node-pty/prebuilds/win32-x64/
 # inteiro no wine (crash do qemu em Mac ARM). Sem CSC_*, a assinatura e
 # pulada e o instalador sai completo (unsigned).
 unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD CSC_NAME || true
-npx electron-builder --win nsis --x64 --publish never -c.npmRebuild=false
+# Alvo: zip (portatil, nao precisa de wine) ou nsis (instalador; em Mac ARM
+# o wine pode crashar no passo do desinstalador — o zip sempre sai).
+TARGET="${1:-nsis}"
+npx electron-builder --win "$TARGET" --x64 --publish never -c.npmRebuild=false
 
