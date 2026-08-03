@@ -4,6 +4,7 @@
   import { defaults, superForm } from 'sveltekit-superforms';
   import { zod } from 'sveltekit-superforms/adapters';
   import { z } from 'zod';
+  import { marked } from 'marked';
   import * as Form from '$lib/components/ui/form';
   import { Input } from '$lib/components/ui/input';
   import { Textarea } from '$lib/components/ui/textarea';
@@ -64,6 +65,12 @@
 
   const { form: formData, enhance } = form;
 
+  // Editor markdown: aba Escrever (textarea) x Preview (HTML renderizado).
+  let promptTab = $state<'edit' | 'preview'>('edit');
+  const promptHtml = $derived(
+    $formData.prompt.trim() ? (marked.parse($formData.prompt, { async: false }) as string) : ''
+  );
+
   function startEdit(role: AgentRole) {
     editingSlug = role.slug;
     $formData.name = role.name;
@@ -120,7 +127,8 @@
 
   <p class="hint">
     Roles sao conjuntos de instrucoes injetados no inicio do agente. Ficam em
-    <code>.orkestrai/roles/</code> e viajam com o repositorio.
+    <code>.orkestrai/roles/</code> e viajam com o repositorio. O editor aceita
+    <strong>markdown</strong> (abas Escrever/Preview) — e o formato nativo do AGENTS.md.
   </p>
 
   {#each roles as role (role.slug)}
@@ -162,8 +170,26 @@
     <Form.Field {form} name="prompt">
       <Form.Control>
         {#snippet children({ props })}
-          <Form.Label>Instrucoes</Form.Label>
-          <Textarea {...props} bind:value={$formData.prompt} rows={4} placeholder="Voce revisa codigo com foco em seguranca e clareza..." />
+          <div class="prompt-head">
+            <Form.Label>Instrucoes (markdown)</Form.Label>
+            <div class="prompt-tabs" role="tablist">
+              <button type="button" class:active={promptTab === 'edit'} role="tab" onclick={() => (promptTab = 'edit')}>Escrever</button>
+              <button type="button" class:active={promptTab === 'preview'} role="tab" onclick={() => (promptTab = 'preview')}>Preview</button>
+            </div>
+          </div>
+          {#if promptTab === 'edit'}
+            <Textarea {...props} bind:value={$formData.prompt} rows={8} placeholder={'## Papel\nVoce revisa codigo com foco em seguranca...\n\n- cheque inputs\n- **nunca** exponha segredos\n\n```ts\n// exemplos do que apontar\n```'} />
+          {:else}
+            <div class="md-preview">
+              {#if promptHtml}
+                <!-- Preview do proprio autor (conteudo local, nao remoto). -->
+                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                {@html promptHtml}
+              {:else}
+                <span class="md-empty">Nada para prever — escreva em markdown na aba Escrever.</span>
+              {/if}
+            </div>
+          {/if}
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
@@ -275,5 +301,97 @@
 
   .role-item.editing {
     border-color: rgba(91, 141, 239, 0.5);
+  }
+
+  .prompt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .prompt-tabs {
+    display: inline-flex;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+
+  .prompt-tabs button {
+    border: none;
+    background: transparent;
+    color: #8b8c96;
+    font-size: 10px;
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+
+  .prompt-tabs button.active {
+    background: rgba(124, 77, 255, 0.2);
+    color: #e6e6eb;
+  }
+
+  .md-preview {
+    min-height: 160px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #d7d8de;
+  }
+
+  .md-preview :global(h1), .md-preview :global(h2), .md-preview :global(h3) {
+    color: #e6e6eb;
+    font-size: 13px;
+    margin: 10px 0 4px;
+  }
+
+  .md-preview :global(h1:first-child), .md-preview :global(h2:first-child), .md-preview :global(h3:first-child) {
+    margin-top: 0;
+  }
+
+  .md-preview :global(p) { margin: 6px 0; }
+  .md-preview :global(ul), .md-preview :global(ol) { padding-left: 18px; margin: 6px 0; }
+  .md-preview :global(li) { margin: 2px 0; }
+
+  .md-preview :global(code) {
+    background: #262155;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+  }
+
+  .md-preview :global(pre) {
+    background: #0d0b2e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    margin: 8px 0;
+  }
+
+  .md-preview :global(pre code) {
+    background: transparent;
+    padding: 0;
+  }
+
+  .md-preview :global(blockquote) {
+    border-left: 3px solid #7c4dff;
+    margin: 8px 0;
+    padding: 2px 10px;
+    color: #b7b8c4;
+  }
+
+  .md-preview :global(a) { color: #7de5ff; }
+  .md-preview :global(strong) { color: #e6e6eb; }
+
+  .md-empty {
+    font-size: 11px;
+    color: #6d6d78;
+    font-style: italic;
   }
 </style>
