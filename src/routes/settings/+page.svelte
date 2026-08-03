@@ -217,6 +217,9 @@
       Ditado e voz de volta rodam no sidecar local (API compativel com OpenAI, STT
       faster-whisper + TTS Kokoro com vozes pt-BR). Suba com
       <code>cd voice-stack && docker compose up --build</code>.
+      Porta 8000 ocupada? Suba em outra com
+      <code>VOICE_PORT=8001 docker compose up --build</code> e aponte a URL aqui
+      para <code>http://localhost:8001</code>.
     </p>
     <div class="field">
       <span class="field-label">URL do sidecar</span>
