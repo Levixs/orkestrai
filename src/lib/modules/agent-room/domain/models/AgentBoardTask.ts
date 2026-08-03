@@ -12,6 +12,7 @@ export class AgentBoardTask extends Model {
     'status',
     'assignee_node_id',
     'image_path',
+    'images_json',
     'created_by',
     'created_at',
     'updated_at',
@@ -28,6 +29,7 @@ export class AgentBoardTask extends Model {
   declare status: string;
   declare assignee_node_id: string | null;
   declare image_path: string | null;
+  declare images_json: string | null;
   declare created_by: string;
   declare created_at: string;
   declare updated_at: string;

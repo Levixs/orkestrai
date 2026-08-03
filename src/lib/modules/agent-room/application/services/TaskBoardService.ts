@@ -11,12 +11,29 @@ export type BoardTask = {
   assigneeNodeId: string | null;
   assigneeTitle: string | null;
   imagePath: string | null;
+  /** Todas as imagens de referencia da tarefa (imagePath = primeira/capa). */
+  images: string[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
 };
 
+function imagesOf(model: AgentBoardTask): string[] {
+  const raw = model.getAttribute('images_json') as string | null;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.filter((item) => typeof item === 'string');
+    } catch {
+      // cai no legado
+    }
+  }
+  const legacy = model.getAttribute('image_path') as string | null;
+  return legacy ? [legacy] : [];
+}
+
 function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null): BoardTask {
+  const images = imagesOf(model);
   return {
     id: model.getAttribute('id'),
     workspaceId: model.getAttribute('workspace_id'),
@@ -24,7 +41,8 @@ function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null): Bo
     status: model.getAttribute('status') as BoardTask['status'],
     assigneeNodeId: model.getAttribute('assignee_node_id'),
     assigneeTitle,
-    imagePath: model.getAttribute('image_path'),
+    imagePath: model.getAttribute('image_path') ?? images[0] ?? null,
+    images,
     createdBy: model.getAttribute('created_by'),
     createdAt: String(model.getAttribute('created_at')),
     updatedAt: String(model.getAttribute('updated_at')),
@@ -85,6 +103,12 @@ export class TaskBoardService {
     if (input.assigneeNodeId) {
       await this.dispatch(workspaceId, id).catch(() => {});
     }
+    // Task criada por humano (UI): avisa o lider — ele decide a coordenacao.
+    // (Tasks da propria ponte/agentes nao ecoam de volta.)
+    const createdBy = input.createdBy ?? 'user';
+    if (createdBy === 'user') {
+      await this.notifyLeader(workspaceId, id, Boolean(input.assigneeNodeId)).catch(() => {});
+    }
     notifyWorkspaceChanged(workspaceId);
     return mapTask(task);
   }
@@ -129,6 +153,55 @@ export class TaskBoardService {
     return true;
   }
 
+  /** Anexa uma imagem de referencia a tarefa (primeira vira a capa). */
+  async attachImage(workspaceId: string, taskId: string, path: string): Promise<BoardTask> {
+    const task = await this.requireTask(workspaceId, taskId);
+    const images = imagesOf(task);
+    if (!path || images.includes(path)) throw new Error('Imagem invalida ou ja anexada.');
+    images.push(path);
+    await AgentBoardTask.query().where('id', taskId).update({
+      images_json: JSON.stringify(images),
+      image_path: images[0] ?? null,
+      updated_at: new Date().toISOString(),
+    });
+    notifyWorkspaceChanged(workspaceId);
+    return mapTask(await this.requireTask(workspaceId, taskId));
+  }
+
+  /** Remove uma imagem da tarefa (recalcula a capa). */
+  async detachImage(workspaceId: string, taskId: string, path: string): Promise<BoardTask> {
+    const task = await this.requireTask(workspaceId, taskId);
+    const images = imagesOf(task).filter((item) => item !== path);
+    await AgentBoardTask.query().where('id', taskId).update({
+      images_json: JSON.stringify(images),
+      image_path: images[0] ?? null,
+      updated_at: new Date().toISOString(),
+    });
+    notifyWorkspaceChanged(workspaceId);
+    return mapTask(await this.requireTask(workspaceId, taskId));
+  }
+
+  /**
+   * Aviso ao lider (maestro) no terminal dele: uma task nova entrou no quadro.
+   * Sem responsavel = precisa de acao (distribuir); com responsavel = FYI.
+   */
+  private async notifyLeader(workspaceId: string, taskId: string, assigned: boolean): Promise<void> {
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    const leader = nodes.find(
+      (node) => node.type === 'terminal' && Boolean((node.payload as { maestro?: boolean }).maestro)
+    );
+    if (!leader) return;
+    const sessionId = (leader.payload as { sessionId?: string }).sessionId;
+    const session = sessionId ? ptySessionManager.get(sessionId) : null;
+    if (!session || session.exited) return;
+    const task = await this.requireTask(workspaceId, taskId);
+    const title = task.getAttribute('title');
+    const hint = assigned
+      ? `O usuario atribuiu direto para um agente — acompanhe com: orkestrai task list`
+      : `SEM responsavel. Distribua: orkestrai task assign ${taskId} "<Agente>" (ou coordene como achar melhor)`;
+    ptySessionManager.write(session.id, `[nova tarefa no quadro #${taskId.slice(0, 8)}] "${title}". ${hint}\r`);
+  }
+
   /**
    * Despacho automatico: injeta o prompt da tarefa no terminal do agente
    * atribuido (se a sessao estiver viva). E o gatilho do "loop continuo".
@@ -142,7 +215,9 @@ export class TaskBoardService {
     const sessionId = (node.payload as { sessionId?: string }).sessionId;
     const session = sessionId ? ptySessionManager.get(sessionId) : null;
     if (!session || session.exited) return;
-    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}] ${task.getAttribute('title')}\nQuando terminar, marque com: orkestrai task done ${taskId}\r`;
+    const images = imagesOf(task);
+    const imagesNote = images.length ? `\nImagens de referencia: ${images.join(', ')}` : '';
+    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}] ${task.getAttribute('title')}${imagesNote}\nQuando terminar, marque com: orkestrai task done ${taskId}\r`;
     ptySessionManager.write(session.id, prompt);
   }
 }

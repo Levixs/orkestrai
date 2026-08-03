@@ -321,6 +321,9 @@ export async function run(argv, options = {}) {
           for (const task of data) {
             const who = task.assigneeTitle ? ` → ${task.assigneeTitle}` : '';
             out(`- [${task.status}] ${task.title}${who} (${task.id})`);
+            for (const image of task.images ?? []) {
+              out(`    imagem: ${image}`);
+            }
           }
           if (!data.length) out('(quadro vazio)');
         }

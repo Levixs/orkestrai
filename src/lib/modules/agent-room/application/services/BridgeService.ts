@@ -473,7 +473,7 @@ Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce 
 - \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
 - \`orkestrai note write <nodeId> "<conteudo>"\` — substitui o conteudo da nota.
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edicao pontual.
-- \`orkestrai task list\` — quadro de tarefas do workspace.
+- \`orkestrai task list\` — quadro de tarefas do workspace. Tarefas podem ter IMAGENS DE REFERENCIA (paths relativos ao workspace, ex.: .orkestrai/images/x.png) — leia o arquivo se a referencia for util pra execucao.
 - \`orkestrai task add "<titulo>" --assign "<Agente>"\` — cria tarefa e ja despacha para o agente.
 - \`orkestrai task done <taskId>\` — marca tarefa atribuida a voce como concluida.
 - \`orkestrai portal create "<url>" [--title "<t>"] [--connect "<Agente>"|all]\` — cria um portal (browser) no canvas.

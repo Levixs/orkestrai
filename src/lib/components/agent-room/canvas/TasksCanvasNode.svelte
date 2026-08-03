@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ImagePlus, Plus, SquareKanban, Trash2, X } from '@lucide/svelte';
+  import { ChevronLeft, ChevronRight, ImagePlus, Plus, SquareKanban, Trash2, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+  import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
 
@@ -13,6 +14,7 @@
     assigneeNodeId: string | null;
     assigneeTitle: string | null;
     imagePath: string | null;
+    images: string[];
     createdBy: string;
   };
 
@@ -130,7 +132,10 @@
     await patchTask(task.id, { status });
   }
 
-  // -- Imagem de capa do cartao (botao ou colar) --------------------------------
+  // -- Imagens de referencia (multiplas, com viewer) ---------------------------
+  let viewerTask = $state<BoardTask | null>(null);
+  let viewerIndex = $state(0);
+
   function pickImage(task: BoardTask) {
     imageTargetId = task.id;
     fileInput.click();
@@ -147,14 +152,20 @@
       body: JSON.stringify({ path, base64 }),
     });
     if (!response.ok) return;
-    await patchTask(taskId, { imagePath: path });
+    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${taskId}/images`, {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    });
+    await refresh();
   }
 
   async function onFilePicked(event: Event) {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const files = [...(input.files ?? [])];
     input.value = '';
-    if (file && imageTargetId) await uploadImage(file, imageTargetId);
+    if (files.length && imageTargetId) {
+      for (const file of files) await uploadImage(file, imageTargetId);
+    }
     imageTargetId = null;
   }
 
@@ -164,6 +175,30 @@
     event.preventDefault();
     const file = item.getAsFile();
     if (file) await uploadImage(file, task.id);
+  }
+
+  function openViewer(task: BoardTask, index: number) {
+    viewerTask = task;
+    viewerIndex = index;
+  }
+
+  function viewerMove(delta: number) {
+    if (!viewerTask?.images.length) return;
+    viewerIndex = (viewerIndex + delta + viewerTask.images.length) % viewerTask.images.length;
+  }
+
+  async function viewerDelete() {
+    if (!viewerTask) return;
+    const path = viewerTask.images[viewerIndex];
+    if (!path) return;
+    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${viewerTask.id}/images?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+    await refresh();
+    const updated = tasks.find((task) => task.id === viewerTask?.id);
+    if (!updated?.images.length) viewerTask = null;
+    else {
+      viewerTask = updated;
+      viewerIndex = Math.min(viewerIndex, updated.images.length - 1);
+    }
   }
 
   const imageUrl = (path: string) =>
@@ -191,7 +226,7 @@
       <X size={13} /></HeaderIconButton>
   {/snippet}
 
-  <input bind:this={fileInput} type="file" accept="image/*" class="tb-hidden" onchange={onFilePicked} />
+  <input bind:this={fileInput} type="file" accept="image/*" multiple class="tb-hidden" onchange={onFilePicked} />
 
   <div class="tb-add nodrag">
     <input
@@ -238,8 +273,14 @@
               onpaste={(event) => onCardPaste(event, task)}
               tabindex="0"
             >
-              {#if task.imagePath}
-                <img class="tb-cover" src={imageUrl(task.imagePath)} alt="" loading="lazy" />
+              {#if task.images?.length}
+                <div class="tb-thumbs">
+                  {#each task.images as path, index (path)}
+                    <button class="tb-thumb-btn" aria-label={`Ver imagem ${index + 1} de ${task.images.length}`} onclick={() => openViewer(task, index)}>
+                      <img class="tb-thumb" src={imageUrl(path)} alt="" loading="lazy" />
+                    </button>
+                  {/each}
+                </div>
               {/if}
               <div class="tb-card-top">
                 {#if editingId === task.id}
@@ -288,6 +329,31 @@
     {/each}
   </div>
 </NodeShell>
+
+{#if viewerTask}
+  <Dialog.Root open={viewerTask !== null} onOpenChange={(open: boolean) => !open && (viewerTask = null)}>
+    <Dialog.Content class="tb-viewer-content">
+      <Dialog.Header>
+        <Dialog.Title>{viewerTask.title}</Dialog.Title>
+        <Dialog.Description>Imagem {viewerIndex + 1} de {viewerTask.images.length} — referencia da tarefa</Dialog.Description>
+      </Dialog.Header>
+      <div class="tb-viewer-body">
+        <button class="tb-viewer-nav" aria-label="Imagem anterior" onclick={() => viewerMove(-1)} disabled={viewerTask.images.length < 2}>
+          <ChevronLeft size={18} />
+        </button>
+        <img class="tb-viewer-img" src={imageUrl(viewerTask.images[viewerIndex])} alt="Referencia da tarefa" />
+        <button class="tb-viewer-nav" aria-label="Proxima imagem" onclick={() => viewerMove(1)} disabled={viewerTask.images.length < 2}>
+          <ChevronRight size={18} />
+        </button>
+      </div>
+      <Dialog.Footer>
+        <button class="tb-viewer-delete" onclick={viewerDelete}>
+          <Trash2 size={13} /> Remover imagem
+        </button>
+      </Dialog.Footer>
+    </Dialog.Content>
+  </Dialog.Root>
+{/if}
 
 <style>
   .tb-hidden {
@@ -429,6 +495,88 @@
     object-fit: cover;
     border-radius: 6px;
     display: block;
+  }
+
+  .tb-thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .tb-thumb-btn {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 0;
+    background: transparent;
+    cursor: zoom-in;
+    overflow: hidden;
+    line-height: 0;
+  }
+
+  .tb-thumb-btn:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .tb-thumb {
+    width: 52px;
+    height: 38px;
+    object-fit: cover;
+    display: block;
+  }
+
+  :global(.tb-viewer-content) {
+    max-width: min(860px, 92vw) !important;
+  }
+
+  .tb-viewer-body {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .tb-viewer-img {
+    max-width: 100%;
+    max-height: 62vh;
+    border-radius: 10px;
+    object-fit: contain;
+    background: #101018;
+  }
+
+  .tb-viewer-nav {
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: #c7c8d0;
+    border-radius: 8px;
+    padding: 8px 4px;
+    cursor: pointer;
+  }
+
+  .tb-viewer-nav:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .tb-viewer-nav:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .tb-viewer-delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(229, 72, 77, 0.4);
+    background: rgba(229, 72, 77, 0.12);
+    color: #ff9c9f;
+    font-size: 12px;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+
+  .tb-viewer-delete:hover {
+    background: rgba(229, 72, 77, 0.22);
   }
 
   .tb-card-top {

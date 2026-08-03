@@ -1,5 +1,6 @@
 import { Controller } from '@beeblock/svelar/routing';
 import { FormRequest } from '@beeblock/svelar/forms';
+import { z } from 'zod';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import {
   createBoardTaskSchema,
@@ -62,6 +63,27 @@ export class TaskBoardController extends Controller {
       return this.json({ data: { deleted: true } });
     } catch (error) {
       return this.errorResponse(error, 'Tarefa nao encontrada.', 404);
+    }
+  }
+
+  /** Anexa imagem de referencia: { path } (arquivo ja gravado via fs/write-binary). */
+  async attachImage(event: any) {
+    try {
+      const input = z.object({ path: z.string().trim().min(1, 'Informe o path da imagem.') }).parse(await event.request.json());
+      return this.json({ data: await taskBoardService.attachImage(event.params.id, event.params.taskId, input.path) }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao anexar imagem.');
+    }
+  }
+
+  /** Remove imagem: ?path=... */
+  async detachImage(event: any) {
+    try {
+      const path = String(event.url.searchParams.get('path') ?? '');
+      if (!path) return this.errorResponse(new Error('Informe ?path='), 'Informe o path da imagem.', 422);
+      return this.json({ data: await taskBoardService.detachImage(event.params.id, event.params.taskId, path) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao remover imagem.');
     }
   }
 
