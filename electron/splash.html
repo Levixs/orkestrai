@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orkestrai</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { height: 100%; overflow: hidden; }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: radial-gradient(120% 120% at 50% 0%, #1b1464 0%, #0d0b2e 55%, #090820 100%);
+        font-family: 'Sora', 'Inter', -apple-system, sans-serif;
+        color: #e5e1ff;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+      }
+
+      .logo {
+        width: 92px;
+        height: 92px;
+        animation: logo-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) both, logo-breathe 3.2s ease-in-out 900ms infinite;
+        filter: drop-shadow(0 0 18px rgba(124, 77, 255, 0.45));
+      }
+
+      @keyframes logo-enter {
+        from { opacity: 0; transform: scale(0.6) rotate(-24deg); }
+        to { opacity: 1; transform: scale(1) rotate(0deg); }
+      }
+
+      @keyframes logo-breathe {
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 14px rgba(124, 77, 255, 0.35)); }
+        50% { transform: scale(1.045); filter: drop-shadow(0 0 26px rgba(124, 77, 255, 0.6)); }
+      }
+
+      .wordmark {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        animation: rise 650ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both;
+      }
+
+      .tagline {
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        color: rgba(229, 225, 255, 0.55);
+        letter-spacing: 0.04em;
+        animation: rise 650ms cubic-bezier(0.22, 1, 0.36, 1) 450ms both;
+      }
+
+      .loader {
+        display: flex;
+        gap: 6px;
+        margin-top: 14px;
+        animation: rise 500ms ease 700ms both;
+      }
+
+      .loader span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #7c4dff;
+        animation: dot 1.1s ease-in-out infinite;
+      }
+      .loader span:nth-child(2) { animation-delay: 0.15s; background: #00bfff; }
+      .loader span:nth-child(3) { animation-delay: 0.3s; background: #ffc857; }
+
+      @keyframes dot {
+        0%, 100% { opacity: 0.25; transform: translateY(0); }
+        50% { opacity: 1; transform: translateY(-4px); }
+      }
+
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .logo, .wordmark, .tagline, .loader, .loader span { animation: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <img class="logo" src="./resources/icon.svg" alt="" width="92" height="92" />
+    <div class="wordmark">Orkestrai</div>
+    <div class="tagline">Orquestre tudo. Conquiste qualquer coisa.</div>
+    <div class="loader" aria-label="Carregando…"><span></span><span></span><span></span></div>
+  </body>
+</html>

@@ -1,0 +1,114 @@
+import { z } from 'zod';
+
+export const bridgeAskSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  to: z.string().trim().min(1, 'Informe o agente de destino (titulo ou id do no).'),
+  message: z.string().min(1, 'Informe a mensagem.'),
+  from: z.string().trim().nullish(),
+  timeoutMs: z.coerce.number().int().min(1_000).max(600_000).default(180_000),
+  /** Envia bytes brutos ao TUI (sem espera de resposta, sem CR extra). */
+  raw: z.boolean().default(false),
+});
+
+export const bridgeNoteWriteSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  content: z.string(),
+});
+
+export const bridgeNoteEditSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  old: z.string().min(1, 'Informe o trecho antigo.'),
+  new: z.string(),
+});
+
+export const bridgeNoteCreateSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  title: z.string().trim().min(1, 'Informe o titulo da nota.'),
+  content: z.string().optional(),
+  /** Agente (titulo ou id) para conectar a nota criada. */
+  connect: z.string().trim().nullish(),
+});
+
+export type BridgeNoteCreateInput = z.infer<typeof bridgeNoteCreateSchema>;
+
+export const bridgeNotifySchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  message: z.string().trim().min(1, 'Informe a mensagem da notificacao.'),
+});
+
+export type BridgeAskInput = z.infer<typeof bridgeAskSchema>;
+export type BridgeNoteWriteInput = z.infer<typeof bridgeNoteWriteSchema>;
+export type BridgeNoteEditInput = z.infer<typeof bridgeNoteEditSchema>;
+export type BridgeNotifyInput = z.infer<typeof bridgeNotifySchema>;
+
+export const bridgeRecruitSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  from: z.string().trim().min(1, 'Informe o agente maestro (from).'),
+  title: z.string().trim().min(1, 'Informe o titulo do recruta.'),
+  provider: z.string().trim().nullish(),
+  role: z.string().trim().nullish(),
+  x: z.coerce.number().optional(),
+  y: z.coerce.number().optional(),
+  replace: z.string().trim().nullish(),
+  floorId: z.string().trim().nullish(),
+});
+
+export const bridgeReassignSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  from: z.string().trim().min(1),
+  target: z.string().trim().min(1),
+  role: z.string().trim().min(1, 'Informe o papel.'),
+  prompt: z.string().nullish(),
+});
+
+export type BridgeReassignInput = z.infer<typeof bridgeReassignSchema>;
+
+export const bridgeDismissSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  from: z.string().trim().min(1),
+  target: z.string().trim().min(1),
+});
+
+export const bridgeConnectSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  from: z.string().trim().min(1),
+  source: z.string().trim().nullish(),
+  to: z.string().trim().min(1),
+});
+
+export type BridgeRecruitInput = z.infer<typeof bridgeRecruitSchema>;
+export type BridgeDismissInput = z.infer<typeof bridgeDismissSchema>;
+export type BridgeConnectInput = z.infer<typeof bridgeConnectSchema>;
+
+export const bridgeRoleWriteSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  name: z.string().trim().min(1, 'Informe o nome da responsabilidade.'),
+  prompt: z.string(),
+  color: z.string().trim().optional(),
+});
+
+export const bridgeRoleEditSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  name: z.string().trim().min(1),
+  old: z.string().min(1, 'Informe o trecho antigo.'),
+  new: z.string(),
+});
+
+export type BridgeRoleWriteInput = z.infer<typeof bridgeRoleWriteSchema>;
+export type BridgeRoleEditInput = z.infer<typeof bridgeRoleEditSchema>;
+
+export const bridgeFloorCreateSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  name: z.string().trim().min(1, 'Informe o nome do andar.'),
+  branch: z.string().trim().nullish(),
+  existingBranch: z.boolean().default(false),
+  cloneLayout: z.boolean().default(false),
+});
+
+export const bridgeFloorLandSchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  targetBranch: z.string().trim().nullish(),
+});
+
+export type BridgeFloorCreateInput = z.infer<typeof bridgeFloorCreateSchema>;
+export type BridgeFloorLandInput = z.infer<typeof bridgeFloorLandSchema>;

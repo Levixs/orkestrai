@@ -6,7 +6,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
   const body = await request.json().catch(() => ({}));
 
   return createAgentRoomStream((emit) =>
-    handleDebate(params.id, String(body.message ?? body.topic ?? ''), {
+    handleDebate(params.id!, String(body.message ?? body.topic ?? ''), {
       signal: request.signal,
       onProgress: emit,
     })

@@ -4,13 +4,45 @@ import type { Plugin, PreviewServer, ViteDevServer } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import { createRequire } from 'module';
 import { dirname, resolve } from 'path';
+import { WebSocketServer } from 'ws';
+import { handlePtyConnection, isAllowedPtyWsOrigin, isPtyWsPath } from './src/lib/modules/agent-room/infrastructure/pty/pty-ws.ts';
+import { installOrkestraiShim, writeOrkestraiRuntimeFile } from './scripts/install-orkestrai-shim.mjs';
+
+// Shim da CLI `orkestrai` acessivel nos terminais PTY tambem em dev.
+installOrkestraiShim();
+
+/** Expoe o WebSocket de PTY no servidor de dev do vite. */
+function ptyWebSocketPlugin(): Plugin {
+  return {
+    name: 'orkestrai-pty-websocket',
+    configureServer(server: ViteDevServer) {
+      const wss = new WebSocketServer({ noServer: true });
+      server.httpServer?.on('upgrade', (request, socket, head) => {
+        const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+        if (!isPtyWsPath(pathname)) return;
+        if (!isAllowedPtyWsOrigin(request.headers.origin, request.headers.host)) {
+          socket.destroy();
+          return;
+        }
+        wss.handleUpgrade(request, socket, head, (ws) => handlePtyConnection(ws));
+      });
+      // Anuncia a porta real do dev server para a CLI orkestrai.
+      server.httpServer?.on('listening', () => {
+        const address = server.httpServer?.address();
+        if (address && typeof address === 'object' && address.port) {
+          writeOrkestraiRuntimeFile(`http://127.0.0.1:${address.port}`);
+        }
+      });
+    },
+  };
+}
 
 // Resolve the svelar package root so we can alias submodule imports
 const require_ = createRequire(import.meta.url);
 const svelarRoot = dirname(require_.resolve('@beeblock/svelar/package.json'));
 const crossOriginIsolationHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
   'Cross-Origin-Resource-Policy': 'same-origin',
   'Origin-Agent-Cluster': '?1',
 };
@@ -23,7 +55,7 @@ function setCrossOriginIsolationHeaders(response: { setHeader: (header: string, 
 
 function crossOriginIsolationPlugin(): Plugin {
   return {
-    name: 'pantheon-cross-origin-isolation',
+    name: 'orkestrai-cross-origin-isolation',
     configureServer(server: ViteDevServer) {
       server.middlewares.use((_request, response, next) => {
         setCrossOriginIsolationHeaders(response);
@@ -43,7 +75,7 @@ export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ''));
 
   return {
-  plugins: [crossOriginIsolationPlugin(), sveltekit(), tailwindcss()],
+  plugins: [crossOriginIsolationPlugin(), ptyWebSocketPlugin(), sveltekit(), tailwindcss()],
   resolve: {
     alias: {
       '@beeblock/svelar/actions': resolve(svelarRoot, 'dist/actions/index.js'),
@@ -119,7 +151,7 @@ export default defineConfig(({ mode }) => {
     // Node-only optional drivers must stay external for adapter-node production builds.
 	    external: ['bcrypt', 'argon2', 'bullmq', 'ioredis', 'meilisearch', '@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
     // Process Svelte icon components during SSR.
-    noExternal: ['@lucide/svelte', '@tabler/icons-svelte', 'bits-ui'],
+    noExternal: ['@lucide/svelte', '@tabler/icons-svelte', 'bits-ui', '@xterm/xterm', '@xterm/addon-fit'],
   },
   optimizeDeps: {
     exclude: ['@lucide/svelte', '@tabler/icons-svelte', 'bits-ui'],

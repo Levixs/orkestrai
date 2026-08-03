@@ -5,7 +5,7 @@ import { handleRunAgent } from '$lib/modules/agent-room/application/orchestrator
 export const POST: RequestHandler = async ({ params, request }) => {
   try {
     const body = (await request.json()) as Partial<RunAgentPayload>;
-    const result = await handleRunAgent(params.id, {
+    const result = await handleRunAgent(params.id!, {
       message: String(body.message ?? ''),
       target: body.target ?? 'codex',
       mode: body.mode ?? 'chat',

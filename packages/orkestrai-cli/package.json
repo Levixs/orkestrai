@@ -1,0 +1,13 @@
+{
+  "name": "orkestrai-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI da ponte Orkestrai: comunicacao entre agentes e notas no canvas.",
+  "bin": {
+    "orkestrai": "./bin/orkestrai.js"
+  },
+  "exports": {
+    "./cli": "./src/cli.js"
+  }
+}

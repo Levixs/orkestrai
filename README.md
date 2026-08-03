@@ -1,4 +1,4 @@
-# Pantheon Agent Room
+# Orkestrai Agent Room
 
 Aplicativo local para conversar com dois agentes no mesmo ambiente:
 

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { AgentRunRequest, AgentRunResult } from '../domain/types.js';
 import { assertWritableProjectPath, resolveSafeProjectPath } from '../infrastructure/workspace.js';
+import { getAgentAdapter } from './adapters/registry.js';
 
 type CommandResult = {
   stdout: string;
@@ -12,6 +13,7 @@ type CommandResult = {
 type CommandOptions = AgentRunOptions & {
   input?: string;
   displayArgs?: string[];
+  env?: Record<string, string>;
 };
 
 export type AgentCommandProgressEvent = {
@@ -69,7 +71,7 @@ function runCommand(
     const child = spawn(command, args, {
       cwd,
       shell: false,
-      env: process.env,
+      env: options.env ? { ...process.env, ...options.env } : process.env,
       stdio: ['pipe', 'pipe', 'pipe'],
       detached: true,
     });
@@ -148,143 +150,45 @@ function runCommand(
   });
 }
 
-function stringifyJsonValue(value: unknown): string | null {
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  if (Array.isArray(value)) {
-    const parts = value.map(stringifyJsonValue).filter(Boolean);
-    return parts.length ? parts.join('\n') : null;
-  }
-  if (value && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    for (const key of ['result', 'final', 'content', 'response', 'output', 'text', 'message', 'item', 'delta']) {
-      const nested = stringifyJsonValue(record[key]);
-      if (nested) return nested;
-    }
-  }
-  return null;
-}
-
-function parseCodexOutput(stdout: string) {
-  const events: unknown[] = [];
-  for (const line of stdout.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    try {
-      events.push(JSON.parse(line));
-    } catch {
-      continue;
-    }
-  }
-
-  const text = events
-    .map(stringifyJsonValue)
-    .filter((value): value is string => Boolean(value))
-    .at(-1);
+export async function runAgent(request: AgentRunRequest, options: AgentRunOptions = {}): Promise<AgentRunResult> {
+  const adapter = getAgentAdapter(request.agent);
+  const cwd = resolveWorkingDirectory(request);
+  const spec = adapter.buildCommand(request);
+  const result = await runCommand(spec.command, spec.args, cwd, {
+    ...options,
+    input: spec.promptDelivery === 'args' ? '' : request.prompt,
+    displayArgs: spec.displayArgs,
+    env: spec.env,
+  });
+  const parsed = adapter.parseOutput(result.stdout);
+  const error =
+    result.error ??
+    parsed.cliError ??
+    (result.exitCode === 0 ? undefined : result.stderr.trim() || `${adapter.displayName} falhou.`);
 
   return {
-    content: text ?? stdout.trim(),
-    metadata: events.length ? { events } : undefined,
+    agent: adapter.id,
+    memberId: request.memberId,
+    memberTitle: request.memberTitle,
+    content: error || parsed.content || `${adapter.displayName} nao retornou conteudo.`,
+    rawOutput: [result.stdout, result.stderr].filter(Boolean).join('\n'),
+    exitCode: result.exitCode,
+    error,
+    metadata: {
+      ...parsed.metadata,
+      command: adapter.id,
+      ...adapter.runMetadata(request),
+      cwd,
+      model: request.model,
+      effort: request.effort,
+    },
   };
-}
-
-function parseJsonLinesOutput(stdout: string) {
-  const events: unknown[] = [];
-  for (const line of stdout.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    try {
-      events.push(JSON.parse(line));
-    } catch {
-      continue;
-    }
-  }
-
-  const text = events
-    .map(stringifyJsonValue)
-    .filter((value): value is string => Boolean(value))
-    .at(-1);
-
-  return {
-    content: text ?? stdout.trim(),
-    metadata: events.length ? { events } : undefined,
-  };
-}
-
-function hasJsonLineError(metadata: Record<string, unknown> | undefined) {
-  const events = Array.isArray(metadata?.events) ? metadata.events : [];
-  return events.some((event) => event && typeof event === 'object' && (event as Record<string, unknown>).is_error === true);
 }
 
 export async function runCodex(request: AgentRunRequest, options: AgentRunOptions = {}): Promise<AgentRunResult> {
-  const cwd = resolveWorkingDirectory(request);
-  const sandbox = request.allowWrites ? 'danger-full-access' : 'read-only';
-  const args = request.allowWrites
-    ? ['exec', '--json', '--ephemeral', '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox', '-']
-    : ['exec', '--json', '--ephemeral', '--skip-git-repo-check', '--sandbox', sandbox, '-'];
-  const result = await runCommand('codex', args, cwd, {
-    ...options,
-    input: request.prompt,
-    displayArgs: args.map((arg) => (arg === '-' ? '<prompt-stdin>' : arg)),
-  });
-  const parsed = parseCodexOutput(result.stdout);
-  const error = result.error ?? (result.exitCode === 0 ? undefined : result.stderr.trim() || 'Codex falhou.');
-
-  return {
-    agent: 'codex',
-    content: error || parsed.content || 'Codex nao retornou conteudo.',
-    rawOutput: [result.stdout, result.stderr].filter(Boolean).join('\n'),
-    exitCode: result.exitCode,
-    error,
-    metadata: { ...parsed.metadata, command: 'codex', sandbox, cwd },
-  };
+  return runAgent({ ...request, agent: 'codex' }, options);
 }
 
 export async function runClaude(request: AgentRunRequest, options: AgentRunOptions = {}): Promise<AgentRunResult> {
-  const cwd = resolveWorkingDirectory(request);
-  const args = request.allowWrites
-    ? [
-        '-p',
-        '--output-format',
-        'stream-json',
-        '--verbose',
-        '--include-partial-messages',
-        '--no-session-persistence',
-        '--dangerously-skip-permissions',
-      ]
-    : ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--no-session-persistence'];
-  const result = await runCommand('claude', args, cwd, {
-    ...options,
-    input: request.prompt,
-    displayArgs: ['-p', '<prompt-stdin>', ...args.slice(1)],
-  });
-  const parsedOutput = parseJsonLinesOutput(result.stdout);
-  let content = parsedOutput.content;
-  let metadata: Record<string, unknown> | undefined;
-  let cliError: string | undefined;
-
-  try {
-    const parsed = JSON.parse(result.stdout);
-    metadata = parsed && typeof parsed === 'object' ? { ...parsedOutput.metadata, ...(parsed as Record<string, unknown>) } : parsedOutput.metadata;
-    if ((parsed as Record<string, unknown>)?.is_error === true && content) {
-      cliError = content;
-    }
-  } catch {
-    metadata = parsedOutput.metadata;
-  }
-  if (!cliError && hasJsonLineError(metadata) && content) {
-    cliError = content;
-  }
-
-  const error = result.error ?? cliError ?? (result.exitCode === 0 ? undefined : result.stderr.trim() || 'Claude falhou.');
-
-  return {
-    agent: 'claude',
-    content: error || content || 'Claude nao retornou conteudo.',
-    rawOutput: [result.stdout, result.stderr].filter(Boolean).join('\n'),
-    exitCode: result.exitCode,
-    error,
-    metadata: { ...metadata, command: 'claude', permissionMode: request.allowWrites ? 'dangerous-skip' : 'default', cwd },
-  };
-}
-
-export async function runAgent(request: AgentRunRequest, options: AgentRunOptions = {}): Promise<AgentRunResult> {
-  return request.agent === 'codex' ? runCodex(request, options) : runClaude(request, options);
+  return runAgent({ ...request, agent: 'claude' }, options);
 }

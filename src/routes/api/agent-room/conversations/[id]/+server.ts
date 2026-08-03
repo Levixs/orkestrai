@@ -1,11 +1,11 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { agentRoomRepository } from '$lib/modules/agent-room/infrastructure/db.js';
+import { agentRoomRepository } from '$lib/modules/agent-room/infrastructure/repositories/AgentRoomRepository.js';
 
 export const PATCH: RequestHandler = async ({ params, request }) => {
   try {
     const body = await request.json().catch(() => ({}));
     const title = String(body.title ?? '').trim();
-    const conversation = agentRoomRepository.renameConversation(params.id, title);
+    const conversation = await agentRoomRepository.renameConversation(params.id!, title);
 
     if (!conversation) {
       return json({ error: 'Conversa nao encontrada.' }, { status: 404 });
@@ -18,7 +18,7 @@ export const PATCH: RequestHandler = async ({ params, request }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params }) => {
-  const deleted = agentRoomRepository.deleteConversation(params.id);
+  const deleted = await agentRoomRepository.deleteConversation(params.id!);
 
   if (!deleted) {
     return json({ error: 'Conversa nao encontrada.' }, { status: 404 });

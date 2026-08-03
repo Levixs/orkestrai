@@ -71,3 +71,27 @@ export function listProjectDirectories() {
     .filter((project): project is { name: string; path: string; createdAt: string } => Boolean(project))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
+
+/**
+ * Shell padrao por plataforma. No Windows, WSL e preferido quando disponivel
+ * (agentes CLI de unix rodam melhor), com fallback para PowerShell.
+ */
+export function defaultShell(options: { preferWsl?: boolean } = {}): string {
+  if (process.platform === 'win32') {
+    return options.preferWsl === false ? 'powershell.exe' : 'wsl.exe';
+  }
+  return process.env.SHELL ?? '/bin/zsh';
+}
+
+/** Comandos de shell disponiveis por plataforma (para presets da UI). */
+export function shellPresets(): Array<{ command: string; label: string }> {
+  if (process.platform === 'win32') {
+    return [
+      { command: 'wsl.exe', label: 'WSL' },
+      { command: '"C:\\Program Files\\Git\\bin\\bash.exe" -l', label: 'Git Bash' },
+      { command: 'powershell.exe', label: 'PowerShell' },
+      { command: 'cmd.exe', label: 'CMD' },
+    ];
+  }
+  return [{ command: process.env.SHELL ?? '/bin/zsh', label: 'Shell' }];
+}
