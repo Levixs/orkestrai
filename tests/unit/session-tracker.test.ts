@@ -79,9 +79,11 @@ describe('AgentSessionTracker', () => {
 });
 
 describe('resume exato dos adapters', () => {
-  it('claude resume exato com id e --continue sem id', () => {
+  it('claude resume exato com id e fresh sem id', () => {
     expect(claudeAdapter.resumeArgs('abc-123')).toEqual(['--resume', 'abc-123']);
-    expect(claudeAdapter.resumeArgs()).toEqual(['--continue']);
+    // Sem id: comeca fresco — "claude --continue" sai com erro quando nao ha
+    // conversa no diretorio (ex.: agente novo que nunca recebeu mensagem).
+    expect(claudeAdapter.resumeArgs()).toEqual([]);
   });
 
   it('codex resume exato com id e resume --last sem id', () => {
