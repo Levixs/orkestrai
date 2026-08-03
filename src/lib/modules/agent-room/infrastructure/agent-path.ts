@@ -105,6 +105,12 @@ export function agentEnv(): Record<string, string> {
   const shimDir = env.ORKESTRAI_SHIM_DIR ? [env.ORKESTRAI_SHIM_DIR] : [];
   const merged = [...shimDir, ...current, ...windowsRegistryPathDirs(), ...EXTRA_PATH_DIRS, ...nvmBins()];
   env.PATH = [...new Set(merged.filter(Boolean))].join(delimiter);
+  // Fallback a prova de shell: caminho completo da CLI. No Windows o shim .cmd
+  // so resolve via PATHEXT (cmd/powershell) — agents que spawnam direto usam
+  // `node $ORKESTRAI_CLI` (a skill ensina isso).
+  if (!env.ORKESTRAI_CLI) {
+    env.ORKESTRAI_CLI = resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+  }
   return env;
 }
 

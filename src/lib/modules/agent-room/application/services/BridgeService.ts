@@ -466,6 +466,7 @@ description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com 
 
 Voce esta rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` da acesso a ponte.
 Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce e, entao \`--from\` e \`--agent\` sao opcionais.
+Se \`orkestrai\` nao resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), chame a CLI DIRETO pelo node: \`node "$ORKESTRAI_CLI" ...\` (Linux/macOS), \`node %ORKESTRAI_CLI% ...\` (cmd.exe) ou \`node $env:ORKESTRAI_CLI ...\` (PowerShell) — o caminho completo da CLI esta na variavel de ambiente ORKESTRAI_CLI e funciona sempre, sem depender de PATH.
 
 - \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
