@@ -1,110 +1,80 @@
-# Orkestrai Agent Room
+# Orkestrai
 
-Aplicativo local para conversar com dois agentes no mesmo ambiente:
+**Orquestre times de agentes de IA num canvas visual.** Orkestrai é um app
+desktop (Electron) para macOS, Windows e Linux onde você monta equipes de
+agentes — Claude Code, Codex e Kimi — e os vê trabalhar em tempo real:
+terminais vivos, notas compartilhadas, kanban, portais de browser e andares
+(git worktrees) — tudo num canvas só.
 
-- Usuario humano
-- Codex via `codex exec`
-- Claude via `claude -p --output-format json`
+## O que ele faz
 
-O MVP usa Svelar/SvelteKit, SQLite local e adaptadores baseados em `spawn`, sem montar comandos por string de shell.
+- **Canvas multi-agente** (Svelte Flow): arraste terminais PTY reais (shell,
+  Claude, Codex, Kimi), notas, portais (browser embutido), quadro de tarefas,
+  loops, árvore de arquivos e formas. Conexões com cordas elásticas mostram
+  quem fala com quem — e mudam de cor quando a conversa acontece.
+- **Modo Maestro**: marque um agente como líder e ele orquestra de verdade —
+  propõe o time, recruta (`orkestrai recruit`), distribui tarefas no kanban,
+  escreve briefings em notas conectadas ao time, cria portais para testar o
+  resultado e dispensa o que não precisa mais. Agentes trabalham em andares
+  isolados (worktrees) e o líder integra com preview de conflitos.
+- **Ponte `orkestrai` (CLI)**: os agentes conversam entre si e com o canvas
+  (`ask`, `note`, `task`, `portal`, `floor`, `notify`...) — nasce instalada e
+  autenticada em todo workspace, sem configurar nada.
+- **Multi-workspace**: vários projetos abertos ao mesmo tempo, com indicador
+  de atividade e notificações nativas quando algo termina ou precisa de você.
+- **Ditado por voz offline** (whisper.cpp WASM) com atalho configurável —
+  nada sai da sua máquina.
+- **Marketplace de skills**: busque e instale skills do skills.sh direto no
+  workspace.
+- **Painel de usage**: cota de cada provider (5h/semanal, plano, data de
+  reset), ao vivo, sem configurar nada — lê as credenciais locais das CLIs.
+- **Resume de contexto**: feche o app e volte — cada terminal retoma a sua
+  conversa exata (session-id real da CLI, por terminal).
+- **Rotinas e roles**: agende prompts recorrentes para agentes e atribua
+  responsabilidades reutilizáveis.
 
 ## Requisitos
 
-- Node.js 20+
-- npm 10+
-- Codex CLI instalado para respostas do Codex
-- Claude Code CLI instalado para respostas do Claude
+- Node.js 24+ e npm 11+
+- As CLIs dos agentes que você quiser usar: Claude Code, Codex CLI, Kimi Code
+- Para o app desktop: nada mais — o empacotado usa só prebuilds (sem MSVC,
+  sem Xcode CLI tools além do Git)
 
-O app detecta CLIs ausentes na barra lateral e tambem registra o erro quando uma execucao falha.
-
-## Instalar
+## Rodar em desenvolvimento
 
 ```bash
 npm install
-npm run migrate
+npm run dev            # web (SvelteKit) em http://localhost:5173
+npm run electron:dev   # app desktop (build + Electron)
 ```
 
-O banco interno do Svelar fica em `database.db`. O historico do Agent Room fica em `data/app.sqlite`.
+## Empacotar
 
-## Rodar
+| Plataforma | Comando | Artefato |
+|---|---|---|
+| macOS (Apple Silicon) | `npx electron-builder --mac dmg` | `release/Orkestrai-*-arm64.dmg` |
+| macOS (Intel) | `npx electron-builder --mac dmg --x64` | `release/Orkestrai-*.dmg` |
+| Windows | `scripts/package-cross.sh windows` (Docker) ou build nativo — ver `docs/build-windows.md` | NSIS / zip |
+| Linux | `scripts/package-cross.sh linux` (Docker) | AppImage |
+
+Detalhes e decisões de empacotamento (Electron pinado, `asar` off, ícones,
+assinatura): `docs/build-windows.md` e `AGENTS.md`.
+
+## Testes
 
 ```bash
-npm run dev
+npm test              # vitest (unit + feature)
+npx playwright test   # e2e contra o build de produção
 ```
 
-Abra `http://localhost:5173`.
+## Stack
 
-## Como Usar
+SvelteKit 5 (runes) + Svelar (ORM, migrations, DDD modular) + SQLite
+(better-sqlite3) + node-pty + Electron 42 + @xyflow/svelte + shadcn-svelte +
+Superforms/Zod.
 
-1. Crie ou selecione uma conversa.
-2. Escreva uma mensagem no chat.
-3. Escolha o estilo: Chat, Planejar, Implementar ou Revisar.
-4. Escolha o alvo: Codex, Claude, Sala 3 vias ou um fluxo de revisao.
-5. Envie.
+## Documentação
 
-Na `Sala 3 vias`, Codex responde primeiro e Claude responde em seguida ja vendo a fala do Codex. Na proxima mensagem, ambos recebem o historico recente compartilhado, incluindo o que usuario, Codex e Claude disseram antes. O botao `Debater` roda uma rodada controlada de quatro turnos com historico atualizado entre os agentes.
-
-O botao `Loop` inicia um Ralph loop: Codex trabalha no objetivo, Claude revisa, e novas rodadas continuam ate os dois finalizarem a mesma rodada com `STATUS: DONE` ou ate atingir o limite configurado na tela. Se qualquer agente responder `STATUS: CONTINUE`, o loop segue com o historico atualizado.
-
-O historico persiste em `data/app.sqlite` e volta ao recarregar a pagina.
-Use os icones de lapis e lixeira na barra lateral para renomear ou apagar uma conversa.
-Durante `Enviar`, `Debater` e `Loop`, a tela mostra um painel de atividade ao vivo com stdout/stderr das CLIs e eventos de rodada. O botao `Parar` aborta a requisicao e o backend tenta encerrar a arvore de processos da CLI.
-
-## Ditado Local Com Whisper WASM
-
-O composer suporta dois motores de ditado:
-
-- `Reconhecimento do navegador`: usa a API nativa de fala do browser e e o padrao por ser mais estavel para hotkey.
-- `Whisper WASM`: roda `whisper.cpp` no navegador, sem backend de transcricao, mas pode falhar em navegadores que quebram workers WASM.
-
-- Aperte `Alt+Espaco` para iniciar a gravacao.
-- Fale normalmente.
-- Aperte `Alt+Espaco` de novo para parar.
-- O texto transcrito entra no campo da mensagem, sem envio automatico.
-- Nao e necessario clicar no campo antes; quando a transcricao chega, o campo recebe foco.
-- Use o seletor `Auto PT/EN`, `PT-BR` ou `EN` antes de gravar.
-- No modo `Reconhecimento do navegador`, o microfone e definido pelo navegador/sistema.
-- No modo `Whisper WASM`, use o seletor `Microfone` para escolher a entrada, por exemplo um headset JBL em vez do microfone padrao/iPhone.
-- A ultima transcricao tambem aparece abaixo dos controles com um botao `Inserir`, caso o texto tenha sido reconhecido mas nao tenha entrado automaticamente no campo.
-
-No primeiro uso do `Whisper WASM`, o navegador baixa e cacheia o modelo `base-q5_1` em IndexedDB. `Auto PT/EN` e `PT-BR` usam o modelo multilingual; `EN` usa o modelo ingles. O processamento roda localmente no browser e exige suporte a `SharedArrayBuffer`/Cross-Origin Isolation. A transcricao usa 1 thread para evitar falhas de worker/pthread em navegadores que aceitam WASM mas quebram no modo multithread.
-
-Observacao: alguns navegadores so mostram os nomes reais dos microfones depois que voce concede permissao de microfone pela primeira vez. Se aparecer `Microfone 1`, inicie/pare uma gravacao curta, depois abra o seletor de novo.
-
-## Projetos E Escrita
-
-Projetos sao criados dentro de `projects/`.
-
-Chamadas comuns usam sandbox `read-only`. Para habilitar full access:
-
-1. Crie ou selecione um projeto.
-2. Ative `Full access no projeto`.
-3. Confirme o dialogo do navegador.
-
-Com full access, o backend ainda exige um projeto selecionado e inicia as CLIs dentro de `projects/`, mas remove bloqueios das CLIs:
-
-- Codex usa `codex exec --dangerously-bypass-approvals-and-sandbox`.
-- Claude usa `claude -p --dangerously-skip-permissions`.
-
-## Endpoints Principais
-
-- `GET /api/agent-room/conversations`
-- `POST /api/agent-room/conversations`
-- `PATCH /api/agent-room/conversations/:id`
-- `DELETE /api/agent-room/conversations/:id`
-- `GET /api/agent-room/conversations/:id/messages`
-- `POST /api/agent-room/conversations/:id/run-agent`
-- `POST /api/agent-room/conversations/:id/debate`
-- `POST /api/agent-room/conversations/:id/loop`
-- `GET /api/agent-room/projects`
-- `POST /api/agent-room/projects`
-- `GET /api/agent-room/status`
-
-## Arquivos Importantes
-
-- `src/lib/modules/agent-room/application/orchestrator.ts`
-- `src/lib/modules/agent-room/application/agents.ts`
-- `src/lib/modules/agent-room/infrastructure/db.ts`
-- `src/routes/+page.svelte`
-- `data/app.sqlite`
-- `projects/`
+- `AGENTS.md` — convenções do projeto (arquitetura, bridge, canvas, Electron)
+- `docs/build-windows.md` — build nativo no Windows
+- `docs/plano-maestro.md` — plano mestre do produto
