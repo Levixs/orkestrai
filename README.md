@@ -22,11 +22,10 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
   autenticada em todo workspace, sem configurar nada.
 - **Multi-workspace**: vários projetos abertos ao mesmo tempo, com indicador
   de atividade e notificações nativas quando algo termina ou precisa de você.
-- **Ditado e voz de volta em pt-BR 100% locais**: motor **embarcado** por
-  padrão (sherpa-onnx nativo — STT Parakeet-TDT v3 + TTS Kokoro), **sem
-  Docker e sem Python**. ~740 MB de modelos baixados uma vez (modal pede
-  confirmação). Sidecar Docker (faster-whisper/Chatterbox) segue como opção
-  avançada em Configurações.
+- **Ditado e voz de volta em pt-BR, 100% locais**: fale com o ditado por voz
+  (atalho configurável) e ouça as respostas dos agentes em voz alta. Na
+  primeira vez o app baixa ~740 MB uma única vez (pede confirmação antes).
+  Se preferir, use um serviço de voz externo seu em Configurações.
 - **Marketplace de skills**: busque e instale skills do skills.sh direto no
   workspace.
 - **Painel de usage**: cota de cada provider (5h/semanal, plano, data de
@@ -50,14 +49,10 @@ npm install
 npm run dev            # web (SvelteKit) em http://localhost:5173
 npm run electron:dev   # app desktop (build + Electron)
 
-# Voz: por padrao NAO precisa de sidecar — o motor e embarcado (nativo).
-# Sidecar Docker (opcao avancada, faster-whisper/Chatterbox/Parakeet):
-cd /caminho/para/voiceproject && docker compose up --build
-# e em Configuracoes > Voz troque o motor para "Sidecar Docker".
-#
-# ATENCAO — download de modelos na 1a vez (~740 MB para os dados do app):
-# ~490 MB STT (Parakeet-TDT v3 int8) + ~250 MB TTS (Kokoro pt-BR).
-# O app mostra uma modal de confirmacao ANTES de baixar — nada baixa sem OK.
+# Voz (ditado + agentes falando em pt-BR): funciona out-of-the-box.
+# Na 1a vez o app baixa ~740 MB uma unica vez (pergunta antes) e depois
+# tudo roda local. Para usar um servico de voz externo (Docker), veja
+# Configuracoes > Voz e o voice-stack em AGENTS.md (doc de desenvolvedor).
 ```
 
 ## Empacotar
