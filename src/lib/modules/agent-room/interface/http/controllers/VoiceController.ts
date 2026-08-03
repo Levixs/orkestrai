@@ -42,4 +42,8 @@ export class VoiceController extends Controller {
       return this.errorResponse(error, 'Falha na sintese de voz.');
     }
   }
+
+  private errorResponse(error: unknown, fallback: string, status = 400) {
+    return this.json({ error: error instanceof Error ? error.message : fallback }, status);
+  }
 }

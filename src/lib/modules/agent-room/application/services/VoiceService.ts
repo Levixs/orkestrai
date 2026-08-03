@@ -3,7 +3,10 @@ import { settingsService } from './SettingsService.js';
 const DEFAULT_VOICE_STACK_URL = 'http://localhost:8000';
 const DEFAULT_STT_MODEL = 'whisper-large-v3-turbo';
 const DEFAULT_TTS_VOICE = 'pf_dora';
-const TIMEOUT_MS = 60_000;
+/** STT: primeiro uso baixa o modelo (~1,5 GB) — timeout generoso. */
+const STT_TIMEOUT_MS = 600_000;
+/** TTS: modelo menor (Kokoro ~300 MB no 1o uso). */
+const TTS_TIMEOUT_MS = 300_000;
 
 export type VoiceHealth = { ok: boolean; url: string; detail?: string };
 
@@ -57,7 +60,7 @@ export class VoiceService {
       response = await this.fetchFn(`${url}/v1/audio/transcriptions`, {
         method: 'POST',
         body: form,
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(STT_TIMEOUT_MS),
       });
     } catch (error) {
       throw new Error(this.offlineMessage(url, error));
@@ -79,7 +82,7 @@ export class VoiceService {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ model: 'kokoro', voice: voice ?? (await this.ttsVoice()), input: text.slice(0, 2_000) }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
       });
     } catch (error) {
       throw new Error(this.offlineMessage(url, error));
