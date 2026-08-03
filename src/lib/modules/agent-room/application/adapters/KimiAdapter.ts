@@ -1,16 +1,5 @@
-import { execFile } from 'node:child_process';
-
-function probeVersion(command: string): Promise<{ installed: boolean; detail?: string }> {
-  return new Promise((resolve) => {
-    execFile(command, ['--version'], { timeout: 8_000, encoding: 'utf8' }, (error, stdout, stderr) => {
-      resolve({
-        installed: !error,
-        detail: error ? String(error.message).split('\n')[0] : String(stdout || stderr).trim(),
-      });
-    });
-  });
-}
 import type { AgentModelOption, AgentRunRequest, ModelEffort } from '../../domain/types.js';
+import { probeCliVersion } from '../../infrastructure/agent-path.js';
 import type { AgentAdapter, AgentCommandSpec, AgentDetection, ParsedAgentOutput } from './types.js';
 
 const KIMI_FALLBACK_OPTIONS: AgentModelOption[] = [
@@ -51,7 +40,7 @@ export const kimiAdapter: AgentAdapter = {
   supportsResume: true,
 
   async detect(): Promise<AgentDetection> {
-    return probeVersion('kimi');
+    return probeCliVersion('kimi');
   },
 
   buildCommand(request: AgentRunRequest): AgentCommandSpec {

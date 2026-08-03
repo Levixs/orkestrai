@@ -6,6 +6,7 @@ import { uuidv7 } from '@beeblock/svelar/support';
 import type { Floor, HookCommand, Workspace, WorkspaceHooks } from '../../domain/types.js';
 import { AgentFloor } from '../../domain/models/AgentFloor.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
+import { agentEnv, IS_WIN } from '../../infrastructure/agent-path.js';
 
 const execFileAsync = promisify(execFile);
 const GIT_TIMEOUT_MS = 60_000;
@@ -58,7 +59,7 @@ export class FloorService {
   }
 
   private async git(cwd: string, args: string[]): Promise<string> {
-    const { stdout } = await execFileAsync('git', args, { cwd, timeout: GIT_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 });
+    const { stdout } = await execFileAsync('git', args, { cwd, env: agentEnv(), timeout: GIT_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 });
     return stdout;
   }
 
@@ -256,7 +257,7 @@ export class FloorService {
   /** Executa comandos de hook no diretorio do andar com as variaveis $ORKESTRAI_*. */
   async runHooks(floor: Floor, workspace: Workspace, commands: HookCommand[]): Promise<Array<{ command: string; ok: boolean; output: string }>> {
     const env = {
-      ...process.env,
+      ...agentEnv(),
       ORKESTRAI_FLOOR_NAME: floor.name,
       ORKESTRAI_BRANCH_NAME: floor.branch,
       ORKESTRAI_FLOOR_PATH: floor.path,
@@ -266,10 +267,15 @@ export class FloorService {
     const results = [];
     for (const { command } of commands) {
       try {
-        const { stdout, stderr } = await execFileAsync('/bin/sh', ['-c', command], {
+        // Windows nao tem /bin/sh: roda os hooks pelo cmd.exe (Unix: /bin/sh -c).
+        const [shell, shellArgs] = IS_WIN
+          ? [process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', command]]
+          : ['/bin/sh', ['-c', command]];
+        const { stdout, stderr } = await execFileAsync(shell, shellArgs, {
           cwd: floor.path,
           env,
           timeout: 120_000,
+          windowsHide: true,
         });
         results.push({ command, ok: true, output: (stdout + stderr).trim() });
       } catch (error) {

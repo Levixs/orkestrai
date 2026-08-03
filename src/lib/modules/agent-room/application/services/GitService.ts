@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
+import { agentEnv } from '../../infrastructure/agent-path.js';
 
 const execFileAsync = promisify(execFile);
 const GIT_TIMEOUT_MS = 15_000;
@@ -23,7 +24,7 @@ export class GitService {
   }
 
   private async git(cwd: string, args: string[]): Promise<string> {
-    const { stdout } = await execFileAsync('git', args, { cwd, timeout: GIT_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 });
+    const { stdout } = await execFileAsync('git', args, { cwd, env: agentEnv(), timeout: GIT_TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024 });
     return stdout;
   }
 

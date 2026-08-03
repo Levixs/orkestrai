@@ -103,10 +103,12 @@ export class AgentSessionTracker {
     }
   }
 
-  // ~/.claude/projects/<path-com-hifens>/<sessionId>.jsonl
+  // ~/.claude/projects/<slug>/<sessionId>.jsonl — o claude troca TODO caractere
+  // nao-alfanumerico por '-' (C:\a.b_c -> C--a-b-c no Windows; /Users/x ->
+  // -Users-x no macOS). So ':' '/' '\' nao basta: cobre '.', '_', espaco etc.
   private findClaudeSession(cwd: string, since: number, exclude: Set<string>, strategy: 'oldest' | 'newest'): string | null {
-    const slug = this.realCwd(cwd).replace(/[/\\]/g, '-').replace(/^-/, '');
-    const dir = join(homedir(), '.claude', 'projects', `-${slug}`);
+    const slug = this.realCwd(cwd).replace(/[^a-zA-Z0-9]/g, '-');
+    const dir = join(homedir(), '.claude', 'projects', slug);
     const pick = strategy === 'oldest' ? this.oldestFile : this.newestFile;
     const found = pick.call(this, dir, since, (name) => name.endsWith('.jsonl') && !exclude.has(name.replace(/\.jsonl$/, '')));
     return found ? found.replace(/\.jsonl$/, '') : null;

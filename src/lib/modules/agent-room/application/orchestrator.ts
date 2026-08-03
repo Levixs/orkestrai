@@ -20,6 +20,7 @@ import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { agentRoomRepository } from '../infrastructure/repositories/AgentRoomRepository.js';
 import { assertWritableProjectPath, projectsRoot } from '../infrastructure/workspace.js';
+import { agentEnv } from '../infrastructure/agent-path.js';
 import { runAgent, type AgentCommandProgressEvent } from './agents.js';
 import { hasAgentAdapter } from './adapters/registry.js';
 import { CreateBacklogFromLeaderPlanAction } from './actions/CreateBacklogFromLeaderPlanAction.js';
@@ -850,6 +851,7 @@ function isGitProject(path: string) {
   const result = spawnSync('git', ['-C', path, 'rev-parse', '--is-inside-work-tree'], {
     encoding: 'utf8',
     shell: false,
+    env: agentEnv(),
   });
   return result.status === 0 && result.stdout.trim() === 'true';
 }
@@ -873,6 +875,7 @@ function prepareExecutionDirectory(input: {
   const add = spawnSync('git', ['-C', projectPath, 'worktree', 'add', '-B', branch, worktreePath, 'HEAD'], {
     encoding: 'utf8',
     shell: false,
+    env: agentEnv(),
   });
   if (add.status !== 0) {
     throw new Error(add.stderr.trim() || 'Falha ao criar worktree para execucao paralela.');
@@ -882,16 +885,17 @@ function prepareExecutionDirectory(input: {
     cwd: worktreePath,
     branch,
     cleanup: () => {
-      spawnSync('git', ['-C', projectPath, 'worktree', 'remove', '--force', worktreePath], { shell: false });
-      spawnSync('git', ['-C', projectPath, 'branch', '-D', branch], { shell: false });
+      spawnSync('git', ['-C', projectPath, 'worktree', 'remove', '--force', worktreePath], { shell: false, env: agentEnv() });
+      spawnSync('git', ['-C', projectPath, 'branch', '-D', branch], { shell: false, env: agentEnv() });
     },
     merge: () => {
       const merge = spawnSync('git', ['-C', projectPath, 'merge', '--no-ff', '--no-edit', branch], {
         encoding: 'utf8',
         shell: false,
+        env: agentEnv(),
       });
       if (merge.status !== 0) {
-        spawnSync('git', ['-C', projectPath, 'merge', '--abort'], { shell: false });
+        spawnSync('git', ['-C', projectPath, 'merge', '--abort'], { shell: false, env: agentEnv() });
         return merge.stderr.trim() || merge.stdout.trim() || 'Conflito ao integrar worktree.';
       }
       return null;
