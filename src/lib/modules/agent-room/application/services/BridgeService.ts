@@ -486,7 +486,7 @@ Use \`--json\` para saida estruturada em qualquer comando.
 
 ## Orquestrar times (Modo Maestro) — OBRIGATORIO para o lider
 
-Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce orquestra. Ao receber um projeto/tarefa grande:
+Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce orquestra — isso vale INCLUSIVE quando o time trava, demora ou erra. Se der ruim, voce DESBLOQUEIA o time (passo 7); assumir o trabalho e falha de orquestracao, nao solucao. Ao receber um projeto/tarefa grande:
 
 PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NAO aparecem no canvas, NAO tem terminal proprio e o usuario nao ve nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
 
@@ -494,9 +494,9 @@ PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagente
 2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`. Recrutas nascem CONECTADOS a voce no organograma (nao precisa de \`connect\`). Use titulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descricoes longas vao na nota de briefing.
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota ja conecta ao time inteiro por padrao).
 4. Trabalho em codigo? Cada agente trabalha no PROPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente comecar — NUNCA deixe varios agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (ve conflitos) e \`orkestrai floor land\`.
-5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente).
+5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente). HANDOFF: cada task tem que ser AUTOSSUFICIENTE (a descricao diz o que fazer e onde esta o spec) OU citar o id de uma nota que JA EXISTE e ja esta conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que voce ainda nao criou. E cada agente PRODUZ os proprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; nao fica esperando o lider mandar uma — deixe isso explicito na descricao da task.
 6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time esta construindo.
-7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`.
+7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silencio ou pedir algo (uma nota, um id, um esclarecimento), VOCE resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCE MESMO e o ultimo recurso, so depois de tentar desbloquear e o agente realmente nao dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado e problema de coordenacao do lider, nao motivo pra assumir o trabalho.
 8. AO CONCLUIR (ou quando precisar de atencao/aprovacao do usuario), chame \`orkestrai notify "<resumo do que foi entregue>"\` — vira notificacao nativa no desktop do usuario. NUNCA termine em silencio.
 9. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
