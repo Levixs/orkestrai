@@ -217,6 +217,8 @@
       Ditado e voz de volta rodam no sidecar local (API compativel com OpenAI, STT
       faster-whisper + TTS Kokoro com vozes pt-BR). Suba com
       <code>cd voice-stack && docker compose up --build</code>.
+      <strong>Na 1a vez o sidecar baixa ~2 GB de modelos</strong> (1,6 GB STT + 350 MB TTS)
+      no volume do Docker — o app pergunta antes de baixar. Depois fica em cache.
       Porta 8000 ocupada? Suba em outra com
       <code>VOICE_PORT=8001 docker compose up --build</code> e aponte a URL aqui
       para <code>http://localhost:8001</code>.

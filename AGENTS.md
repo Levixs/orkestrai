@@ -37,6 +37,8 @@
 ## Voice (dictation + TTS)
 
 - Dictation and speak-back run through the **voice-stack sidecar** (OpenAI-compatible local API, STT faster-whisper/Parakeet + TTS Kokoro pt-BR), NOT in the browser — the whisper.cpp WASM approach was removed (unstable in Electron's Chromium).
+- **Model download (~2 GB on first use)**: STT ~1.6 GB + TTS ~350 MB (+ ~1.2 GB Parakeet if used) land in the sidecar's Docker volume. The app MUST ask first — `VoiceConfirmDialog.svelte` gates the first dictation/voice-toggle via the `voiceModelsConfirmed` setting; only proceeds after the user confirms.
+- The sidecar port defaults to 8000 and is configurable with `VOICE_PORT` in its compose; the app side uses the `voiceStackUrl` setting.
 - `VoiceService` (server) proxies to the sidecar via `/api/agent-room/voice/{transcribe,speak,health}` — the renderer never calls the sidecar directly (no CORS, URL is a setting: `voiceStackUrl`, default `http://localhost:8000`; also `voiceSttModel`, `voiceTtsVoice` = Kokoro pt-BR presets like `pf_dora`).
 - The dictation hotkey is reactive: `app-settings.svelte.ts` is a shared store (`getAppSettings`/`invalidateAppSettings`) — terminals re-read it; the settings page invalidates it on save. Do not fetch settings per-component at mount.
 - Speak-back: `BridgeService.ask` broadcasts `agentReply` on the PTY WS; each `TerminalNode` forwards it and `TerminalCanvasNode` speaks it (toggle in the node header) via `voice-speech.ts`.

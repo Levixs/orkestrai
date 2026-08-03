@@ -7,6 +7,7 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import * as Select from '$lib/components/ui/select';
   import HeaderIconButton from './canvas/HeaderIconButton.svelte';
+  import VoiceConfirmDialog from './VoiceConfirmDialog.svelte';
   import '@xterm/xterm/css/xterm.css';
   import { TERMINAL_THEMES, type TerminalThemeName } from './terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
@@ -61,6 +62,7 @@
   let dictateLang = $state<'auto' | 'pt' | 'en'>('pt');
   let dictateError = $state('');
   let dictateStatus = $state('');
+  let voiceConfirmOpen = $state(false);
   /** Atalho REATIVO da store global (mudanca em Configuracoes aplica na hora). */
   const dictateHotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
   let mediaRecorder: MediaRecorder | null = null;
@@ -83,6 +85,11 @@
       return;
     }
     if (transcribing) return;
+    // 1o uso: confirma o download dos modelos (~2 GB) ANTES de gravar.
+    if (appSettingsStore.values.voiceModelsConfirmed !== 'true') {
+      voiceConfirmOpen = true;
+      return;
+    }
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
@@ -395,6 +402,7 @@
     <p class="terminal-status">Processo finalizado (codigo {exited}).</p>
   {/if}
   <div class="terminal-container" bind:this={container} style:--terminal-padding="{terminalPaddingPx}px"></div>
+  <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => toggleDictation()} onCancel={() => {}} />
 </div>
 
 <style>

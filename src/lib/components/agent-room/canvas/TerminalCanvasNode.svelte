@@ -6,6 +6,8 @@
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
   import TerminalNode from '../TerminalNode.svelte';
+  import VoiceConfirmDialog from '../VoiceConfirmDialog.svelte';
+  import { appSettingsStore } from '../app-settings.svelte.js';
   import { speakText } from '../voice-speech.js';
   import type { TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
 
@@ -176,6 +178,20 @@
   /** Le respostas de asks destinadas a este no em voz alta (toggle no header). */
   let voiceOn = $state(false);
   let voiceError = $state('');
+  let voiceConfirmOpen = $state(false);
+
+  function toggleVoice() {
+    if (voiceOn) {
+      voiceOn = false;
+      return;
+    }
+    // 1o uso: confirma o download dos modelos (~2 GB) antes de ligar.
+    if (appSettingsStore.values.voiceModelsConfirmed !== 'true') {
+      voiceConfirmOpen = true;
+      return;
+    }
+    voiceOn = true;
+  }
 
   function handleAgentReply(payload: { to: string; from: string | null; text: string }) {
     if (payload.to !== id || !voiceOn || !payload.text.trim()) return;
@@ -253,7 +269,7 @@
     </DropdownMenu.Root>
     <IconAction label="Trocar tema" onclick={() => data.onCycleTheme?.(id)}>
       <SwatchBook size={13} /></IconAction>
-    <IconAction label={voiceOn ? 'Voz ativada (le respostas em voz alta)' : 'Ativar voz (TTS pt-BR)'} active={voiceOn} onclick={() => (voiceOn = !voiceOn)}>
+    <IconAction label={voiceOn ? 'Voz ativada (le respostas em voz alta)' : 'Ativar voz (TTS pt-BR)'} active={voiceOn} onclick={toggleVoice}>
       {#if voiceOn}<Volume2 size={13} />{:else}<VolumeX size={13} />{/if}
     </IconAction>
     <button
@@ -317,6 +333,7 @@
   {#if voiceError}
     <p class="voice-error">{voiceError}</p>
   {/if}
+  <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => (voiceOn = true)} onCancel={() => {}} />
 
   <div class="composer nodrag">
     <input

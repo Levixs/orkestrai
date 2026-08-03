@@ -52,6 +52,12 @@ npm run electron:dev   # app desktop (build + Electron)
 cd /caminho/para/voiceproject && docker compose up --build
 # API em http://localhost:8000 (health: /health). Configuravel em
 # Configuracoes > Voz (URL, modelo STT, voz TTS + botao "Testar conexao").
+#
+# ATENCAO — download de modelos na 1a vez (~2 GB no volume do Docker):
+# ~1,6 GB STT (faster-whisper large-v3-turbo) + ~350 MB TTS (Kokoro pt-BR)
+# (+ ~1,2 GB se usar o Parakeet). O app mostra uma modal de confirmacao
+# ANTES do primeiro download — nada baixa sem o seu OK. Depois do cache,
+# tudo roda local e rapido.
 ```
 
 ## Empacotar
