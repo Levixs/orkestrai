@@ -1,5 +1,5 @@
 import { settingsService } from './SettingsService.js';
-import { embeddedModelsReady, speakPcm, transcribePcm, wavToPcm16, pcmToWav, EMBEDDED_MODELS_SIZE_MB } from '../../infrastructure/voice/EmbeddedVoice.js';
+import { embeddedModelsReady, speakPcm, transcribePcm, wavToPcm16, pcmToWav } from '../../infrastructure/voice/EmbeddedVoice.js';
 
 const DEFAULT_VOICE_STACK_URL = 'http://localhost:8000';
 const DEFAULT_STT_MODEL = 'whisper-large-v3-turbo';
@@ -42,9 +42,7 @@ export class VoiceService {
       return {
         ok: true,
         url: 'embedded',
-        detail: embeddedModelsReady()
-          ? 'nativo (sherpa-onnx, modelos em cache)'
-          : `nativo (sherpa-onnx) — baixa ~${EMBEDDED_MODELS_SIZE_MB} MB de modelos na 1a vez`,
+        detail: embeddedModelsReady() ? 'motor local ativo' : 'motor local — baixa ~740 MB na 1a vez',
       };
     }
     const url = await this.baseUrl();

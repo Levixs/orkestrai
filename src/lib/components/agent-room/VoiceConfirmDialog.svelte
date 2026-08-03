@@ -40,20 +40,13 @@
 <AlertDialog.Root bind:open>
   <AlertDialog.Content>
     <AlertDialog.Header>
-      <AlertDialog.Title>Download dos modelos de voz (~740 MB)</AlertDialog.Title>
+      <AlertDialog.Title>Download de voz (~740 MB)</AlertDialog.Title>
       <AlertDialog.Description>
-        A voz roda embarcada no app (nativo, sem Docker e sem Python). Na primeira
-        vez, o app baixa os modelos uma unica vez:
+        Para o ditado e a fala funcionarem, o app precisa baixar ~740 MB uma
+        unica vez. Depois disso tudo roda local e rapido.
       </AlertDialog.Description>
     </AlertDialog.Header>
-    <ul class="model-list">
-      <li><strong>~490 MB</strong> — transcricao (Parakeet-TDT v3, pt-BR/EN)</li>
-      <li><strong>~250 MB</strong> — vozes pt-BR (Kokoro TTS)</li>
-    </ul>
-    <p class="model-note">
-      E um download unico — depois fica tudo em cache e as chamadas sao locais e
-      rapidas. Quer continuar agora?
-    </p>
+    <p class="model-note">Quer baixar agora e continuar?</p>
     <AlertDialog.Footer>
       <AlertDialog.Cancel onclick={cancel}>Agora nao</AlertDialog.Cancel>
       <AlertDialog.Action disabled={saving} onclick={confirm}>
@@ -64,16 +57,6 @@
 </AlertDialog.Root>
 
 <style>
-  .model-list {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 13px;
-    color: var(--muted-foreground, #8b8c96);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
   .model-note {
     margin: 10px 0 0;
     font-size: 13px;

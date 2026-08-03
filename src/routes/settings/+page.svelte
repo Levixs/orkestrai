@@ -214,20 +214,19 @@
   <section class="settings-section">
     <h2>Voz (ditado e fala pt-BR)</h2>
     <p class="field-hint">
-      Por padrao a voz roda <strong>embarcada no app</strong> (sherpa-onnx nativo —
-      STT Parakeet + TTS Kokoro, <strong>sem Docker e sem Python</strong>). Na 1a vez
-      o app baixa ~740 MB de modelos uma unica vez (pergunta antes). O sidecar
-      Docker (faster-whisper/Parakeet/Chatterbox) vira opcao avancada abaixo.
+      Ditado e fala em portugues, rodando local. Na primeira vez o app baixa
+      ~740 MB uma unica vez (pergunta antes). Se preferir, use um servico de voz
+      externo seu em vez do motor local.
     </p>
     <div class="field">
       <span class="field-label">Motor de voz</span>
       <Select.Root type="single" value={settings.voiceBackend ?? 'embedded'} onValueChange={(value: string) => (settings = { ...settings, voiceBackend: value })}>
         <Select.Trigger class="w-72" data-slot="select-trigger">
-          {(settings.voiceBackend ?? 'embedded') === 'embedded' ? 'Embarcado (recomendado)' : 'Sidecar Docker (avancado)'}
+          {(settings.voiceBackend ?? 'embedded') === 'embedded' ? 'Local (recomendado)' : 'Servico externo (Docker)'}
         </Select.Trigger>
         <Select.Content>
-          <Select.Item value="embedded">Embarcado — sem Docker/Python (recomendado)</Select.Item>
-          <Select.Item value="sidecar">Sidecar Docker (faster-whisper/Chatterbox)</Select.Item>
+          <Select.Item value="embedded">Local (recomendado)</Select.Item>
+          <Select.Item value="sidecar">Servico externo (Docker)</Select.Item>
         </Select.Content>
       </Select.Root>
     </div>
