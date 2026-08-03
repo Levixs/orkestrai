@@ -11,6 +11,7 @@ import http from 'node:http';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, delimiter, dirname, isAbsolute, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { installOrkestraiShim, writeOrkestraiRuntimeFile } from './install-orkestrai-shim.mjs';
 
@@ -135,7 +136,9 @@ const { handler } = await import('../build/handler.js');
   const files = readdirSync(migrationsDir).filter((file) => file.endsWith('.ts')).sort();
   const migrations = [];
   for (const file of files) {
-    const mod = await import(resolve(migrationsDir, file));
+    // import() exige file:// URL para caminhos absolutos no Windows (a letra do
+    // drive vira "scheme c:"); pathToFileURL funciona igual em POSIX.
+    const mod = await import(pathToFileURL(resolve(migrationsDir, file)).href);
     migrations.push({ name: file.replace(/\.ts$/, ''), migration: new mod.default() });
   }
   const { Migrator } = await import('@beeblock/svelar/database');
