@@ -33,3 +33,4 @@ coverage/
 release/
 *.db.bak-*
 storage/bin/
+storage/voice/

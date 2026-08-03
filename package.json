@@ -74,6 +74,7 @@
     "paneforge": "^1.0.2",
     "pdfkit": "^0.18.0",
     "postgres": "^3.4.5",
+    "sherpa-onnx-node": "^1.13.4",
     "svelte-sonner": "^1.1.1",
     "sveltekit-superforms": "^2.30.2",
     "tailwind-merge": "^3.0.0",
@@ -150,8 +151,17 @@
         "height": 380
       },
       "contents": [
-        { "x": 130, "y": 200, "type": "file" },
-        { "x": 410, "y": 200, "type": "link", "path": "/Applications" }
+        {
+          "x": 130,
+          "y": 200,
+          "type": "file"
+        },
+        {
+          "x": 410,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "linux": {

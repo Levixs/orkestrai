@@ -40,15 +40,15 @@
 <AlertDialog.Root bind:open>
   <AlertDialog.Content>
     <AlertDialog.Header>
-      <AlertDialog.Title>Download dos modelos de voz (~2 GB)</AlertDialog.Title>
+      <AlertDialog.Title>Download dos modelos de voz (~740 MB)</AlertDialog.Title>
       <AlertDialog.Description>
-        Na primeira vez, o sidecar de voz baixa os modelos para o volume do Docker:
+        A voz roda embarcada no app (nativo, sem Docker e sem Python). Na primeira
+        vez, o app baixa os modelos uma unica vez:
       </AlertDialog.Description>
     </AlertDialog.Header>
     <ul class="model-list">
-      <li><strong>~1,6 GB</strong> — transcricao (faster-whisper large-v3-turbo)</li>
-      <li><strong>~350 MB</strong> — vozes pt-BR (Kokoro TTS)</li>
-      <li><strong>~1,2 GB</strong> — STT alternativo (Parakeet, se usado)</li>
+      <li><strong>~490 MB</strong> — transcricao (Parakeet-TDT v3, pt-BR/EN)</li>
+      <li><strong>~250 MB</strong> — vozes pt-BR (Kokoro TTS)</li>
     </ul>
     <p class="model-note">
       E um download unico — depois fica tudo em cache e as chamadas sao locais e

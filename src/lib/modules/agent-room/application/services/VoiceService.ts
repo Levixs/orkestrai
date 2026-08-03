@@ -1,4 +1,5 @@
 import { settingsService } from './SettingsService.js';
+import { embeddedModelsReady, speakPcm, transcribePcm, wavToPcm16, pcmToWav, EMBEDDED_MODELS_SIZE_MB } from '../../infrastructure/voice/EmbeddedVoice.js';
 
 const DEFAULT_VOICE_STACK_URL = 'http://localhost:8000';
 const DEFAULT_STT_MODEL = 'whisper-large-v3-turbo';
@@ -10,11 +11,11 @@ const TTS_TIMEOUT_MS = 300_000;
 
 export type VoiceHealth = { ok: boolean; url: string; detail?: string };
 
+/** WAV PCM16 mono -> Float32Array (+resample linear se nao for 16 kHz). */
 /**
- * Cliente do sidecar de voz (voice-stack, API compativel com OpenAI Audio).
- * STT: POST /v1/audio/transcriptions (faster-whisper/parakeet, pt-BR fiel).
- * TTS: POST /v1/audio/speech (Kokoro com vozes pt-BR: pf_dora, pm_alex...).
- * Substitui o whisper.cpp WASM (instavel no Chromium do Electron).
+ * Voz do app: motor EMBARCADO (sherpa-onnx nativo, sem Docker/Python) por
+ * padrao; sidecar voice-stack (Docker, API compativel com OpenAI) como opcao
+ * avancada. O backend vem da setting voiceBackend.
  */
 export class VoiceService {
   constructor(
@@ -36,6 +37,16 @@ export class VoiceService {
   }
 
   async health(): Promise<VoiceHealth> {
+    const backend = await this.backend();
+    if (backend === 'embedded') {
+      return {
+        ok: true,
+        url: 'embedded',
+        detail: embeddedModelsReady()
+          ? 'nativo (sherpa-onnx, modelos em cache)'
+          : `nativo (sherpa-onnx) — baixa ~${EMBEDDED_MODELS_SIZE_MB} MB de modelos na 1a vez`,
+      };
+    }
     const url = await this.baseUrl();
     try {
       const response = await this.fetchFn(`${url}/health`, { signal: AbortSignal.timeout(5_000) });
@@ -47,8 +58,13 @@ export class VoiceService {
     }
   }
 
-  /** Transcreve audio (webm/wav/...) no sidecar. Retorna o texto. */
+  /** Transcreve audio: WAV PCM16 16 kHz no modo embarcado; blob cru no sidecar. */
   async transcribe(audio: Buffer, filename: string, language?: string | null): Promise<string> {
+    const backend = await this.backend();
+    if (backend === 'embedded') {
+      const { samples } = wavToPcm16(audio);
+      return transcribePcm(samples);
+    }
     const url = await this.baseUrl();
     const form = new FormData();
     form.append('file', new Blob([new Uint8Array(audio)]), filename);
@@ -75,6 +91,11 @@ export class VoiceService {
 
   /** Sintetiza texto em audio (wav) com a voz configurada. */
   async speak(text: string, voice?: string): Promise<Buffer> {
+    const backend = await this.backend();
+    if (backend === 'embedded') {
+      const { samples, sampleRate } = await speakPcm(text, voice ?? (await this.ttsVoice()));
+      return pcmToWav(samples, sampleRate);
+    }
     const url = await this.baseUrl();
     let response: Response;
     try {
@@ -92,6 +113,10 @@ export class VoiceService {
       throw new Error(`TTS do sidecar falhou (HTTP ${response.status}): ${detail.slice(0, 200)}`);
     }
     return Buffer.from(await response.arrayBuffer());
+  }
+
+  private async backend(): Promise<'embedded' | 'sidecar'> {
+    return (await this.settings.get('voiceBackend')) === 'sidecar' ? 'sidecar' : 'embedded';
   }
 
   private offlineMessage(url: string, error: unknown): string {

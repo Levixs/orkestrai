@@ -212,26 +212,36 @@
   <Separator />
 
   <section class="settings-section">
-    <h2>Voz (sidecar voice-stack)</h2>
+    <h2>Voz (ditado e fala pt-BR)</h2>
     <p class="field-hint">
-      Ditado e voz de volta rodam no sidecar local (API compativel com OpenAI, STT
-      faster-whisper + TTS Kokoro com vozes pt-BR). Suba com
-      <code>cd voice-stack && docker compose up --build</code>.
-      <strong>Na 1a vez o sidecar baixa ~2 GB de modelos</strong> (1,6 GB STT + 350 MB TTS)
-      no volume do Docker — o app pergunta antes de baixar. Depois fica em cache.
-      Porta 8000 ocupada? Suba em outra com
-      <code>VOICE_PORT=8001 docker compose up --build</code> e aponte a URL aqui
-      para <code>http://localhost:8001</code>.
+      Por padrao a voz roda <strong>embarcada no app</strong> (sherpa-onnx nativo —
+      STT Parakeet + TTS Kokoro, <strong>sem Docker e sem Python</strong>). Na 1a vez
+      o app baixa ~740 MB de modelos uma unica vez (pergunta antes). O sidecar
+      Docker (faster-whisper/Parakeet/Chatterbox) vira opcao avancada abaixo.
     </p>
     <div class="field">
-      <span class="field-label">URL do sidecar</span>
-      <Input bind:value={settings.voiceStackUrl} placeholder="http://localhost:8000" />
+      <span class="field-label">Motor de voz</span>
+      <Select.Root type="single" value={settings.voiceBackend ?? 'embedded'} onValueChange={(value: string) => (settings = { ...settings, voiceBackend: value })}>
+        <Select.Trigger class="w-72" data-slot="select-trigger">
+          {(settings.voiceBackend ?? 'embedded') === 'embedded' ? 'Embarcado (recomendado)' : 'Sidecar Docker (avancado)'}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="embedded">Embarcado — sem Docker/Python (recomendado)</Select.Item>
+          <Select.Item value="sidecar">Sidecar Docker (faster-whisper/Chatterbox)</Select.Item>
+        </Select.Content>
+      </Select.Root>
     </div>
-    <div class="field-row">
-      <div class="field" style="flex:1">
-        <span class="field-label">Modelo STT (transcricao)</span>
+    {#if (settings.voiceBackend ?? 'embedded') === 'sidecar'}
+      <div class="field">
+        <span class="field-label">URL do sidecar</span>
+        <Input bind:value={settings.voiceStackUrl} placeholder="http://localhost:8000" />
+      </div>
+      <div class="field">
+        <span class="field-label">Modelo STT (sidecar)</span>
         <Input bind:value={settings.voiceSttModel} placeholder="whisper-large-v3-turbo" />
       </div>
+    {/if}
+    <div class="field-row">
       <div class="field">
         <span class="field-label">Voz TTS (respostas)</span>
         <Select.Root type="single" value={settings.voiceTtsVoice} onValueChange={(value: string) => (settings = { ...settings, voiceTtsVoice: value })}>
@@ -252,7 +262,7 @@
       </Button>
       {#if voiceHealth}
         <span class="voice-status" class:ok={voiceHealth.ok}>
-          {voiceHealth.ok ? `Sidecar no ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}` : `Fora do ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}`}
+          {voiceHealth.ok ? `${voiceHealth.url === 'embedded' ? 'Voz embarcada ativa' : `Sidecar no ar (${voiceHealth.url})`}${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}` : `Fora do ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}`}
         </span>
       {/if}
     </div>

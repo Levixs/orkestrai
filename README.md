@@ -22,9 +22,11 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
   autenticada em todo workspace, sem configurar nada.
 - **Multi-workspace**: vários projetos abertos ao mesmo tempo, com indicador
   de atividade e notificações nativas quando algo termina ou precisa de você.
-- **Ditado e voz de volta**: ditado por voz com atalho configurável e agentes
-  que leem respostas em voz alta (pt-BR) — tudo via o sidecar local
-  `voice-stack` (STT faster-whisper + TTS Kokoro, API compatível com OpenAI).
+- **Ditado e voz de volta em pt-BR 100% locais**: motor **embarcado** por
+  padrão (sherpa-onnx nativo — STT Parakeet-TDT v3 + TTS Kokoro), **sem
+  Docker e sem Python**. ~740 MB de modelos baixados uma vez (modal pede
+  confirmação). Sidecar Docker (faster-whisper/Chatterbox) segue como opção
+  avançada em Configurações.
 - **Marketplace de skills**: busque e instale skills do skills.sh direto no
   workspace.
 - **Painel de usage**: cota de cada provider (5h/semanal, plano, data de
@@ -48,16 +50,14 @@ npm install
 npm run dev            # web (SvelteKit) em http://localhost:5173
 npm run electron:dev   # app desktop (build + Electron)
 
-# Voz (ditado + agentes falando em pt-BR) — sidecar local:
+# Voz: por padrao NAO precisa de sidecar — o motor e embarcado (nativo).
+# Sidecar Docker (opcao avancada, faster-whisper/Chatterbox/Parakeet):
 cd /caminho/para/voiceproject && docker compose up --build
-# API em http://localhost:8000 (health: /health). Configuravel em
-# Configuracoes > Voz (URL, modelo STT, voz TTS + botao "Testar conexao").
+# e em Configuracoes > Voz troque o motor para "Sidecar Docker".
 #
-# ATENCAO — download de modelos na 1a vez (~2 GB no volume do Docker):
-# ~1,6 GB STT (faster-whisper large-v3-turbo) + ~350 MB TTS (Kokoro pt-BR)
-# (+ ~1,2 GB se usar o Parakeet). O app mostra uma modal de confirmacao
-# ANTES do primeiro download — nada baixa sem o seu OK. Depois do cache,
-# tudo roda local e rapido.
+# ATENCAO — download de modelos na 1a vez (~740 MB para os dados do app):
+# ~490 MB STT (Parakeet-TDT v3 int8) + ~250 MB TTS (Kokoro pt-BR).
+# O app mostra uma modal de confirmacao ANTES de baixar — nada baixa sem OK.
 ```
 
 ## Empacotar

@@ -36,10 +36,10 @@
 
 ## Voice (dictation + TTS)
 
-- Dictation and speak-back run through the **voice-stack sidecar** (OpenAI-compatible local API, STT faster-whisper/Parakeet + TTS Kokoro pt-BR), NOT in the browser — the whisper.cpp WASM approach was removed (unstable in Electron's Chromium).
-- **Model download (~2 GB on first use)**: STT ~1.6 GB + TTS ~350 MB (+ ~1.2 GB Parakeet if used) land in the sidecar's Docker volume. The app MUST ask first — `VoiceConfirmDialog.svelte` gates the first dictation/voice-toggle via the `voiceModelsConfirmed` setting; only proceeds after the user confirms.
-- The sidecar port defaults to 8000 and is configurable with `VOICE_PORT` in its compose; the app side uses the `voiceStackUrl` setting.
-- `VoiceService` (server) proxies to the sidecar via `/api/agent-room/voice/{transcribe,speak,health}` — the renderer never calls the sidecar directly (no CORS, URL is a setting: `voiceStackUrl`, default `http://localhost:8000`; also `voiceSttModel`, `voiceTtsVoice` = Kokoro pt-BR presets like `pf_dora`).
+- **Default: embedded voice, no Docker and no Python.** `infrastructure/voice/EmbeddedVoice.ts` runs STT (Parakeet-TDT v3 int8) and TTS (Kokoro multi-lang, pt-BR voices via `KOKORO_PT_VOICES` sid map) in-process through the `sherpa-onnx-node` npm package (prebuilt native `.node` per platform). Models (~740 MB) are downloaded once into `<data dir>/voice/models` (tar.bz2 extracted with the system `tar`) and marked with `.complete` — `embeddedModelsReady()` gates the confirm dialog.
+- **Optional: voice-stack sidecar** (Docker, OpenAI-compatible) for faster-whisper/Chatterbox — selected via the `voiceBackend` setting (`embedded` default, `sidecar`). `VoiceService` branches on it; the sidecar path keeps `voiceStackUrl`/`voiceSttModel`.
+- Dictation flow: renderer decodes MediaRecorder webm to WAV PCM16 16 kHz (`audio-pcm.ts` — no ffmpeg on the server), server runs `wavToPcm16` → `transcribePcm`. TTS: `speakPcm` → `pcmToWav` (24 kHz) to the client.
+- `VoiceService` (server) is also the proxy for the sidecar via `/api/agent-room/voice/{transcribe,speak,health}`.
 - The dictation hotkey is reactive: `app-settings.svelte.ts` is a shared store (`getAppSettings`/`invalidateAppSettings`) — terminals re-read it; the settings page invalidates it on save. Do not fetch settings per-component at mount.
 - Speak-back: `BridgeService.ask` broadcasts `agentReply` on the PTY WS; each `TerminalNode` forwards it and `TerminalCanvasNode` speaks it (toggle in the node header) via `voice-speech.ts`.
 - `scripts/orkestrai-server.mjs` must set `ORIGIN` (adapter-node defaults to https when deriving `event.url`, which breaks the Svelar same-origin middleware). `hooks.server.ts` normalizes loopback Origin spellings (localhost vs 127.0.0.1) — do not remove that middleware.

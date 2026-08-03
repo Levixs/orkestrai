@@ -12,6 +12,7 @@
   import { TERMINAL_THEMES, type TerminalThemeName } from './terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
   import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
+  import { blobToWav16k } from './audio-pcm.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -107,11 +108,13 @@
       mediaRecorder = null;
       dictating = false;
       transcribing = true;
-      dictateStatus = 'Transcrevendo no sidecar de voz...';
+      dictateStatus = 'Transcrevendo...';
       try {
         const blob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' });
+        // Decodifica no renderer: o backend embarcado espera WAV PCM16 16 kHz.
+        const wav = await blobToWav16k(blob);
         const form = new FormData();
-        form.append('file', blob, 'ditado.webm');
+        form.append('file', wav, 'ditado.wav');
         if (dictateLang !== 'auto') form.append('language', dictateLang);
         const response = await fetch('/api/agent-room/voice/transcribe', { method: 'POST', body: form });
         const payload = await response.json().catch(() => ({}));

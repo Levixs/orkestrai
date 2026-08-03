@@ -19,7 +19,8 @@ function fakeFetch(routes: Record<string, { status?: number; body?: unknown; tex
   return { fn, calls };
 }
 
-const stubSettings = { get: async () => '' };
+const stubSettings = { get: async (key: string) => (key === 'voiceBackend' ? 'sidecar' : '') };
+const embeddedSettings = { get: async () => '' };
 
 describe('VoiceService', () => {
   it('transcribe envia multipart com modelo e idioma e retorna o texto', async () => {
@@ -68,5 +69,14 @@ describe('VoiceService', () => {
     expect(health.ok).toBe(true);
     expect(health.url).toContain('localhost:8000');
     expect(health.detail).toBe('device: cpu');
+  });
+
+  it('backend embedded: health nem consulta o sidecar', async () => {
+    const { fn, calls } = fakeFetch({});
+    const service = new VoiceService(fn, embeddedSettings);
+    const health = await service.health();
+    expect(health.ok).toBe(true);
+    expect(health.url).toBe('embedded');
+    expect(calls).toHaveLength(0);
   });
 });

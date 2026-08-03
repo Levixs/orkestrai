@@ -12,6 +12,7 @@ const DEFAULTS: Record<string, string> = {
   newNoteWidth: '320',
   newNoteHeight: '220',
   dictationHotkey: 'alt+space',
+  voiceBackend: 'embedded',
   voiceStackUrl: 'http://localhost:8000',
   voiceSttModel: 'whisper-large-v3-turbo',
   voiceTtsVoice: 'pf_dora',
