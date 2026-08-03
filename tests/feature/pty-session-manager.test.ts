@@ -76,4 +76,27 @@ describe('PtySessionManager', () => {
     expect(attentionStates).toContain(true);
     expect(attentionStates.at(-1)).toBe(false);
   });
+
+  it('writeWithSubmit envia texto e Enter em writes separados (~200ms)', async () => {
+    const writes: string[] = [];
+    const fakePty = {
+      write: (data: string) => {
+        writes.push(data);
+      },
+      resize: () => {},
+      kill: () => {},
+      onData: () => ({ dispose: () => {} }),
+      onExit: () => ({ dispose: () => {} }),
+      pid: 1,
+    };
+    const manager = new PtySessionManager((() => fakePty) as unknown as typeof spawn);
+
+    const session = manager.create({ command: 'codex', cwd: process.cwd() });
+    manager.writeWithSubmit(session.id, 'faz a tarefa X');
+
+    // Imediato: so o texto; o Enter chega depois do atraso.
+    expect(writes).toEqual(['faz a tarefa X']);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(writes).toEqual(['faz a tarefa X', '\r']);
+  });
 });

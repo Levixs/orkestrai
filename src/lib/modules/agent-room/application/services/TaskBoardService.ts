@@ -199,7 +199,7 @@ export class TaskBoardService {
     const hint = assigned
       ? `O usuario atribuiu direto para um agente — acompanhe com: orkestrai task list`
       : `SEM responsavel. Distribua: orkestrai task assign ${taskId} "<Agente>" (ou coordene como achar melhor)`;
-    ptySessionManager.write(session.id, `[nova tarefa no quadro #${taskId.slice(0, 8)}] "${title}". ${hint}\r`);
+    ptySessionManager.writeWithSubmit(session.id, `[nova tarefa no quadro #${taskId.slice(0, 8)}] "${title}". ${hint}`);
   }
 
   /**
@@ -217,8 +217,9 @@ export class TaskBoardService {
     if (!session || session.exited) return;
     const images = imagesOf(task);
     const imagesNote = images.length ? `\nImagens de referencia: ${images.join(', ')}` : '';
-    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}] ${task.getAttribute('title')}${imagesNote}\nQuando terminar, marque com: orkestrai task done ${taskId}\r`;
-    ptySessionManager.write(session.id, prompt);
+    // Texto e Enter separados — ver writeWithSubmit (composer do Codex).
+    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}] ${task.getAttribute('title')}${imagesNote}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
+    ptySessionManager.writeWithSubmit(session.id, prompt);
   }
 }
 

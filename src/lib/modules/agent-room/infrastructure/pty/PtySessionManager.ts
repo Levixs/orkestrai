@@ -190,6 +190,23 @@ export class PtySessionManager {
     return true;
   }
 
+  /**
+   * Texto + Enter em writes separados (~200ms): TUIs como o Codex tratam o
+   * \r colado ao texto como quebra de linha no composer em vez de submit.
+   * (Padrao ja aplicado no ask da ponte; agora centralizado.)
+   */
+  writeWithSubmit(id: string, text: string, submitDelayMs = 200): void {
+    this.write(id, text);
+    const timer = setTimeout(() => {
+      try {
+        this.write(id, '\r');
+      } catch {
+        // sessao morreu entre o texto e o Enter
+      }
+    }, submitDelayMs);
+    timer.unref?.();
+  }
+
   /** Mata todas as sessoes (shutdown do servidor). */
   killAll(): void {
     for (const id of [...this.sessions.keys()]) this.kill(id);
