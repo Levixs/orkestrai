@@ -15,13 +15,21 @@ Mac ARM não é confiável).
 ```powershell
 git clone <url-do-repo> pantheon
 cd pantheon
-npm ci
+npm install                  # NÃO use `npm ci`: o lock commitado foi gerado com npm 11.6.x e
+                             # npm mais novo (testado: 11.18) o rejeita como "fora de sync" (por
+                             # isso os builds cross fixam npm@11.6.2 — ver package-cross.sh).
+                             # `npm install` reconcilia o lock LOCALMENTE; não commite essa
+                             # mudança (desalinha os builds cross). Alternativa: fixar npm@11.6.2.
 npm run build                # build web (vite -> build/)
-npm run electron:rebuild     # alinha nativos ao ABI do Electron (baixa prebuilds)
-npx electron-builder --win nsis --x64 --publish never   # instalador
+npm run electron:rebuild     # baixa o prebuild do better-sqlite3 p/ o ABI do Electron (-o = só ele)
+npx electron-builder --win nsis --x64 --publish never "-c.npmRebuild=false"   # instalador
 # ou, portátil:
-npx electron-builder --win zip --x64 --publish never
+npx electron-builder --win zip --x64 --publish never "-c.npmRebuild=false"
 ```
+
+> As aspas em `"-c.npmRebuild=false"` são obrigatórias no PowerShell (sem elas o
+> PowerShell quebra o token e o electron-builder tenta ler `.npmRebuild=false`
+> como arquivo de config). No bash (WSL/Docker) pode ser sem aspas.
 
 Artefatos em `release/`:
 
@@ -38,8 +46,28 @@ Artefatos em `release/`:
 - **`asar: false`** no `package.json`: o servidor de produção
   (`scripts/orkestrai-server.mjs`) é ESM e o loader ESM do Node não resolve
   pacotes dentro do asar. Não reative.
+- **`node_modules` de UI excluídos do `files`**: `@tabler`, `@xterm`,
+  `@codemirror`, `@lezer`, `codemirror`, `@xyflow`, `layerchart`, `bits-ui` e
+  `pusher-js` são frontend puro — o Vite já os compila para `build/client`, então
+  as cópias em `node_modules` são peso morto (só `@tabler` = ~17k arquivos). Com
+  `asar: false`, cada arquivo é gravado individualmente pelo NSIS, então cortá-los
+  reduz ~48% dos arquivos e acelera muito a instalação no Windows. **Não** exclua
+  pacotes de runtime (o servidor Node os importa fora do bundle): `drizzle-orm`,
+  `@beeblock/svelar`, `ws`, `better-sqlite3`, `node-pty`, `bullmq`, `zod`,
+  `effect`, `pdfkit`, `@aws-sdk/*`. Validação: `build/` self-contained + boot do
+  servidor sem `MODULE_NOT_FOUND` + janela abrindo no canvas.
 - **Sem assinatura de código**: não temos certificado. Instalador e exe saem
   unsigned (avisos do Windows são esperados).
+- **`-c.npmRebuild=false` no comando (não no `package.json`)**: sem Visual Studio,
+  o rebuild nativo interno do electron-builder falha em `node-pty` e
+  `msgpackr-extract` (não publicam prebuild-download para o ABI do Electron — só
+  trazem binários N-API no tarball, que já funcionam sem recompilar). O
+  `better-sqlite3`, esse sim, é resolvido pelo `npm run electron:rebuild` acima
+  (por isso o script usa `-o better-sqlite3`; `-w` NÃO restringe nas versões atuais
+  do `@electron/rebuild` e acaba mandando compilar os outros dois). **Não** mova
+  `npmRebuild: false` para o `package.json`: é config global e quebraria o build do
+  Mac (`electron-builder --mac dmg`), que depende desse rebuild para alinhar o
+  `better-sqlite3` ao ABI do Electron.
 
 ## Runtime no Windows
 
