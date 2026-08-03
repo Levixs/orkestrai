@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { AgentRunRequest, AgentRunResult } from '../domain/types.js';
 import { assertWritableProjectPath, resolveSafeProjectPath } from '../infrastructure/workspace.js';
+import { agentEnv, resolveCommand, IS_WIN } from '../infrastructure/agent-path.js';
 import { getAgentAdapter } from './adapters/registry.js';
 
 type CommandResult = {
@@ -68,12 +69,17 @@ function runCommand(
 ): Promise<CommandResult> {
   return new Promise((resolve) => {
     const timeoutMs = agentTimeoutMs();
-    const child = spawn(command, args, {
+    const env = options.env ? { ...agentEnv(), ...options.env } : agentEnv();
+    const target = resolveCommand(command, args, env);
+    const child = spawn(target.command, target.args, {
       cwd,
       shell: false,
-      env: options.env ? { ...process.env, ...options.env } : process.env,
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
-      detached: true,
+      // Unix: grupo de processo (kill por -pid). Windows nao tem grupos assim e
+      // detached abriria um console; escondemos e caimos no child.kill.
+      detached: !IS_WIN,
+      windowsHide: true,
     });
     let stdout = '';
     let stderr = '';

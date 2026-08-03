@@ -1,16 +1,5 @@
-import { execFile } from 'node:child_process';
-
-function probeVersion(command: string): Promise<{ installed: boolean; detail?: string }> {
-  return new Promise((resolve) => {
-    execFile(command, ['--version'], { timeout: 8_000, encoding: 'utf8' }, (error, stdout, stderr) => {
-      resolve({
-        installed: !error,
-        detail: error ? String(error.message).split('\n')[0] : String(stdout || stderr).trim(),
-      });
-    });
-  });
-}
 import type { AgentModelOption, AgentRunRequest, ModelEffort } from '../../domain/types.js';
+import { probeCliVersion } from '../../infrastructure/agent-path.js';
 import type { AgentAdapter, AgentCommandSpec, AgentDetection, ParsedAgentOutput } from './types.js';
 import { hasJsonLineError, parseJsonLinesOutput } from './json-lines.js';
 
@@ -29,7 +18,7 @@ export const claudeAdapter: AgentAdapter = {
   supportsResume: false,
 
   async detect(): Promise<AgentDetection> {
-    return probeVersion('claude');
+    return probeCliVersion('claude');
   },
 
   buildCommand(request: AgentRunRequest): AgentCommandSpec {
@@ -65,9 +54,15 @@ export const claudeAdapter: AgentAdapter = {
     };
   },
 
-  /** Resume exato por session-id, ou a mais recente do diretorio sem id. */
+  /**
+   * Resume exato por session-id. SEM id, comeca fresco (`[]`) em vez de
+   * `--continue`: o claude sai com erro "No conversation found to continue" e
+   * codigo 1 quando ainda nao houve conversa naquele diretorio (ex.: nó reaberto
+   * sem nenhuma mensagem enviada). Diferente de codex/kimi, que persistem sessao
+   * ja no start. Quando existe conversa, o rastreador acha o id e usa --resume.
+   */
   resumeArgs(agentSessionId?: string): string[] {
-    return agentSessionId ? ['--resume', agentSessionId] : ['--continue'];
+    return agentSessionId ? ['--resume', agentSessionId] : [];
   },
 
   interactiveCommand(options?: { model?: string; effort?: ModelEffort | null }): AgentCommandSpec {

@@ -1,46 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { homedir } from 'node:os';
-import { readdirSync } from 'node:fs';
-import { delimiter } from 'node:path';
 import type { IPty } from 'node-pty';
+import { agentEnv, resolveCommand } from '../agent-path.ts';
 
-// Locais comuns de instalacao de CLIs (claude, codex, kimi, opencode...).
-// App Electron aberto pelo Finder recebe um PATH minimo do macOS — sem isso
-// os agentes falham com ENOENT mesmo estando instalados.
-const EXTRA_PATH_DIRS = [
-  '/opt/homebrew/bin',
-  '/opt/homebrew/sbin',
-  '/usr/local/bin',
-  '/usr/local/sbin',
-  `${homedir()}/.local/bin`,
-  `${homedir()}/.bun/bin`,
-  `${homedir()}/.volta/bin`,
-  `${homedir()}/.deno/bin`,
-  `${homedir()}/.cargo/bin`,
-  `${homedir()}/.npm-global/bin`,
-  `${homedir()}/.kimi-code/bin`,
-  `${homedir()}/bin`,
-];
-
-function nvmBins(): string[] {
-  try {
-    const root = `${homedir()}/.nvm/versions/node`;
-    return readdirSync(root, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => `${root}/${entry.name}/bin`);
-  } catch {
-    return [];
-  }
-}
-
-function augmentedEnv(): Record<string, string> {
-  const env = { ...process.env } as Record<string, string>;
-  const current = (env.PATH ?? '').split(delimiter).filter(Boolean);
-  const shimDir = env.ORKESTRAI_SHIM_DIR ? [env.ORKESTRAI_SHIM_DIR] : [];
-  const merged = [...shimDir, ...current, ...EXTRA_PATH_DIRS.filter((dir) => !current.includes(dir)), ...nvmBins()];
-  env.PATH = [...new Set(merged)].join(delimiter);
-  return env;
-}
+// PATH aumentado e resolucao de comando (registro/PATHEXT/.cmd) foram movidos
+// para ../agent-path.ts, compartilhado com o Modo Maestro (application/agents.ts)
+// e a deteccao de CLIs (application/adapters/*).
 
 export type PtySessionInfo = {
   id: string;
@@ -101,12 +65,14 @@ export class PtySessionManager {
     const cols = input.cols ?? 120;
     const rows = input.rows ?? 30;
 
-    const ptyProcess = this.spawnPty(input.command, input.args ?? [], {
+    const env = { ...agentEnv(), ...input.env } as Record<string, string>;
+    const target = resolveCommand(input.command, input.args ?? [], env);
+    const ptyProcess = this.spawnPty(target.command, target.args, {
       name: 'xterm-256color',
       cols,
       rows,
       cwd: input.cwd,
-      env: { ...augmentedEnv(), ...input.env } as Record<string, string>,
+      env,
     });
 
     const session: PtySession = {

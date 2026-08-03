@@ -1,16 +1,6 @@
 import { execFile } from 'node:child_process';
-
-function probeVersion(command: string): Promise<{ installed: boolean; detail?: string }> {
-  return new Promise((resolve) => {
-    execFile(command, ['--version'], { timeout: 8_000, encoding: 'utf8' }, (error, stdout, stderr) => {
-      resolve({
-        installed: !error,
-        detail: error ? String(error.message).split('\n')[0] : String(stdout || stderr).trim(),
-      });
-    });
-  });
-}
 import type { AgentModelOption, AgentRunRequest, ModelEffort } from '../../domain/types.js';
+import { cliInvocation, probeCliVersion } from '../../infrastructure/agent-path.js';
 import type { AgentAdapter, AgentCommandSpec, AgentDetection, ParsedAgentOutput } from './types.js';
 import { parseJsonLinesOutput } from './json-lines.js';
 
@@ -29,7 +19,7 @@ export const codexAdapter: AgentAdapter = {
   supportsResume: false,
 
   async detect(): Promise<AgentDetection> {
-    return probeVersion('codex');
+    return probeCliVersion('codex');
   },
 
   buildCommand(request: AgentRunRequest): AgentCommandSpec {
@@ -91,7 +81,8 @@ export const codexAdapter: AgentAdapter = {
 
   async listModels(): Promise<AgentModelOption[]> {
     const result = await new Promise<{ status: number; stdout: string }>((resolve) => {
-      execFile('codex', ['debug', 'models'], { timeout: 8_000, encoding: 'utf8' }, (error, stdout) => {
+      const inv = cliInvocation('codex', ['debug', 'models']);
+      execFile(inv.command, inv.args, { timeout: 8_000, encoding: 'utf8', env: inv.env, windowsHide: true }, (error, stdout) => {
         resolve({ status: error ? 1 : 0, stdout: String(stdout ?? '') });
       });
     });
