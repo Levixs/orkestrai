@@ -22,7 +22,7 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, extname, sep } from 'node:path';
+import { delimiter, extname, resolve, sep } from 'node:path';
 
 export const IS_WIN = process.platform === 'win32';
 
