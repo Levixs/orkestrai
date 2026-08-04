@@ -15,7 +15,26 @@
   let phase = $state<Phase>('confirm');
   let percent = $state(0);
   let errorMessage = $state('');
+  let freeBytes = $state<number | null>(null);
+  let requiredBytes = $state(0);
+  const insufficient = $derived(freeBytes !== null && requiredBytes > 0 && freeBytes < requiredBytes);
   let poller: ReturnType<typeof setInterval> | null = null;
+
+  function formatGb(bytes: number): string {
+    return `${(bytes / 1024 ** 3).toFixed(1).replace('.', ',')} GB`;
+  }
+
+  // Ao abrir na fase de confirmacao, ja consulta o espaco livre em disco.
+  $effect(() => {
+    if (!open || phase !== 'confirm' || freeBytes !== null) return;
+    fetch('/api/agent-room/voice/models')
+      .then((response) => response.json())
+      .then((body) => {
+        freeBytes = body.data.freeBytes ?? null;
+        requiredBytes = body.data.requiredBytes ?? 0;
+      })
+      .catch(() => {});
+  });
 
   function stopPolling() {
     if (poller) clearInterval(poller);
@@ -82,12 +101,12 @@
       <AlertDialog.Title>
         {#if phase === 'downloading'}Baixando o modelo de voz…
         {:else if phase === 'error'}Falha no download
-        {:else}Download do modelo de voz (~740 MB){/if}
+        {:else}Download do modelo de voz (~790 MB){/if}
       </AlertDialog.Title>
       <AlertDialog.Description>
         {#if phase === 'confirm'}
           Para o ditado e a fala funcionarem, o app precisa baixar o modelo de
-          voz (whisper, ~740 MB) uma unica vez. Depois disso tudo roda local e
+          voz (whisper, ~790 MB) uma unica vez. Depois disso tudo roda local e
           rapido.
         {:else if phase === 'downloading'}
           Pode demorar alguns minutos dependendo da sua conexao. Voce pode
@@ -105,12 +124,17 @@
       </div>
     {:else if phase === 'error'}
       <p class="download-error">{errorMessage}</p>
+    {:else if insufficient}
+      <p class="download-error">
+        Espaco em disco insuficiente: voce tem {formatGb(freeBytes ?? 0)} livres e o
+        download precisa de cerca de {formatGb(requiredBytes)}. Libere espaco e tente de novo.
+      </p>
     {/if}
 
     <AlertDialog.Footer>
       {#if phase === 'confirm'}
         <AlertDialog.Cancel onclick={cancel}>Agora nao</AlertDialog.Cancel>
-        <AlertDialog.Action onclick={confirm}>Baixar e continuar</AlertDialog.Action>
+        <AlertDialog.Action disabled={insufficient} onclick={confirm}>Baixar e continuar</AlertDialog.Action>
       {:else if phase === 'error'}
         <AlertDialog.Cancel onclick={cancel}>Fechar</AlertDialog.Cancel>
         <AlertDialog.Action onclick={retry}>Tentar de novo</AlertDialog.Action>

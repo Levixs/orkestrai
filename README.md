@@ -24,7 +24,7 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
   de atividade e notificações nativas quando algo termina ou precisa de você.
 - **Ditado e voz de volta em pt-BR, 100% locais**: fale com o ditado por voz
   (atalho configurável) e ouça as respostas dos agentes em voz alta. Na
-  primeira vez o app baixa ~740 MB uma única vez (pede confirmação antes).
+  primeira vez o app baixa ~790 MB uma única vez (pede confirmação antes).
   Se preferir, use um serviço de voz externo seu em Configurações.
 - **Marketplace de skills**: busque e instale skills do skills.sh direto no
   workspace.
@@ -50,7 +50,7 @@ npm run dev            # web (SvelteKit) em http://localhost:5173
 npm run electron:dev   # app desktop (build + Electron)
 
 # Voz (ditado + agentes falando em pt-BR): funciona out-of-the-box.
-# Na 1a vez o app baixa ~740 MB uma unica vez (pergunta antes) e depois
+# Na 1a vez o app baixa ~790 MB uma unica vez (pergunta antes) e depois
 # tudo roda local. Para usar um servico de voz externo (Docker), veja
 # Configuracoes > Voz e o voice-stack em AGENTS.md (doc de desenvolvedor).
 ```

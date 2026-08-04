@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pcmToWav, wavToPcm16, KOKORO_PT_VOICES } from '$lib/modules/agent-room/infrastructure/voice/EmbeddedVoice.js';
+import { pcmToWav, voiceDiskSpace, voiceNodeArchive, wavToPcm16, KOKORO_PT_VOICES, VOICE_REQUIRED_BYTES } from '$lib/modules/agent-room/infrastructure/voice/EmbeddedVoice.js';
 
 function makeWav(samples: number[], rate = 16_000, channels = 1): Buffer {
   const buffer = Buffer.alloc(44 + samples.length * 2 * channels);
@@ -55,5 +55,28 @@ describe('wavToPcm16 / pcmToWav', () => {
       expect(sid).toBeLessThanOrEqual(52);
     }
     expect(KOKORO_PT_VOICES.pf_dora).not.toBe(KOKORO_PT_VOICES.pm_alex);
+  });
+});
+
+describe('voiceNodeArchive', () => {
+  it('mapeia runtime Node por plataforma', () => {
+    const mac = voiceNodeArchive('darwin', 'arm64');
+    expect(mac?.url).toContain('node-v24.12.0-darwin-arm64.tar.gz');
+    expect(mac?.bin).toBe('node-v24.12.0-darwin-arm64/bin/node');
+    const win = voiceNodeArchive('win32', 'x64');
+    expect(win?.url).toContain('node-v24.12.0-win-x64.zip');
+    expect(win?.bin).toBe('node-v24.12.0-win-x64/node.exe');
+    const linux = voiceNodeArchive('linux', 'x64');
+    expect(linux?.url).toContain('node-v24.12.0-linux-x64.tar.xz');
+    expect(voiceNodeArchive('freebsd', 'x64')).toBeNull();
+  });
+});
+
+describe('voiceDiskSpace', () => {
+  it('reporta espaco livre real e o minimo de ~2 GB', () => {
+    const { freeBytes, requiredBytes } = voiceDiskSpace();
+    expect(requiredBytes).toBe(VOICE_REQUIRED_BYTES);
+    expect(requiredBytes).toBe(2 * 1024 ** 3);
+    expect(freeBytes).toBeGreaterThan(0);
   });
 });

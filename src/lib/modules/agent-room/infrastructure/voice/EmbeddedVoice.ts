@@ -1,5 +1,5 @@
 import { execFileSync, fork, type ChildProcess } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -22,6 +22,38 @@ const KOKORO = {
   dir: 'kokoro-multi-lang-v1_0',
   sizeMb: 250,
 };
+
+/**
+ * Runtime Node standalone (~50 MB) baixado junto com os modelos: o V8 sandbox
+ * do Electron proibe os buffers externos que o TTS usa, entao a inferencia
+ * roda num subprocesso sob um Node real — sem depender do usuario ter Node.
+ */
+const VOICE_NODE = { sizeMb: 50 };
+
+/** Runtime Node por plataforma (null = sem pacote; cai no Node do sistema). */
+export function voiceNodeArchive(platform: string, arch: string): { url: string; dir: string; bin: string } | null {
+  const version = 'v24.12.0';
+  const files: Record<string, string> = {
+    'darwin-arm64': `node-${version}-darwin-arm64.tar.gz`,
+    'darwin-x64': `node-${version}-darwin-x64.tar.gz`,
+    'linux-x64': `node-${version}-linux-x64.tar.xz`,
+    'linux-arm64': `node-${version}-linux-arm64.tar.xz`,
+    'win32-x64': `node-${version}-win-x64.zip`,
+  };
+  const file = files[`${platform}-${arch}`];
+  if (!file) return null;
+  const dir = file.replace(/\.(tar\.gz|tar\.xz|zip)$/, '');
+  const bin = platform === 'win32' ? `${dir}/node.exe` : `${dir}/bin/node`;
+  return { url: `https://nodejs.org/dist/${version}/${file}`, dir, bin };
+}
+
+/** Node embarcado ja extraido (null se ainda nao baixado). */
+function bundledVoiceNode(): string | null {
+  const def = voiceNodeArchive(process.platform, process.arch);
+  if (!def) return null;
+  const bin = join(voiceModelsDir(), 'runtime', def.bin);
+  return existsSync(bin) ? bin : null;
+}
 
 /** Vozes pt-BR do Kokoro multi-lang v1.0 (ordem do voices.bin, 53 speakers). */
 export const KOKORO_PT_VOICES: Record<string, number> = {
@@ -89,6 +121,25 @@ async function ensureModel(def: ModelDef, onProgress?: (percent: number) => void
   return target;
 }
 
+/** Baixa e extrai o runtime Node standalone (best-effort: falha cai no Node do sistema). */
+async function ensureVoiceNode(onProgress?: (percent: number) => void): Promise<void> {
+  if (bundledVoiceNode()) return;
+  const def = voiceNodeArchive(process.platform, process.arch);
+  if (!def) return;
+  const root = join(voiceModelsDir(), 'runtime');
+  mkdirSync(root, { recursive: true });
+  const archive = join(root, 'node-runtime.download');
+  onProgress?.(0);
+  await downloadFile(def.url, archive, onProgress);
+  try {
+    // bsdtar/GNU tar auto-detectam gz/xz/zip ao extrair.
+    execFileSync('tar', ['xf', archive, '-C', root], { timeout: 120_000 });
+  } finally {
+    rmSync(archive, { force: true });
+  }
+  if (!bundledVoiceNode()) throw new Error(`Extracao do runtime nao produziu ${def.bin}.`);
+}
+
 // -- Download orquestrado (compartilhado entre STT/TTS e o endpoint de status) --
 
 type DownloadState = {
@@ -101,20 +152,57 @@ type DownloadState = {
 let downloadState: DownloadState = { downloading: false, percent: 0, error: null };
 let downloadPromise: Promise<void> | null = null;
 
+/** Pico de disco durante download+extracao (arquivo compactado + conteudo extraido). */
+export const VOICE_REQUIRED_BYTES = 2 * 1024 ** 3; // ~2 GB
+
+/** Espaco livre no volume dos modelos + o minimo exigido para baixar. */
+export function voiceDiskSpace(): { freeBytes: number; requiredBytes: number } {
+  try {
+    const stats = statfsSync(voiceModelsDir());
+    return { freeBytes: stats.bavail * stats.bsize, requiredBytes: VOICE_REQUIRED_BYTES };
+  } catch {
+    // Sem como medir (plataforma estranha): nao bloqueia por precaucao falsa.
+    return { freeBytes: Number.MAX_SAFE_INTEGER, requiredBytes: VOICE_REQUIRED_BYTES };
+  }
+}
+
 /** Baixa os dois modelos (uma vez); chamadas concorrentes compartilham a promise. */
 export function ensureEmbeddedModels(): Promise<void> {
-  if (embeddedModelsReady()) return Promise.resolve();
+  const runtimeMissing = Boolean(process.versions.electron) && !bundledVoiceNode() && voiceNodeArchive(process.platform, process.arch) !== null;
+  if (embeddedModelsReady() && !runtimeMissing) return Promise.resolve();
   if (downloadPromise) return downloadPromise;
+  const space = voiceDiskSpace();
+  if (space.freeBytes < space.requiredBytes) {
+    const freeGb = (space.freeBytes / 1024 ** 3).toFixed(1).replace('.', ',');
+    downloadState = {
+      downloading: false,
+      percent: 0,
+      error: `Espaco em disco insuficiente: o download precisa de cerca de 2 GB livres e voce tem ${freeGb} GB.`,
+    };
+    return Promise.reject(new Error(downloadState.error));
+  }
   downloadState = { downloading: true, percent: 0, error: null };
   downloadPromise = (async () => {
     try {
-      const totalMb = PARAKEET.sizeMb + KOKORO.sizeMb;
+      const runtimeMb = process.versions.electron ? VOICE_NODE.sizeMb : 0;
+      const totalMb = PARAKEET.sizeMb + KOKORO.sizeMb + runtimeMb;
+      const weighted = (doneMb: number, currentMb: number, percent: number) =>
+        Math.min(100, Math.round(((doneMb + (percent / 100) * currentMb) / totalMb) * 100));
       await ensureModel(PARAKEET, (percent) => {
-        downloadState.percent = Math.round((percent * PARAKEET.sizeMb) / totalMb);
+        downloadState.percent = weighted(0, PARAKEET.sizeMb, percent);
       });
       await ensureModel(KOKORO, (percent) => {
-        downloadState.percent = Math.round((PARAKEET.sizeMb + percent * KOKORO.sizeMb) / totalMb);
+        downloadState.percent = weighted(PARAKEET.sizeMb, KOKORO.sizeMb, percent);
       });
+      if (runtimeMb > 0) {
+        try {
+          await ensureVoiceNode((percent) => {
+            downloadState.percent = weighted(PARAKEET.sizeMb + KOKORO.sizeMb, VOICE_NODE.sizeMb, percent);
+          });
+        } catch {
+          // Sem runtime embarcado: speakPcm cai no Node do sistema (se houver).
+        }
+      }
       downloadState = { downloading: false, percent: 100, error: null };
     } catch (error) {
       downloadState = {
@@ -130,15 +218,16 @@ export function ensureEmbeddedModels(): Promise<void> {
 }
 
 /** Estado do download para a UI (polling). */
-export function embeddedDownloadStatus(): DownloadState & { ready: boolean } {
-  return { ready: embeddedModelsReady(), ...downloadState };
+export function embeddedDownloadStatus(): DownloadState & { ready: boolean; freeBytes: number; requiredBytes: number } {
+  return { ready: embeddedModelsReady(), ...downloadState, ...voiceDiskSpace() };
 }
 
 // -- Inferencia em subprocesso (servidor/UI nunca congelam) -------------------
 // O TTS do sherpa-onnx usa buffers EXTERNOS (memoria nativa), que o V8 sandbox
 // do Electron proibe ("External buffers are not allowed") — nem fork ajuda se
 // o filho roda sob o binario do Electron. Por isso o subprocesso de voz roda
-// sob um Node.js real, localizado em tempo de execucao.
+// sob um Node real: o runtime embarcado (baixado junto com os modelos) ou,
+// em ultimo caso, um Node do sistema.
 
 type VoiceJob = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
@@ -184,6 +273,9 @@ function resolveVoiceNode(): string | undefined {
   if (resolvedNode !== undefined) return resolvedNode ?? undefined;
   const candidates: string[] = [];
   if (process.env.ORKESTRAI_VOICE_NODE) candidates.push(process.env.ORKESTRAI_VOICE_NODE);
+  // Runtime embarcado (baixado com os modelos) — nao depende do usuario ter Node.
+  const bundled = bundledVoiceNode();
+  if (bundled) candidates.push(bundled);
   candidates.push('node');
   if (process.platform === 'darwin') {
     candidates.push('/opt/homebrew/bin/node', '/usr/local/bin/node');
@@ -372,4 +464,4 @@ export function deleteEmbeddedModels(): void {
   rmSync(voiceModelsDir(), { recursive: true, force: true });
 }
 
-export const EMBEDDED_MODELS_SIZE_MB = PARAKEET.sizeMb + KOKORO.sizeMb;
+export const EMBEDDED_MODELS_SIZE_MB = PARAKEET.sizeMb + KOKORO.sizeMb + VOICE_NODE.sizeMb;

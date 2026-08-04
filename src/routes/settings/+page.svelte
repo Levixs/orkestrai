@@ -234,9 +234,9 @@
         {/if}
       </div>
       <p class="field-hint">
-        Transcricao 100% offline (whisper.cpp no navegador). No primeiro uso o modelo de ~57 MB e
-        baixado uma unica vez e fica em cache. Se outro app do sistema usa o mesmo atalho global,
-        escolha uma combinacao diferente aqui.
+        Transcricao 100% offline, roda local no app. Na primeira vez o app baixa o modelo de
+        voz (~790 MB) uma unica vez — pergunta antes. Se outro app do sistema usa o mesmo
+        atalho global, escolha uma combinacao diferente aqui.
       </p>
     </div>
     <Button size="sm" onclick={save}>{saved ? 'Salvo!' : 'Salvar'}</Button>
@@ -248,7 +248,7 @@
     <h2>Voz (ditado e fala pt-BR)</h2>
     <p class="field-hint">
       Ditado e fala em portugues, rodando local. Na primeira vez o app baixa o
-      modelo de voz (whisper, ~740 MB) uma unica vez — pergunta antes. Se
+      modelo de voz (whisper, ~790 MB) uma unica vez — pergunta antes. Se
       preferir, use um servico de voz externo seu em vez do motor local.
     </p>
     <div class="field">
