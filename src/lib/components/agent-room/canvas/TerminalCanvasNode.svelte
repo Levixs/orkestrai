@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { BadgeCheck, SendHorizontal, SquareTerminal, Star, SwatchBook, Volume2, VolumeX, X } from '@lucide/svelte';
+  import { BadgeCheck, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
@@ -269,9 +269,6 @@
     </DropdownMenu.Root>
     <IconAction label="Trocar tema" onclick={() => data.onCycleTheme?.(id)}>
       <SwatchBook size={13} /></IconAction>
-    <IconAction label={voiceOn ? 'Voz ativada (le respostas em voz alta)' : 'Ativar voz (TTS pt-BR)'} active={voiceOn} onclick={toggleVoice}>
-      {#if voiceOn}<Volume2 size={13} />{:else}<VolumeX size={13} />{/if}
-    </IconAction>
     <button
       class="node-action-btn"
       class:active={data.payload.maestro}
@@ -308,6 +305,8 @@
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
         onAgentReply={handleAgentReply}
+        {voiceOn}
+        onToggleVoice={toggleVoice}
       />
     {:else if data.payload.command}
       <TerminalNode
@@ -325,6 +324,8 @@
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
         onAgentReply={handleAgentReply}
+        {voiceOn}
+        onToggleVoice={toggleVoice}
       />
     {:else}
       <p class="terminal-empty">Sem comando associado.</p>

@@ -134,80 +134,61 @@ export function embeddedDownloadStatus(): DownloadState & { ready: boolean } {
   return { ready: embeddedModelsReady(), ...downloadState };
 }
 
-// -- Singletons (carrega o modelo uma vez por processo) ------------------------
+// -- Inferencia em worker thread (servidor/UI nunca congelam) ------------------
 
-type Recognizer = {
-  createStream(): { acceptWaveform(wave: { samples: Float32Array; sampleRate: number }): void };
-  decode(stream: unknown): void;
-  getResult(stream: unknown): { text: string };
-};
+import { Worker } from 'node:worker_threads';
 
-type Tts = {
-  sampleRate: number;
-  generate(input: { text: string; sid: number; speed: number }): { samples: Float32Array };
-};
+type VoiceJob = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
-let recognizerPromise: Promise<Recognizer> | null = null;
-let ttsPromise: Promise<Tts> | null = null;
+let worker: Worker | null = null;
+let jobSeq = 0;
+const pending = new Map<number, VoiceJob>();
 
-async function loadSherpa() {
-  const mod = await import('sherpa-onnx-node');
-  return (mod as { default?: unknown }).default ?? mod;
+function voiceWorker(): Worker {
+  if (worker) return worker;
+  const parakeetDir = join(voiceModelsDir(), PARAKEET.dir);
+  const kokoroDir = join(voiceModelsDir(), KOKORO.dir);
+  const workerPath = join(process.cwd(), 'src', 'lib', 'modules', 'agent-room', 'infrastructure', 'voice', 'voice-worker.mjs');
+  worker = new Worker(workerPath, {
+    workerData: { parakeetDir, kokoroDir, ptVoices: KOKORO_PT_VOICES },
+  });
+  worker.on('message', (message: { id: number; ok: boolean; error?: string } & Record<string, unknown>) => {
+    const job = pending.get(message.id);
+    pending.delete(message.id);
+    if (!job) return;
+    if (message.ok) job.resolve(message);
+    else job.reject(new Error(message.error ?? 'Falha na inferencia de voz.'));
+  });
+  worker.on('error', (error) => {
+    for (const job of pending.values()) job.reject(error);
+    pending.clear();
+    worker = null;
+  });
+  worker.unref();
+  return worker;
 }
 
-async function getRecognizer(): Promise<Recognizer> {
-  if (!recognizerPromise) {
-    recognizerPromise = (async () => {
-      await ensureEmbeddedModels();
-      const dir = join(voiceModelsDir(), PARAKEET.dir);
-      const sherpa = (await loadSherpa()) as { OfflineRecognizer: new (config: unknown) => Recognizer };
-      return new sherpa.OfflineRecognizer({
-        modelConfig: {
-          transducer: {
-            encoder: join(dir, 'encoder.int8.onnx'),
-            decoder: join(dir, 'decoder.int8.onnx'),
-            joiner: join(dir, 'joiner.int8.onnx'),
-          },
-          tokens: join(dir, 'tokens.txt'),
-          numThreads: 2,
-          provider: 'cpu',
-          debug: 0,
-        },
-      });
-    })();
-    recognizerPromise.catch(() => {
-      recognizerPromise = null;
-    });
-  }
-  return recognizerPromise;
+function dispatch<T>(kind: string, payload: unknown): Promise<T> {
+  return new Promise((resolvePromise, reject) => {
+    const id = (jobSeq += 1);
+    pending.set(id, { resolve: resolvePromise as (value: unknown) => void, reject });
+    voiceWorker().postMessage({ id, kind, payload });
+  });
 }
 
-async function getTts(): Promise<Tts> {
-  if (!ttsPromise) {
-    ttsPromise = (async () => {
-      await ensureEmbeddedModels();
-      const dir = join(voiceModelsDir(), KOKORO.dir);
-      const sherpa = (await loadSherpa()) as { OfflineTts: new (config: unknown) => Tts };
-      return new sherpa.OfflineTts({
-        model: {
-          kokoro: {
-            model: join(dir, 'model.onnx'),
-            voices: join(dir, 'voices.bin'),
-            tokens: join(dir, 'tokens.txt'),
-            dataDir: join(dir, 'espeak-ng-data'),
-            lang: 'pt',
-          },
-          numThreads: 2,
-          provider: 'cpu',
-          debug: 0,
-        },
-      });
-    })();
-    ttsPromise.catch(() => {
-      ttsPromise = null;
-    });
-  }
-  return ttsPromise;
+/** Transcreve PCM16 mono 16 kHz para texto (Parakeet-TDT v3, CPU). */
+export async function transcribePcm(samples: Float32Array): Promise<string> {
+  const result = await dispatch<{ text: string }>('transcribe', { samples: Array.from(samples) });
+  return result.text;
+}
+
+/** Sintetiza texto em amostras Float32 com uma voz pt-BR do Kokoro. */
+export async function speakPcm(
+  text: string,
+  voice = 'pf_dora'
+): Promise<{ samples: Float32Array; sampleRate: number }> {
+  const result = await dispatch<{ samples: number[]; sampleRate: number }>('speak', { text, voice });
+  return { samples: Float32Array.from(result.samples), sampleRate: result.sampleRate };
 }
 
 /** WAV PCM16 mono -> Float32Array (+resample linear se nao for 16 kHz). */
@@ -253,26 +234,6 @@ export function pcmToWav(samples: Float32Array, sampleRate: number): Buffer {
   return buffer;
 }
 
-/** Transcreve PCM16 mono 16 kHz para texto (Parakeet-TDT v3, CPU). */
-export async function transcribePcm(samples: Float32Array): Promise<string> {
-  const recognizer = await getRecognizer();
-  const stream = recognizer.createStream();
-  stream.acceptWaveform({ samples, sampleRate: 16_000 });
-  recognizer.decode(stream);
-  return recognizer.getResult(stream).text.trim();
-}
-
-/** Sintetiza texto em amostras Float32 com uma voz pt-BR do Kokoro. */
-export async function speakPcm(
-  text: string,
-  voice = 'pf_dora'
-): Promise<{ samples: Float32Array; sampleRate: number }> {
-  const tts = await getTts();
-  const sid = KOKORO_PT_VOICES[voice] ?? KOKORO_PT_VOICES.pf_dora;
-  const audio = tts.generate({ text: text.slice(0, 2_000), sid, speed: 1.0 });
-  return { samples: audio.samples, sampleRate: tts.sampleRate };
-}
-
 /** Modelos presentes no cache (para o app saber se precisa confirmar download). */
 export function embeddedModelsReady(): boolean {
   const root = voiceModelsDir();
@@ -301,8 +262,10 @@ export function embeddedModelsSize(): number {
 
 /** Apaga os modelos e reseta os singletons — proximo uso baixa de novo. */
 export function deleteEmbeddedModels(): void {
-  recognizerPromise = null;
-  ttsPromise = null;
+  if (worker) {
+    void worker.terminate();
+    worker = null;
+  }
   downloadPromise = null;
   downloadState = { downloading: false, percent: 0, error: null };
   rmSync(voiceModelsDir(), { recursive: true, force: true });

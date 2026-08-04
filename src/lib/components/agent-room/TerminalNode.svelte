@@ -3,7 +3,7 @@
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
   import { SearchAddon } from '@xterm/addon-search';
-  import { Mic, Square } from '@lucide/svelte';
+  import { Mic, Square, Volume2, VolumeX } from '@lucide/svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import * as Select from '$lib/components/ui/select';
   import HeaderIconButton from './canvas/HeaderIconButton.svelte';
@@ -44,11 +44,14 @@
     onTalking?: (payload: { from: string | null; to: string; talking: boolean }) => void;
     /** Resposta de um ask destinada a este no (para voz de volta, TTS). */
     onAgentReply?: (payload: { to: string; from: string | null; text: string }) => void;
+    /** Voz de volta ativa + toggle (botao junto ao mic). */
+    voiceOn?: boolean;
+    onToggleVoice?: () => void;
     /** Tema do terminal (payload.theme). */
     themeName?: TerminalThemeName;
   };
 
-  let { sessionId, createRequest, provider, workspaceId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, themeName = 'dark' }: Props = $props();
+  let { sessionId, createRequest, provider, workspaceId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
 
   let container: HTMLDivElement;
   let xtermInstance: Terminal | null = null;
@@ -70,6 +73,19 @@
   let mediaStream: MediaStream | null = null;
   let audioChunks: Blob[] = [];
   let sendInput: ((data: string) => void) | null = null;
+  let recSeconds = $state(0);
+  let recTimer: ReturnType<typeof setInterval> | null = null;
+
+  function startRecTimer() {
+    recSeconds = 0;
+    recTimer = setInterval(() => (recSeconds += 1), 1_000);
+  }
+
+  function stopRecTimer() {
+    if (recTimer) clearInterval(recTimer);
+    recTimer = null;
+    recSeconds = 0;
+  }
 
   const dictationSupported = typeof window !== 'undefined' &&
     typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
@@ -105,6 +121,7 @@
     };
     recorder.onstop = async () => {
       stopTracks();
+      stopRecTimer();
       mediaRecorder = null;
       dictating = false;
       transcribing = true;
@@ -131,6 +148,7 @@
     };
     recorder.start();
     dictating = true;
+    startRecTimer();
   }
 
   let searchOpen = $state(false);
@@ -333,6 +351,7 @@
     return () => {
       mediaRecorder?.stop();
       stopTracks();
+      stopRecTimer();
       resizeObserver.disconnect();
       socket.close();
       terminal.dispose();
@@ -360,7 +379,12 @@
   {/if}
   {#if dictationSupported}
     <div class="dictate-controls">
-      <Select.Root type="single" value={dictateLang} onValueChange={(value: string) => (dictateLang = value as WhisperLanguage)} disabled={dictating || transcribing}>
+      {#if dictating}
+        <span class="dictate-rec" aria-live="polite">● {recSeconds}s</span>
+      {:else if transcribing}
+        <span class="dictate-transcribing">Transcrevendo…</span>
+      {/if}
+      <Select.Root type="single" value={dictateLang} onValueChange={(value: string) => (dictateLang = value as 'auto' | 'pt' | 'en')} disabled={dictating || transcribing}>
         <Select.Trigger class="dictate-lang" aria-label="Idioma do ditado">
           {dictateLang === 'auto' ? 'Auto' : dictateLang.toUpperCase()}
         </Select.Trigger>
@@ -378,6 +402,15 @@
         onclick={toggleDictation}
       >
         {#if dictating}<Square size={11} />{:else}<Mic size={12} />{/if}
+      </HeaderIconButton>
+      <HeaderIconButton
+        label={voiceOn ? 'Voz ativada: o agente fala as respostas em voz alta' : 'Ativar voz: o agente fala as respostas em voz alta'}
+        class="dictate-btn"
+        side="left"
+        active={voiceOn}
+        onclick={() => onToggleVoice?.()}
+      >
+        {#if voiceOn}<Volume2 size={12} />{:else}<VolumeX size={12} />{/if}
       </HeaderIconButton>
     </div>
   {/if}
@@ -492,6 +525,25 @@
   :global(.dictate-btn).active {
     color: #e5484d;
     border-color: #e5484d;
+  }
+
+  .dictate-rec {
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #e5484d;
+    animation: rec-pulse 1.2s ease-in-out infinite;
+  }
+
+  .dictate-transcribing {
+    font-size: 10px;
+    color: #ffc857;
+    animation: rec-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes rec-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
   }
 
   .attention-dot {
