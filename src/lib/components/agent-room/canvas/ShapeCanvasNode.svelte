@@ -22,6 +22,8 @@
     fontSize?: number;
     fontWeight?: number;
     textAlign?: 'left' | 'center' | 'right';
+    /** Pontos ancora da seta (0..1 normalizados na caixa do no). */
+    points?: Array<{ x: number; y: number }>;
   };
 
   export type ShapeNodeData = {
@@ -137,6 +139,124 @@
   });
 
   const dashArray = $derived(style.strokeDash ? `${style.strokeWidth * 3} ${style.strokeWidth * 2}` : undefined);
+
+  // -- Seta com pontos ancora arrastaveis (curva suave) --------------------------
+  const DEFAULT_ARROW_POINTS = [
+    { x: 0.05, y: 0.5 },
+    { x: 0.5, y: 0.5 },
+    { x: 0.95, y: 0.5 },
+  ];
+
+  /** Pontos locais durante o arraste (persiste no payload ao soltar). */
+  let dragPoints = $state<Array<{ x: number; y: number }> | null>(null);
+  let dragIndex = -1;
+
+  const arrowPoints = $derived(dragPoints ?? data.payload.points ?? DEFAULT_ARROW_POINTS);
+
+  /** Catmull-Rom -> bezier cubico (curva suave passando por todos os pontos). */
+  function smoothPath(pts: Array<{ x: number; y: number }>, w: number, h: number): string {
+    const px = pts.map((p) => ({ x: p.x * w, y: p.y * h }));
+    if (px.length < 2) return '';
+    if (px.length === 2) return `M ${px[0].x} ${px[0].y} L ${px[1].x} ${px[1].y}`;
+    let d = `M ${px[0].x} ${px[0].y}`;
+    for (let i = 0; i < px.length - 1; i += 1) {
+      const p0 = px[Math.max(0, i - 1)];
+      const p1 = px[i];
+      const p2 = px[i + 1];
+      const p3 = px[Math.min(px.length - 1, i + 2)];
+      const c1x = p1.x + (p2.x - p0.x) / 6;
+      const c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6;
+      const c2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+    }
+    return d;
+  }
+
+  /** Ponta da seta orientada pela tangente no fim do caminho. */
+  const arrowHead = $derived.by(() => {
+    const pts = arrowPoints;
+    if (pts.length < 2 || !geom.w) return null;
+    const last = pts[pts.length - 1];
+    const prev = pts[pts.length - 2];
+    const tipX = last.x * geom.w;
+    const tipY = last.y * geom.h;
+    const angle = Math.atan2((last.y - prev.y) * geom.h, (last.x - prev.x) * geom.w);
+    const size = Math.max(10, style.strokeWidth * 5);
+    const left = { x: tipX - size * Math.cos(angle - 0.45), y: tipY - size * Math.sin(angle - 0.45) };
+    const right = { x: tipX - size * Math.cos(angle + 0.45), y: tipY - size * Math.sin(angle + 0.45) };
+    return { tipX, tipY, left, right };
+  });
+
+  function localPoint(event: PointerEvent, el: HTMLElement) {
+    const rect = el.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+    };
+  }
+
+  function startPointDrag(event: PointerEvent, index: number) {
+    if (!selected) return;
+    event.stopPropagation();
+    event.preventDefault();
+    dragIndex = index;
+    dragPoints = arrowPoints.map((p) => ({ ...p }));
+    const shapeEl = (event.currentTarget as HTMLElement).closest('.canvas-shape') as HTMLElement;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    const move = (moveEvent: PointerEvent) => {
+      if (!dragPoints || dragIndex < 0) return;
+      dragPoints[dragIndex] = localPoint(moveEvent, shapeEl);
+    };
+    const up = (upEvent: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (dragPoints && dragIndex >= 0) {
+        dragPoints[dragIndex] = localPoint(upEvent, shapeEl);
+        patch({ points: dragPoints });
+      }
+      dragIndex = -1;
+      dragPoints = null;
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  /** Duplo-clique no caminho: insere um ponto no segmento mais proximo. */
+  function addArrowPoint(event: MouseEvent) {
+    if (shape !== 'arrow' || !selected) return;
+    const shapeEl = (event.currentTarget as HTMLElement).closest('.canvas-shape') as HTMLElement;
+    const rect = shapeEl.getBoundingClientRect();
+    const point = {
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
+    };
+    const pts = arrowPoints.map((p) => ({ ...p }));
+    // Segmento mais proximo: maior distancia perpendicular menor
+    let bestIndex = pts.length - 1;
+    let bestDist = Infinity;
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
+      const dist = Math.hypot(point.x - mx, point.y - my);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIndex = i + 1;
+      }
+    }
+    pts.splice(bestIndex, 0, point);
+    patch({ points: pts });
+  }
+
+  /** Duplo-clique num ponto: remove (minimo 2). */
+  function removeArrowPoint(event: MouseEvent, index: number) {
+    if (shape !== 'arrow') return;
+    event.stopPropagation();
+    const pts = arrowPoints.map((p) => ({ ...p }));
+    if (pts.length <= 2) return;
+    pts.splice(index, 1);
+    patch({ points: pts });
+  }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -298,6 +418,11 @@
             >{{ left: 'Esq', center: 'Centro', right: 'Dir' }[align]}</button>
           {/each}
         </div>
+
+        {#if shape === 'arrow'}
+          <span class="pop-label">Pontos</span>
+          <span class="pop-hint">Arraste os pontos · 2x clique no traco adiciona · 2x clique no ponto remove</span>
+        {/if}
       </div>
     </div>
   {/if}
@@ -340,11 +465,36 @@
           stroke-linejoin="round"
         />
       {:else if shape === 'arrow'}
-        <line x1={geom.x1} y1={geom.cy} x2={geom.x2 - geom.h * 0.18} y2={geom.cy} stroke={style.stroke} stroke-width={style.strokeWidth} stroke-dasharray={dashArray} />
-        <polygon
-          points={`${geom.x2 - geom.h * 0.28},${geom.cy - geom.h * 0.18} ${geom.x2},${geom.cy} ${geom.x2 - geom.h * 0.28},${geom.cy + geom.h * 0.18}`}
-          fill={style.stroke}
+        <!-- caminho suave com pontos arrastaveis; 2x-clique no traco adiciona ponto -->
+        <path
+          d={smoothPath(arrowPoints, geom.w, geom.h)}
+          fill="none"
+          stroke={style.stroke}
+          stroke-width={style.strokeWidth}
+          stroke-dasharray={dashArray}
+          stroke-linecap="round"
+          class="arrow-path"
+          class:editable={selected}
+          ondblclick={addArrowPoint}
         />
+        {#if arrowHead}
+          <polygon
+            points={`${arrowHead.left.x},${arrowHead.left.y} ${arrowHead.tipX},${arrowHead.tipY} ${arrowHead.right.x},${arrowHead.right.y}`}
+            fill={style.stroke}
+          />
+        {/if}
+        {#if selected}
+          {#each arrowPoints as point, index (index)}
+            <circle
+              cx={point.x * geom.w}
+              cy={point.y * geom.h}
+              r={7}
+              class="arrow-anchor nodrag"
+              onpointerdown={(event) => startPointDrag(event, index)}
+              ondblclick={(event) => removeArrowPoint(event, index)}
+            />
+          {/each}
+        {/if}
       {/if}
     </svg>
   {/if}
@@ -381,6 +531,27 @@
     position: absolute;
     inset: 0;
     display: block;
+  }
+
+  .arrow-path.editable {
+    cursor: copy;
+    pointer-events: stroke;
+  }
+
+  .arrow-anchor {
+    fill: #fff;
+    stroke: var(--accent, #7c4dff);
+    stroke-width: 2;
+    cursor: grab;
+    pointer-events: all;
+  }
+
+  .arrow-anchor:hover {
+    fill: #7c4dff;
+  }
+
+  .arrow-anchor:active {
+    cursor: grabbing;
   }
 
   .shape-label {
@@ -520,6 +691,12 @@
     color: #8b8c96;
     min-width: 28px;
     text-align: right;
+  }
+
+  .pop-hint {
+    font-size: 10px;
+    color: #6d6d78;
+    line-height: 1.4;
   }
 
   .swatches {
