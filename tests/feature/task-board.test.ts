@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useSvelarTest } from '@beeblock/svelar/testing';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
+import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
 
@@ -97,6 +98,48 @@ describe('TaskBoardService', () => {
     expect(batch.archived).toBe(1);
     expect(await taskBoardService.list(workspace.id)).toHaveLength(0);
     expect(await taskBoardService.history(workspace.id)).toHaveLength(2);
+    ptySessionManager.kill(session.id);
+  });
+
+  it('vinculo tarefa<->nota: arquivar esconde a nota, apagar a tarefa apaga a nota (1:N)', async () => {
+    const { workspace, session } = await createWorkspaceWithTerminal();
+    const note = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'note',
+      title: 'Spec X',
+      payload: { content: 'detalhes da spec' },
+    });
+
+    // vincula na criacao; id invalido falha
+    const t1 = await taskBoardService.create(workspace.id, { title: 'T1', noteId: note.id });
+    expect(t1.noteId).toBe(note.id);
+    expect(t1.noteTitle).toBe('Spec X');
+    await expect(taskBoardService.create(workspace.id, { title: 'T2', noteId: 'inexistente' })).rejects.toThrow('Nota');
+
+    // nota vinculada NAO apaga pelo X do canvas (guard no deleteNode)
+    await expect(workspaceService.deleteNode(workspace.id, note.id)).rejects.toThrow('vinculada');
+
+    // segunda tarefa na MESMA nota (1:N): arquivar uma NAO esconde a nota
+    const t2 = await taskBoardService.create(workspace.id, { title: 'T2', noteId: note.id });
+    await taskBoardService.update(workspace.id, t1.id, { status: 'done' });
+    await taskBoardService.archive(workspace.id, t1.id);
+    expect((await workspaceRepository.listNodes(workspace.id)).some((node) => node.id === note.id)).toBe(true);
+
+    // arquivando a ultima referencia, a nota sai do canvas (mas fica no banco)
+    await taskBoardService.update(workspace.id, t2.id, { status: 'done' });
+    await taskBoardService.archive(workspace.id, t2.id);
+    expect((await workspaceRepository.listNodes(workspace.id)).some((node) => node.id === note.id)).toBe(false);
+    expect((await workspaceRepository.listNodes(workspace.id, undefined, true)).some((node) => node.id === note.id)).toBe(true);
+
+    // historico resolve o titulo mesmo com a nota arquivada
+    const history = await taskBoardService.history(workspace.id);
+    expect(history.find((task) => task.id === t1.id)?.noteTitle).toBe('Spec X');
+
+    // apagar a tarefa apaga a nota JUNTO quando e a ultima referencia
+    await taskBoardService.remove(workspace.id, t1.id);
+    expect((await workspaceRepository.listNodes(workspace.id, undefined, true)).some((node) => node.id === note.id)).toBe(true);
+    await taskBoardService.remove(workspace.id, t2.id);
+    expect((await workspaceRepository.listNodes(workspace.id, undefined, true)).some((node) => node.id === note.id)).toBe(false);
     ptySessionManager.kill(session.id);
   });
 

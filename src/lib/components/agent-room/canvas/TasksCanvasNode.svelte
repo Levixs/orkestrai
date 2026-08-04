@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, History, ImagePlus, Plus, SquareKanban, Trash2, X } from '@lucide/svelte';
+  import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, History, ImagePlus, Link2, Plus, SquareKanban, StickyNote, Trash2, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
@@ -19,6 +19,8 @@
     createdBy: string;
     updatedAt: string;
     archivedAt: string | null;
+    noteId: string | null;
+    noteTitle: string | null;
   };
 
   export type TasksNodeData = {
@@ -56,6 +58,18 @@
   let view = $state<'board' | 'history'>('board');
   let historyItems = $state<BoardTask[]>([]);
   let historyLoading = $state(false);
+  let notes = $state<Array<{ id: string; title: string }>>([]);
+  // Nota aberta a partir do historico (pode estar arquivada — fora do canvas).
+  let noteViewer = $state<{ title: string; content: string } | null>(null);
+
+  async function openLinkedNote(noteId: string, onCanvas: boolean) {
+    if (onCanvas && data.onJumpToNode) {
+      data.onJumpToNode(noteId);
+      return;
+    }
+    const node = await api<{ title: string | null; payload?: { content?: string } }>(`/api/agent-room/workspaces/${data.workspaceId}/nodes/${noteId}`);
+    if (node) noteViewer = { title: node.title ?? 'Nota', content: node.payload?.content ?? '' };
+  }
 
   const doneCount = $derived(tasks.filter((task) => task.status === 'done').length);
 
@@ -105,7 +119,10 @@
       api<Array<{ id: string; type: string; title: string | null }>>(`/api/agent-room/workspaces/${data.workspaceId}/nodes`),
     ]);
     if (taskList) tasks = taskList;
-    if (nodeList) agents = nodeList.filter((node) => node.type === 'terminal').map((node) => ({ id: node.id, title: node.title ?? 'terminal' }));
+    if (nodeList) {
+      agents = nodeList.filter((node) => node.type === 'terminal').map((node) => ({ id: node.id, title: node.title ?? 'terminal' }));
+      notes = nodeList.filter((node) => node.type === 'note').map((node) => ({ id: node.id, title: node.title ?? 'nota' }));
+    }
   }
 
   onMount(() => {
@@ -304,6 +321,16 @@
                 {#if item.archivedAt} · arquivada{/if}
               </span>
             </div>
+            {#if item.noteId}
+              <button
+                class="tb-note-chip"
+                title={`Abrir nota vinculada: ${item.noteTitle ?? 'nota'}`}
+                onclick={() => openLinkedNote(item.noteId!, !item.archivedAt)}
+              >
+                <StickyNote size={10} />
+                <span class="tb-note-chip-label">{item.noteTitle ?? 'nota'}</span>
+              </button>
+            {/if}
             <span class="tb-history-status" class:archived={Boolean(item.archivedAt)}>{item.archivedAt ? 'arquivada' : 'feito'}</span>
           </article>
         {/each}
@@ -398,6 +425,32 @@
                     {/each}
                   </DropdownMenu.Content>
                 </DropdownMenu.Root>
+                {#if task.noteId}
+                  <button
+                    class="tb-note-chip"
+                    title={`Nota vinculada: ${task.noteTitle ?? 'nota'}`}
+                    onclick={() => openLinkedNote(task.noteId!, true)}
+                  >
+                    <StickyNote size={10} />
+                    <span class="tb-note-chip-label">{task.noteTitle ?? 'nota'}</span>
+                  </button>
+                {/if}
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger class="tb-icon-btn subtle tb-link-trigger" aria-label="Vincular nota de spec">
+                    <Link2 size={11} />
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content class="w-52">
+                    {#if task.noteId}
+                      <DropdownMenu.Item onclick={() => patchTask(task.id, { noteId: null })}>Desvincular nota</DropdownMenu.Item>
+                      <DropdownMenu.Separator />
+                    {/if}
+                    {#each notes.filter((note) => note.id !== task.noteId) as note (note.id)}
+                      <DropdownMenu.Item onclick={() => patchTask(task.id, { noteId: note.id })}>{note.title}</DropdownMenu.Item>
+                    {:else}
+                      <DropdownMenu.Item disabled>Sem notas no canvas</DropdownMenu.Item>
+                    {/each}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
                 <HeaderIconButton label="Anexar imagem (ou cole com Ctrl+V no cartao)" class="tb-icon-btn subtle" side="top" onclick={() => pickImage(task)}>
                   <ImagePlus size={11} />
                 </HeaderIconButton>
@@ -439,6 +492,20 @@
           <Trash2 size={13} /> Remover imagem
         </button>
       </Dialog.Footer>
+    </Dialog.Content>
+  </Dialog.Root>
+{/if}
+
+{#if noteViewer}
+  <Dialog.Root open={noteViewer !== null} onOpenChange={(open: boolean) => !open && (noteViewer = null)}>
+    <Dialog.Content class="tb-viewer-content">
+      <Dialog.Header>
+        <Dialog.Title>{noteViewer.title}</Dialog.Title>
+        <Dialog.Description>Nota vinculada — arquivada junto com a tarefa, guardada no historico</Dialog.Description>
+      </Dialog.Header>
+      <div class="tb-note-viewer-body nodrag nowheel">
+        <pre class="tb-note-viewer-text">{noteViewer.content || '(nota vazia)'}</pre>
+      </div>
     </Dialog.Content>
   </Dialog.Root>
 {/if}
@@ -511,6 +578,59 @@
   .tb-history-status.archived {
     color: #8b8c96;
     background: rgba(255, 255, 255, 0.07);
+  }
+
+  .tb-note-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 110px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(125, 229, 255, 0.25);
+    background: rgba(125, 229, 255, 0.08);
+    color: #7de5ff;
+    font-size: 9.5px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 120ms ease;
+  }
+
+  .tb-note-chip:hover {
+    background: rgba(125, 229, 255, 0.16);
+  }
+
+  .tb-note-chip-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tb-link-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 2px;
+  }
+
+  .tb-note-viewer-body {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding: 4px 2px;
+  }
+
+  .tb-note-viewer-text {
+    margin: 0;
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #c9cad2;
   }
 
   .tb-add {

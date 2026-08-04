@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Workspace } from '../../domain/types.js';
+import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { bridgeService } from './BridgeService.js';
@@ -112,6 +113,15 @@ export class WorkspaceService {
   async deleteNode(workspaceId: string, nodeId: string) {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId) throw new Error('No nao encontrado.');
+    // Nota vinculada a tarefa do quadro NAO apaga pelo X do canvas: ela so sai
+    // de verdade junto com a tarefa (ou quando desvinculada).
+    if (node.type === 'note') {
+      const linked = await AgentBoardTask.query().where('workspace_id', workspaceId).where('note_node_id', nodeId).get();
+      if (linked.length > 0) {
+        const titles = linked.map((task) => `"${task.getAttribute('title')}"`).join(', ');
+        throw new Error(`Esta nota esta vinculada a ${linked.length === 1 ? 'tarefa' : 'tarefas'} do quadro: ${titles}. Desvincule ou apague a tarefa.`);
+      }
+    }
     await workspaceRepository.deleteNode(nodeId);
     return { deleted: true };
   }

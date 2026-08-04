@@ -3,6 +3,7 @@ import { bridgeService } from '$lib/modules/agent-room/application/services/Brid
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import { floorService } from '$lib/modules/agent-room/application/services/FloorService.js';
+import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { portalService } from '$lib/modules/agent-room/application/services/PortalService.js';
@@ -268,6 +269,24 @@ export class BridgeController extends Controller {
     return agent.nodeId;
   }
 
+  /**
+   * Nota por id ou titulo (espelha assigneeNodeId): undefined = nao mexe,
+   * null/'' = desvincula, string = vincula (id, titulo exato ou parcial).
+   */
+  private async noteNodeId(workspaceId: string, note?: string | null): Promise<string | null | undefined> {
+    if (note === undefined) return undefined;
+    if (note === null || note.trim() === '') return null;
+    const nodes = await workspaceRepository.listNodes(workspaceId, undefined, true);
+    const notes = nodes.filter((node) => node.type === 'note');
+    const normalized = note.trim().toLowerCase();
+    const found =
+      notes.find((node) => node.id === note) ??
+      notes.find((node) => (node.title ?? '').toLowerCase() === normalized) ??
+      notes.find((node) => (node.title ?? '').toLowerCase().includes(normalized));
+    if (!found) throw new Error(`Nota "${note}" nao encontrada para vincular a tarefa.`);
+    return found.id;
+  }
+
   async taskList(event: any) {
     try {
       const token = this.requireToken(event);
@@ -285,6 +304,7 @@ export class BridgeController extends Controller {
       const task = await taskBoardService.create(workspace.id, {
         title: input.title,
         assigneeNodeId: await this.assigneeNodeId(workspace.id, input.assignee),
+        noteId: (await this.noteNodeId(workspace.id, input.note)) ?? null,
         createdBy: input.from ?? 'agente',
       });
       // O quadro aparece no canvas junto com a primeira tarefa.
@@ -302,6 +322,7 @@ export class BridgeController extends Controller {
       const task = await taskBoardService.update(workspace.id, event.params.taskId, {
         status: input.status,
         assigneeNodeId: input.assignee !== undefined ? await this.assigneeNodeId(workspace.id, input.assignee) : undefined,
+        noteId: await this.noteNodeId(workspace.id, input.note),
       });
       return this.json({ data: task });
     } catch (error) {

@@ -19,6 +19,11 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Tarefas concluídas podem ser **arquivadas** (botão no cartão ou "arquivar todas" na coluna Feito): saem do quadro mas nada é apagado — a nova visão de **Histórico** no nó Tarefas mostra tudo que já foi entregue, com responsável e data.
 - O líder faz o mesmo pela CLI: `orkestrai task archive <id>`, `task archive-done` e `task history`.
 
+**Vínculo tarefa ↔ nota**
+- Cada tarefa pode ter **uma nota de spec vinculada** (a mesma nota pode servir várias tarefas): pelo cartão (ícone de corrente) ou pela CLI (`task add --note`, `task link`, `task unlink`).
+- Ao **arquivar** a tarefa, a nota vinculada sai do canvas junto — mas continua guardada: o chip de nota no histórico abre o conteúdo mesmo arquivado.
+- Proteções: nota vinculada **não apaga pelo X** do canvas (mostra qual tarefa a prende); **apagar a tarefa apaga a nota junto** quando ela é a última referência.
+
 **Voz (ditado + agentes falando em pt-BR)**
 - Ciclo de conversa por voz: você dita, o agente responde **falando** — a captura da resposta arma só após o Enter e não repete texto já falado.
 - Voz 100% autocontida: o app baixa um runtime próprio junto com o modelo de voz — não depende mais de Node.js instalado na máquina.

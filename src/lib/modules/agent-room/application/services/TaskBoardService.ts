@@ -18,6 +18,9 @@ export type BoardTask = {
   updatedAt: string;
   /** Preenchido quando a tarefa foi arquivada (sai do quadro, fica no historico). */
   archivedAt: string | null;
+  /** Nota de spec vinculada (UMA por tarefa; a mesma nota pode servir N tarefas). */
+  noteId: string | null;
+  noteTitle: string | null;
 };
 
 function imagesOf(model: AgentBoardTask): string[] {
@@ -34,7 +37,7 @@ function imagesOf(model: AgentBoardTask): string[] {
   return legacy ? [legacy] : [];
 }
 
-function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null): BoardTask {
+function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null, noteTitle: string | null = null): BoardTask {
   const images = imagesOf(model);
   return {
     id: model.getAttribute('id'),
@@ -49,6 +52,8 @@ function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null): Bo
     createdAt: String(model.getAttribute('created_at')),
     updatedAt: String(model.getAttribute('updated_at')),
     archivedAt: model.getAttribute('archived_at') ?? null,
+    noteId: model.getAttribute('note_node_id') ?? null,
+    noteTitle,
   };
 }
 
@@ -69,11 +74,13 @@ export class TaskBoardService {
   async list(workspaceId: string): Promise<BoardTask[]> {
     // Quadro: so tarefas NAO arquivadas (arquivadas vivem em history()).
     const rows = await AgentBoardTask.query().where('workspace_id', workspaceId).whereNull('archived_at').orderBy('created_at', 'asc').get();
-    const nodes = await workspaceRepository.listNodes(workspaceId);
+    // includeArchived: notas arquivadas junto com a tarefa ainda resolvem o titulo.
+    const nodes = await workspaceRepository.listNodes(workspaceId, undefined, true);
     const titles = new Map(nodes.map((node) => [node.id, node.title ?? node.type]));
     return rows.map((row) => {
       const assigneeId = row.getAttribute('assignee_node_id') as string | null;
-      return mapTask(row, assigneeId ? (titles.get(assigneeId) ?? null) : null);
+      const noteId = row.getAttribute('note_node_id') as string | null;
+      return mapTask(row, assigneeId ? (titles.get(assigneeId) ?? null) : null, noteId ? (titles.get(noteId) ?? null) : null);
     });
   }
 
@@ -91,11 +98,12 @@ export class TaskBoardService {
     const rows = [...done, ...archived]
       .sort((a, b) => String(b.getAttribute('updated_at')).localeCompare(String(a.getAttribute('updated_at'))))
       .slice(0, limit);
-    const nodes = await workspaceRepository.listNodes(workspaceId);
+    const nodes = await workspaceRepository.listNodes(workspaceId, undefined, true);
     const titles = new Map(nodes.map((node) => [node.id, node.title ?? node.type]));
     return rows.map((row) => {
       const assigneeId = row.getAttribute('assignee_node_id') as string | null;
-      return mapTask(row, assigneeId ? (titles.get(assigneeId) ?? null) : null);
+      const noteId = row.getAttribute('note_node_id') as string | null;
+      return mapTask(row, assigneeId ? (titles.get(assigneeId) ?? null) : null, noteId ? (titles.get(noteId) ?? null) : null);
     });
   }
 
@@ -104,8 +112,9 @@ export class TaskBoardService {
     const task = await this.requireTask(workspaceId, taskId);
     if (task.getAttribute('status') !== 'done') throw new Error('So da para arquivar tarefa concluida (done).');
     await AgentBoardTask.query().where('id', taskId).update({ archived_at: new Date().toISOString() });
+    await this.hideOrphanLinkedNotes(workspaceId, [task.getAttribute('note_node_id') as string | null]);
     notifyWorkspaceChanged(workspaceId);
-    return mapTask(await this.requireTask(workspaceId, taskId));
+    return this.mapWithTitles(await this.requireTask(workspaceId, taskId));
   }
 
   /** Arquiva TODAS as tarefas concluidas do quadro de uma vez. */
@@ -119,8 +128,45 @@ export class TaskBoardService {
     for (const task of done) {
       await AgentBoardTask.query().where('id', task.getAttribute('id')).update({ archived_at: now });
     }
+    await this.hideOrphanLinkedNotes(
+      workspaceId,
+      done.map((task) => task.getAttribute('note_node_id') as string | null)
+    );
     if (done.length) notifyWorkspaceChanged(workspaceId);
     return { archived: done.length };
+  }
+
+  /**
+   * Nota vinculada so sai do canvas quando NENHUMA tarefa viva (nao arquivada)
+   * aponta para ela — a mesma spec pode cobrir varias tarefas (1:N).
+   */
+  private async hideOrphanLinkedNotes(workspaceId: string, noteIds: Array<string | null>): Promise<void> {
+    for (const noteId of new Set(noteIds.filter((id): id is string => Boolean(id)))) {
+      const liveRefs = await AgentBoardTask.query()
+        .where('workspace_id', workspaceId)
+        .where('note_node_id', noteId)
+        .whereNull('archived_at')
+        .get();
+      if (liveRefs.length === 0) await workspaceRepository.archiveNode(noteId);
+    }
+  }
+
+  /** Resolve titulos (responsavel + nota) para retornos pontuais. */
+  private async mapWithTitles(model: AgentBoardTask): Promise<BoardTask> {
+    const assigneeId = model.getAttribute('assignee_node_id') as string | null;
+    const noteId = model.getAttribute('note_node_id') as string | null;
+    const [assignee, note] = await Promise.all([
+      assigneeId ? workspaceRepository.getNode(assigneeId) : null,
+      noteId ? workspaceRepository.getNode(noteId) : null,
+    ]);
+    return mapTask(model, assignee?.title ?? null, note?.title ?? null);
+  }
+
+  private async requireNote(workspaceId: string, noteId: string): Promise<void> {
+    const node = await workspaceRepository.getNode(noteId);
+    if (!node || node.workspaceId !== workspaceId || node.type !== 'note') {
+      throw new Error('Nota nao encontrada neste workspace (vincule um no do tipo nota).');
+    }
   }
 
   private async requireTask(workspaceId: string, taskId: string): Promise<AgentBoardTask> {
@@ -133,10 +179,11 @@ export class TaskBoardService {
 
   async create(
     workspaceId: string,
-    input: { title: string; assigneeNodeId?: string | null; createdBy?: string }
+    input: { title: string; assigneeNodeId?: string | null; createdBy?: string; noteId?: string | null }
   ): Promise<BoardTask> {
     const title = input.title.trim();
     if (!title) throw new Error('Informe o titulo da tarefa.');
+    if (input.noteId) await this.requireNote(workspaceId, input.noteId);
     const now = new Date().toISOString();
     const id = uuidv7();
     await AgentBoardTask.query().insert({
@@ -145,6 +192,7 @@ export class TaskBoardService {
       title,
       status: input.assigneeNodeId ? 'doing' : 'todo',
       assignee_node_id: input.assigneeNodeId ?? null,
+      note_node_id: input.noteId ?? null,
       created_by: input.createdBy ?? 'user',
       created_at: now,
       updated_at: now,
@@ -160,13 +208,13 @@ export class TaskBoardService {
       await this.notifyLeader(workspaceId, id, Boolean(input.assigneeNodeId)).catch(() => {});
     }
     notifyWorkspaceChanged(workspaceId);
-    return mapTask(task);
+    return this.mapWithTitles(task);
   }
 
   async update(
     workspaceId: string,
     taskId: string,
-    input: { title?: string; status?: string; assigneeNodeId?: string | null; imagePath?: string | null }
+    input: { title?: string; status?: string; assigneeNodeId?: string | null; imagePath?: string | null; noteId?: string | null }
   ): Promise<BoardTask> {
     const task = await this.requireTask(workspaceId, taskId);
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -182,6 +230,10 @@ export class TaskBoardService {
     if (input.imagePath !== undefined) {
       patch.image_path = input.imagePath;
     }
+    if (input.noteId !== undefined) {
+      if (input.noteId) await this.requireNote(workspaceId, input.noteId);
+      patch.note_node_id = input.noteId;
+    }
     let assignedNow = false;
     if (input.assigneeNodeId !== undefined) {
       assignedNow = Boolean(input.assigneeNodeId) && input.assigneeNodeId !== task.getAttribute('assignee_node_id');
@@ -193,12 +245,19 @@ export class TaskBoardService {
       await this.dispatch(workspaceId, taskId).catch(() => {});
     }
     notifyWorkspaceChanged(workspaceId);
-    return mapTask(await this.requireTask(workspaceId, taskId));
+    return this.mapWithTitles(await this.requireTask(workspaceId, taskId));
   }
 
   async remove(workspaceId: string, taskId: string): Promise<boolean> {
-    await this.requireTask(workspaceId, taskId);
+    const task = await this.requireTask(workspaceId, taskId);
+    const noteId = task.getAttribute('note_node_id') as string | null;
     await AgentBoardTask.query().where('id', taskId).delete();
+    // Apagar a tarefa apaga a nota vinculada JUNTO — desde que nenhuma outra
+    // tarefa use a mesma nota (1:N: a spec vive enquanto tiver tarefa).
+    if (noteId) {
+      const remaining = await AgentBoardTask.query().where('workspace_id', workspaceId).where('note_node_id', noteId).get();
+      if (remaining.length === 0) await workspaceRepository.deleteNode(noteId);
+    }
     notifyWorkspaceChanged(workspaceId);
     return true;
   }

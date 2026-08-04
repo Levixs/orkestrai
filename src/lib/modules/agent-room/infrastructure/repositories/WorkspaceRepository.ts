@@ -157,12 +157,19 @@ export class WorkspaceRepository {
 
   // -- Nos do canvas ----------------------------------------------------------
 
-  async listNodes(workspaceId: string, floorId?: string | null): Promise<CanvasNode[]> {
+  async listNodes(workspaceId: string, floorId?: string | null, includeArchived = false): Promise<CanvasNode[]> {
     const query = AgentCanvasNode.query().where('workspace_id', workspaceId).orderBy('created_at', 'asc');
     if (floorId === null) query.whereNull('floor_id');
     else if (floorId) query.where('floor_id', floorId);
+    // Arquivados (notas vinculadas a tarefas arquivadas) ficam fora do canvas.
+    if (!includeArchived) query.whereNull('archived_at');
     const rows = await query.get();
     return rows.map(mapNode);
+  }
+
+  /** Arquiva um no (some do canvas, continua no banco para o historico). */
+  async archiveNode(id: string): Promise<void> {
+    await AgentCanvasNode.query().where('id', id).update({ archived_at: new Date().toISOString() });
   }
 
   async getNode(id: string): Promise<CanvasNode | null> {

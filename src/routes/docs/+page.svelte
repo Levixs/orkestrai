@@ -59,7 +59,7 @@
       id: 'tarefas',
       icon: SquareKanban,
       title: 'Tarefas (kanban)',
-      body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace: cartões em A fazer/Fazendo/Feito. Atribuir um cartão a um agente despacha a tarefa direto para o terminal dele (loop contínuo) — ele trabalha e marca done sozinho. O líder opera o quadro pela CLI: orkestrai task list/add/assign/done. Concluídas ficam na coluna Feito até você (ou o líder) arquivar: botão de arquivo no cartão ou na coluna — saem do quadro mas NADA é apagado: o ícone de histórico (relógio) no cabeçalho abre a linha do tempo de tudo que já foi entregue, com responsável e data. Na CLI: orkestrai task archive/archive-done/history.`,
+      body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace: cartões em A fazer/Fazendo/Feito. Atribuir um cartão a um agente despacha a tarefa direto para o terminal dele (loop contínuo) — ele trabalha e marca done sozinho. O líder opera o quadro pela CLI: orkestrai task list/add/assign/done. Cada tarefa pode ter UMA nota de spec vinculada (a mesma nota pode servir várias tarefas): vincule no cartão (ícone de corrente) ou pela CLI (task add --note / task link). Concluídas ficam na coluna Feito até você (ou o líder) arquivar: saem do quadro junto com a nota vinculada, mas NADA é apagado — o ícone de histórico (relógio) abre a linha do tempo, e o chip de nota ali abre o conteúdo mesmo arquivado. Regras de proteção: nota vinculada não apaga pelo X do canvas; apagar a tarefa apaga a nota junto (quando é a última tarefa que a usa). Na CLI: orkestrai task archive/archive-done/history/link/unlink.`,
     },
     {
       id: 'conexoes',
@@ -173,6 +173,7 @@
         'Atualizações automáticas: o app busca versão nova sozinho e instala na troca, sem tocar seus dados.',
         'Skeletons de carregamento na sidebar, usage, skills e Configurações — sem pulos na UI.',
         'Kanban com histórico: arquive concluídas sem perder o registro do que foi entregue.',
+        'Tarefa com nota de spec vinculada: arquiva junto, protegida contra exclusão, lida pelo histórico.',
       ],
     },
     {

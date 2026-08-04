@@ -50,9 +50,10 @@ Uso:
   orkestrai dismiss <agente> --from <maestro>
   orkestrai connect <de> <para> --from <maestro>
   orkestrai task list [--json]
-  orkestrai task add <titulo> [--assign <agente>] [--from <agente>]
+  orkestrai task add <titulo> [--assign <agente>] [--note <nota>] [--from <agente>]
   orkestrai task done <taskId>
   orkestrai task assign <taskId> <agente>
+  orkestrai task link <taskId> <nota> | unlink <taskId>
   orkestrai task archive <taskId> | archive-done | history [--json]
   orkestrai floor list [--json]
   orkestrai floor create <nome> [--branch <b>] [--existing] [--clone]
@@ -361,6 +362,7 @@ export async function run(argv, options = {}) {
           for (const task of data) {
             const who = task.assigneeTitle ? ` → ${task.assigneeTitle}` : '';
             out(`- [${task.status}] ${task.title}${who} (${task.id})`);
+            if (task.noteTitle) out(`    nota: ${task.noteTitle} (${task.noteId})`);
             for (const image of task.images ?? []) {
               out(`    imagem: ${image}`);
             }
@@ -371,10 +373,11 @@ export async function run(argv, options = {}) {
       }
       if (action === 'add') {
         const title = values.join(' ');
-        if (!title) throw new Error('Uso: orkestrai task add <titulo> [--assign <agente>] [--from <agente>]');
+        if (!title) throw new Error('Uso: orkestrai task add <titulo> [--assign <agente>] [--note <nota>] [--from <agente>]');
         const data = await bridge(config, 'POST', '/api/agent-room/bridge/tasks', {
           title,
           assignee: flags.assign,
+          note: flags.note,
           from: flags.from,
         });
         out(`Tarefa criada: [${data.status}] ${data.title} (${data.id})`);
@@ -392,6 +395,21 @@ export async function run(argv, options = {}) {
         if (!taskId || !assignee) throw new Error('Uso: orkestrai task assign <taskId> <agente>');
         await bridge(config, 'PATCH', `/api/agent-room/bridge/tasks/${taskId}`, { assignee });
         out('Tarefa atribuida.');
+        return 0;
+      }
+      if (action === 'link') {
+        const [taskId, ...noteParts] = values;
+        const note = noteParts.join(' ');
+        if (!taskId || !note) throw new Error('Uso: orkestrai task link <taskId> <nota (id ou titulo)>');
+        await bridge(config, 'PATCH', `/api/agent-room/bridge/tasks/${taskId}`, { note });
+        out('Nota vinculada a tarefa.');
+        return 0;
+      }
+      if (action === 'unlink') {
+        const taskId = values[0];
+        if (!taskId) throw new Error('Uso: orkestrai task unlink <taskId>');
+        await bridge(config, 'PATCH', `/api/agent-room/bridge/tasks/${taskId}`, { note: '' });
+        out('Nota desvinculada da tarefa.');
         return 0;
       }
       if (action === 'archive') {
@@ -415,12 +433,13 @@ export async function run(argv, options = {}) {
             const who = task.assigneeTitle ? ` → ${task.assigneeTitle}` : '';
             const when = String(task.updatedAt ?? '').slice(0, 16).replace('T', ' ');
             out(`- [${task.status}${task.archivedAt ? '/arquivada' : ''}] ${task.title}${who} (${when})`);
+            if (task.noteTitle) out(`    nota: ${task.noteTitle} (${task.noteId})`);
           }
           if (!data.length) out('(historico vazio)');
         }
         return 0;
       }
-      throw new Error('Uso: orkestrai task <list|add|done|assign|archive|archive-done|history> ...');
+      throw new Error('Uso: orkestrai task <list|add|done|assign|link|unlink|archive|archive-done|history> ...');
     }
     case 'floor': {
       const [action, ...values] = rest;

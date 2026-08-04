@@ -479,6 +479,7 @@ Se \`orkestrai\` nao resolver no seu shell (acontece em alguns executores, ex.: 
 - \`orkestrai task done <taskId>\` — marca tarefa atribuida a voce como concluida.
 - \`orkestrai task archive <taskId>\` / \`task archive-done\` — arquiva concluidas: saem do quadro, ficam no historico. Lidere a limpeza do quadro ao fechar uma frente.
 - \`orkestrai task history\` — historico do workspace (concluidas + arquivadas, da mais recente): o "o que ja foi feito" do projeto.
+- \`orkestrai task add "<titulo>" --note "<titulo-da-nota>"\` / \`task link <taskId> <nota>\` / \`task unlink <taskId>\` — vincula a tarefa a sua nota de spec. SEMPRE vincule: tarefa com spec vinculada e autossuficiente. Regras: UMA nota por tarefa (a mesma nota pode servir varias tarefas); ao arquivar a tarefa, a nota sai do canvas JUNTO (fica acessivel pelo historico); nota vinculada nao apaga pelo X do canvas — so sai de verdade junto com a tarefa (ou se desvinculada).
 - \`orkestrai portal create "<url>" [--title "<t>"] [--connect "<Agente>"|all]\` — cria um portal (browser) no canvas.
 - \`orkestrai portal <nodeId> navigate "<url>"\` — abre uma URL no portal conectado.
 - \`orkestrai portal <nodeId> eval "<js>"\` — executa JS na pagina e retorna o resultado.

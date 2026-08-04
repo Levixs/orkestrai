@@ -99,6 +99,17 @@ export class WorkspaceController extends Controller {
     }
   }
 
+  /** Le um no pelo id — inclusive arquivado (o historico do kanban abre notas). */
+  async getNode(event: any) {
+    try {
+      const node = await workspaceRepository.getNode(event.params.nodeId);
+      if (!node || node.workspaceId !== event.params.id) throw new Error('No nao encontrado.');
+      return this.json({ data: node });
+    } catch (error) {
+      return this.errorResponse(error, 'No nao encontrado.', 404);
+    }
+  }
+
   async updateNode(event: any) {
     try {
       const input = await UpdateCanvasNodeRequest.validate(event);

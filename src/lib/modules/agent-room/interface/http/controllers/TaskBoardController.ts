@@ -31,6 +31,7 @@ export class TaskBoardController extends Controller {
           data: await taskBoardService.create(event.params.id, {
             title: input.title,
             assigneeNodeId: input.assigneeNodeId ?? null,
+            noteId: input.noteId ?? null,
             createdBy: input.createdBy ?? 'user',
           }),
         },
@@ -50,6 +51,7 @@ export class TaskBoardController extends Controller {
           status: input.status,
           assigneeNodeId: input.assigneeNodeId,
           imagePath: input.imagePath,
+          noteId: input.noteId,
         }),
       });
     } catch (error) {
