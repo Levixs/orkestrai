@@ -1,6 +1,12 @@
 import { Controller } from '@beeblock/svelar/routing';
 import { voiceService } from '$lib/modules/agent-room/application/services/VoiceService.js';
-import { embeddedDownloadStatus, ensureEmbeddedModels } from '$lib/modules/agent-room/infrastructure/voice/EmbeddedVoice.js';
+import { settingsService } from '$lib/modules/agent-room/application/services/SettingsService.js';
+import {
+  deleteEmbeddedModels,
+  embeddedDownloadStatus,
+  embeddedModelsSize,
+  ensureEmbeddedModels,
+} from '$lib/modules/agent-room/infrastructure/voice/EmbeddedVoice.js';
 import { z } from 'zod';
 
 const speakSchema = z.object({
@@ -28,9 +34,16 @@ export class VoiceController extends Controller {
     }
   }
 
-  /** Estado do download (polling da modal). */
+  /** Estado do download + tamanho em disco (polling da modal e Configuracoes). */
   async modelsStatus() {
-    return this.json({ data: embeddedDownloadStatus() });
+    return this.json({ data: { ...embeddedDownloadStatus(), bytes: embeddedModelsSize() } });
+  }
+
+  /** Apaga os modelos para liberar espaco (proximo uso baixa de novo). */
+  async deleteModels() {
+    deleteEmbeddedModels();
+    await settingsService.set('voiceModelsConfirmed', 'false');
+    return this.json({ data: { deleted: true } });
   }
 
   async transcribe(event: any) {

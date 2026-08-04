@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -277,6 +277,35 @@ export async function speakPcm(
 export function embeddedModelsReady(): boolean {
   const root = voiceModelsDir();
   return existsSync(join(root, PARAKEET.dir, '.complete')) && existsSync(join(root, KOKORO.dir, '.complete'));
+}
+
+/** Tamanho atual dos modelos em disco (bytes; 0 se nao baixados). */
+export function embeddedModelsSize(): number {
+  const models = voiceModelsDir();
+  if (!existsSync(models)) return 0;
+  let total = 0;
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else total += statSync(full).size;
+    }
+  };
+  try {
+    walk(models);
+  } catch {
+    // sumiu no meio da varredura
+  }
+  return total;
+}
+
+/** Apaga os modelos e reseta os singletons — proximo uso baixa de novo. */
+export function deleteEmbeddedModels(): void {
+  recognizerPromise = null;
+  ttsPromise = null;
+  downloadPromise = null;
+  downloadState = { downloading: false, percent: 0, error: null };
+  rmSync(voiceModelsDir(), { recursive: true, force: true });
 }
 
 export const EMBEDDED_MODELS_SIZE_MB = PARAKEET.sizeMb + KOKORO.sizeMb;

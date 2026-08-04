@@ -8,6 +8,7 @@
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
   import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog';
 
   let settings = $state<Record<string, string>>({});
   let saved = $state(false);
@@ -34,6 +35,7 @@
     const response = await fetch('/api/agent-room/settings');
     const payload = await response.json();
     settings = payload.data ?? {};
+    await refreshModelStatus();
   });
 
   async function save() {
@@ -52,6 +54,37 @@
   type VoiceHealth = { ok: boolean; url: string; detail?: string };
   let voiceHealth = $state<VoiceHealth | null>(null);
   let checkingVoice = $state(false);
+  let modelBytes = $state<number | null>(null);
+  let confirmDeleteModels = $state(false);
+  let deletingModels = $state(false);
+
+  async function refreshModelStatus() {
+    try {
+      const response = await fetch('/api/agent-room/voice/models');
+      const status = (await response.json()).data;
+      modelBytes = status.ready ? (status.bytes ?? 0) : 0;
+    } catch {
+      modelBytes = null;
+    }
+  }
+
+  async function deleteModels() {
+    deletingModels = true;
+    try {
+      await fetch('/api/agent-room/voice/models', { method: 'DELETE' });
+      invalidateAppSettings();
+      await getAppSettings(true);
+      modelBytes = 0;
+      voiceHealth = null;
+    } finally {
+      deletingModels = false;
+      confirmDeleteModels = false;
+    }
+  }
+
+  function formatMb(bytes: number) {
+    return bytes >= 1_000_000_000 ? `${(bytes / 1_000_000_000).toFixed(1)} GB` : `${Math.round(bytes / 1_000_000)} MB`;
+  }
 
   async function checkVoiceStack() {
     checkingVoice = true;
@@ -265,8 +298,35 @@
         </span>
       {/if}
     </div>
+
+    {#if modelBytes !== null && modelBytes > 0}
+      <div class="model-row">
+        <span class="field-hint">Modelo de voz baixado: <strong>{formatMb(modelBytes)}</strong></span>
+        <Button variant="outline" size="sm" onclick={() => (confirmDeleteModels = true)}>
+          Apagar modelo (liberar espaco)
+        </Button>
+      </div>
+    {/if}
     <Button size="sm" onclick={save}>{saved ? 'Salvo!' : 'Salvar'}</Button>
   </section>
+
+  <AlertDialog.Root bind:open={confirmDeleteModels}>
+    <AlertDialog.Content>
+      <AlertDialog.Header>
+        <AlertDialog.Title>Apagar o modelo de voz?</AlertDialog.Title>
+        <AlertDialog.Description>
+          Isso libera {modelBytes ? formatMb(modelBytes) : 'espaco'} de disco. Ditado e fala
+          param ate voce baixar de novo (o app pergunta antes de baixar).
+        </AlertDialog.Description>
+      </AlertDialog.Header>
+      <AlertDialog.Footer>
+        <AlertDialog.Cancel onclick={() => (confirmDeleteModels = false)}>Cancelar</AlertDialog.Cancel>
+        <AlertDialog.Action disabled={deletingModels} onclick={deleteModels}>
+          {deletingModels ? 'Apagando...' : 'Apagar'}
+        </AlertDialog.Action>
+      </AlertDialog.Footer>
+    </AlertDialog.Content>
+  </AlertDialog.Root>
 
   <Separator />
 
@@ -373,6 +433,13 @@
 
   .voice-status.ok {
     color: #3dd68c;
+  }
+
+  .model-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
 
   .field-hint code {
