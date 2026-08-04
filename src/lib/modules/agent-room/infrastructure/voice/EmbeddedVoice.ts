@@ -89,6 +89,51 @@ async function ensureModel(def: ModelDef, onProgress?: (percent: number) => void
   return target;
 }
 
+// -- Download orquestrado (compartilhado entre STT/TTS e o endpoint de status) --
+
+type DownloadState = {
+  downloading: boolean;
+  /** 0-100 (media ponderada dos dois modelos). */
+  percent: number;
+  error: string | null;
+};
+
+let downloadState: DownloadState = { downloading: false, percent: 0, error: null };
+let downloadPromise: Promise<void> | null = null;
+
+/** Baixa os dois modelos (uma vez); chamadas concorrentes compartilham a promise. */
+export function ensureEmbeddedModels(): Promise<void> {
+  if (embeddedModelsReady()) return Promise.resolve();
+  if (downloadPromise) return downloadPromise;
+  downloadState = { downloading: true, percent: 0, error: null };
+  downloadPromise = (async () => {
+    try {
+      const totalMb = PARAKEET.sizeMb + KOKORO.sizeMb;
+      await ensureModel(PARAKEET, (percent) => {
+        downloadState.percent = Math.round((percent * PARAKEET.sizeMb) / totalMb);
+      });
+      await ensureModel(KOKORO, (percent) => {
+        downloadState.percent = Math.round((PARAKEET.sizeMb + percent * KOKORO.sizeMb) / totalMb);
+      });
+      downloadState = { downloading: false, percent: 100, error: null };
+    } catch (error) {
+      downloadState = {
+        downloading: false,
+        percent: 0,
+        error: error instanceof Error ? error.message.split('\n')[0] : 'Falha no download.',
+      };
+      downloadPromise = null; // permite tentar de novo
+      throw error;
+    }
+  })();
+  return downloadPromise;
+}
+
+/** Estado do download para a UI (polling). */
+export function embeddedDownloadStatus(): DownloadState & { ready: boolean } {
+  return { ready: embeddedModelsReady(), ...downloadState };
+}
+
 // -- Singletons (carrega o modelo uma vez por processo) ------------------------
 
 type Recognizer = {
@@ -110,10 +155,11 @@ async function loadSherpa() {
   return (mod as { default?: unknown }).default ?? mod;
 }
 
-async function getRecognizer(onProgress?: (percent: number) => void): Promise<Recognizer> {
+async function getRecognizer(): Promise<Recognizer> {
   if (!recognizerPromise) {
     recognizerPromise = (async () => {
-      const dir = await ensureModel(PARAKEET, onProgress);
+      await ensureEmbeddedModels();
+      const dir = join(voiceModelsDir(), PARAKEET.dir);
       const sherpa = (await loadSherpa()) as { OfflineRecognizer: new (config: unknown) => Recognizer };
       return new sherpa.OfflineRecognizer({
         modelConfig: {
@@ -136,10 +182,11 @@ async function getRecognizer(onProgress?: (percent: number) => void): Promise<Re
   return recognizerPromise;
 }
 
-async function getTts(onProgress?: (percent: number) => void): Promise<Tts> {
+async function getTts(): Promise<Tts> {
   if (!ttsPromise) {
     ttsPromise = (async () => {
-      const dir = await ensureModel(KOKORO, onProgress);
+      await ensureEmbeddedModels();
+      const dir = join(voiceModelsDir(), KOKORO.dir);
       const sherpa = (await loadSherpa()) as { OfflineTts: new (config: unknown) => Tts };
       return new sherpa.OfflineTts({
         model: {
@@ -207,8 +254,8 @@ export function pcmToWav(samples: Float32Array, sampleRate: number): Buffer {
 }
 
 /** Transcreve PCM16 mono 16 kHz para texto (Parakeet-TDT v3, CPU). */
-export async function transcribePcm(samples: Float32Array, onProgress?: (percent: number) => void): Promise<string> {
-  const recognizer = await getRecognizer(onProgress);
+export async function transcribePcm(samples: Float32Array): Promise<string> {
+  const recognizer = await getRecognizer();
   const stream = recognizer.createStream();
   stream.acceptWaveform({ samples, sampleRate: 16_000 });
   recognizer.decode(stream);
@@ -218,10 +265,9 @@ export async function transcribePcm(samples: Float32Array, onProgress?: (percent
 /** Sintetiza texto em amostras Float32 com uma voz pt-BR do Kokoro. */
 export async function speakPcm(
   text: string,
-  voice = 'pf_dora',
-  onProgress?: (percent: number) => void
+  voice = 'pf_dora'
 ): Promise<{ samples: Float32Array; sampleRate: number }> {
-  const tts = await getTts(onProgress);
+  const tts = await getTts();
   const sid = KOKORO_PT_VOICES[voice] ?? KOKORO_PT_VOICES.pf_dora;
   const audio = tts.generate({ text: text.slice(0, 2_000), sid, speed: 1.0 });
   return { samples: audio.samples, sampleRate: tts.sampleRate };

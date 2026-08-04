@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import { Progress } from '$lib/components/ui/progress';
   import { invalidateAppSettings } from './app-settings.svelte.js';
 
   type Props = {
@@ -10,10 +11,21 @@
 
   let { open = $bindable(false), onConfirm, onCancel }: Props = $props();
 
-  let saving = $state(false);
+  type Phase = 'confirm' | 'downloading' | 'error';
+  let phase = $state<Phase>('confirm');
+  let percent = $state(0);
+  let errorMessage = $state('');
+  let poller: ReturnType<typeof setInterval> | null = null;
+
+  function stopPolling() {
+    if (poller) clearInterval(poller);
+    poller = null;
+  }
 
   async function confirm() {
-    saving = true;
+    phase = 'downloading';
+    percent = 0;
+    errorMessage = '';
     try {
       // Persiste a confirmacao: o aviso aparece UMA vez por instalacao.
       await fetch('/api/agent-room/settings', {
@@ -24,43 +36,112 @@
       invalidateAppSettings();
     } catch {
       // segue mesmo sem persistir
-    } finally {
-      saving = false;
-      open = false;
-      onConfirm();
     }
+    // Dispara o download AGORA e acompanha o progresso.
+    await fetch('/api/agent-room/voice/models', { method: 'POST' }).catch(() => {});
+    stopPolling();
+    poller = setInterval(async () => {
+      try {
+        const response = await fetch('/api/agent-room/voice/models');
+        const status = (await response.json()).data;
+        percent = status.percent ?? 0;
+        if (status.error) {
+          stopPolling();
+          phase = 'error';
+          errorMessage = status.error;
+          return;
+        }
+        if (status.ready) {
+          stopPolling();
+          open = false;
+          onConfirm();
+        }
+      } catch {
+        // rede oscilando — tenta no proximo tick
+      }
+    }, 1_000);
   }
 
   function cancel() {
+    stopPolling();
     open = false;
     onCancel();
   }
+
+  function retry() {
+    phase = 'confirm';
+    errorMessage = '';
+  }
+
+  $effect(() => () => stopPolling());
 </script>
 
 <AlertDialog.Root bind:open>
   <AlertDialog.Content>
     <AlertDialog.Header>
-      <AlertDialog.Title>Download do modelo de voz (~740 MB)</AlertDialog.Title>
+      <AlertDialog.Title>
+        {#if phase === 'downloading'}Baixando o modelo de voz…
+        {:else if phase === 'error'}Falha no download
+        {:else}Download do modelo de voz (~740 MB){/if}
+      </AlertDialog.Title>
       <AlertDialog.Description>
-        Para o ditado e a fala funcionarem, o app precisa baixar o modelo de
-        voz (whisper, ~740 MB) uma unica vez. Depois disso tudo roda local e
-        rapido.
+        {#if phase === 'confirm'}
+          Para o ditado e a fala funcionarem, o app precisa baixar o modelo de
+          voz (whisper, ~740 MB) uma unica vez. Depois disso tudo roda local e
+          rapido.
+        {:else if phase === 'downloading'}
+          Pode demorar alguns minutos dependendo da sua conexao. Voce pode
+          deixar esta janela aberta acompanhando.
+        {:else}
+          Nao consegui baixar o modelo de voz.
+        {/if}
       </AlertDialog.Description>
     </AlertDialog.Header>
-    <p class="model-note">Quer baixar agora e continuar?</p>
+
+    {#if phase === 'downloading'}
+      <div class="download-state">
+        <Progress value={percent} max={100} />
+        <span class="download-percent">{percent}%</span>
+      </div>
+    {:else if phase === 'error'}
+      <p class="download-error">{errorMessage}</p>
+    {/if}
+
     <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={cancel}>Agora nao</AlertDialog.Cancel>
-      <AlertDialog.Action disabled={saving} onclick={confirm}>
-        {saving ? 'Confirmando...' : 'Baixar e continuar'}
-      </AlertDialog.Action>
+      {#if phase === 'confirm'}
+        <AlertDialog.Cancel onclick={cancel}>Agora nao</AlertDialog.Cancel>
+        <AlertDialog.Action onclick={confirm}>Baixar e continuar</AlertDialog.Action>
+      {:else if phase === 'error'}
+        <AlertDialog.Cancel onclick={cancel}>Fechar</AlertDialog.Cancel>
+        <AlertDialog.Action onclick={retry}>Tentar de novo</AlertDialog.Action>
+      {/if}
     </AlertDialog.Footer>
   </AlertDialog.Content>
 </AlertDialog.Root>
 
 <style>
-  .model-note {
-    margin: 10px 0 0;
-    font-size: 13px;
-    color: var(--foreground, #e6e6eb);
+  .download-state {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .download-state :global([data-slot='progress']) {
+    flex: 1;
+  }
+
+  .download-percent {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-foreground, #8b8c96);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .download-error {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: #ff9c9f;
   }
 </style>

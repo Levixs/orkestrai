@@ -1,5 +1,6 @@
 import { Controller } from '@beeblock/svelar/routing';
 import { voiceService } from '$lib/modules/agent-room/application/services/VoiceService.js';
+import { embeddedDownloadStatus, ensureEmbeddedModels } from '$lib/modules/agent-room/infrastructure/voice/EmbeddedVoice.js';
 import { z } from 'zod';
 
 const speakSchema = z.object({
@@ -15,6 +16,21 @@ export class VoiceController extends Controller {
     } catch (error) {
       return this.errorResponse(error, 'Falha ao consultar o sidecar de voz.');
     }
+  }
+
+  /** Inicia o download dos modelos embarcados (compartilhado, idempotente). */
+  async downloadModels() {
+    try {
+      void ensureEmbeddedModels().catch(() => {});
+      return this.json({ data: embeddedDownloadStatus() }, 202);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao iniciar o download.');
+    }
+  }
+
+  /** Estado do download (polling da modal). */
+  async modelsStatus() {
+    return this.json({ data: embeddedDownloadStatus() });
   }
 
   async transcribe(event: any) {
