@@ -286,6 +286,9 @@
       style:top="{panelPos.y}px"
       role="dialog"
       aria-label="Estilo da forma"
+      onclick={(event) => event.stopPropagation()}
+      ondblclick={(event) => event.stopPropagation()}
+      onpointerdown={(event) => event.stopPropagation()}
     >
       <div
         class="style-panel-grip"
@@ -621,7 +624,8 @@
 
   .style-panel {
     position: fixed;
-    z-index: 60;
+    /* z 40: acima do canvas, ABAIXO dos dropdowns (bits-ui Select ~50). */
+    z-index: 40;
     width: 264px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
