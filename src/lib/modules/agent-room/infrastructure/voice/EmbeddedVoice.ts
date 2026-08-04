@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, fork, type ChildProcess } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -134,45 +134,146 @@ export function embeddedDownloadStatus(): DownloadState & { ready: boolean } {
   return { ready: embeddedModelsReady(), ...downloadState };
 }
 
-// -- Inferencia em worker thread (servidor/UI nunca congelam) ------------------
-
-import { Worker } from 'node:worker_threads';
+// -- Inferencia em subprocesso (servidor/UI nunca congelam) -------------------
+// O TTS do sherpa-onnx usa buffers EXTERNOS (memoria nativa), que o V8 sandbox
+// do Electron proibe ("External buffers are not allowed") — nem fork ajuda se
+// o filho roda sob o binario do Electron. Por isso o subprocesso de voz roda
+// sob um Node.js real, localizado em tempo de execucao.
 
 type VoiceJob = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
-let worker: Worker | null = null;
+let child: ChildProcess | null = null;
 let jobSeq = 0;
 const pending = new Map<number, VoiceJob>();
 
-function voiceWorker(): Worker {
-  if (worker) return worker;
-  const parakeetDir = join(voiceModelsDir(), PARAKEET.dir);
-  const kokoroDir = join(voiceModelsDir(), KOKORO.dir);
+/** Sem jobs por este tempo, o filho morre e libera a RAM dos modelos (~1 GB). */
+const VOICE_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+let idleTimer: NodeJS.Timeout | null = null;
+
+function clearIdleTimer(): void {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+}
+
+function killChild(): void {
+  clearIdleTimer();
+  if (child) {
+    child.kill();
+    child = null;
+  }
+}
+
+/** Reagenda o desligamento por inatividade (chamado a cada job concluido). */
+function scheduleIdleShutdown(): void {
+  clearIdleTimer();
+  idleTimer = setTimeout(() => {
+    idleTimer = null;
+    if (pending.size === 0) killChild();
+  }, VOICE_IDLE_TIMEOUT_MS);
+  idleTimer.unref();
+}
+
+let resolvedNode: string | null | undefined;
+
+/** Node real para o subprocesso de voz; undefined = usar o processo atual. */
+function resolveVoiceNode(): string | undefined {
+  // Dev/testes rodam sob Node de verdade — nada a resolver.
+  if (!process.versions.electron) return undefined;
+  if (resolvedNode !== undefined) return resolvedNode ?? undefined;
+  const candidates: string[] = [];
+  if (process.env.ORKESTRAI_VOICE_NODE) candidates.push(process.env.ORKESTRAI_VOICE_NODE);
+  candidates.push('node');
+  if (process.platform === 'darwin') {
+    candidates.push('/opt/homebrew/bin/node', '/usr/local/bin/node');
+  } else if (process.platform === 'linux') {
+    candidates.push('/usr/bin/node', '/usr/local/bin/node', '/snap/bin/node');
+  }
+  // nvm (apps de GUI no mac nao herdam o PATH do shell)
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+  try {
+    const nvmDir = join(home, '.nvm', 'versions', 'node');
+    const versions = readdirSync(nvmDir).sort().reverse();
+    for (const version of versions) {
+      candidates.push(join(nvmDir, version, 'bin', process.platform === 'win32' ? 'node.exe' : 'node'));
+    }
+  } catch {
+    // sem nvm
+  }
+  for (const candidate of candidates) {
+    try {
+      execFileSync(candidate, ['--version'], { timeout: 5_000, stdio: 'pipe' });
+      resolvedNode = candidate;
+      return candidate;
+    } catch {
+      // proximo candidato
+    }
+  }
+  resolvedNode = null;
+  return undefined; // sem node real: STT funciona sob Electron; TTS reporta erro claro
+}
+
+function voiceWorker(): ChildProcess {
+  if (child) return child;
   const workerPath = join(process.cwd(), 'src', 'lib', 'modules', 'agent-room', 'infrastructure', 'voice', 'voice-worker.mjs');
-  worker = new Worker(workerPath, {
-    workerData: { parakeetDir, kokoroDir, ptVoices: KOKORO_PT_VOICES },
+  const execPath = resolveVoiceNode();
+  child = fork(workerPath, [], {
+    ...(execPath ? { execPath } : {}),
+    env: {
+      ...process.env,
+      VOICE_PARAKEET_DIR: join(voiceModelsDir(), PARAKEET.dir),
+      VOICE_KOKORO_DIR: join(voiceModelsDir(), KOKORO.dir),
+      VOICE_PT_VOICES: JSON.stringify(KOKORO_PT_VOICES),
+    },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
-  worker.on('message', (message: { id: number; ok: boolean; error?: string } & Record<string, unknown>) => {
+  child.on('message', (message: { id: number; ok: boolean; error?: string } & Record<string, unknown>) => {
     const job = pending.get(message.id);
     pending.delete(message.id);
+    if (pending.size === 0) scheduleIdleShutdown();
     if (!job) return;
     if (message.ok) job.resolve(message);
     else job.reject(new Error(message.error ?? 'Falha na inferencia de voz.'));
   });
-  worker.on('error', (error) => {
+  const fail = (error: Error) => {
     for (const job of pending.values()) job.reject(error);
     pending.clear();
-    worker = null;
+    clearIdleTimer();
+    child = null;
+  };
+  child.on('error', fail);
+  child.on('exit', (code, signal) => {
+    // Saida por kill nosso (idle/delete) nao e falha: code null + signal.
+    if (code !== 0 && code !== null) fail(new Error(`Processo de voz saiu com codigo ${code}.`));
+    else if (signal && code !== 0) fail(new Error(`Processo de voz morto por ${signal}.`));
+    else if (child) {
+      // Saiu sozinho com codigo 0 (nao deveria) — limpa o estado.
+      clearIdleTimer();
+      child = null;
+    }
   });
-  worker.unref();
-  return worker;
+  child.unref();
+  return child;
 }
 
 function dispatch<T>(kind: string, payload: unknown): Promise<T> {
   return new Promise((resolvePromise, reject) => {
     const id = (jobSeq += 1);
     pending.set(id, { resolve: resolvePromise as (value: unknown) => void, reject });
-    voiceWorker().postMessage({ id, kind, payload });
+    clearIdleTimer();
+    try {
+      voiceWorker().send({ id, kind, payload }, (error) => {
+        // Canal IPC fechado no meio do envio: settle imediato, sem vazar o job.
+        if (!error) return;
+        const job = pending.get(id);
+        pending.delete(id);
+        job?.reject(error instanceof Error ? error : new Error(String(error)));
+      });
+    } catch (error) {
+      pending.delete(id);
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 }
 
@@ -187,6 +288,9 @@ export async function speakPcm(
   text: string,
   voice = 'pf_dora'
 ): Promise<{ samples: Float32Array; sampleRate: number }> {
+  if (process.versions.electron && !resolveVoiceNode()) {
+    throw new Error('A voz falada precisa do Node.js instalado neste computador.');
+  }
   const result = await dispatch<{ samples: number[]; sampleRate: number }>('speak', { text, voice });
   return { samples: Float32Array.from(result.samples), sampleRate: result.sampleRate };
 }
@@ -262,10 +366,7 @@ export function embeddedModelsSize(): number {
 
 /** Apaga os modelos e reseta os singletons — proximo uso baixa de novo. */
 export function deleteEmbeddedModels(): void {
-  if (worker) {
-    void worker.terminate();
-    worker = null;
-  }
+  killChild();
   downloadPromise = null;
   downloadState = { downloading: false, percent: 0, error: null };
   rmSync(voiceModelsDir(), { recursive: true, force: true });

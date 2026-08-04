@@ -1,11 +1,16 @@
 /**
  * Worker de inferencia de voz (STT Parakeet + TTS Kokoro via sherpa-onnx).
- * Roda FORA da thread principal: transcricao/sintese nao congelam o servidor
- * nem a UI. Autocontido (sem imports do app) — recebe paths via mensagem.
+ * Roda como SUBPROCESSO (fork) sob um Node.js real: a inferencia nao congela o
+ * servidor/UI, e o V8 sandbox do Electron proibe os buffers externos que a lib
+ * nativa usa no TTS ("External buffers are not allowed") — por isso o pai
+ * resolve um Node do sistema (PATH, homebrew, nvm) para executar este arquivo.
+ * Autocontido (sem imports do app) — recebe paths de modelos via env (VOICE_*).
  */
-import { parentPort, workerData } from 'node:worker_threads';
+const { VOICE_PARAKEET_DIR: parakeetDir, VOICE_KOKORO_DIR: kokoroDir } = process.env;
+const ptVoices = JSON.parse(process.env.VOICE_PT_VOICES ?? '{}');
 
-const { parakeetDir, kokoroDir, ptVoices } = workerData;
+// Se o pai morrer (crash/kill -9), o canal IPC fecha — sai para nao virar orfao.
+process.on('disconnect', () => process.exit(0));
 
 let recognizer = null;
 let tts = null;
@@ -54,7 +59,7 @@ async function getTts() {
   return tts;
 }
 
-parentPort.on('message', async (job) => {
+process.on('message', async (job) => {
   const { id, kind, payload } = job;
   try {
     if (kind === 'transcribe') {
@@ -62,21 +67,18 @@ parentPort.on('message', async (job) => {
       const stream = rec.createStream();
       stream.acceptWaveform({ samples: new Float32Array(payload.samples), sampleRate: 16_000 });
       rec.decode(stream);
-      parentPort.postMessage({ id, ok: true, text: rec.getResult(stream).text.trim() });
+      process.send({ id, ok: true, text: rec.getResult(stream).text.trim() });
       return;
     }
     if (kind === 'speak') {
       const synth = await getTts();
       const sid = ptVoices[payload.voice] ?? ptVoices.pf_dora;
       const audio = synth.generate({ text: String(payload.text).slice(0, 2_000), sid, speed: 1.0 });
-      parentPort.postMessage(
-        { id, ok: true, samples: Array.from(audio.samples), sampleRate: synth.sampleRate },
-        []
-      );
+      process.send({ id, ok: true, samples: Array.from(audio.samples), sampleRate: synth.sampleRate });
       return;
     }
-    parentPort.postMessage({ id, ok: false, error: `tipo desconhecido: ${kind}` });
+    process.send({ id, ok: false, error: `tipo desconhecido: ${kind}` });
   } catch (error) {
-    parentPort.postMessage({ id, ok: false, error: error instanceof Error ? error.message.split('\n')[0] : String(error) });
+    process.send({ id, ok: false, error: error instanceof Error ? error.message.split('\n')[0] : String(error) });
   }
 });
