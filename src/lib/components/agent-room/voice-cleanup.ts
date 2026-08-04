@@ -25,6 +25,21 @@ export function normalizeSpeechLine(line: string): string {
     .trim();
 }
 
+/**
+ * Normaliza texto JA LIMPO (transcrito da CLI, sem ANSI) para fala: tira
+ * markdown/URLs/emoji linha a linha e junta. Resposta completa (maxLen alto).
+ */
+export function normalizeSpeechText(text: string, maxLen = 2_000): string {
+  return text
+    .split('\n')
+    .map((line) => normalizeSpeechLine(line))
+    .filter((line) => line.length > 0)
+    .join(' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, maxLen);
+}
+
 export function cleanSpeechText(raw: string): string {
   const noAnsi = raw
     // OSC (titulo, hyperlinks) com terminador BEL ou ST

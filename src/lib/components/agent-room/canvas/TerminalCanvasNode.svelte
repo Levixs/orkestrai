@@ -297,6 +297,7 @@
       <TerminalNode
         sessionId={data.payload.sessionId}
         workspaceId={data.workspaceId}
+        nodeId={id}
         sessionLabel={data.title}
         workspaceName={data.workspaceName}
         onOpenPath={(path) => data.onOpenFile?.(path)}
@@ -313,6 +314,7 @@
       <TerminalNode
         createRequest={forceRespawn ? respawnRequest : { command: data.payload.command, args: data.payload.args ?? [], cwd: data.workingDir, env: agentEnv }}
         workspaceId={data.workspaceId}
+        nodeId={id}
         sessionLabel={data.title}
         workspaceName={data.workspaceName}
         onSessionCreated={(sessionId) => {

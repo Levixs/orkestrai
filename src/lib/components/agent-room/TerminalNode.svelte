@@ -13,7 +13,7 @@
   import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
   import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
   import { blobToWav16k } from './audio-pcm.js';
-  import { cleanSpeechText } from './voice-cleanup.js';
+  import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -41,6 +41,8 @@
     onRespawn?: () => void;
     /** Session-id real da CLI descoberto (para resume exato). */
     onAgentSession?: (agentSessionId: string) => void;
+    /** Id do no no canvas (para o endpoint de resposta do transcrito). */
+    nodeId?: string;
     /** Edge conversando (bridge ask) — repassado pela pagina do canvas. */
     onTalking?: (payload: { from: string | null; to: string; talking: boolean }) => void;
     /** Resposta de um ask destinada a este no (para voz de volta, TTS). */
@@ -52,7 +54,7 @@
     themeName?: TerminalThemeName;
   };
 
-  let { sessionId, createRequest, provider, workspaceId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
+  let { sessionId, createRequest, provider, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
 
   let container: HTMLDivElement;
   let xtermInstance: Terminal | null = null;
@@ -111,7 +113,9 @@
     speakTimer = setTimeout(async () => {
       captureAfterDictation = false;
       speakTimer = null;
-      const text = cleanSpeechText(captureBuf);
+      // Fonte 1: transcrito da CLI (JSONL limpo — resposta COMPLETA, sem TUI).
+      // Fonte 2 (fallback): raspagem da tela (quando nao ha session-id ainda).
+      const text = (await transcriptReplyText()) ?? cleanSpeechText(captureBuf);
       captureBuf = '';
       if (!text || !voiceOn) return;
       if (text === lastSpoken) return; // ja falou exatamente isso — nao repete
@@ -133,6 +137,19 @@
         // voz indisponivel — segue em texto
       }
     }, 5_000);
+  }
+
+  /** Ultima resposta do agente pelo transcrito da CLI (null = usar raspagem). */
+  async function transcriptReplyText(): Promise<string | null> {
+    if (!workspaceId || !nodeId) return null;
+    try {
+      const response = await fetch(`/api/agent-room/voice/reply?workspaceId=${encodeURIComponent(workspaceId)}&nodeId=${encodeURIComponent(nodeId)}`);
+      const payload = await response.json().catch(() => null);
+      const text = String(payload?.data?.text ?? '').trim();
+      return text ? normalizeSpeechText(text) : null;
+    } catch {
+      return null;
+    }
   }
 
   async function toggleDictation() {

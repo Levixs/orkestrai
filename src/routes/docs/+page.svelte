@@ -174,6 +174,7 @@
         'Skeletons de carregamento na sidebar, usage, skills e Configurações — sem pulos na UI.',
         'Kanban com histórico: arquive concluídas sem perder o registro do que foi entregue.',
         'Tarefa com nota de spec vinculada: arquiva junto, protegida contra exclusão, lida pelo histórico.',
+        'Voz lê o transcrito da sessão: resposta completa do agente, sem caracteres invisíveis.',
       ],
     },
     {

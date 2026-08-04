@@ -1,6 +1,9 @@
 import { Controller } from '@beeblock/svelar/routing';
 import { voiceService } from '$lib/modules/agent-room/application/services/VoiceService.js';
 import { settingsService } from '$lib/modules/agent-room/application/services/SettingsService.js';
+import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
+import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
+import { lastReplyText } from '$lib/modules/agent-room/infrastructure/transcript/AgentTranscript.js';
 import {
   deleteEmbeddedModels,
   embeddedDownloadStatus,
@@ -69,6 +72,25 @@ export class VoiceController extends Controller {
       });
     } catch (error) {
       return this.errorResponse(error, 'Falha na sintese de voz.');
+    }
+  }
+
+  /**
+   * Ultima resposta do agente pelo transcrito da CLI (JSONL limpo, sem TUI) —
+   * fonte do texto falado no ciclo de ditado. null = cair na raspagem de tela.
+   */
+  async replyText(event: any) {
+    try {
+      const workspaceId = String(event.url.searchParams.get('workspaceId') ?? '');
+      const nodeId = String(event.url.searchParams.get('nodeId') ?? '');
+      const node = await workspaceRepository.getNode(nodeId);
+      if (!node || node.workspaceId !== workspaceId) return this.json({ data: { text: null } });
+      const payload = (node.payload ?? {}) as { provider?: string; agentSessionId?: string; cwd?: string };
+      if (!payload.provider || !payload.agentSessionId) return this.json({ data: { text: null } });
+      const cwd = payload.cwd ?? (await workspaceService.get(workspaceId)).workingDir;
+      return this.json({ data: { text: await lastReplyText(payload.provider, cwd, payload.agentSessionId) } });
+    } catch {
+      return this.json({ data: { text: null } });
     }
   }
 
