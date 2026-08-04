@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { UsageService } from '$lib/modules/agent-room/application/services/UsageService.js';
@@ -93,6 +93,40 @@ describe('UsageService', () => {
     expect(usage.plan).toBe('Allegro');
     expect(usage.windows[0]).toMatchObject({ kind: '5h', usedPercent: 7 });
     expect(usage.windows[1]).toMatchObject({ kind: 'weekly', usedPercent: 39, resetsAt: '2026-08-04T10:00:00Z' });
+  });
+
+  it('kimi: token expirado renova via refresh_token e persiste a rotacao', async () => {
+    const expiredCreds = {
+      access_token: 'tok-velho',
+      refresh_token: 'refresh-1',
+      expires_at: Math.floor(Date.now() / 1000) - 10, // expirado (segundos)
+    };
+    const home = homeWith({ '.kimi-code/credentials/kimi-code.json': JSON.stringify(expiredCreds) });
+    const calls: Array<{ url: string; body?: string }> = [];
+    const fn = (async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), body: init?.body ? String(init.body) : undefined });
+      if (String(url).includes('/api/oauth/token')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ access_token: 'tok-novo', refresh_token: 'refresh-2', expires_in: 900, scope: 'kimi-code', token_type: 'Bearer' }),
+        } as Response;
+      }
+      return { ok: true, status: 200, json: async () => KIMI_USAGE } as Response;
+    }) as typeof fetch;
+    const service = new UsageService(fn, home);
+
+    const usage = await service.getUsage('kimi');
+    expect(usage.error).toBeNull();
+    expect(usage.windows.length).toBeGreaterThan(0);
+
+    // Renovou ANTES da chamada de usage e persistiu os DOIS tokens (rotacao).
+    expect(calls[0].url).toContain('/api/oauth/token');
+    expect(calls[0].body).toContain('refresh_token=refresh-1');
+    const saved = JSON.parse(readFileSync(join(home, '.kimi-code', 'credentials', 'kimi-code.json'), 'utf8'));
+    expect(saved.access_token).toBe('tok-novo');
+    expect(saved.refresh_token).toBe('refresh-2');
+    expect(saved.expires_at).toBeGreaterThan(Math.floor(Date.now() / 1000));
   });
 
   it('401 vira mensagem de credencial expirada', async () => {

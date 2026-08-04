@@ -1,11 +1,14 @@
 import { execFile } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const CACHE_TTL_MS = 60_000;
+/** OAuth do kimi-code (client publico da CLI). */
+const KIMI_OAUTH_TOKEN_URL = 'https://auth.kimi.com/api/oauth/token';
+const KIMI_OAUTH_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098';
 
 export type UsageWindowKind = '5h' | 'weekly' | 'monthly';
 
@@ -147,12 +150,62 @@ export class UsageService {
 
   // -- Kimi (kimi-code; /coding/v1/usages) --
 
+  /**
+   * Token OAuth do kimi-code: expira em 15 min e o refresh ROTACIONA (vem um
+   * refresh_token novo — precisa persistir os dois, senao o da CLI morre).
+   * Sem isso o usage so funcionava logo depois de abrir a CLI do kimi.
+   */
+  private async kimiToken(filePath: string): Promise<string> {
+    const creds = JSON.parse(readFileSync(filePath, 'utf8')) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_at?: number;
+      expires_in?: number;
+      scope?: string;
+      token_type?: string;
+    };
+    if (!creds.access_token) throw new Error('Token do kimi-code ausente.');
+    // Sem expires_at registrado: usa o token como esta (so renova quando sabe que venceu).
+    const expiresAtMs = Number(creds.expires_at ?? 0) * 1000; // expires_at e em SEGUNDOS
+    if (!creds.expires_at || expiresAtMs > Date.now() + 60_000) return creds.access_token;
+    if (!creds.refresh_token) throw new Error('Refresh token do kimi-code ausente — abra a CLI e faca login.');
+
+    const body = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: creds.refresh_token,
+      client_id: KIMI_OAUTH_CLIENT_ID,
+    });
+    const response = await this.fetchFn(KIMI_OAUTH_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`Refresh do kimi falhou (HTTP ${response.status}) — abra a CLI e faca login.`);
+    const data = (await response.json()) as {
+      access_token: string;
+      refresh_token: string;
+      expires_in: number;
+      scope?: string;
+      token_type?: string;
+    };
+    const next = {
+      ...creds,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: Math.floor(Date.now() / 1000) + data.expires_in,
+      expires_in: data.expires_in,
+      scope: data.scope ?? creds.scope,
+      token_type: data.token_type ?? 'Bearer',
+    };
+    writeFileSync(filePath, `${JSON.stringify(next, null, 2)}\n`);
+    return data.access_token;
+  }
+
   private async kimiUsage(): Promise<ProviderUsage> {
     const filePath = join(this.home, '.kimi-code', 'credentials', 'kimi-code.json');
     if (!existsSync(filePath)) throw new Error('Credenciais do kimi-code nao encontradas.');
-    const creds = JSON.parse(readFileSync(filePath, 'utf8'));
-    const token = creds?.access_token;
-    if (!token) throw new Error('Token do kimi-code ausente.');
+    const token = await this.kimiToken(filePath);
 
     const data = await this.fetchJson('https://api.kimi.com/coding/v1/usages', {
       authorization: `Bearer ${token}`,
