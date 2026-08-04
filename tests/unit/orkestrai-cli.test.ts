@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer } from 'node:http';
+import { createServer as createNetServer } from 'node:net';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { run } from '../../packages/orkestrai-cli/src/cli.js';
+import { isPortFree, run } from '../../packages/orkestrai-cli/src/cli.js';
 
 /**
  * Testa a CLI `orkestrai` contra um servidor HTTP falso que emula a bridge.
@@ -145,5 +146,35 @@ describe('orkestrai CLI', () => {
     const code = await run(['list'], { cwd: staleDir, out, env: { ORKESTRAI_RUNTIME_FILE: runtimeFile } });
     expect(code).toBe(0);
     expect(lines.join('\n')).toContain('Claude');
+  });
+
+  it('port devolve uma porta livre (sem precisar de workspace.json)', async () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), 'orkestrai-cli-port-'));
+    const { lines, out } = capture();
+    const code = await run(['port'], { cwd: emptyDir, out, env: {} });
+    expect(code).toBe(0);
+    const port = Number(lines.at(-1));
+    expect(Number.isInteger(port)).toBe(true);
+    expect(port).toBeGreaterThan(1023);
+    expect(port).toBeLessThanOrEqual(65535);
+    expect(await isPortFree(port)).toBe(true);
+  });
+
+  it('port --check distingue porta ocupada de livre', async () => {
+    const blocker = createNetServer();
+    await new Promise<void>((resolvePromise) => blocker.listen(0, '127.0.0.1', resolvePromise));
+    const busy = (blocker.address() as { port: number }).port;
+    try {
+      const { lines, out } = capture();
+      const code = await run(['port', '--check', String(busy)], { cwd, out, env: {} });
+      expect(code).toBe(1);
+      expect(lines.at(-1)).toBe(`${busy} ocupada`);
+    } finally {
+      await new Promise((resolvePromise) => blocker.close(resolvePromise));
+    }
+    const { lines, out } = capture();
+    const code = await run(['port', '--check', String(busy)], { cwd, out, env: {} });
+    expect(code).toBe(0);
+    expect(lines.at(-1)).toBe(`${busy} livre`);
   });
 });

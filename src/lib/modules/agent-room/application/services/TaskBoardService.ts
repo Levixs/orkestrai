@@ -16,6 +16,8 @@ export type BoardTask = {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  /** Preenchido quando a tarefa foi arquivada (sai do quadro, fica no historico). */
+  archivedAt: string | null;
 };
 
 function imagesOf(model: AgentBoardTask): string[] {
@@ -46,6 +48,7 @@ function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null): Bo
     createdBy: model.getAttribute('created_by'),
     createdAt: String(model.getAttribute('created_at')),
     updatedAt: String(model.getAttribute('updated_at')),
+    archivedAt: model.getAttribute('archived_at') ?? null,
   };
 }
 
@@ -64,13 +67,60 @@ function notifyWorkspaceChanged(workspaceId: string) {
 
 export class TaskBoardService {
   async list(workspaceId: string): Promise<BoardTask[]> {
-    const rows = await AgentBoardTask.query().where('workspace_id', workspaceId).orderBy('created_at', 'asc').get();
+    // Quadro: so tarefas NAO arquivadas (arquivadas vivem em history()).
+    const rows = await AgentBoardTask.query().where('workspace_id', workspaceId).whereNull('archived_at').orderBy('created_at', 'asc').get();
     const nodes = await workspaceRepository.listNodes(workspaceId);
     const titles = new Map(nodes.map((node) => [node.id, node.title ?? node.type]));
     return rows.map((row) => {
       const assigneeId = row.getAttribute('assignee_node_id') as string | null;
       return mapTask(row, assigneeId ? (titles.get(assigneeId) ?? null) : null);
     });
+  }
+
+  /**
+   * Historico do workspace: tarefas concluidas e/ou arquivadas, da mais
+   * recente para a mais antiga. E o "o que foi feito" do projeto — o lider
+   * (ou o usuario) arquiva para limpar o quadro sem perder o registro.
+   */
+  async history(workspaceId: string, limit = 200): Promise<BoardTask[]> {
+    // done ainda no quadro + tudo que ja foi arquivado (qualquer status).
+    const [done, archived] = await Promise.all([
+      AgentBoardTask.query().where('workspace_id', workspaceId).where('status', 'done').whereNull('archived_at').get(),
+      AgentBoardTask.query().where('workspace_id', workspaceId).whereNotNull('archived_at').get(),
+    ]);
+    const rows = [...done, ...archived]
+      .sort((a, b) => String(b.getAttribute('updated_at')).localeCompare(String(a.getAttribute('updated_at'))))
+      .slice(0, limit);
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    const titles = new Map(nodes.map((node) => [node.id, node.title ?? node.type]));
+    return rows.map((row) => {
+      const assigneeId = row.getAttribute('assignee_node_id') as string | null;
+      return mapTask(row, assigneeId ? (titles.get(assigneeId) ?? null) : null);
+    });
+  }
+
+  /** Arquiva uma tarefa concluida (sai do quadro, fica no historico). */
+  async archive(workspaceId: string, taskId: string): Promise<BoardTask> {
+    const task = await this.requireTask(workspaceId, taskId);
+    if (task.getAttribute('status') !== 'done') throw new Error('So da para arquivar tarefa concluida (done).');
+    await AgentBoardTask.query().where('id', taskId).update({ archived_at: new Date().toISOString() });
+    notifyWorkspaceChanged(workspaceId);
+    return mapTask(await this.requireTask(workspaceId, taskId));
+  }
+
+  /** Arquiva TODAS as tarefas concluidas do quadro de uma vez. */
+  async archiveDone(workspaceId: string): Promise<{ archived: number }> {
+    const done = await AgentBoardTask.query()
+      .where('workspace_id', workspaceId)
+      .where('status', 'done')
+      .whereNull('archived_at')
+      .get();
+    const now = new Date().toISOString();
+    for (const task of done) {
+      await AgentBoardTask.query().where('id', task.getAttribute('id')).update({ archived_at: now });
+    }
+    if (done.length) notifyWorkspaceChanged(workspaceId);
+    return { archived: done.length };
   }
 
   private async requireTask(workspaceId: string, taskId: string): Promise<AgentBoardTask> {

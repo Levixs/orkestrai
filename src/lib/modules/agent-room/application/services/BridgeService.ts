@@ -477,6 +477,8 @@ Se \`orkestrai\` nao resolver no seu shell (acontece em alguns executores, ex.: 
 - \`orkestrai task list\` — quadro de tarefas do workspace. Tarefas podem ter IMAGENS DE REFERENCIA (paths relativos ao workspace, ex.: .orkestrai/images/x.png) — leia o arquivo se a referencia for util pra execucao.
 - \`orkestrai task add "<titulo>" --assign "<Agente>"\` — cria tarefa e ja despacha para o agente.
 - \`orkestrai task done <taskId>\` — marca tarefa atribuida a voce como concluida.
+- \`orkestrai task archive <taskId>\` / \`task archive-done\` — arquiva concluidas: saem do quadro, ficam no historico. Lidere a limpeza do quadro ao fechar uma frente.
+- \`orkestrai task history\` — historico do workspace (concluidas + arquivadas, da mais recente): o "o que ja foi feito" do projeto.
 - \`orkestrai portal create "<url>" [--title "<t>"] [--connect "<Agente>"|all]\` — cria um portal (browser) no canvas.
 - \`orkestrai portal <nodeId> navigate "<url>"\` — abre uma URL no portal conectado.
 - \`orkestrai portal <nodeId> eval "<js>"\` — executa JS na pagina e retorna o resultado.
@@ -485,6 +487,13 @@ Se \`orkestrai\` nao resolver no seu shell (acontece em alguns executores, ex.: 
 - \`orkestrai floor create "<nome>" [--clone]\` — cria um andar (worktree git com branch propria) para trabalho isolado.
 - \`orkestrai floor list\` / \`floor preview <id>\` / \`floor land <id>\` / \`floor remove <id>\` — gerencia andares; preview mostra conflitos ANTES do merge.
 - \`orkestrai notify "<mensagem>"\` — notificacao NATIVA no desktop do usuario (use ao concluir ou ao precisar de atencao).
+- \`orkestrai port\` — devolve uma porta LIVRE para subir servidores; \`orkestrai port --check <porta>\` testa se uma porta esta livre.
+
+## Portas e processos (varios workspaces rodam AO MESMO TEMPO nesta maquina)
+
+- Ao subir QUALQUER servidor (dev server, preview, API local), NUNCA assuma a porta padrao (5173, 3000...): ela pode estar em uso por OUTRO workspace/time. Pegue uma porta livre e use-a: \`PORTA=$(orkestrai port)\` e entao ex.: \`npm run dev -- --port $PORTA\` ou \`npx vite --port $PORTA\`.
+- NUNCA mate processos por porta (\`kill $(lsof -ti :5173)\`, \`fuser -k\`, Stop-Process etc.) — o processo pode ser de outro time e voce derruba o trabalho dele. Porta ocupada? Escolha OUTRA com \`orkestrai port\`; nao mate nada.
+- Depois de subir o servidor, REGISTRE a porta: diga ao lider (\`orkestrai ask\`) ou escreva na nota do projeto — o portal e o time precisam da URL certa.
 
 Ao aterrissar (land), conflitos NAO sao resolvidos automaticamente — o erro lista os arquivos em conflito; resolva-os voce mesmo no checkout principal (ou atribua a um agente) e repita o land.
 
@@ -501,7 +510,7 @@ PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagente
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota ja conecta ao time inteiro por padrao).
 4. Trabalho em codigo? Cada agente trabalha no PROPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente comecar — NUNCA deixe varios agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (ve conflitos) e \`orkestrai floor land\`.
 5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente). HANDOFF: cada task tem que ser AUTOSSUFICIENTE (a descricao diz o que fazer e onde esta o spec) OU citar o id de uma nota que JA EXISTE e ja esta conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que voce ainda nao criou. E cada agente PRODUZ os proprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; nao fica esperando o lider mandar uma — deixe isso explicito na descricao da task.
-6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time esta construindo.
+6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time esta construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrao 5173/3000 — outro workspace pode estar usando).
 7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silencio ou pedir algo (uma nota, um id, um esclarecimento), VOCE resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCE MESMO e o ultimo recurso, so depois de tentar desbloquear e o agente realmente nao dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado e problema de coordenacao do lider, nao motivo pra assumir o trabalho.
 8. AO CONCLUIR (ou quando precisar de atencao/aprovacao do usuario), chame \`orkestrai notify "<resumo do que foi entregue>"\` — vira notificacao nativa no desktop do usuario. NUNCA termine em silencio.
 9. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.

@@ -1,0 +1,135 @@
+<script lang="ts">
+  /**
+   * Notificador global de atualizacoes do app desktop (Electron).
+   * O download e automatico e em background; quando termina, pergunta se
+   * reinicia para instalar. Em erro (ex.: mac sem assinatura de codigo),
+   * oferece o download manual na pagina de releases.
+   */
+  import { onMount } from 'svelte';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import { Button } from '$lib/components/ui/button';
+
+  const RELEASES_URL = 'https://github.com/beeblock/orkestrai-releases/releases/latest';
+
+  type UpdatePayload =
+    | { status: 'available'; version: string }
+    | { status: 'downloading'; percent: number }
+    | { status: 'downloaded'; version: string }
+    | { status: 'none' }
+    | { status: 'error'; message: string };
+
+  type DesktopBridge = {
+    onUpdate?: (callback: (payload: UpdatePayload) => void) => () => void;
+    installUpdate?: () => Promise<void>;
+    openExternal?: (url: string) => Promise<void>;
+  };
+
+  let status = $state<UpdatePayload['status'] | null>(null);
+  let version = $state('');
+  let percent = $state(0);
+  let dialogOpen = $state(false);
+  let failed = $state(false);
+
+  onMount(() => {
+    const desktop = (window as unknown as { orkestraiDesktop?: DesktopBridge }).orkestraiDesktop;
+    if (!desktop?.onUpdate) return;
+    return desktop.onUpdate((payload) => {
+      status = payload.status;
+      if (payload.status === 'available') version = payload.version;
+      if (payload.status === 'downloading') percent = payload.percent;
+      if (payload.status === 'downloaded') {
+        version = payload.version;
+        failed = false;
+        dialogOpen = true;
+      }
+      if (payload.status === 'error') {
+        // Falha na troca automatica: oferece download manual em vez de insistir.
+        failed = true;
+        dialogOpen = true;
+      }
+    });
+  });
+
+  function install() {
+    dialogOpen = false;
+    const desktop = (window as unknown as { orkestraiDesktop?: DesktopBridge }).orkestraiDesktop;
+    void desktop?.installUpdate?.();
+  }
+
+  function downloadManually() {
+    dialogOpen = false;
+    const desktop = (window as unknown as { orkestraiDesktop?: DesktopBridge }).orkestraiDesktop;
+    void desktop?.openExternal?.(RELEASES_URL);
+  }
+</script>
+
+{#if status === 'downloading'}
+  <div class="update-progress" role="status">
+    <span class="update-progress-label">Baixando atualizacao… {percent}%</span>
+    <span class="update-progress-bar"><span class="update-progress-fill" style:width="{percent}%"></span></span>
+  </div>
+{/if}
+
+<AlertDialog.Root bind:open={dialogOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>{failed ? 'Atualizacao manual necessaria' : 'Nova versao pronta'}</AlertDialog.Title>
+      <AlertDialog.Description>
+        {#if failed}
+          Nao consegui instalar a atualizacao automaticamente. Baixe a versao nova na
+          pagina de releases — seus workspaces, configuracoes e modelos ficam intactos.
+        {:else}
+          A versao {version} foi baixada e verificada. Reinicie para atualizar — leva
+          segundos e seus workspaces continuam onde estavam.
+        {/if}
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel>Depois</AlertDialog.Cancel>
+      {#if failed}
+        <Button size="sm" onclick={downloadManually}>Baixar do site</Button>
+      {:else}
+        <Button size="sm" onclick={install}>Reiniciar e atualizar</Button>
+      {/if}
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
+
+<style>
+  .update-progress {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: #1a1742;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    min-width: 200px;
+  }
+
+  .update-progress-label {
+    font-size: 11.5px;
+    color: #a9aab3;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .update-progress-bar {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  .update-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #5b8def;
+    transition: width 200ms ease;
+  }
+</style>

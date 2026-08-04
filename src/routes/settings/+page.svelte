@@ -1,16 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ArrowLeft } from '@lucide/svelte';
+  import { ArrowLeft, Check, Keyboard, Mic, RefreshCw, SquareTerminal, Volume2 } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
-  import { Separator } from '$lib/components/ui/separator';
+  import { Skeleton } from '$lib/components/ui/skeleton';
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
   import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
 
   let settings = $state<Record<string, string>>({});
+  let loaded = $state(false);
   let saved = $state(false);
   let capturingHotkey = $state(false);
 
@@ -35,7 +36,15 @@
     const response = await fetch('/api/agent-room/settings');
     const payload = await response.json();
     settings = payload.data ?? {};
+    loaded = true;
     await refreshModelStatus();
+    if (desktop?.appVersion) appVersion = await desktop.appVersion().catch(() => '');
+    // Feedback da checagem manual: "ja esta na versao mais recente".
+    desktop?.onUpdate?.((payload) => {
+      if (payload.status === 'none' && checkingUpdate === false && updateMessage.startsWith('Verificando')) {
+        updateMessage = 'Voce esta na versao mais recente.';
+      }
+    });
   });
 
   async function save() {
@@ -57,6 +66,34 @@
   let modelBytes = $state<number | null>(null);
   let confirmDeleteModels = $state(false);
   let deletingModels = $state(false);
+
+  // -- Atualizacoes do app (desktop) -------------------------------------------
+  type DesktopBridge = {
+    appVersion?: () => Promise<string>;
+    checkForUpdates?: () => Promise<{ status: string; message?: string }>;
+    onUpdate?: (callback: (payload: { status: string }) => void) => () => void;
+  };
+  const desktop =
+    typeof window !== 'undefined'
+      ? (window as unknown as { orkestraiDesktop?: DesktopBridge }).orkestraiDesktop
+      : undefined;
+  let appVersion = $state('');
+  let checkingUpdate = $state(false);
+  let updateMessage = $state('');
+
+  async function checkUpdates() {
+    if (!desktop?.checkForUpdates) return;
+    checkingUpdate = true;
+    updateMessage = '';
+    try {
+      const result = await desktop.checkForUpdates();
+      if (result.status === 'unsupported') updateMessage = 'Atualizacao automatica so existe no app instalado.';
+      else if (result.status === 'error') updateMessage = 'Nao consegui verificar agora — tente mais tarde.';
+      else updateMessage = 'Verificando... se houver versao nova, o download comeca sozinho.';
+    } finally {
+      checkingUpdate = false;
+    }
+  }
 
   async function refreshModelStatus() {
     try {
@@ -125,22 +162,51 @@
 <main class="settings-page">
   <header class="settings-header">
     <Button variant="ghost" size="sm" href="/canvas">
-      <ArrowLeft size={15} />
+      <ArrowLeft size={15} aria-hidden="true" />
       Canvas
     </Button>
-    <div>
+    <div class="header-titles">
       <h1>Configuracoes</h1>
       <p>Preferencias globais do app — aplicadas imediatamente ao salvar.</p>
     </div>
+    <span class="header-spacer"></span>
+    <Button size="sm" onclick={save} class="save-btn">
+      {#if saved}<Check size={14} aria-hidden="true" />Salvo!{:else}Salvar alteracoes{/if}
+    </Button>
   </header>
 
+  {#if !loaded}
+    {#each [0, 1, 2] as index (index)}
+      <section class="settings-section" aria-hidden="true">
+        <div class="section-skeleton-head">
+          <Skeleton class="h-[30px] w-[30px] rounded-[9px] bg-white/8" />
+          <div class="section-skeleton-titles">
+            <Skeleton class="h-4 w-32 bg-white/8" />
+            <Skeleton class="h-3 w-52 bg-white/8" />
+          </div>
+        </div>
+        <div class="grid-fields">
+          <Skeleton class="h-9 w-full bg-white/8" />
+          <Skeleton class="h-9 w-full bg-white/8" />
+          <Skeleton class="h-9 w-full bg-white/8" />
+        </div>
+      </section>
+    {/each}
+  {:else}
   <section class="settings-section">
-    <h2>Terminal</h2>
-    <div class="field-row">
+    <header class="section-head">
+      <span class="icon-chip"><SquareTerminal size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>Terminal</h2>
+        <p>Minimapa, controles do canvas, tema e dimensoes padrao dos nos.</p>
+      </div>
+    </header>
+
+    <div class="grid-fields">
       <div class="field">
-        <span class="field-label">Mostrar minimapa</span>
+        <span class="field-label">Minimapa do canvas</span>
         <Select.Root type="single" value={settings.showMinimap} onValueChange={(value: string) => (settings = { ...settings, showMinimap: value })}>
-          <Select.Trigger class="w-32" data-slot="select-trigger">
+          <Select.Trigger data-slot="select-trigger">
             {settings.showMinimap === 'true' ? 'Mostrar' : 'Ocultar'}
           </Select.Trigger>
           <Select.Content>
@@ -152,7 +218,7 @@
       <div class="field">
         <span class="field-label">Controles de zoom (+/-, lock)</span>
         <Select.Root type="single" value={settings.showControls} onValueChange={(value: string) => (settings = { ...settings, showControls: value })}>
-          <Select.Trigger class="w-32" data-slot="select-trigger">
+          <Select.Trigger data-slot="select-trigger">
             {settings.showControls === 'true' ? 'Mostrar' : 'Ocultar'}
           </Select.Trigger>
           <Select.Content>
@@ -161,61 +227,65 @@
           </Select.Content>
         </Select.Root>
       </div>
-    </div>
-    <div class="field">
-      <span class="field-label">Tema padrao de novos terminais</span>
-      <Select.Root type="single" value={settings.terminalTheme} onValueChange={(value: string) => (settings = { ...settings, terminalTheme: value })}>
-        <Select.Trigger class="w-48" data-slot="select-trigger">
-          {TERMINAL_THEMES[settings.terminalTheme as keyof typeof TERMINAL_THEMES]?.label ?? settings.terminalTheme}
-        </Select.Trigger>
-        <Select.Content>
-          {#each TERMINAL_THEME_ORDER as theme}
-            <Select.Item value={theme}>{TERMINAL_THEMES[theme].label}</Select.Item>
-          {/each}
-        </Select.Content>
-      </Select.Root>
-    </div>
-    <div class="field-row">
       <div class="field">
-        <span class="field-label">Largura padrao (novo terminal)</span>
-        <Input class="w-28" type="number" bind:value={settings.newTerminalWidth} />
-      </div>
-      <div class="field">
-        <span class="field-label">Altura padrao</span>
-        <Input class="w-28" type="number" bind:value={settings.newTerminalHeight} />
+        <span class="field-label">Tema de novos terminais</span>
+        <Select.Root type="single" value={settings.terminalTheme} onValueChange={(value: string) => (settings = { ...settings, terminalTheme: value })}>
+          <Select.Trigger data-slot="select-trigger">
+            {TERMINAL_THEMES[settings.terminalTheme as keyof typeof TERMINAL_THEMES]?.label ?? settings.terminalTheme}
+          </Select.Trigger>
+          <Select.Content>
+            {#each TERMINAL_THEME_ORDER as theme}
+              <Select.Item value={theme}>{TERMINAL_THEMES[theme].label}</Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
       </div>
     </div>
-    <div class="field-row">
-      <div class="field">
-        <span class="field-label">Largura padrao (nova nota)</span>
-        <Input class="w-28" type="number" bind:value={settings.newNoteWidth} />
-      </div>
-      <div class="field">
-        <span class="field-label">Altura padrao</span>
-        <Input class="w-28" type="number" bind:value={settings.newNoteHeight} />
-      </div>
-    </div>
-    <div class="field-row">
+
+    <div class="grid-fields">
       <div class="field">
         <span class="field-label">Tamanho da fonte (px)</span>
-        <Input class="w-28" type="number" min="9" max="24" bind:value={settings.terminalFontSize} />
+        <Input type="number" min="9" max="24" bind:value={settings.terminalFontSize} />
       </div>
-      <div class="field" style="flex:1">
+      <div class="field span-2">
         <span class="field-label">Familia da fonte</span>
         <Input bind:value={settings.terminalFontFamily} placeholder="ui-monospace, Menlo, monospace" />
       </div>
       <div class="field">
         <span class="field-label">Padding</span>
-        <Input class="w-28" type="number" min="0" max="24" bind:value={settings.terminalPadding} />
+        <Input type="number" min="0" max="24" bind:value={settings.terminalPadding} />
       </div>
     </div>
-    <Button size="sm" onclick={save}>{saved ? 'Salvo!' : 'Salvar'}</Button>
+
+    <div class="grid-fields">
+      <div class="field">
+        <span class="field-label">Largura do terminal (px)</span>
+        <Input type="number" bind:value={settings.newTerminalWidth} />
+      </div>
+      <div class="field">
+        <span class="field-label">Altura do terminal (px)</span>
+        <Input type="number" bind:value={settings.newTerminalHeight} />
+      </div>
+      <div class="field">
+        <span class="field-label">Largura da nota (px)</span>
+        <Input type="number" bind:value={settings.newNoteWidth} />
+      </div>
+      <div class="field">
+        <span class="field-label">Altura da nota (px)</span>
+        <Input type="number" bind:value={settings.newNoteHeight} />
+      </div>
+    </div>
   </section>
 
-  <Separator />
-
   <section class="settings-section">
-    <h2>Ditado por voz</h2>
+    <header class="section-head">
+      <span class="icon-chip"><Mic size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>Ditado por voz</h2>
+        <p>Atalho que transcreve sua fala direto no terminal focado.</p>
+      </div>
+    </header>
+
     <div class="field">
       <span class="field-label">Tecla de atalho (terminal focado)</span>
       <div class="hotkey-row">
@@ -239,45 +309,34 @@
         atalho global, escolha uma combinacao diferente aqui.
       </p>
     </div>
-    <Button size="sm" onclick={save}>{saved ? 'Salvo!' : 'Salvar'}</Button>
   </section>
 
-  <Separator />
-
   <section class="settings-section">
-    <h2>Voz (ditado e fala pt-BR)</h2>
-    <p class="field-hint">
-      Ditado e fala em portugues, rodando local. Na primeira vez o app baixa o
-      modelo de voz (whisper, ~790 MB) uma unica vez — pergunta antes. Se
-      preferir, use um servico de voz externo seu em vez do motor local.
-    </p>
-    <div class="field">
-      <span class="field-label">Motor de voz</span>
-      <Select.Root type="single" value={settings.voiceBackend ?? 'embedded'} onValueChange={(value: string) => (settings = { ...settings, voiceBackend: value })}>
-        <Select.Trigger class="w-72" data-slot="select-trigger">
-          {(settings.voiceBackend ?? 'embedded') === 'embedded' ? 'Local (recomendado)' : 'Servico externo (Docker)'}
-        </Select.Trigger>
-        <Select.Content>
-          <Select.Item value="embedded">Local (recomendado)</Select.Item>
-          <Select.Item value="sidecar">Servico externo (Docker)</Select.Item>
-        </Select.Content>
-      </Select.Root>
-    </div>
-    {#if (settings.voiceBackend ?? 'embedded') === 'sidecar'}
+    <header class="section-head">
+      <span class="icon-chip"><Volume2 size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>Voz (ditado e fala pt-BR)</h2>
+        <p>Motor local por padrao; servico externo como opcao avancada.</p>
+      </div>
+    </header>
+
+    <div class="grid-fields">
       <div class="field">
-        <span class="field-label">URL do sidecar</span>
-        <Input bind:value={settings.voiceStackUrl} placeholder="http://localhost:8000" />
+        <span class="field-label">Motor de voz</span>
+        <Select.Root type="single" value={settings.voiceBackend ?? 'embedded'} onValueChange={(value: string) => (settings = { ...settings, voiceBackend: value })}>
+          <Select.Trigger data-slot="select-trigger">
+            {(settings.voiceBackend ?? 'embedded') === 'embedded' ? 'Local (recomendado)' : 'Servico externo (Docker)'}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="embedded">Local (recomendado)</Select.Item>
+            <Select.Item value="sidecar">Servico externo (Docker)</Select.Item>
+          </Select.Content>
+        </Select.Root>
       </div>
       <div class="field">
-        <span class="field-label">Modelo STT (sidecar)</span>
-        <Input bind:value={settings.voiceSttModel} placeholder="whisper-large-v3-turbo" />
-      </div>
-    {/if}
-    <div class="field-row">
-      <div class="field">
-        <span class="field-label">Voz TTS (respostas)</span>
+        <span class="field-label">Voz das respostas</span>
         <Select.Root type="single" value={settings.voiceTtsVoice} onValueChange={(value: string) => (settings = { ...settings, voiceTtsVoice: value })}>
-          <Select.Trigger class="w-40" data-slot="select-trigger">
+          <Select.Trigger data-slot="select-trigger">
             {settings.voiceTtsVoice ?? 'pf_dora'}
           </Select.Trigger>
           <Select.Content>
@@ -288,26 +347,48 @@
         </Select.Root>
       </div>
     </div>
+
+    {#if (settings.voiceBackend ?? 'embedded') === 'sidecar'}
+      <div class="grid-fields">
+        <div class="field">
+          <span class="field-label">URL do sidecar</span>
+          <Input bind:value={settings.voiceStackUrl} placeholder="http://localhost:8000" />
+        </div>
+        <div class="field">
+          <span class="field-label">Modelo STT (sidecar)</span>
+          <Input bind:value={settings.voiceSttModel} placeholder="whisper-large-v3-turbo" />
+        </div>
+      </div>
+    {/if}
+
     <div class="hotkey-row">
       <Button variant="outline" size="sm" disabled={checkingVoice} onclick={checkVoiceStack}>
         {checkingVoice ? 'Testando...' : 'Testar conexao'}
       </Button>
       {#if voiceHealth}
-        <span class="voice-status" class:ok={voiceHealth.ok}>
-          {voiceHealth.ok ? `${voiceHealth.url === 'embedded' ? 'Voz embarcada ativa' : `Sidecar no ar (${voiceHealth.url})`}${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}` : `Fora do ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}`}
+        <span class="status-pill" class:ok={voiceHealth.ok}>
+          <span class="status-dot"></span>
+          {voiceHealth.ok ? `${voiceHealth.url === 'embedded' ? 'Motor local ativo' : `Sidecar no ar (${voiceHealth.url})`}${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}` : `Fora do ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}`}
         </span>
       {/if}
     </div>
 
     {#if modelBytes !== null && modelBytes > 0}
-      <div class="model-row">
-        <span class="field-hint">Modelo de voz baixado: <strong>{formatMb(modelBytes)}</strong></span>
+      <div class="model-card">
+        <div class="model-info">
+          <span class="field-label">Modelo de voz baixado</span>
+          <strong class="model-size">{formatMb(modelBytes)}</strong>
+        </div>
         <Button variant="outline" size="sm" onclick={() => (confirmDeleteModels = true)}>
           Apagar modelo (liberar espaco)
         </Button>
       </div>
     {/if}
-    <Button size="sm" onclick={save}>{saved ? 'Salvo!' : 'Salvar'}</Button>
+
+    <p class="field-hint">
+      Na primeira vez o app baixa o modelo de voz (whisper, ~790 MB) uma unica vez —
+      pergunta antes. Depois disso tudo roda local.
+    </p>
   </section>
 
   <AlertDialog.Root bind:open={confirmDeleteModels}>
@@ -328,21 +409,45 @@
     </AlertDialog.Content>
   </AlertDialog.Root>
 
-  <Separator />
+  <section class="settings-section">
+    <header class="section-head">
+      <span class="icon-chip"><Keyboard size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>Atalhos</h2>
+        <p>Referencia rapida dos atalhos do canvas e dos terminais.</p>
+      </div>
+    </header>
+    <div class="shortcuts-grid">
+      {#each SHORTCUTS as [keys, description]}
+        <div class="shortcut-row">
+          <kbd>{keys}</kbd>
+          <span class="shortcut-desc">{description}</span>
+        </div>
+      {/each}
+    </div>
+  </section>
 
   <section class="settings-section">
-    <h2>Atalhos</h2>
-    <table class="shortcuts">
-      <tbody>
-        {#each SHORTCUTS as [keys, description]}
-          <tr>
-            <td class="keys"><kbd>{keys}</kbd></td>
-            <td>{description}</td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+    <header class="section-head">
+      <span class="icon-chip"><RefreshCw size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>Atualizacoes</h2>
+        <p>O app busca versao nova sozinho (no boot e a cada 6h) e instala na troca — seus dados ficam intactos.</p>
+      </div>
+    </header>
+    <div class="hotkey-row">
+      <span class="field-label">Versao instalada: <strong class="model-size">{appVersion || '—'}</strong></span>
+      {#if desktop?.checkForUpdates}
+        <Button variant="outline" size="sm" disabled={checkingUpdate} onclick={checkUpdates}>
+          {checkingUpdate ? 'Verificando...' : 'Verificar agora'}
+        </Button>
+      {/if}
+    </div>
+    {#if updateMessage}
+      <p class="field-hint">{updateMessage}</p>
+    {/if}
   </section>
+  {/if}
 </main>
 
 <style>
@@ -350,108 +455,167 @@
     min-height: 100vh;
     background: #0D0B2E;
     color: #e6e6eb;
-    padding: 28px 20px 60px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    align-items: center;
-  }
-
-  .settings-page > * {
-    width: min(680px, 100%);
-  }
-
-  .settings-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .settings-header h1 {
-    font-size: 17px;
-    margin: 0;
-  }
-
-  .settings-header p {
-    margin: 0;
-    font-size: 12px;
-    color: #6d6d78;
-  }
-
-  .settings-section {
+    padding: 24px 24px 80px;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
-    background: #1C1946;
-    padding: 20px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    align-items: center;
+    -webkit-font-smoothing: antialiased;
   }
 
-  .settings-section h2 {
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #8b8c96;
+  .settings-page > * {
+    width: min(760px, 100%);
+  }
+
+  /* ---- Cabecalho fixo com o Salvar sempre a mao ------------------------ */
+  .settings-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0 14px;
+    background: linear-gradient(180deg, #0D0B2E 78%, transparent);
+  }
+
+  .header-titles h1 {
+    font-family: 'Sora', 'Inter', sans-serif;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     margin: 0;
+  }
+
+  .header-titles p {
+    margin: 1px 0 0;
+    font-size: 12px;
+    color: #8b8c96;
+  }
+
+  .header-spacer {
+    flex: 1;
+  }
+
+  :global(.save-btn) {
+    min-width: 132px;
+    transition: transform 120ms ease;
+  }
+
+  :global(.save-btn:active) {
+    transform: scale(0.97);
+  }
+
+  /* ---- Secoes como cartoes (mesma linguagem da pagina Como usar) ------- */
+  .settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 14px;
+    background: #1A1742;
+    padding: 18px 20px 20px;
+    transition: border-color 160ms ease;
+  }
+
+  .settings-section:hover {
+    border-color: rgba(255, 255, 255, 0.11);
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .icon-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: rgba(91, 141, 239, 0.12);
+    color: #7DE5FF;
+    flex-shrink: 0;
+  }
+
+  .section-titles h2 {
+    font-family: 'Sora', 'Inter', sans-serif;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    margin: 0;
+    color: #e6e6eb;
+  }
+
+  .section-titles p {
+    margin: 1px 0 0;
+    font-size: 12px;
+    color: #8b8c96;
+  }
+
+  .section-skeleton-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-skeleton-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ---- Campos em grade responsiva --------------------------------------- */
+  .grid-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px 16px;
+  }
+
+  .span-2 {
+    grid-column: span 2;
+  }
+
+  @media (max-width: 560px) {
+    .span-2 {
+      grid-column: span 1;
+    }
   }
 
   .field {
     display: flex;
     flex-direction: column;
     gap: 6px;
-  }
-
-  .field-row {
-    display: flex;
-    gap: 16px;
+    min-width: 0;
   }
 
   .field-label {
     font-size: 12px;
-    color: #8b8c96;
+    font-weight: 500;
+    color: #a9aab3;
   }
 
   .field-hint {
     margin: 0;
-    font-size: 11px;
-    line-height: 1.5;
+    font-size: 11.5px;
+    line-height: 1.6;
     color: #6d6d78;
+    text-wrap: pretty;
   }
 
   .hotkey-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-  }
-
-  .voice-status {
-    font-size: 11px;
-    color: #e5484d;
-  }
-
-  .voice-status.ok {
-    color: #3dd68c;
-  }
-
-  .model-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     gap: 10px;
-  }
-
-  .field-hint code {
-    background: #262155;
-    border-radius: 4px;
-    padding: 1px 5px;
-    font-size: 10px;
+    flex-wrap: wrap;
   }
 
   :global(.hotkey-capture) {
     min-width: 150px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
   }
 
   :global(.hotkey-capture.capturing) {
@@ -459,25 +623,94 @@
     color: #b79cff;
   }
 
-  .shortcuts {
-    font-size: 12px;
-    border-collapse: collapse;
+  /* ---- Status da voz em pildula ---------------------------------------- */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    color: #ff9c9f;
+    background: rgba(229, 72, 77, 0.1);
   }
 
-  .shortcuts td {
-    padding: 5px 10px 5px 0;
-    color: #c7c8d0;
+  .status-pill.ok {
+    color: #3dd68c;
+    background: rgba(61, 214, 140, 0.1);
   }
 
-  .shortcuts .keys {
-    width: 180px;
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* ---- Cartao interno do modelo (raio concentrico: 14 - 6 = 8+) -------- */
+  .model-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(13, 11, 46, 0.55);
+  }
+
+  .model-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .model-size {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #e6e6eb;
+  }
+
+  /* ---- Atalhos em grade ------------------------------------------------- */
+  .shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 9px 24px;
+  }
+
+  .shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
   }
 
   kbd {
+    flex-shrink: 0;
+    min-width: 44px;
+    text-align: center;
     background: #262155;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-    padding: 2px 7px;
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 11px;
+    color: #c9cad2;
+  }
+
+  .shortcut-desc {
+    font-size: 12px;
+    color: #a9aab3;
+    text-wrap: pretty;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .settings-section,
+    :global(.save-btn) {
+      transition: none;
+    }
   }
 </style>

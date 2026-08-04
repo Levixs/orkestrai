@@ -74,6 +74,32 @@ describe('TaskBoardService', () => {
     ptySessionManager.kill(session.id);
   });
 
+  it('arquiva concluidas (uma e em lote) e o historico preserva tudo', async () => {
+    const { workspace, session } = await createWorkspaceWithTerminal();
+
+    const done1 = await taskBoardService.create(workspace.id, { title: 'Feita 1' });
+    await taskBoardService.update(workspace.id, done1.id, { status: 'done' });
+    const alive = await taskBoardService.create(workspace.id, { title: 'Viva 1' });
+
+    // so da para arquivar tarefa concluida
+    await expect(taskBoardService.archive(workspace.id, alive.id)).rejects.toThrow('concluida');
+
+    const archived = await taskBoardService.archive(workspace.id, done1.id);
+    expect(archived.archivedAt).toBeTruthy();
+
+    // quadro esconde a arquivada; historico preserva (done + arquivadas)
+    expect((await taskBoardService.list(workspace.id)).map((task) => task.id)).toEqual([alive.id]);
+    expect((await taskBoardService.history(workspace.id)).map((task) => task.id)).toContain(done1.id);
+
+    // arquivar em lote limpa a coluna Feito
+    await taskBoardService.update(workspace.id, alive.id, { status: 'done' });
+    const batch = await taskBoardService.archiveDone(workspace.id);
+    expect(batch.archived).toBe(1);
+    expect(await taskBoardService.list(workspace.id)).toHaveLength(0);
+    expect(await taskBoardService.history(workspace.id)).toHaveLength(2);
+    ptySessionManager.kill(session.id);
+  });
+
   it('anexa e remove imagens de referencia (capa = primeira)', async () => {
     const { workspace, session } = await createWorkspaceWithTerminal();
     const task = await taskBoardService.create(workspace.id, { title: 'Tela de login' });

@@ -4,6 +4,7 @@
   import { getCsrfToken, registerToast } from '@beeblock/svelar/http';
   import { onMount } from 'svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import UpdateNotifier from '$lib/components/agent-room/UpdateNotifier.svelte';
 
   // Wire apiFetch error handling to the toast UI
   registerToast((variant: string, title: string, opts?: any) => {
@@ -58,6 +59,7 @@
 </Tooltip.Provider>
 
 <Toaster position="bottom-right" />
+<UpdateNotifier />
 
 <style>
   :global(body) {

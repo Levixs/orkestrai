@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ChevronLeft, ChevronRight, ImagePlus, Plus, SquareKanban, Trash2, X } from '@lucide/svelte';
+  import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, History, ImagePlus, Plus, SquareKanban, Trash2, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
@@ -17,6 +17,8 @@
     imagePath: string | null;
     images: string[];
     createdBy: string;
+    updatedAt: string;
+    archivedAt: string | null;
   };
 
   export type TasksNodeData = {
@@ -47,6 +49,41 @@
   let editDraft = $state('');
   let fileInput: HTMLInputElement;
   let imageTargetId = $state<string | null>(null);
+
+  // -- Historico / arquivamento ------------------------------------------------
+  // Quadro mostra so tarefas vivas; concluidas podem ser arquivadas (saem do
+  // quadro, ficam no historico do workspace — o "o que foi feito" do projeto).
+  let view = $state<'board' | 'history'>('board');
+  let historyItems = $state<BoardTask[]>([]);
+  let historyLoading = $state(false);
+
+  const doneCount = $derived(tasks.filter((task) => task.status === 'done').length);
+
+  function fmtWhen(iso: string): string {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function openHistory() {
+    view = 'history';
+    historyLoading = true;
+    try {
+      historyItems = (await api<BoardTask[]>(`/api/agent-room/workspaces/${data.workspaceId}/tasks/history`)) ?? [];
+    } finally {
+      historyLoading = false;
+    }
+  }
+
+  async function archiveTask(task: BoardTask) {
+    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${task.id}/archive`, { method: 'POST' });
+    await refresh();
+  }
+
+  async function archiveAllDone() {
+    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/archive-done`, { method: 'POST' });
+    await refresh();
+  }
 
   async function api<T>(path: string, init?: RequestInit): Promise<T | null> {
     try {
@@ -230,6 +267,17 @@
   {#snippet icon()}<SquareKanban size={13} />{/snippet}
   {#snippet title()}{data.title || 'Tarefas'}{/snippet}
   {#snippet actions()}
+    {#if view === 'board'}
+      {#if doneCount > 0}
+        <HeaderIconButton label={`Arquivar ${doneCount} concluida(s) (somem do quadro, ficam no historico)`} class="node-action-btn" side="left" onclick={archiveAllDone}>
+          <Archive size={13} /></HeaderIconButton>
+      {/if}
+      <HeaderIconButton label="Historico (concluidas e arquivadas)" class="node-action-btn" side="left" onclick={openHistory}>
+        <History size={13} /></HeaderIconButton>
+    {:else}
+      <HeaderIconButton label="Voltar ao quadro" class="node-action-btn" side="left" onclick={() => (view = 'board')}>
+        <ArchiveRestore size={13} /></HeaderIconButton>
+    {/if}
     <HeaderIconButton label="Remover quadro" class="node-action-btn" danger side="left" onclick={() => data.onDelete(id)}>
       <X size={13} /></HeaderIconButton>
   {/snippet}
@@ -240,6 +288,28 @@
     <p class="tb-image-error nodrag">{imageError}</p>
   {/if}
 
+  {#if view === 'history'}
+    <div class="tb-history nodrag nowheel">
+      {#if historyLoading}
+        <span class="tb-empty">Carregando historico…</span>
+      {:else if historyItems.length === 0}
+        <span class="tb-empty">Nada concluido ainda — o que o time entregar aparece aqui.</span>
+      {:else}
+        {#each historyItems as item (item.id)}
+          <article class="tb-history-row">
+            <div class="tb-history-main">
+              <span class="tb-history-title">{item.title}</span>
+              <span class="tb-history-meta">
+                {item.assigneeTitle ?? 'sem responsavel'} · {fmtWhen(item.updatedAt)}
+                {#if item.archivedAt} · arquivada{/if}
+              </span>
+            </div>
+            <span class="tb-history-status" class:archived={Boolean(item.archivedAt)}>{item.archivedAt ? 'arquivada' : 'feito'}</span>
+          </article>
+        {/each}
+      {/if}
+    </div>
+  {:else}
   <div class="tb-add nodrag">
     <input
       bind:value={draft}
@@ -331,6 +401,11 @@
                 <HeaderIconButton label="Anexar imagem (ou cole com Ctrl+V no cartao)" class="tb-icon-btn subtle" side="top" onclick={() => pickImage(task)}>
                   <ImagePlus size={11} />
                 </HeaderIconButton>
+                {#if task.status === 'done'}
+                  <HeaderIconButton label="Arquivar (sai do quadro, fica no historico)" class="tb-icon-btn subtle" side="top" onclick={() => archiveTask(task)}>
+                    <Archive size={11} />
+                  </HeaderIconButton>
+                {/if}
               </div>
             </article>
           {:else}
@@ -340,6 +415,7 @@
       </section>
     {/each}
   </div>
+  {/if}
 </NodeShell>
 
 {#if viewerTask}
@@ -376,6 +452,65 @@
     margin: 0 8px 6px;
     font-size: 11px;
     color: #ff9c9f;
+  }
+
+  .tb-history {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    padding: 2px 6px 8px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .tb-history-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .tb-history-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .tb-history-title {
+    font-size: 12px;
+    color: #d7d8de;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tb-history-meta {
+    font-size: 10px;
+    color: #6d6d78;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tb-history-status {
+    flex-shrink: 0;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #8ec98e;
+    background: rgba(142, 201, 142, 0.12);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
+  .tb-history-status.archived {
+    color: #8b8c96;
+    background: rgba(255, 255, 255, 0.07);
   }
 
   .tb-add {

@@ -7,6 +7,7 @@
   import { Separator } from '$lib/components/ui/separator';
   import { Badge } from '$lib/components/ui/badge';
   import { Spinner } from '$lib/components/ui/spinner';
+  import { Skeleton } from '$lib/components/ui/skeleton';
 
   type Workspace = { id: string; name: string };
   type SkillResult = { id: string; skillId: string; name: string; source: string; installs: number };
@@ -170,7 +171,19 @@
 
     {#if feedback}<p class="feedback">{feedback}</p>{/if}
 
-    {#if results.length}
+    {#if searching}
+      <div class="results-list" aria-hidden="true">
+        {#each [0, 1, 2, 3] as index (index)}
+          <div class="result-item">
+            <div class="result-info result-skeleton">
+              <Skeleton class="h-4 w-40 bg-white/8" />
+              <Skeleton class="h-3 w-56 bg-white/8" />
+            </div>
+            <Skeleton class="h-8 w-20 bg-white/8" />
+          </div>
+        {/each}
+      </div>
+    {:else if results.length}
       <div class="results-list">
         {#each results as skill (skill.id)}
           <div class="result-item">
@@ -210,6 +223,12 @@
 
   .skills-page > * {
     width: min(680px, 100%);
+  }
+
+  .result-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .skills-header {

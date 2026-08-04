@@ -36,6 +36,7 @@
     "@types/ws": "^8.18.1",
     "electron": "^42.8.0",
     "electron-builder": "^26.15.3",
+    "electron-updater": "^6.8.9",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "tailwindcss": "^4.2.2",
@@ -126,7 +127,8 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "icon": "electron/resources/icon.icns",
       "extendInfo": {
@@ -171,6 +173,13 @@
       ],
       "category": "Development",
       "icon": "electron/resources/icons"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "beeblock",
+        "repo": "orkestrai-releases"
+      }
+    ]
   }
 }

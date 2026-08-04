@@ -7,7 +7,7 @@
  * node-pty) precisam estar rebuildados para o ABI do Electron
  * (npm run electron:rebuild).
  */
-const { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, session } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, session, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -247,6 +247,58 @@ ipcMain.handle('orkestrai:pick-directory', async () => {
   return result.canceled ? null : (result.filePaths[0] ?? null);
 });
 
+// -- Auto-update (electron-updater, releases publicos no GitHub) --------------
+// O download cai num cache separado e so e ativado na troca (quitAndInstall):
+// a versao atual NUNCA e tocada antes da nova estar 100% baixada e verificada
+// (sha512 do latest-mac.yml). Dados do usuario ficam fora do bundle.
+
+let autoUpdater = null;
+if (app.isPackaged) {
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+  } catch {
+    autoUpdater = null; // pacote sem o modulo — segue sem updater
+  }
+}
+
+function sendUpdate(payload) {
+  mainWindow?.webContents.send('orkestrai:update', payload);
+}
+
+function setupAutoUpdater() {
+  if (!autoUpdater) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.on('update-available', (info) => sendUpdate({ status: 'available', version: info.version }));
+  autoUpdater.on('update-not-available', () => sendUpdate({ status: 'none' }));
+  autoUpdater.on('download-progress', (progress) => sendUpdate({ status: 'downloading', percent: Math.round(progress.percent) }));
+  autoUpdater.on('update-downloaded', (info) => sendUpdate({ status: 'downloaded', version: info.version }));
+  autoUpdater.on('error', (error) => sendUpdate({ status: 'error', message: String(error?.message ?? error).slice(0, 300) }));
+  autoUpdater.checkForUpdates().catch(() => {});
+  // Re-checa a cada 6h com o app aberto.
+  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 60 * 60 * 1000).unref();
+}
+
+ipcMain.handle('orkestrai:update-check', async () => {
+  if (!autoUpdater) return { status: 'unsupported' };
+  try {
+    await autoUpdater.checkForUpdates();
+    return { status: 'ok' };
+  } catch (error) {
+    return { status: 'error', message: String(error?.message ?? error).slice(0, 300) };
+  }
+});
+
+ipcMain.handle('orkestrai:update-install', () => {
+  autoUpdater?.quitAndInstall();
+});
+
+ipcMain.handle('orkestrai:app-version', () => app.getVersion());
+
+ipcMain.handle('orkestrai:open-external', (_event, url) => {
+  // So https — nunca abre esquema arbitrario vindo do renderer.
+  if (typeof url === 'string' && url.startsWith('https://')) shell.openExternal(url);
+});
+
 function showNativeNotification(title, body) {
   if (!Notification.isSupported()) return;
   pendingNotifications += 1;
@@ -319,7 +371,7 @@ if (!gotLock) {
     }
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     // Icone do dock em dev (empacotado vem do electron-builder).
     if (process.platform === 'darwin' && !app.isPackaged) {
       app.dock.setIcon(path.join(appRoot, 'electron', 'resources', 'icon.png'));
@@ -332,7 +384,8 @@ if (!gotLock) {
     });
     createSplash();
     createTray();
-    return createWindow();
+    await createWindow();
+    setupAutoUpdater();
   }).catch((error) => {
     console.error('Falha ao iniciar o Orkestrai:', error);
     closeSplash();

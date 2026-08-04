@@ -6,8 +6,32 @@
  * ORKESTRAI_TOKEN e ORKESTRAI_API_URL tem precedencia.
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { createServer as createNetServer } from 'node:net';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
+
+/** Porta livre de verdade: binda na efemera, le o numero e libera. */
+export async function findFreePort() {
+  return new Promise((resolvePromise, reject) => {
+    const srv = createNetServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address();
+      srv.close(() => resolvePromise(port));
+    });
+  });
+}
+
+/** Testa se uma porta esta livre (probe de bind em 127.0.0.1). */
+export async function isPortFree(port) {
+  return new Promise((resolvePromise) => {
+    const srv = createNetServer();
+    srv.unref();
+    srv.once('error', () => resolvePromise(false));
+    srv.listen(port, '127.0.0.1', () => srv.close(() => resolvePromise(true)));
+  });
+}
 
 const USAGE = `orkestrai — ponte entre agentes do Orkestrai
 
@@ -29,11 +53,13 @@ Uso:
   orkestrai task add <titulo> [--assign <agente>] [--from <agente>]
   orkestrai task done <taskId>
   orkestrai task assign <taskId> <agente>
+  orkestrai task archive <taskId> | archive-done | history [--json]
   orkestrai floor list [--json]
   orkestrai floor create <nome> [--branch <b>] [--existing] [--clone]
   orkestrai floor preview <floorId> [--target <branch>]
   orkestrai floor land <floorId> [--target <branch>]
   orkestrai floor remove <floorId> [--delete-branch]
+  orkestrai port [--check <porta>]  — devolve uma porta livre (ou testa uma)
 
 Config: .orkestrai/workspace.json (token, apiUrl) ou env ORKESTRAI_TOKEN/ORKESTRAI_API_URL.
 Identidade: ORKESTRAI_NODE_ID/ORKESTRAI_AGENT_TITLE no ambiente ja definem --from e --agent.
@@ -149,6 +175,20 @@ export async function run(argv, options = {}) {
   if (selfAgent) {
     flags.from = flags.from ?? selfAgent;
     flags.agent = flags.agent ?? selfAgent;
+  }
+
+  // `port` e 100% local (nao toca a bridge): resolve ANTES de exigir config.
+  if (command === 'port') {
+    const check = flags.check ?? rest[0];
+    if (check !== undefined && check !== true) {
+      const n = Number(check);
+      if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error('Uso: orkestrai port [--check <porta>]');
+      const free = await isPortFree(n);
+      out(free ? `${n} livre` : `${n} ocupada`);
+      return free ? 0 : 1;
+    }
+    out(String(await findFreePort()));
+    return 0;
   }
 
   const config = resolveConfig(env, cwd);
@@ -354,7 +394,33 @@ export async function run(argv, options = {}) {
         out('Tarefa atribuida.');
         return 0;
       }
-      throw new Error('Uso: orkestrai task <list|add|done|assign> ...');
+      if (action === 'archive') {
+        const taskId = values[0];
+        if (!taskId) throw new Error('Uso: orkestrai task archive <taskId>');
+        await bridge(config, 'POST', `/api/agent-room/bridge/tasks/${taskId}/archive`, {});
+        out('Tarefa arquivada (sai do quadro, fica no historico).');
+        return 0;
+      }
+      if (action === 'archive-done') {
+        const data = await bridge(config, 'POST', '/api/agent-room/bridge/tasks/archive-done', {});
+        out(`Arquivadas ${data.archived} tarefa(s) concluida(s).`);
+        return 0;
+      }
+      if (action === 'history') {
+        const data = await bridge(config, 'GET', '/api/agent-room/bridge/tasks/history');
+        if (flags.json) {
+          out(JSON.stringify(data, null, 2));
+        } else {
+          for (const task of data) {
+            const who = task.assigneeTitle ? ` → ${task.assigneeTitle}` : '';
+            const when = String(task.updatedAt ?? '').slice(0, 16).replace('T', ' ');
+            out(`- [${task.status}${task.archivedAt ? '/arquivada' : ''}] ${task.title}${who} (${when})`);
+          }
+          if (!data.length) out('(historico vazio)');
+        }
+        return 0;
+      }
+      throw new Error('Uso: orkestrai task <list|add|done|assign|archive|archive-done|history> ...');
     }
     case 'floor': {
       const [action, ...values] = rest;

@@ -18,6 +18,7 @@
   import WorkspaceCreateDialog from '$lib/components/agent-room/canvas/WorkspaceCreateDialog.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import { Skeleton } from '$lib/components/ui/skeleton';
   import FileTreeCanvasNode from '$lib/components/agent-room/canvas/FileTreeCanvasNode.svelte';
   import EditorCanvasNode from '$lib/components/agent-room/canvas/EditorCanvasNode.svelte';
   import DiffCanvasNode from '$lib/components/agent-room/canvas/DiffCanvasNode.svelte';
@@ -38,7 +39,7 @@
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
   import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, CalendarClock, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -333,6 +334,7 @@
     }
     providers = status.providers ?? [];
     providersReadyResolve();
+    workspacesLoaded = true;
     // Indicador de workspaces ativos (sessoes PTY vivas em background).
     const refreshActivity = async () => {
       activity = await api<Record<string, number>>('/api/agent-room/workspaces/activity').catch(() => ({}));
@@ -354,9 +356,23 @@
     }
     return () => {
       if (activityTimer) clearInterval(activityTimer);
+      toolbarResizeObserver?.disconnect();
       eventsSocket.onclose = null;
       eventsSocket.close();
     };
+  });
+
+  // Overflow da toolbar: re-checa quando o tamanho/conteudo muda (resize,
+  // providers carregados, janela menor). Setas aparecem so quando ha para onde rolar.
+  let toolbarResizeObserver: ResizeObserver | null = null;
+
+  $effect(() => {
+    if (!toolbarEl) return;
+    void providers.length;
+    updateToolbarScroll();
+    toolbarResizeObserver ??= new ResizeObserver(updateToolbarScroll);
+    toolbarResizeObserver.observe(toolbarEl);
+    return () => toolbarResizeObserver?.disconnect();
   });
 
   function toFlowNode(node: CanvasNode): Node {
@@ -569,16 +585,45 @@
     }
   }
 
+  // -- Setas de scroll da toolbar (so aparecem quando ha overflow) -----------
+  let toolbarEl = $state<HTMLDivElement | null>(null);
+  let canScrollLeft = $state(false);
+  let canScrollRight = $state(false);
+
+  function updateToolbarScroll() {
+    if (!toolbarEl) return;
+    canScrollLeft = toolbarEl.scrollLeft > 2;
+    canScrollRight = toolbarEl.scrollLeft < toolbarEl.scrollWidth - toolbarEl.clientWidth - 2;
+  }
+
+  function scrollToolbar(direction: 1 | -1) {
+    toolbarEl?.scrollBy({ left: direction * 220, behavior: 'smooth' });
+  }
+
+  // -- Descarregar workspace (encerra terminais vivos, mantem o layout) ---------
+  let confirmUnload = $state(false);
+  let unloading = $state(false);
+  let unloadMessage = $state('');
+  let workspacesLoaded = $state(false);
+
   async function unloadActiveWorkspace() {
     if (!activeWorkspace) return;
-    const result = await api<{ killedSessions: number }>(`/api/agent-room/workspaces/${activeWorkspace.id}/unload`, {
-      method: 'POST',
-    });
-    if (activeWorkspace) {
+    unloading = true;
+    try {
+      const result = await api<{ killedSessions: number }>(`/api/agent-room/workspaces/${activeWorkspace.id}/unload`, {
+        method: 'POST',
+      });
       const canvasNodes = await api<CanvasNode[]>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`);
       nodes = canvasNodes.filter((node) => (node.floorId ?? null) === visibleFloorId).map(toFlowNode);
+      const count = result?.killedSessions ?? 0;
+      unloadMessage = count > 0
+        ? `${count} ${count === 1 ? 'terminal encerrado' : 'terminais encerrados'} — layout mantido.`
+        : 'Nenhum terminal em execucao neste workspace.';
+    } finally {
+      unloading = false;
+      confirmUnload = false;
+      setTimeout(() => (unloadMessage = ''), 5_000);
     }
-    void result;
   }
 
   async function handleWorkspaceCreated(workspace: Workspace) {
@@ -1143,7 +1188,7 @@
             <HeaderIconButton label="Exportar workspace" onclick={exportActiveWorkspace}>
               <Download size={14} />
             </HeaderIconButton>
-            <HeaderIconButton label="Descarregar (libera terminais)" onclick={unloadActiveWorkspace}>
+            <HeaderIconButton label="Descarregar (encerra os terminais vivos, mantem o layout)" onclick={() => (confirmUnload = true)}>
               <Power size={14} />
             </HeaderIconButton>
           {/if}
@@ -1183,6 +1228,11 @@
 
     {#if sidebarCollapsed}
       <ul class="workspace-list collapsed">
+        {#if !workspacesLoaded}
+          {#each [0, 1] as index (index)}
+            <li class="ws-skeleton collapsed"><Skeleton class="h-6 w-6 bg-white/5" /></li>
+          {/each}
+        {:else}
         {#each visibleWorkspaces as workspace (workspace.id)}
           <li class:active={activeWorkspace?.id === workspace.id}>
             <HeaderIconButton label={activity[workspace.id] ? `${workspace.name} — ${activity[workspace.id]} sessao(oes) ativa(s)` : workspace.name} side="right" class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
@@ -1193,9 +1243,15 @@
             </HeaderIconButton>
           </li>
         {/each}
+        {/if}
       </ul>
     {:else}
       <ul class="workspace-list">
+        {#if !workspacesLoaded}
+          {#each [0, 1, 2] as index (index)}
+            <li class="ws-skeleton"><Skeleton class="h-7 w-full bg-white/5" /></li>
+          {/each}
+        {:else}
         {#each visibleWorkspaces as workspace (workspace.id)}
           <li class:active={activeWorkspace?.id === workspace.id}>
             <button class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
@@ -1220,6 +1276,7 @@
         {/if}
         {#if workspaces.length === 0}
           <li class="empty">Nenhum workspace. Crie o primeiro com +.</li>
+        {/if}
         {/if}
       </ul>
     {/if}
@@ -1269,7 +1326,13 @@
           <MiniMap bgColor="#1C1946" maskColor="rgba(16, 16, 20, 0.72)" nodeColor="#3a3b46" />
         {/if}
         <Panel position="bottom-center">
-          <div class="toolbar">
+          <div class="toolbar-wrap">
+            {#if canScrollLeft}
+              <button class="toolbar-arrow" aria-label="Rolar o menu para a esquerda" onclick={() => scrollToolbar(-1)}>
+                <ChevronLeft size={14} />
+              </button>
+            {/if}
+            <div class="toolbar" bind:this={toolbarEl} onscroll={updateToolbarScroll}>
             <button class:active={drawTool === 'terminal' && !drawProvider} onclick={() => toggleDrawTool('terminal')}>
               <img src="/images/cli.svg" width="15" height="15" alt="" class="tool-icon" /> Shell
             </button>
@@ -1331,6 +1394,12 @@
             <button class:active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
               <Gauge size={15} class="tool-icon-svg" /> Usage
             </button>
+            </div>
+            {#if canScrollRight}
+              <button class="toolbar-arrow" aria-label="Rolar o menu para a direita" onclick={() => scrollToolbar(1)}>
+                <ChevronRight size={14} />
+              </button>
+            {/if}
           </div>
         </Panel>
       </SvelteFlow>
@@ -1400,11 +1469,33 @@
       </AlertDialog.Content>
     </AlertDialog.Root>
 
+    <AlertDialog.Root open={confirmUnload} onOpenChange={(isOpen) => !isOpen && (confirmUnload = false)}>
+      <AlertDialog.Content>
+        <AlertDialog.Header>
+          <AlertDialog.Title>Descarregar workspace</AlertDialog.Title>
+          <AlertDialog.Description>
+            Isso encerra os terminais em execucao (Claude, Codex, Kimi, shell), liberando
+            memoria e CPU. O layout do canvas fica salvo e cada agente retoma a conversa
+            ao reabrir o terminal.
+          </AlertDialog.Description>
+        </AlertDialog.Header>
+        <AlertDialog.Footer>
+          <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+          <AlertDialog.Action disabled={unloading} onclick={unloadActiveWorkspace}>
+            {unloading ? 'Descarregando...' : 'Descarregar'}
+          </AlertDialog.Action>
+        </AlertDialog.Footer>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
+
     {#if editingWorkspace}
       <WorkspaceEditDialog workspace={editingWorkspace} onSave={saveWorkspace} onClose={() => (editingWorkspace = null)} />
     {/if}
     {#if errorMessage}
       <p class="error-banner">{errorMessage}</p>
+    {/if}
+    {#if unloadMessage}
+      <p class="notice-banner">{unloadMessage}</p>
     {/if}
     </SvelteFlowProvider>
   </section>
@@ -1556,6 +1647,16 @@
 
   .workspace-list.collapsed li {
     justify-content: center;
+  }
+
+  .ws-skeleton {
+    padding: 3px 6px;
+  }
+
+  .ws-skeleton.collapsed {
+    display: flex;
+    justify-content: center;
+    padding: 3px 0;
   }
 
   .sidebar-header-actions {
@@ -1765,6 +1866,35 @@
     color: #fff;
   }
 
+  .toolbar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .toolbar-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(27, 28, 33, 0.92);
+    color: #c7c8d0;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    transition: color 120ms ease, background 120ms ease;
+  }
+
+  .toolbar-arrow:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
   .toolbar {
     display: flex;
     gap: 4px;
@@ -1774,11 +1904,10 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(12px);
-    margin-bottom: 14px;
     /* Muitos botoes (providers + paineis): rola em vez de cortar fora da tela.
        O painel do xyflow nao tem largura propria — limita pelo viewport
-       (sidebar 332 + painel lateral 300 + margens). */
-    max-width: max(320px, calc(100vw - 680px));
+       (sidebar 332 + painel lateral 300 + setas 58 + margens). */
+    max-width: max(320px, calc(100vw - 738px));
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -1860,6 +1989,19 @@
     background: rgba(229, 72, 77, 0.15);
     border: 1px solid #e5484d;
     color: #ffb3b6;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+
+  .notice-banner {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(61, 214, 140, 0.12);
+    border: 1px solid rgba(61, 214, 140, 0.55);
+    color: #8ff0c0;
     padding: 6px 14px;
     border-radius: 8px;
     font-size: 12px;

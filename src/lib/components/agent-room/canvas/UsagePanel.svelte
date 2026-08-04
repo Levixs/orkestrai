@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { RefreshCw, TriangleAlert, X } from '@lucide/svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
+  import { Skeleton } from '$lib/components/ui/skeleton';
   import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
 
   type Props = {
@@ -95,7 +96,16 @@
   </header>
 
   {#if loading && !usages.length}
-    <p class="hint">Consultando os providers...</p>
+    {#each [0, 1, 2] as index (index)}
+      <section class="usage-card usage-skeleton" aria-hidden="true">
+        <div class="usage-card-header">
+          <Skeleton class="h-4 w-4 rounded-full bg-white/8" />
+          <Skeleton class="h-3.5 w-20 bg-white/8" />
+        </div>
+        <Skeleton class="h-2.5 w-full bg-white/8" />
+        <Skeleton class="h-2.5 w-3/4 bg-white/8" />
+      </section>
+    {/each}
   {/if}
 
   {#each usages as usage (usage.provider)}
@@ -168,8 +178,14 @@
     display: flex;
     gap: 4px;
   }
+  .usage-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 
   .usage-card {
+
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 10px;
     padding: 10px;

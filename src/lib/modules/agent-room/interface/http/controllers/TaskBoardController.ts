@@ -87,6 +87,25 @@ export class TaskBoardController extends Controller {
     }
   }
 
+  /** Historico: concluidas + arquivadas, da mais recente para a mais antiga. */
+  async historyTasks(event: any) {
+    return this.json({ data: await taskBoardService.history(event.params.id) });
+  }
+
+  /** Arquiva uma tarefa concluida (sai do quadro, fica no historico). */
+  async archiveTask(event: any) {
+    try {
+      return this.json({ data: await taskBoardService.archive(event.params.id, event.params.taskId) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao arquivar tarefa.');
+    }
+  }
+
+  /** Arquiva TODAS as concluidas do quadro de uma vez. */
+  async archiveDoneTasks(event: any) {
+    return this.json({ data: await taskBoardService.archiveDone(event.params.id) });
+  }
+
   private errorResponse(error: unknown, fallback: string, status = 400) {
     return this.json({ error: error instanceof Error ? error.message : fallback }, status);
   }

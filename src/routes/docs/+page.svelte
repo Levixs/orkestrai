@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import {
-    ArrowLeft, BookOpen, Cable, FolderPlus, GitBranch, Layers, Link2, MessageSquare,
+    ArrowLeft, BookOpen, Cable, FolderPlus, GitBranch, History, Layers, Link2, MessageSquare,
     PlayCircle, Repeat, Rocket, Search, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
@@ -29,7 +29,7 @@
       id: 'workspaces',
       icon: Layers,
       title: 'Workspaces',
-      body: `Um workspace = uma equipe num projeto: diretório de trabalho, ícone e layout do canvas salvos. Crie com o botão + na barra lateral. Vários workspaces rodam ao mesmo tempo — os agentes continuam vivos em background ao trocar. Instruções em AGENTS.md/CLAUDE.md são injetadas nos agentes (edite no lápis ao lado do nome).`,
+      body: `Um workspace = uma equipe num projeto: diretório de trabalho, ícone e layout do canvas salvos. Crie com o botão + na barra lateral. Vários workspaces rodam ao mesmo tempo — os agentes continuam vivos em background ao trocar. Instruções em AGENTS.md/CLAUDE.md são injetadas nos agentes (edite no lápis ao lado do nome). O botão ⏻ (Descarregar) encerra os terminais vivos do workspace ativo — libera memória/CPU sem apagar nada: o layout fica salvo e cada agente retoma a conversa ao reabrir o terminal.`,
     },
     {
       id: 'agentes',
@@ -59,7 +59,7 @@
       id: 'tarefas',
       icon: SquareKanban,
       title: 'Tarefas (kanban)',
-      body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace: cartões em A fazer/Fazendo/Feito. Atribuir um cartão a um agente despacha a tarefa direto para o terminal dele (loop contínuo) — ele trabalha e marca done sozinho. O líder opera o quadro pela CLI: orkestrai task list/add/assign/done.`,
+      body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace: cartões em A fazer/Fazendo/Feito. Atribuir um cartão a um agente despacha a tarefa direto para o terminal dele (loop contínuo) — ele trabalha e marca done sozinho. O líder opera o quadro pela CLI: orkestrai task list/add/assign/done. Concluídas ficam na coluna Feito até você (ou o líder) arquivar: botão de arquivo no cartão ou na coluna — saem do quadro mas NADA é apagado: o ícone de histórico (relógio) no cabeçalho abre a linha do tempo de tudo que já foi entregue, com responsável e data. Na CLI: orkestrai task archive/archive-done/history.`,
     },
     {
       id: 'conexoes',
@@ -89,7 +89,7 @@
       id: 'cli',
       icon: MessageSquare,
       title: 'CLI orkestrai (a ponte)',
-      body: `Os agentes usam a CLI orkestrai para agir no canvas: list --agent <id> (agentes, suas notas e portais), ask (perguntar a outro agente), note read/write/edit/create, task list/add/assign/done, role show/write/edit, floor create/list/preview/land/remove, notify (notificação nativa para você), recruit/dismiss/connect/reassign (Modo Maestro), portal (automação de browser). O token fica em .orkestrai/workspace.json no diretório do workspace.`,
+      body: `Os agentes usam a CLI orkestrai para agir no canvas: list --agent <id> (agentes, suas notas e portais), ask (perguntar a outro agente), note read/write/edit/create, task list/add/assign/done, role show/write/edit, floor create/list/preview/land/remove, notify (notificação nativa para você), recruit/dismiss/connect/reassign (Modo Maestro), portal (automação de browser), port (devolve uma porta livre — os agentes usam ao subir dev servers para nunca brigarem pela 5173/3000 entre workspaces). O token fica em .orkestrai/workspace.json no diretório do workspace.`,
     },
     {
       id: 'atalhos',
@@ -157,6 +157,49 @@
       tags: ['Rotinas', 'notify', 'CI local'],
     },
   ];
+
+  const changelog = [
+    {
+      date: '04 ago 2026',
+      items: [
+        'Ciclo de conversa por voz: ditou, o agente responde falando — em português do Brasil de verdade.',
+        'Voz 100% autocontida (sem Node, sem Docker): runtime próprio baixado junto com o modelo, verificação de espaço em disco e opção de apagar o modelo.',
+        'A fala lê só a resposta atual — sem markdown, URLs ou caracteres estranhos.',
+        'Kanban: anexar imagens nos cartões funcionando (Ctrl+V e seletor).',
+        'Seta sem ponta vazando; painel de estilo com sliders e cabeça de seta configurável.',
+        'Usage do Kimi renova a credencial sozinho.',
+        'Sem briga de portas entre workspaces: orkestrai port devolve porta livre e os agentes aprendem a nunca matar processo de porta alheia.',
+        'Botão Descarregar com confirmação e feedback; Configurações redesenhadas; changelog aqui na página.',
+        'Atualizações automáticas: o app busca versão nova sozinho e instala na troca, sem tocar seus dados.',
+        'Skeletons de carregamento na sidebar, usage, skills e Configurações — sem pulos na UI.',
+        'Kanban com histórico: arquive concluídas sem perder o registro do que foi entregue.',
+      ],
+    },
+    {
+      date: '03 ago 2026',
+      items: [
+        'Voz embarcada sem Docker e sem Python, com confirmação antes do download.',
+        'Kanban com imagens de referência e líder avisado de tarefa nova; roles com editor markdown.',
+        'Suporte completo a Windows; notificações nativas com marca, workspace e agente.',
+      ],
+    },
+    {
+      date: '02 ago 2026',
+      items: [
+        'Modo Maestro consertado de ponta a ponta: o líder recruta, conecta e distribui sozinho.',
+        'Painel de usage dos providers e marketplace de skills (skills.sh) dentro do app.',
+        'Orquestração automática no canvas: organograma, arestas vivas, kanban e portal.',
+        'Ditado offline com atalho configurável; builds Linux/Windows e fundo do DMG com a marca.',
+      ],
+    },
+    {
+      date: '01 ago 2026',
+      items: [
+        'Nasce o Orkestrai: canvas de agentes, ponte CLI, andares (worktrees), rotinas, roles, kanban, portal e Modo Maestro.',
+        'Multi-workspace com resume exato de contexto; app desktop para macOS, Linux e Windows.',
+      ],
+    },
+  ];
 </script>
 
 <svelte:head>
@@ -190,6 +233,7 @@
         {#each filtered as section (section.id)}
           <a href={`#${section.id}`} class="nav-link">{section.title}</a>
         {/each}
+        <a href="#changelog" class="nav-link">Changelog</a>
         {#if !filtered.length}
           <span class="nav-empty">Nenhum tópico para “{query}”.</span>
         {/if}
@@ -239,6 +283,26 @@
           <p>{section.body}</p>
         </article>
       {/each}
+
+      <article class="doc-card" id="changelog">
+        <header>
+          <span class="icon-chip"><History size={15} aria-hidden="true" /></span>
+          <h2>Changelog</h2>
+          <a href="#changelog" class="anchor-link" aria-label="Link direto para Changelog">#</a>
+        </header>
+        <div class="changelog-list">
+          {#each changelog as entry (entry.date)}
+            <section class="changelog-entry">
+              <h3 class="changelog-date">{entry.date}</h3>
+              <ul>
+                {#each entry.items as item, index (index)}
+                  <li>{item}</li>
+                {/each}
+              </ul>
+            </section>
+          {/each}
+        </div>
+      </article>
     </div>
   </div>
 </main>
@@ -536,6 +600,37 @@
     font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Changelog -------------------------------------------------------- */
+  .changelog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .changelog-date {
+    margin: 0 0 6px;
+    font-family: 'Sora', 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #7de5ff;
+    letter-spacing: 0.02em;
+  }
+
+  .changelog-entry ul {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .changelog-entry li {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #a9aab3;
+    text-wrap: pretty;
   }
 
   @media (max-width: 900px) {

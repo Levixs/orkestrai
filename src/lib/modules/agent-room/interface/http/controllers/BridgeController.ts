@@ -309,6 +309,39 @@ export class BridgeController extends Controller {
     }
   }
 
+  /** Historico do quadro (concluidas + arquivadas) via bridge. */
+  async taskHistory(event: any) {
+    try {
+      const token = this.requireToken(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(token);
+      return this.json({ data: await taskBoardService.history(workspace.id) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao consultar o historico.', 401);
+    }
+  }
+
+  /** Arquiva uma tarefa concluida via bridge. */
+  async taskArchive(event: any) {
+    try {
+      const token = this.tokenFrom(event, null);
+      const workspace = await bridgeService.resolveWorkspaceByToken(token);
+      return this.json({ data: await taskBoardService.archive(workspace.id, event.params.taskId) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao arquivar tarefa.');
+    }
+  }
+
+  /** Arquiva TODAS as concluidas via bridge (limpeza do quadro). */
+  async taskArchiveDone(event: any) {
+    try {
+      const token = this.tokenFrom(event, null);
+      const workspace = await bridgeService.resolveWorkspaceByToken(token);
+      return this.json({ data: await taskBoardService.archiveDone(workspace.id) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao arquivar concluidas.');
+    }
+  }
+
   // -- Andares (worktrees) via bridge ------------------------------------------
 
   async floorList(event: any) {

@@ -42,7 +42,7 @@ export class VoiceService {
       return {
         ok: true,
         url: 'embedded',
-        detail: embeddedModelsReady() ? 'motor local ativo' : 'motor local — baixa ~740 MB na 1a vez',
+        detail: embeddedModelsReady() ? 'motor local ativo' : 'motor local — baixa ~790 MB na 1a vez',
       };
     }
     const url = await this.baseUrl();
