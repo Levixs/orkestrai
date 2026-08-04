@@ -95,6 +95,48 @@
     mediaStream = null;
   }
 
+  // -- Voz de volta quando EU dito (ciclo conversa: dito -> ouco a resposta) --
+  let captureAfterDictation = false;
+  let captureBuf = '';
+  let speakTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** ANSI basico (cores/cursor) fora do texto falado. */
+  function stripAnsi(text: string): string {
+    return text
+      .replace(/\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[()][0-9A-B]/g, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/[ \t]+\n/g, '\n')
+      .trim();
+  }
+
+  function scheduleSpeakFromCapture() {
+    if (speakTimer) clearTimeout(speakTimer);
+    speakTimer = setTimeout(async () => {
+      captureAfterDictation = false;
+      speakTimer = null;
+      const text = stripAnsi(captureBuf);
+      captureBuf = '';
+      if (!text || !voiceOn) return;
+      // Fala so o trecho final (a resposta em si, nao a tela inteira).
+      const tail = text.slice(-1_500);
+      try {
+        const response = await fetch('/api/agent-room/voice/speak', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text: tail }),
+        });
+        if (!response.ok) return;
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        await audio.play().catch(() => {});
+      } catch {
+        // voz indisponivel — segue em texto
+      }
+    }, 5_000);
+  }
+
   async function toggleDictation() {
     dictateError = '';
     if (dictating) {
@@ -137,8 +179,16 @@
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload.error) throw new Error(payload.error || `Erro ${response.status}`);
         const text = String(payload.data?.text ?? '').trim();
-        if (text) sendInput?.(text);
-        else dictateError = 'Nada foi transcrito. Tente falar mais perto do microfone.';
+        if (text) {
+          sendInput?.(text);
+          // Ciclo conversa: se a voz esta ativa num terminal de agente, captura
+          // a saida para falar a resposta quando o agente silenciar.
+          if (voiceOn && provider) {
+            captureAfterDictation = true;
+            captureBuf = '';
+            scheduleSpeakFromCapture();
+          }
+        } else dictateError = 'Nada foi transcrito. Tente falar mais perto do microfone.';
       } catch (error) {
         dictateError = error instanceof Error ? error.message : 'Erro no ditado.';
       } finally {
@@ -288,6 +338,10 @@
           break;
         case 'output':
           terminal.write(message.data);
+          if (captureAfterDictation) {
+            captureBuf = (captureBuf + String(message.data)).slice(-32_000);
+            scheduleSpeakFromCapture();
+          }
           break;
         case 'attention':
           waiting = Boolean(message.waiting);
@@ -352,6 +406,8 @@
       mediaRecorder?.stop();
       stopTracks();
       stopRecTimer();
+      if (speakTimer) clearTimeout(speakTimer);
+      captureAfterDictation = false;
       resizeObserver.disconnect();
       socket.close();
       terminal.dispose();

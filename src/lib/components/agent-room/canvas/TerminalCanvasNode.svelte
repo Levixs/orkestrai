@@ -301,6 +301,7 @@
         workspaceName={data.workspaceName}
         onOpenPath={(path) => data.onOpenFile?.(path)}
         themeName={data.payload.theme ?? 'dark'}
+        provider={data.payload.provider}
         onRespawn={resolveRespawn}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
