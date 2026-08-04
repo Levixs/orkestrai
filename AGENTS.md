@@ -60,6 +60,7 @@
 - Packaging: `asar` is OFF on purpose — the production server (`scripts/orkestrai-server.mjs`) is ESM and Node's ESM loader cannot resolve packages inside an asar; with asar enabled the app only worked because the source repo's `node_modules` happened to be nearby. Do not re-enable it.
 - Electron is pinned to v42 (ABI 146) because better-sqlite3 only publishes Electron prebuilds up to ABI 146 — upgrading Electron means compiling better-sqlite3 for every target (mac needs `electron:rebuild`; Linux/Windows cross-builds break).
 - macOS: `npx electron-builder --mac dmg` (arm64 and/or `--x64` for Intel). Linux/Windows locally via Docker: `scripts/package-cross.sh linux|windows|windows-zip|clean` (official electronuserland images, staging without host `node_modules`, npm pinned to the host version). Native Windows build (recommended for the NSIS installer): see `docs/build-windows.md` — no MSVC needed, prebuilds cover everything.
+- **Build hygiene**: after every packaging run, delete the unpacked intermediates — `release/mac`, `release/mac-arm64`, `release/linux-unpacked`, `release/win-unpacked` (~500-600 MB each, fully reproducible from the DMG/AppImage). Keep only the final artifacts (`*.dmg`, `*.AppImage`, `*.zip`, `*.exe`). The cross script already cleans its staging via trap; apply the same rule to local electron-builder runs.
 
 ## Verification
 
