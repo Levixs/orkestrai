@@ -214,9 +214,9 @@
   <section class="settings-section">
     <h2>Voz (ditado e fala pt-BR)</h2>
     <p class="field-hint">
-      Ditado e fala em portugues, rodando local. Na primeira vez o app baixa
-      ~740 MB uma unica vez (pergunta antes). Se preferir, use um servico de voz
-      externo seu em vez do motor local.
+      Ditado e fala em portugues, rodando local. Na primeira vez o app baixa o
+      modelo de voz (whisper, ~740 MB) uma unica vez — pergunta antes. Se
+      preferir, use um servico de voz externo seu em vez do motor local.
     </p>
     <div class="field">
       <span class="field-label">Motor de voz</span>

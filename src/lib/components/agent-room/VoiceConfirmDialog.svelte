@@ -40,10 +40,11 @@
 <AlertDialog.Root bind:open>
   <AlertDialog.Content>
     <AlertDialog.Header>
-      <AlertDialog.Title>Download de voz (~740 MB)</AlertDialog.Title>
+      <AlertDialog.Title>Download do modelo de voz (~740 MB)</AlertDialog.Title>
       <AlertDialog.Description>
-        Para o ditado e a fala funcionarem, o app precisa baixar ~740 MB uma
-        unica vez. Depois disso tudo roda local e rapido.
+        Para o ditado e a fala funcionarem, o app precisa baixar o modelo de
+        voz (whisper, ~740 MB) uma unica vez. Depois disso tudo roda local e
+        rapido.
       </AlertDialog.Description>
     </AlertDialog.Header>
     <p class="model-note">Quer baixar agora e continuar?</p>
