@@ -34,3 +34,4 @@ release/
 *.db.bak-*
 storage/bin/
 storage/voice/
+storage/app.sqlite
