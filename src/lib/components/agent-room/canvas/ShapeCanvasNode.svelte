@@ -24,6 +24,8 @@
     textAlign?: 'left' | 'center' | 'right';
     /** Pontos ancora da seta (0..1 normalizados na caixa do no). */
     points?: Array<{ x: number; y: number }>;
+    /** Tamanho da cabeca da seta em px (default: 5x a espessura, min 10). */
+    headSize?: number;
   };
 
   export type ShapeNodeData = {
@@ -85,6 +87,9 @@
   }
 
   function panelPointerDown(event: PointerEvent) {
+    // O X de fechar fica dentro do grip: nao inicia arraste a partir dele
+    // (o pointer capture do grip sequestrava o clique do X — so dblclick passava).
+    if ((event.target as HTMLElement).closest('.style-panel-close')) return;
     panelDrag = { startX: event.clientX, startY: event.clientY, baseX: panelPos.x, baseY: panelPos.y };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
@@ -182,7 +187,7 @@
     const tipX = last.x * geom.w;
     const tipY = last.y * geom.h;
     const angle = Math.atan2((last.y - prev.y) * geom.h, (last.x - prev.x) * geom.w);
-    const size = Math.max(10, style.strokeWidth * 5);
+    const size = style.headSize ?? Math.max(10, style.strokeWidth * 5);
     const left = { x: tipX - size * Math.cos(angle - 0.45), y: tipY - size * Math.sin(angle - 0.45) };
     const right = { x: tipX - size * Math.cos(angle + 0.45), y: tipY - size * Math.sin(angle + 0.45) };
     return { tipX, tipY, left, right };
@@ -288,7 +293,6 @@
       aria-label="Estilo da forma"
       onclick={(event) => event.stopPropagation()}
       ondblclick={(event) => event.stopPropagation()}
-      onpointerdown={(event) => event.stopPropagation()}
     >
       <div
         class="style-panel-grip"
@@ -369,6 +373,21 @@
           />
           <span class="pop-value">{style.strokeWidth}px</span>
         </div>
+
+        {#if shape === 'arrow'}
+          <span class="pop-label">Cabeca</span>
+          <div class="pop-row">
+            <Slider
+              type="single"
+              value={style.headSize ?? Math.max(10, style.strokeWidth * 5)}
+              min={6}
+              max={60}
+              step={1}
+              onValueChange={(value: number) => patch({ headSize: value })}
+            />
+            <span class="pop-value">{style.headSize ?? Math.max(10, style.strokeWidth * 5)}px</span>
+          </div>
+        {/if}
 
         <span class="pop-label">Tracejada</span>
         <button class="mini-toggle" class:active={style.strokeDash} onclick={() => patch({ strokeDash: !style.strokeDash })}>
