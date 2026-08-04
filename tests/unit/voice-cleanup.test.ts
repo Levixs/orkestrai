@@ -50,4 +50,27 @@ describe('cleanSpeechText', () => {
     const raw = `${ESC}[2J${ESC}[H────\n⣾ 12k tokens`;
     expect(cleanSpeechText(raw)).toBe('');
   });
+
+  it('remove markdown, marcadores de lista e URLs viram "link"', () => {
+    const raw = [
+      '**Pronto!** Veja `src/app.ts` e acesse https://example.com/x?y=1 para mais.',
+      '- primeiro item',
+      '- segundo item',
+    ].join('\n');
+    const cleaned = cleanSpeechText(raw);
+    expect(cleaned).not.toContain('**');
+    expect(cleaned).not.toContain('`');
+    expect(cleaned).not.toContain('https://');
+    expect(cleaned).toBe('Pronto! Veja src/app.ts e acesse link para mais. primeiro item segundo item');
+  });
+
+  it('remove hyperlink OSC 8 (terminador ST) ficando so com o texto', () => {
+    const raw = `${ESC}]8;;https://example.com${ESC}\\Clique aqui para ver${ESC}]8;;${ESC}\\`;
+    expect(cleanSpeechText(raw)).toBe('Clique aqui para ver');
+  });
+
+  it('remove emoji e simbolos decorativos', () => {
+    const raw = '✻ Tarefa concluída com sucesso 🎉✨';
+    expect(cleanSpeechText(raw)).toBe('Tarefa concluída com sucesso');
+  });
 });

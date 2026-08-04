@@ -6,6 +6,7 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
+  import { arrayBufferToBase64 } from '../base64.js';
 
   type BoardTask = {
     id: string;
@@ -135,28 +136,35 @@
   // -- Imagens de referencia (multiplas, com viewer) ---------------------------
   let viewerTask = $state<BoardTask | null>(null);
   let viewerIndex = $state(0);
+  let imageError = $state('');
 
   function pickImage(task: BoardTask) {
+    imageError = '';
     imageTargetId = task.id;
     fileInput.click();
   }
 
+  /** base64 em chunks — o spread direto estoura a pilha em imagens >100 KB. */
   async function uploadImage(file: File, taskId: string) {
-    const buffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    const ext = file.type.split('/').at(-1) ?? 'png';
-    const path = `.orkestrai/images/${crypto.randomUUID()}.${ext}`;
-    const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/fs/write-binary`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ path, base64 }),
-    });
-    if (!response.ok) return;
-    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${taskId}/images`, {
-      method: 'POST',
-      body: JSON.stringify({ path }),
-    });
-    await refresh();
+    try {
+      const base64 = arrayBufferToBase64(await file.arrayBuffer());
+      const ext = file.type.split('/').at(-1) ?? 'png';
+      const path = `.orkestrai/images/${crypto.randomUUID()}.${ext}`;
+      const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/fs/write-binary`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ path, base64 }),
+      });
+      if (!response.ok) throw new Error(`Falha ao salvar a imagem (HTTP ${response.status}).`);
+      await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${taskId}/images`, {
+        method: 'POST',
+        body: JSON.stringify({ path }),
+      });
+      imageError = '';
+      await refresh();
+    } catch (error) {
+      imageError = error instanceof Error ? error.message : 'Nao consegui anexar a imagem.';
+    }
   }
 
   async function onFilePicked(event: Event) {
@@ -227,6 +235,10 @@
   {/snippet}
 
   <input bind:this={fileInput} type="file" accept="image/*" multiple class="tb-hidden" onchange={onFilePicked} />
+
+  {#if imageError}
+    <p class="tb-image-error nodrag">{imageError}</p>
+  {/if}
 
   <div class="tb-add nodrag">
     <input
@@ -358,6 +370,12 @@
 <style>
   .tb-hidden {
     display: none;
+  }
+
+  .tb-image-error {
+    margin: 0 8px 6px;
+    font-size: 11px;
+    color: #ff9c9f;
   }
 
   .tb-add {

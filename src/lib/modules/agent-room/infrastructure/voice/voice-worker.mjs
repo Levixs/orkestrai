@@ -49,7 +49,8 @@ async function getTts() {
         voices: `${kokoroDir}/voices.bin`,
         tokens: `${kokoroDir}/tokens.txt`,
         dataDir: `${kokoroDir}/espeak-ng-data`,
-        lang: 'pt',
+        // pt-BR (brasileiro): 'pt' seria portugues EUROPEU — era o sotaque errado.
+        lang: 'pt-BR',
       },
       numThreads: 2,
       provider: 'cpu',
