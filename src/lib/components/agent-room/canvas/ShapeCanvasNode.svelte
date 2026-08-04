@@ -184,10 +184,16 @@
     if (pts.length < 2 || !geom.w) return null;
     const last = pts[pts.length - 1];
     const prev = pts[pts.length - 2];
-    const tipX = last.x * geom.w;
-    const tipY = last.y * geom.h;
+    const endX = last.x * geom.w;
+    const endY = last.y * geom.h;
     const angle = Math.atan2((last.y - prev.y) * geom.h, (last.x - prev.x) * geom.w);
     const size = style.headSize ?? Math.max(10, style.strokeWidth * 5);
+    // A ponta AVANCA alem do fim da linha: o cap redondo da linha (stroke-linecap)
+    // e a largura do traço ficam cobertos pelo triangulo solido — sem a ponta da
+    // linha vazando na frente da cabeca da seta.
+    const overshoot = Math.max(2, style.strokeWidth * 1.2);
+    const tipX = endX + overshoot * Math.cos(angle);
+    const tipY = endY + overshoot * Math.sin(angle);
     const left = { x: tipX - size * Math.cos(angle - 0.45), y: tipY - size * Math.sin(angle - 0.45) };
     const right = { x: tipX - size * Math.cos(angle + 0.45), y: tipY - size * Math.sin(angle + 0.45) };
     return { tipX, tipY, left, right };

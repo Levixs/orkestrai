@@ -13,6 +13,7 @@
   import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
   import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
   import { blobToWav16k } from './audio-pcm.js';
+  import { cleanSpeechText } from './voice-cleanup.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -96,41 +97,38 @@
   }
 
   // -- Voz de volta quando EU dito (ciclo conversa: dito -> ouco a resposta) --
+  // A captura NAO arma no ditado: arma so quando o texto e SUBMETIDO (Enter),
+  // senao o eco do texto digitado/redraw do TUI dispara a fala sem resposta.
   let captureAfterDictation = false;
+  let pendingDictation = false;
+  let lastSpoken = '';
   let captureBuf = '';
   let speakTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** ANSI basico (cores/cursor) fora do texto falado. */
-  function stripAnsi(text: string): string {
-    return text
-      .replace(/\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[()][0-9A-B]/g, '')
-      .replace(/\r\n/g, '\n')
-      .replace(/[ \t]+\n/g, '\n')
-      .trim();
-  }
 
   function scheduleSpeakFromCapture() {
     if (speakTimer) clearTimeout(speakTimer);
     speakTimer = setTimeout(async () => {
       captureAfterDictation = false;
       speakTimer = null;
-      const text = stripAnsi(captureBuf);
+      const text = cleanSpeechText(captureBuf);
       captureBuf = '';
       if (!text || !voiceOn) return;
-      // Fala so o trecho final (a resposta em si, nao a tela inteira).
-      const tail = text.slice(-1_500);
+      if (text === lastSpoken) return; // ja falou exatamente isso — nao repete
+      lastSpoken = text;
       try {
         const response = await fetch('/api/agent-room/voice/speak', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text: tail }),
+          body: JSON.stringify({ text }),
         });
         if (!response.ok) return;
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audio.onended = () => URL.revokeObjectURL(url);
-        await audio.play().catch(() => {});
+        // Se o play falhar, revoga aqui — senao o blob vaza na memoria do renderer.
+        await audio.play().catch(() => URL.revokeObjectURL(url));
       } catch {
         // voz indisponivel — segue em texto
       }
@@ -181,13 +179,10 @@
         const text = String(payload.data?.text ?? '').trim();
         if (text) {
           sendInput?.(text);
-          // Ciclo conversa: se a voz esta ativa num terminal de agente, captura
-          // a saida para falar a resposta quando o agente silenciar.
-          if (voiceOn && provider) {
-            captureAfterDictation = true;
-            captureBuf = '';
-            scheduleSpeakFromCapture();
-          }
+          // Ciclo conversa: marca que ha um ditado aguardando Enter. A captura
+          // da resposta arma SOMENTE no submit (ver terminal.onData abaixo) —
+          // sem Enter, nada e falado.
+          if (voiceOn && provider) pendingDictation = true;
         } else dictateError = 'Nada foi transcrito. Tente falar mais perto do microfone.';
       } catch (error) {
         dictateError = error instanceof Error ? error.message : 'Erro no ditado.';
@@ -198,6 +193,7 @@
     };
     recorder.start();
     dictating = true;
+    pendingDictation = false; // so o ditado mais recente conta
     startRecTimer();
   }
 
@@ -388,7 +384,16 @@
       if (exited === null) statusMessage = 'Conexao encerrada.';
     };
 
-    terminal.onData((data) => send({ type: 'input', sessionId: currentSessionId(), data }));
+    terminal.onData((data) => {
+      send({ type: 'input', sessionId: currentSessionId(), data });
+      // Enter depois de um ditado: agora sim arma a captura da resposta.
+      if (pendingDictation && data.includes('\r')) {
+        pendingDictation = false;
+        captureAfterDictation = true;
+        captureBuf = '';
+        scheduleSpeakFromCapture();
+      }
+    });
     sendInput = (data) => send({ type: 'input', sessionId: currentSessionId(), data });
 
     const resizeObserver = new ResizeObserver(() => {
@@ -408,6 +413,7 @@
       stopRecTimer();
       if (speakTimer) clearTimeout(speakTimer);
       captureAfterDictation = false;
+      pendingDictation = false;
       resizeObserver.disconnect();
       socket.close();
       terminal.dispose();

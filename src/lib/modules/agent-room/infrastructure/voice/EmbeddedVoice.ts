@@ -55,11 +55,11 @@ function bundledVoiceNode(): string | null {
   return existsSync(bin) ? bin : null;
 }
 
-/** Vozes pt-BR do Kokoro multi-lang v1.0 (ordem do voices.bin, 53 speakers). */
+/** Vozes pt-BR do Kokoro multi-lang v1.0 (ordem oficial do voices.bin, 53 speakers, sid 0-52). */
 export const KOKORO_PT_VOICES: Record<string, number> = {
-  pf_dora: 41,
-  pm_alex: 42,
-  pm_santa: 43,
+  pf_dora: 42,
+  pm_alex: 43,
+  pm_santa: 44,
 };
 
 type ModelDef = typeof PARAKEET;

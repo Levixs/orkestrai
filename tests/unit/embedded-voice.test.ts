@@ -48,13 +48,17 @@ describe('wavToPcm16 / pcmToWav', () => {
     expect(samples[3]).toBeCloseTo(1, 2);
   });
 
-  it('vozes pt-BR mapeadas para sids validos (0-52)', () => {
+  it('vozes pt-BR mapeadas para os sids oficiais do voices.bin (0-52)', () => {
+    // Ordem oficial do kokoro-multi-lang-v1_0: 42->pf_dora, 43->pm_alex, 44->pm_santa.
+    // (sid 41 e jm_kumo — voz japonesa; errar por 1 muda idioma e genero da voz)
+    expect(KOKORO_PT_VOICES.pf_dora).toBe(42);
+    expect(KOKORO_PT_VOICES.pm_alex).toBe(43);
+    expect(KOKORO_PT_VOICES.pm_santa).toBe(44);
     for (const [voice, sid] of Object.entries(KOKORO_PT_VOICES)) {
       expect(voice).toMatch(/^p[fm]_/);
       expect(sid).toBeGreaterThanOrEqual(0);
       expect(sid).toBeLessThanOrEqual(52);
     }
-    expect(KOKORO_PT_VOICES.pf_dora).not.toBe(KOKORO_PT_VOICES.pm_alex);
   });
 });
 
