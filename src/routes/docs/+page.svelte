@@ -112,7 +112,7 @@
       id: 'mcp',
       icon: Cable,
       title: 'MCP (tools externas dos agentes)',
-      body: `MCP é o padrão para dar ferramentas externas aos agentes (filesystem, web, banco...). ONDE GERENCIAR: lápis ao lado do nome do workspace na barra lateral → seção "Servidores MCP" — adicione (nome + comando + args, ex.: npx -y @mcp/fs ./data) ou remova; fica gravado no .mcp.json na raiz do projeto, que Claude Code/Kimi leem sozinhos. AUTOMÁTICO: o próprio Orkestrai já aparece como servidor MCP "orkestrai" (provisionado sozinho, marcado como "da ponte") — os agentes ganham as ações do canvas (ask, notas, tarefas, portal, andares) como tools tipadas, sem parse de shell. A entrada da ponte não pode ser removida (é recriada); as suas ficam intactas (sempre merge). Presets carregam seus MCPs junto com o time.`,
+      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app pergunta com instruções de onde conseguir. Remotos instalam com 1 clique (sem comando). AVANÇADO: lápis ao lado do nome do workspace → seção "Servidores MCP" para editar o .mcp.json na mão. AUTOMÁTICO: o próprio Orkestrai já aparece como servidor MCP "orkestrai" (provisionado sozinho) — os agentes ganham as ações do canvas como tools tipadas. Presets carregam seus MCPs junto com o time.`,
     },
     {
       id: 'cli',
@@ -295,6 +295,7 @@
         'Janelas nunca nascem menores que o mínimo — sem botões vazando.',
         'Tooltips em toda a toolbar; textos de Diff/Loop/Andares em linguagem simples.',
         '⌘K / Ctrl+K global: busca na documentação de qualquer tela.',
+        'Marketplace de MCPs na página Skills: curadoria oficial + registry, instalação com 1 clique e campos de token guiados.',
       ],
     },
     {

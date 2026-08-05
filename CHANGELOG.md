@@ -9,6 +9,11 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **⌘K / Ctrl+K global**: de qualquer tela, abre a busca da documentação (tópicos, casos de uso, quickstart e changelog), com navegação por setas/Enter/Esc.
 - Fix: desenhar um **Fluxo** pela toolbar funciona (schema de tipos aceita `flow`).
 
+**Marketplace de MCPs**
+- Nova aba **MCPs** na página Skills: pesquise e instale servidores MCP como quem instala skills — curadoria dos oficiais/populares (GitHub, Gmail, Google Drive, Figma, Vercel, Postgres, Brave, DeepWiki...) mais busca no registry oficial do MCP.
+- Servidores remotos instalam com **1 clique** (só a URL); os que pedem chave/token abrem um diálogo explicando onde conseguir cada campo.
+- Avançado: edição manual do `.mcp.json` continua no editor do workspace, agora com suporte a `env` e servidores por URL.
+
 **Feedback de usuário Windows (pacote)**
 - **Composer não fica mais pendurado**: a resposta de um agente a outro agora é **submetida automaticamente** — antes ficava parada na caixa de texto do compositor e ia junto no próximo Enter sem querer.
 - **Reconexão após suspensão**: o notebook dormiu e matou a conexão? O terminal reconecta sozinho (6 tentativas com espera crescente) e, se a sessão morreu, recria **com o contexto** — sem mais "conexão encerrada" permanente.

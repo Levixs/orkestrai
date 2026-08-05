@@ -6,6 +6,9 @@ export type McpServerDef = {
   name: string;
   command: string;
   args: string[];
+  env: Record<string, string>;
+  /** URL de servidor remoto (streamable-http) — sem comando local. */
+  url?: string;
   /** true = provisionado pela ponte (recriado automaticamente). */
   builtin: boolean;
 };
@@ -22,7 +25,9 @@ export class McpService {
     return resolve(workspace.workingDir, '.mcp.json');
   }
 
-  private async readConfig(workspaceId: string): Promise<{ mcpServers: Record<string, { command?: string; args?: string[] }> } & Record<string, unknown>> {
+  private async readConfig(workspaceId: string): Promise<{
+    mcpServers: Record<string, { command?: string; args?: string[]; env?: Record<string, string>; url?: string; type?: string }>;
+  } & Record<string, unknown>> {
     const path = await this.mcpPath(workspaceId);
     if (!existsSync(path)) return { mcpServers: {} };
     try {
@@ -39,24 +44,35 @@ export class McpService {
       name,
       command: String(def.command ?? ''),
       args: Array.isArray(def.args) ? def.args.map(String) : [],
+      env: (def.env ?? {}) as Record<string, string>,
+      url: typeof def.url === 'string' ? def.url : undefined,
       builtin: name === 'orkestrai',
     }));
   }
 
-  async add(workspaceId: string, input: { name: string; command: string; args?: string | string[] }): Promise<McpServerDef[]> {
+  async add(
+    workspaceId: string,
+    input: { name: string; command?: string; args?: string | string[]; env?: Record<string, string>; url?: string }
+  ): Promise<McpServerDef[]> {
     const name = input.name.trim();
     if (!name) throw new Error('Informe o nome do servidor.');
     if (!/^[a-z0-9-_]+$/i.test(name)) throw new Error('Nome so com letras, numeros, - e _.');
-    const command = input.command.trim();
-    if (!command) throw new Error('Informe o comando (ex.: npx, node, uvx).');
-    const args = Array.isArray(input.args)
-      ? input.args.map(String)
-      : String(input.args ?? '')
-          .split(' ')
-          .map((part) => part.trim())
-          .filter(Boolean);
     const config = await this.readConfig(workspaceId);
-    config.mcpServers[name] = { command, args };
+    if (input.url?.trim()) {
+      // Servidor remoto (streamable-http): so a URL, sem comando local.
+      config.mcpServers[name] = { type: 'http', url: input.url.trim() } as never;
+    } else {
+      const command = (input.command ?? '').trim();
+      if (!command) throw new Error('Informe o comando (ex.: npx, node, uvx) ou uma URL.');
+      const args = Array.isArray(input.args)
+        ? input.args.map(String)
+        : String(input.args ?? '')
+            .split(' ')
+            .map((part) => part.trim())
+            .filter(Boolean);
+      const env = Object.fromEntries(Object.entries(input.env ?? {}).filter(([, value]) => String(value).trim() !== ''));
+      config.mcpServers[name] = env && Object.keys(env).length ? { command, args, env } : { command, args };
+    }
     writeFileSync(await this.mcpPath(workspaceId), `${JSON.stringify(config, null, 2)}\n`);
     return this.list(workspaceId);
   }
