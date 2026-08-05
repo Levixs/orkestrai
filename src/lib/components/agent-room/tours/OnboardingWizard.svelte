@@ -40,7 +40,9 @@
 
   $effect(() => {
     if (open) {
-      step = activeWorkspaceId ? 'usecase' : 'welcome';
+      // O onboarding SEMPRE guia do zero: boas-vindas → criar workspace novo →
+      // caso de uso. Ter um workspace ativo so destrava o atalho "usar atual".
+      step = 'welcome';
       workspaceId = activeWorkspaceId;
       createError = '';
       pickedTour = null;
@@ -85,7 +87,9 @@
         <p class="wizard-sub">{m['onboarding.welcome_body']()}</p>
         <div class="wizard-actions">
           <Button onclick={() => (step = 'workspace')}>{m['onboarding.ws_create']()}</Button>
-          <Button variant="ghost" onclick={() => (step = 'usecase')}>{m['onboarding.ws_skip']()}</Button>
+          {#if activeWorkspaceId}
+            <Button variant="ghost" onclick={() => (step = 'usecase')}>{m['onboarding.ws_skip']()}</Button>
+          {/if}
         </div>
       </div>
     {:else if step === 'workspace'}
@@ -113,6 +117,11 @@
       </div>
       <Dialog.Footer>
         <Button variant="ghost" onclick={() => (step = 'welcome')}>{m['onboarding.back']()}</Button>
+        {#if activeWorkspaceId}
+          <Button variant="ghost" onclick={() => { workspaceId = activeWorkspaceId; step = 'usecase'; }}>
+            {m['onboarding.use_current_ws']()}
+          </Button>
+        {/if}
         <Button disabled={creating || !name.trim() || !workingDir.trim()} onclick={createWorkspace}>
           {creating ? '...' : m['onboarding.ws_create']()}
         </Button>

@@ -691,5 +691,6 @@
   "flow.sync": "Sync",
   "flow.sync_tooltip": "Creates an Agent step for each agent connected to this flow (in edge order)",
   "flow.sync_none_connected": "Connect this flow to the agents on the canvas first (drag from its handle to each agent).",
-  "flow.sync_nothing_new": "All connected agents are already in the steps."
+  "flow.sync_nothing_new": "All connected agents are already in the steps.",
+  "onboarding.use_current_ws": "Use the current workspace"
 }

@@ -193,6 +193,8 @@ export const DOCS_PT: DocsCatalog = {
         'Botão Sincronizar no Fluxo: cada agente conectado vira um passo na ordem das arestas — o pipeline é o próprio desenho.',
         'Novo tour guiado "Fluxos encadeados" no onboarding (12 tours agora): cria os dois fluxos, conecta e você roda o encadeamento.',
         'Modal do onboarding polida: anel roxo de seleção/foco não é mais cortado pelo scroll, fade no rodapé da lista e etapa de casos de uso mais larga.',
+        'Onboarding sempre guia do zero: boas-vindas → criar workspace novo → caso de uso, mesmo com um workspace aberto (atalho "usar atual" continua).',
+        '"Fazer por mim" aparece na hora no canvas: nós e conexões criados por tour, CLI ou API disparam live refresh — sem sair e voltar do workspace.',
       ],
     },
     {

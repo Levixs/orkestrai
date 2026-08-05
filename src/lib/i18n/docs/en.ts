@@ -189,6 +189,8 @@ export const DOCS_EN: DocsCatalog = {
         'Sync button on the Flow: each connected agent becomes a step in edge order — the pipeline is the drawing itself.',
         'New guided tour "Chained flows" in onboarding (12 tours now): creates both flows, connects them and you run the chaining.',
         'Onboarding modal polished: the purple selection/focus ring is no longer clipped by the scroll, fade at the bottom of the list and a wider use-case step.',
+        'Onboarding always guides from scratch: welcome → create a new workspace → use case, even with a workspace open (the "use current" shortcut remains).',
+        '"Do it for me" shows up instantly on the canvas: nodes and connections created by tour, CLI or API trigger live refresh — no leaving and re-entering the workspace.',
       ],
     },
     {

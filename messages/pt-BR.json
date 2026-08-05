@@ -691,5 +691,6 @@
   "flow.sync": "Sincronizar",
   "flow.sync_tooltip": "Cria um passo Agente para cada agente conectado a este fluxo (na ordem das arestas)",
   "flow.sync_none_connected": "Conecte este fluxo aos agentes no canvas primeiro (arraste da bolinha dele até cada agente).",
-  "flow.sync_nothing_new": "Todos os agentes conectados já estão nos passos."
+  "flow.sync_nothing_new": "Todos os agentes conectados já estão nos passos.",
+  "onboarding.use_current_ws": "Usar o workspace atual"
 }

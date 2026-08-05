@@ -22,6 +22,17 @@ export class WorkspaceService {
   /** Workspaces ja verificados neste processo (evita statSync a cada chamada). */
   private provisionChecked = new Set<string>();
 
+  /**
+   * Avisa o canvas que a estrutura mudou (no/aresta criada ou removida FORA da
+   * pagina — tours, CLI, API): sem isso o no so aparecia ao sair e voltar ao
+   * workspace. So mudancas ESTRUTURAIS — updateNode fica de fora de proposito
+   * (arrastar/redimensionar dispararia reloads em tempestade).
+   */
+  private notifyStructureChanged(workspaceId: string): void {
+    const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
+    broadcast?.({ type: 'workspaceChanged', workspaceId });
+  }
+
   async list() {
     return workspaceRepository.listWorkspaces();
   }
@@ -91,7 +102,7 @@ export class WorkspaceService {
 
   async createNode(dto: CreateCanvasNodeDto) {
     await this.get(dto.workspaceId);
-    return workspaceRepository.createNode({
+    const node = await workspaceRepository.createNode({
       workspaceId: dto.workspaceId,
       type: dto.type,
       title: dto.title,
@@ -102,6 +113,8 @@ export class WorkspaceService {
       zIndex: dto.zIndex,
       payload: dto.payload,
     });
+    this.notifyStructureChanged(dto.workspaceId);
+    return node;
   }
 
   async updateNode(dto: UpdateCanvasNodeDto) {
@@ -137,6 +150,7 @@ export class WorkspaceService {
       }
     }
     await workspaceRepository.deleteNode(nodeId);
+    this.notifyStructureChanged(workspaceId);
     return { deleted: true };
   }
 
@@ -168,6 +182,7 @@ export class WorkspaceService {
       if (token) bridgeService.provisionSkill(workspace, token);
     }
 
+    this.notifyStructureChanged(dto.workspaceId);
     return edge;
   }
 
@@ -181,6 +196,7 @@ export class WorkspaceService {
     const edges = await workspaceRepository.listEdges(workspaceId);
     if (!edges.some((edge) => edge.id === edgeId)) throw new Error('Aresta nao encontrada.');
     await workspaceRepository.deleteEdge(edgeId);
+    this.notifyStructureChanged(workspaceId);
     return { deleted: true };
   }
 
