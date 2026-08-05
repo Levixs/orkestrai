@@ -185,7 +185,7 @@ test.describe('canvas de workspaces', () => {
     await expect(dialog).toBeVisible();
     await dialog.getByLabel('Nome').fill(`${workspaceName} renomeado`);
     await dialog.locator('textarea').fill('Sempre responda em pt-BR.');
-    await dialog.getByRole('button', { name: 'Salvar' }).click();
+    await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
 
     await expect(page.locator('.workspace-list li.active')).toContainText('renomeado');
 
