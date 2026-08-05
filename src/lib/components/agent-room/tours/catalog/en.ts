@@ -375,4 +375,38 @@ export const TOURS_EN: Tour[] = [
       },
     ],
   },
+  {
+    id: 'chained-flows',
+    icon: 'Workflow',
+    title: 'Chained flows',
+    tagline: 'One flow triggers the next — compound pipelines and fan-out.',
+    steps: [
+      {
+        id: 'first-flow',
+        title: 'The first link',
+        body: 'I create the "Research" Flow with an approval step — so you can simulate the stage without needing a real agent.',
+        action: { kind: 'createFlow', title: 'Research', steps: [{ kind: 'approval' }] },
+        check: { kind: 'nodeExists', nodeType: 'flow', titleIncludes: 'Research' },
+      },
+      {
+        id: 'second-flow',
+        title: 'The second link',
+        body: 'I create the "Writing" Flow — when Research finishes successfully, its output becomes the Writing input by itself.',
+        action: { kind: 'createFlow', title: 'Writing', steps: [{ kind: 'approval' }] },
+        check: { kind: 'nodeExists', nodeType: 'flow', titleIncludes: 'Writing' },
+      },
+      {
+        id: 'chain',
+        title: 'Connect the two flows',
+        body: 'I wire Research → Writing with an edge: the edge is what tells where the output goes when the flow finishes.',
+        action: { kind: 'connect', fromTitle: 'Research', toTitle: 'Writing' },
+        check: { kind: 'edgeExists', fromTitle: 'Research', toTitle: 'Writing' },
+      },
+      {
+        id: 'run-chain',
+        title: 'Run it and watch the chaining',
+        body: 'On the Research Flow: click Run and then Approve. When it finishes, Writing fires by itself with the output — failure does not chain and cycles are blocked. Fan-out: connect a third flow to Research and both fire together. And the Sync button turns every agent connected to a flow into a step, in edge order.',
+      },
+    ],
+  },
 ];

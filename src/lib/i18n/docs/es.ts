@@ -187,6 +187,7 @@ export const DOCS_ES: DocsCatalog = {
         'Inyección de texto en los terminales 100% unificada (roles incluidas): texto y Enter siempre en writes separados — el composer no se cuelga en ningún provider (Claude, Codex, Kimi).',
         'Flujos encadenados: un Flujo conectado a otro dispara el siguiente con su salida final (el fallo no encadena, ciclos bloqueados) — pipelines compuestos y fan-out.',
         'Botón Sincronizar en el Flujo: cada agente conectado se vuelve un paso en el orden de las aristas — el pipeline es el propio dibujo.',
+        'Nuevo tour guiado "Flujos encadenados" en el onboarding (12 tours ahora): crea los dos flujos, los conecta y ejecutas el encadenamiento.',
       ],
     },
     {

@@ -12,6 +12,7 @@ function createdTitles(tour: Tour): Set<string> {
   for (const step of tour.steps) {
     if (!step.action) continue;
     if (step.action.kind === 'createAgent' || step.action.kind === 'createNote') titles.add(step.action.title);
+    if (step.action.kind === 'createFlow') titles.add(step.action.title);
     if (step.action.kind === 'createPortal') titles.add(step.action.title ?? 'Portal');
   }
   return titles;

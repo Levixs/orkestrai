@@ -187,6 +187,7 @@ export const DOCS_EN: DocsCatalog = {
         'Terminal text injection fully unified (roles included): text and Enter always in separate writes — the composer never gets stuck on any provider (Claude, Codex, Kimi).',
         'Chained flows: a Flow connected to another triggers the next one with its final output (failure does not chain, cycles blocked) — compound pipelines and fan-out.',
         'Sync button on the Flow: each connected agent becomes a step in edge order — the pipeline is the drawing itself.',
+        'New guided tour "Chained flows" in onboarding (12 tours now): creates both flows, connects them and you run the chaining.',
       ],
     },
     {

@@ -379,4 +379,38 @@ export const TOURS_PT: Tour[] = [
       },
     ],
   },
+  {
+    id: 'chained-flows',
+    icon: 'Workflow',
+    title: 'Fluxos encadeados',
+    tagline: 'Um fluxo dispara o próximo — pipelines compostos e fan-out.',
+    steps: [
+      {
+        id: 'first-flow',
+        title: 'O primeiro elo',
+        body: 'Crio o Fluxo "Pesquisa" com um passo de aprovação — assim você simula a etapa sem precisar de agente real.',
+        action: { kind: 'createFlow', title: 'Pesquisa', steps: [{ kind: 'approval' }] },
+        check: { kind: 'nodeExists', nodeType: 'flow', titleIncludes: 'Pesquisa' },
+      },
+      {
+        id: 'second-flow',
+        title: 'O segundo elo',
+        body: 'Crio o Fluxo "Redação" — quando a Pesquisa terminar com sucesso, a saída dela vira a entrada da Redação sozinha.',
+        action: { kind: 'createFlow', title: 'Redação', steps: [{ kind: 'approval' }] },
+        check: { kind: 'nodeExists', nodeType: 'flow', titleIncludes: 'Redação' },
+      },
+      {
+        id: 'chain',
+        title: 'Conecte os dois fluxos',
+        body: 'Ligo Pesquisa → Redação com uma aresta: é a aresta que diz para onde a saída vai quando o fluxo termina.',
+        action: { kind: 'connect', fromTitle: 'Pesquisa', toTitle: 'Redação' },
+        check: { kind: 'edgeExists', fromTitle: 'Pesquisa', toTitle: 'Redação' },
+      },
+      {
+        id: 'run-chain',
+        title: 'Rode e veja o encadeamento',
+        body: 'No Fluxo Pesquisa: clique Rodar e depois Aprovar. Quando ele termina, a Redação dispara sozinha com a saída — falha não encadeia e ciclo é bloqueado. Fan-out: conecte um terceiro fluxo à Pesquisa e os dois disparam juntos. E o botão Sincronizar transforma cada agente conectado a um fluxo em passo, na ordem das arestas.',
+      },
+    ],
+  },
 ];

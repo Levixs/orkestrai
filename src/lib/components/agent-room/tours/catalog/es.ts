@@ -375,4 +375,38 @@ export const TOURS_ES: Tour[] = [
       },
     ],
   },
+  {
+    id: 'chained-flows',
+    icon: 'Workflow',
+    title: 'Flujos encadenados',
+    tagline: 'Un flujo dispara el siguiente — pipelines compuestos y fan-out.',
+    steps: [
+      {
+        id: 'first-flow',
+        title: 'El primer eslabón',
+        body: 'Creo el Flujo "Investigación" con un paso de aprobación — así simulas la etapa sin necesitar un agente real.',
+        action: { kind: 'createFlow', title: 'Investigación', steps: [{ kind: 'approval' }] },
+        check: { kind: 'nodeExists', nodeType: 'flow', titleIncludes: 'Investigación' },
+      },
+      {
+        id: 'second-flow',
+        title: 'El segundo eslabón',
+        body: 'Creo el Flujo "Redacción" — cuando Investigación termine con éxito, su salida se vuelve la entrada de Redacción sola.',
+        action: { kind: 'createFlow', title: 'Redacción', steps: [{ kind: 'approval' }] },
+        check: { kind: 'nodeExists', nodeType: 'flow', titleIncludes: 'Redacción' },
+      },
+      {
+        id: 'chain',
+        title: 'Conecta los dos flujos',
+        body: 'Uno Investigación → Redacción con una arista: la arista es la que dice a dónde va la salida cuando el flujo termina.',
+        action: { kind: 'connect', fromTitle: 'Investigación', toTitle: 'Redacción' },
+        check: { kind: 'edgeExists', fromTitle: 'Investigación', toTitle: 'Redacción' },
+      },
+      {
+        id: 'run-chain',
+        title: 'Ejecuta y mira el encadenamiento',
+        body: 'En el Flujo Investigación: haz clic en Ejecutar y luego Aprobar. Cuando termina, Redacción dispara sola con la salida — el fallo no encadena y los ciclos se bloquean. Fan-out: conecta un tercer flujo a Investigación y los dos disparan juntos. Y el botón Sincronizar convierte cada agente conectado a un flujo en paso, en el orden de las aristas.',
+      },
+    ],
+  },
 ];

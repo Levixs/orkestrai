@@ -191,6 +191,7 @@ export const DOCS_PT: DocsCatalog = {
         'Injeção de texto nos terminais 100% unificada (roles inclusas): texto e Enter sempre em writes separados — o composer não fica mais pendurado em nenhum provider (Claude, Codex, Kimi).',
         'Fluxos encadeados: um Fluxo conectado a outro dispara o próximo com a saída final (falha não encadeia, ciclo bloqueado) — pipelines compostos e fan-out.',
         'Botão Sincronizar no Fluxo: cada agente conectado vira um passo na ordem das arestas — o pipeline é o próprio desenho.',
+        'Novo tour guiado "Fluxos encadeados" no onboarding (12 tours agora): cria os dois fluxos, conecta e você roda o encadeamento.',
       ],
     },
     {
