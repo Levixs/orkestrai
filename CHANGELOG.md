@@ -4,6 +4,11 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 
 ## 2026-08-04
 
+**Tooltips, busca e polish**
+- **Tooltips em TODA a toolbar**: cada ferramenta (Shell, Nota, Arquivos, Diff, Portal, Loop, Tarefas, Fluxo, Forma, Andares, Rotinas, Roles, Usage) explica o que faz ao passar o mouse — componente `ToolbarButton` com tooltip shadcn.
+- **⌘K / Ctrl+K global**: de qualquer tela, abre a busca da documentação (tópicos, casos de uso, quickstart e changelog), com navegação por setas/Enter/Esc.
+- Fix: desenhar um **Fluxo** pela toolbar funciona (schema de tipos aceita `flow`).
+
 **Feedback de usuário Windows (pacote)**
 - **Composer não fica mais pendurado**: a resposta de um agente a outro agora é **submetida automaticamente** — antes ficava parada na caixa de texto do compositor e ia junto no próximo Enter sem querer.
 - **Reconexão após suspensão**: o notebook dormiu e matou a conexão? O terminal reconecta sozinho (6 tentativas com espera crescente) e, se a sessão morreu, recria **com o contexto** — sem mais "conexão encerrada" permanente.

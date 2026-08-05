@@ -289,6 +289,12 @@
         'Presets de equipe: salve o workspace como template e comece projetos com o time pronto.',
         'Fluxos: pipelines visuais de agentes com aprovação humana e histórico de execuções.',
         'Servidor MCP próprio + tools CLI novas (fs, say, run, clip) + gerenciador de MCPs.',
+        'Resposta entre agentes submetida sozinha — composer não fica mais pendurado.',
+        'Reconexão automática após suspensão do notebook, com o contexto restaurado.',
+        'Botão Recarregar em cada terminal (reinicia a sessão com o contexto).',
+        'Janelas nunca nascem menores que o mínimo — sem botões vazando.',
+        'Tooltips em toda a toolbar; textos de Diff/Loop/Andares em linguagem simples.',
+        '⌘K / Ctrl+K global: busca na documentação de qualquer tela.',
       ],
     },
     {

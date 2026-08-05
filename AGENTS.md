@@ -64,6 +64,10 @@
 - **Auto-update**: `electron-updater` wired in `electron/main.cjs` (packaged only) — checks at boot + every 6h, downloads to a cache dir, verifies sha512 from `latest-*.yml`, and swaps only on `quitAndInstall` (user data lives outside the bundle and is never touched). Events flow to the renderer via `orkestrai:update` IPC; `UpdateNotifier.svelte` (root layout) shows progress + the restart dialog, with manual-download fallback on error. Releases publish to the PUBLIC repo `beeblock/orkestrai-releases` (source repo is private — public feed = no token in the app): `GH_TOKEN=… npx electron-builder --mac --win --linux --publish always`. macOS auto-update fully works only with Apple code signing (unsigned builds get the manual-download dialog); Windows NSIS and Linux AppImage update unsigned. mac target includes `zip` on purpose — the updater needs it (dmg alone is not enough).
 - **Install hygiene (macOS)**: never install from a `/Volumes/Orkestrai*` glob — stale mounted DMGs make it copy the wrong arch and `cp -R` merges bundles instead of replacing. Detach every `Orkestrai` volume first, `rm -rf /Applications/Orkestrai.app`, then `cp -R` from the exact volume path that `hdiutil attach` printed, and verify with `file /Applications/Orkestrai.app/Contents/MacOS/Orkestrai` (must say `arm64` on Apple Silicon).
 
+## Docs & Changelog (obrigatório a cada mudança)
+
+- Toda mudança de funcionalidade, correção visível ou UX **exige** atualizar, no MESMO commit: `CHANGELOG.md` (raiz, em pt-BR), o changelog in-app (array `changelog` em `src/routes/docs/+page.svelte`) e, quando aplicável, as seções/casos de uso da página "Como usar" e o `README.md`. Nunca empacotar/instalar com docs ou changelog desatualizados.
+
 ## Verification
 
 - Before shipping meaningful changes, run focused tests and `npm run build` when feasible.
