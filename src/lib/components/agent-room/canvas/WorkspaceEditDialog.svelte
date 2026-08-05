@@ -9,7 +9,8 @@
   import { Textarea } from '$lib/components/ui/textarea';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Button } from '$lib/components/ui/button';
-  import { FolderOpen } from '@lucide/svelte';
+  import { FolderOpen, Plug, Trash2 } from '@lucide/svelte';
+  import { onMount } from 'svelte';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
 
   type Props = {
@@ -29,6 +30,47 @@
   let submitError = $state('');
   let presetState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
   let presetMessage = $state('');
+
+  // -- Servidores MCP do workspace (.mcp.json) ---------------------------------
+  type McpServer = { name: string; command: string; args: string[]; builtin: boolean };
+  let mcps = $state<McpServer[]>([]);
+  let mcpName = $state('');
+  let mcpCommand = $state('');
+  let mcpArgs = $state('');
+  let mcpError = $state('');
+
+  async function loadMcps() {
+    try {
+      const response = await fetch(`/api/agent-room/workspaces/${workspace.id}/mcps`);
+      mcps = (await response.json()).data ?? [];
+    } catch {
+      mcps = [];
+    }
+  }
+
+  async function addMcp() {
+    mcpError = '';
+    const response = await fetch(`/api/agent-room/workspaces/${workspace.id}/mcps`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: mcpName, command: mcpCommand, args: mcpArgs }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+      mcpError = payload.error || 'Falha ao adicionar.';
+      return;
+    }
+    mcps = payload.data;
+    mcpName = '';
+    mcpCommand = '';
+    mcpArgs = '';
+  }
+
+  async function removeMcp(name: string) {
+    const response = await fetch(`/api/agent-room/workspaces/${workspace.id}/mcps?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+    const payload = await response.json();
+    if (payload.data) mcps = payload.data;
+  }
 
   /** Snapshot do workspace atual como preset reutilizavel (time, layout, roles...). */
   async function saveAsPreset() {
@@ -100,6 +142,8 @@
   );
 
   const { form: formData, enhance } = form;
+
+  onMount(loadMcps);
 
   async function pickDirectory() {
     if (!desktop) return;
@@ -185,6 +229,44 @@
       {#if submitError}
         <p class="text-sm text-destructive">{submitError}</p>
       {/if}
+
+      <div class="rounded-lg border border-border/60 p-3 space-y-2">
+        <div class="flex items-center gap-2">
+          <Plug size={13} class="text-muted-foreground" />
+          <span class="text-sm font-medium">Servidores MCP (.mcp.json)</span>
+        </div>
+        <p class="text-xs text-muted-foreground">
+          Tools externas para os agentes deste workspace (Claude Code, Kimi... leem da raiz do projeto).
+        </p>
+        {#if mcps.length}
+          <ul class="space-y-1">
+            {#each mcps as server (server.name)}
+              <li class="flex items-center gap-2 text-xs rounded-md bg-muted/40 px-2 py-1.5">
+                <span class="font-medium">{server.name}</span>
+                <span class="text-muted-foreground truncate flex-1">{server.command} {server.args.join(' ')}</span>
+                {#if server.builtin}
+                  <span class="text-[10px] text-emerald-400">da ponte</span>
+                {:else}
+                  <button type="button" class="text-muted-foreground hover:text-destructive" aria-label={`Remover ${server.name}`} onclick={() => removeMcp(server.name)}>
+                    <Trash2 size={12} />
+                  </button>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        <div class="flex gap-2">
+          <Input bind:value={mcpName} placeholder="nome" class="w-28 h-8 text-xs" />
+          <Input bind:value={mcpCommand} placeholder="comando (npx, node, uvx)" class="w-40 h-8 text-xs" />
+          <Input bind:value={mcpArgs} placeholder="args (ex.: -y @mcp/fs ./data)" class="flex-1 h-8 text-xs" />
+          <Button type="button" variant="outline" size="sm" disabled={!mcpName.trim() || !mcpCommand.trim()} onclick={addMcp}>
+            Adicionar
+          </Button>
+        </div>
+        {#if mcpError}
+          <p class="text-xs text-destructive">{mcpError}</p>
+        {/if}
+      </div>
 
       <div class="rounded-lg border border-border/60 p-3 space-y-2">
         <div class="flex items-center justify-between gap-3">
