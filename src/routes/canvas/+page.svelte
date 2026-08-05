@@ -17,7 +17,6 @@
   import WorkspaceEditDialog from '$lib/components/agent-room/canvas/WorkspaceEditDialog.svelte';
   import WorkspaceCreateDialog from '$lib/components/agent-room/canvas/WorkspaceCreateDialog.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
-  import * as Tooltip from '$lib/components/ui/tooltip';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import FileTreeCanvasNode from '$lib/components/agent-room/canvas/FileTreeCanvasNode.svelte';
   import EditorCanvasNode from '$lib/components/agent-room/canvas/EditorCanvasNode.svelte';
@@ -33,6 +32,7 @@
   import OnboardingDialog from '$lib/components/agent-room/canvas/OnboardingDialog.svelte';
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
   import FlowCanvasNode from '$lib/components/agent-room/canvas/FlowCanvasNode.svelte';
+  import ToolbarButton from '$lib/components/agent-room/canvas/ToolbarButton.svelte';
   import RoutinePanel from '$lib/components/agent-room/canvas/RoutinePanel.svelte';
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
@@ -1346,70 +1346,56 @@
               </button>
             {/if}
             <div class="toolbar" bind:this={toolbarEl} onscroll={updateToolbarScroll}>
-            <button class:active={drawTool === 'terminal' && !drawProvider} onclick={() => toggleDrawTool('terminal')}>
+            <ToolbarButton label="Terminal de comando puro (bash/zsh/powershell)" active={drawTool === 'terminal' && !drawProvider} onclick={() => toggleDrawTool('terminal')}>
               <img src="/images/cli.svg" width="15" height="15" alt="" class="tool-icon" /> Shell
-            </button>
+            </ToolbarButton>
             {#each providers as provider}
-              <Tooltip.Root>
-                <Tooltip.Trigger>
-                  {#snippet child({ props })}
-                    <button
-                      {...props}
-                      class:active={drawTool === 'terminal' && drawProvider?.id === provider.id}
-                      disabled={!provider.installed}
-                      onclick={() => toggleDrawTool('terminal', provider)}
-                    >
-                      {#if PROVIDER_ICONS[provider.id]}
-                        <img src={PROVIDER_ICONS[provider.id]} width="15" height="15" alt="" class="tool-icon" />
-                      {:else}
-                        <CodeXml size={15} class="tool-icon-svg" />
-                      {/if}
-                      {provider.displayName}
-                    </button>
-                  {/snippet}
-                </Tooltip.Trigger>
-                {#if provider.detail}
-                  <Tooltip.Content side="top">{provider.detail}</Tooltip.Content>
+              <ToolbarButton label={provider.detail ?? provider.displayName} active={drawTool === 'terminal' && drawProvider?.id === provider.id} disabled={!provider.installed} onclick={() => toggleDrawTool('terminal', provider)}>
+                {#if PROVIDER_ICONS[provider.id]}
+                  <img src={PROVIDER_ICONS[provider.id]} width="15" height="15" alt="" class="tool-icon" />
+                {:else}
+                  <CodeXml size={15} class="tool-icon-svg" />
                 {/if}
-              </Tooltip.Root>
+                {provider.displayName}
+              </ToolbarButton>
             {/each}
-            <button class:active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
+            <ToolbarButton label="Nota markdown compartilhada com os agentes (specs, briefings)" active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
               <StickyNote size={15} class="tool-icon-svg" /> Nota
-            </button>
-            <button class:active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
+            </ToolbarButton>
+            <ToolbarButton label="Arvore de arquivos do projeto" active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
               <FolderTree size={15} class="tool-icon-svg" /> Arquivos
-            </button>
-            <button class:active={drawTool === 'diff'} onclick={() => toggleDrawTool('diff')}>
+            </ToolbarButton>
+            <ToolbarButton label="Diff de mudancas entre branches/andares" active={drawTool === 'diff'} onclick={() => toggleDrawTool('diff')}>
               <FileDiff size={15} class="tool-icon-svg" /> Diff
-            </button>
-            <button class:active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
+            </ToolbarButton>
+            <ToolbarButton label="Navegador embutido que os agentes controlam (testar apps, pesquisar)" active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
               <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> Portal
-            </button>
-            <button class:active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
+            </ToolbarButton>
+            <ToolbarButton label="Loop Ralph: planeja, implementa e revisa em ciclo ate N rodadas" active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
               <img src="/images/loop.svg" width="15" height="15" alt="" class="tool-icon" /> Loop
-            </button>
-            <button class:active={drawTool === 'tasks'} onclick={() => toggleDrawTool('tasks')}>
+            </ToolbarButton>
+            <ToolbarButton label="Quadro kanban do workspace (com historico e imagens)" active={drawTool === 'tasks'} onclick={() => toggleDrawTool('tasks')}>
               <SquareKanban size={15} class="tool-icon-svg" /> Tarefas
-            </button>
-            <button class:active={drawTool === 'flow'} onclick={() => toggleDrawTool('flow')}>
+            </ToolbarButton>
+            <ToolbarButton label="Pipeline de agentes em sequencia (com aprovacao humana)" active={drawTool === 'flow'} onclick={() => toggleDrawTool('flow')}>
               <Workflow size={15} class="tool-icon-svg" /> Fluxo
-            </button>
-            <button class:active={drawTool === 'shape'} onclick={() => toggleDrawTool('shape')}>
+            </ToolbarButton>
+            <ToolbarButton label="Formas e anotacoes visuais (retangulo, elipse, seta)" active={drawTool === 'shape'} onclick={() => toggleDrawTool('shape')}>
               <Shapes size={15} class="tool-icon-svg" /> Forma
-            </button>
+            </ToolbarButton>
             <span class="toolbar-sep"></span>
-            <button onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label="Andares: worktrees git do projeto (frentes isoladas de trabalho)" active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
               <Layers size={15} class="tool-icon-svg" /> Andares{floors.length ? ` (${floors.length})` : ''}
-            </button>
-            <button onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>
+            </ToolbarButton>
+            <ToolbarButton label="Rotinas: prompts agendados que disparam em qualquer terminal" active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>
               <CalendarClock size={15} class="tool-icon-svg" /> Rotinas
-            </button>
-            <button onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; }}>
+            </ToolbarButton>
+            <ToolbarButton label="Roles: papeis reutilizaveis para os agentes (viajam com o repo)" active={showRolesPanel} onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; }}>
               <BadgeCheck size={15} class="tool-icon-svg" /> Roles
-            </button>
-            <button class:active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
+            </ToolbarButton>
+            <ToolbarButton label="Usage: cota de uso dos providers (5h/semanal, reset)" active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
               <Gauge size={15} class="tool-icon-svg" /> Usage
-            </button>
+            </ToolbarButton>
             </div>
             {#if canScrollRight}
               <button class="toolbar-arrow" aria-label="Rolar o menu para a direita" onclick={() => scrollToolbar(1)}>

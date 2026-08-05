@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
     ArrowLeft, BookOpen, Cable, FolderPlus, GitBranch, History, Layers, Link2, MessageSquare,
     PlayCircle, Repeat, Rocket, Search, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
@@ -125,6 +125,70 @@
     return sections.filter((section) => `${section.title} ${section.body}`.toLowerCase().includes(term));
   });
 
+  // -- Paleta de busca (Cmd/Ctrl+K): cobre topicos, casos de uso e changelog --
+  type PaletteItem = { kind: 'topico' | 'caso'; title: string; body: string; href: string };
+  let paletteOpen = $state(false);
+  let paletteSelected = $state(0);
+  let paletteInput = $state<HTMLInputElement | null>(null);
+
+  const paletteItems = $derived.by((): PaletteItem[] => {
+    const term = query.trim().toLowerCase();
+    const items: PaletteItem[] = [
+      { kind: 'topico', title: 'Comece em 5 minutos', body: quickstart.join(' '), href: '#comece' },
+      ...useCases.map((useCase) => ({ kind: 'caso' as const, title: useCase.title, body: useCase.body, href: '#casos-de-uso' })),
+      ...sections.map((section) => ({ kind: 'topico' as const, title: section.title, body: section.body, href: `#${section.id}` })),
+      { kind: 'topico', title: 'Changelog', body: changelog.map((entry) => `${entry.date} ${entry.items.join(' ')}`).join(' '), href: '#changelog' },
+    ];
+    if (!term) return items;
+    return items.filter((item) => `${item.title} ${item.body}`.toLowerCase().includes(term));
+  });
+
+  $effect(() => {
+    void query;
+    paletteSelected = 0;
+  });
+
+  function openPalette() {
+    paletteOpen = true;
+    paletteSelected = 0;
+    void tick().then(() => paletteInput?.focus());
+  }
+
+  function handleGlobalKeydown(event: KeyboardEvent) {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      if (paletteOpen) paletteOpen = false;
+      else openPalette();
+    }
+  }
+
+  function handlePaletteKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      paletteOpen = false;
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      paletteSelected = Math.min(paletteSelected + 1, paletteItems.length - 1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      paletteSelected = Math.max(paletteSelected - 1, 0);
+      return;
+    }
+    if (event.key === 'Enter' && paletteItems[paletteSelected]) {
+      event.preventDefault();
+      goToItem(paletteItems[paletteSelected]);
+    }
+  }
+
+  function goToItem(item: PaletteItem) {
+    paletteOpen = false;
+    location.hash = item.href;
+    document.querySelector(item.href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   const useCases = [
     {
       icon: Users,
@@ -248,6 +312,8 @@
   <meta name="theme-color" content="#0D0B2E" />
 </svelte:head>
 
+<svelte:window onkeydown={handleGlobalKeydown} />
+
 <main class="docs-page">
   <header class="docs-header">
     <Button variant="ghost" size="sm" href="/canvas">
@@ -267,6 +333,7 @@
       <label class="docs-search">
         <Search size={14} aria-hidden="true" />
         <input bind:value={query} placeholder="Filtrar tópicos…" aria-label="Filtrar tópicos" autocomplete="off" spellcheck="false" />
+        <kbd class="search-kbd">⌘K</kbd>
       </label>
       <nav aria-label="Tópicos da documentação">
         <a href="#comece" class="nav-link">Comece em 5 minutos</a>
@@ -346,6 +413,48 @@
       </article>
     </div>
   </div>
+
+  {#if paletteOpen}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="palette-overlay" onclick={() => (paletteOpen = false)} onkeydown={handlePaletteKeydown}>
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+      <div class="palette-card" onclick={(event) => event.stopPropagation()} role="dialog" aria-label="Buscar na documentacao">
+        <label class="palette-input-row">
+          <Search size={15} aria-hidden="true" />
+          <input
+            bind:this={paletteInput}
+            bind:value={query}
+            placeholder="Buscar nos topicos, casos de uso e changelog…"
+            aria-label="Buscar na documentacao"
+            autocomplete="off"
+            spellcheck="false"
+            onkeydown={handlePaletteKeydown}
+          />
+          <kbd class="search-kbd">esc</kbd>
+        </label>
+        <ul class="palette-list" role="listbox">
+          {#each paletteItems as item, index (item.href + item.title)}
+            <li>
+              <button
+                class="palette-item"
+                class:selected={index === paletteSelected}
+                role="option"
+                aria-selected={index === paletteSelected}
+                onclick={() => goToItem(item)}
+                onmousemove={() => (paletteSelected = index)}
+              >
+                <span class="palette-kind">{item.kind === 'caso' ? 'caso de uso' : 'topico'}</span>
+                <span class="palette-title">{item.title}</span>
+              </button>
+            </li>
+          {:else}
+            <li class="palette-empty">Nada para “{query.trim()}”.</li>
+          {/each}
+        </ul>
+        <p class="palette-hint">↑↓ navega · Enter abre · Esc fecha</p>
+      </div>
+    </div>
+  {/if}
 </main>
 
 <style>
@@ -683,6 +792,120 @@
       position: static;
       max-height: none;
     }
+  }
+
+  /* ---- Paleta de busca (Cmd/Ctrl+K) --------------------------------------- */
+  .search-kbd {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #6d6d78;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+
+  .palette-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgba(8, 7, 24, 0.6);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+  }
+
+  .palette-card {
+    width: min(560px, calc(100vw - 40px));
+    background: #1a1742;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+  }
+
+  .palette-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    color: #8b8c96;
+  }
+
+  .palette-input-row input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #e6e6eb;
+    font-size: 14px;
+  }
+
+  .palette-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    max-height: 46vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .palette-item.selected {
+    background: rgba(91, 141, 239, 0.16);
+  }
+
+  .palette-kind {
+    flex-shrink: 0;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #7de5ff;
+    background: rgba(0, 191, 255, 0.1);
+    border-radius: 6px;
+    padding: 2px 7px;
+  }
+
+  .palette-title {
+    font-size: 13px;
+    color: #e6e6eb;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .palette-empty {
+    padding: 14px 12px;
+    font-size: 12px;
+    color: #6d6d78;
+  }
+
+  .palette-hint {
+    margin: 0;
+    padding: 8px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 10.5px;
+    color: #6d6d78;
   }
 
   @media (prefers-reduced-motion: reduce) {
