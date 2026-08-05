@@ -35,7 +35,8 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Presets completos**: levam tarefas-template e servidores MCP; gerenciamento (renomear/apagar) nas Configurações.
 - **Fluxos no canvas**: nó Fluxo com passos em sequência (agente/aprovação), `{{input}}` encadeado, repetição com limite, aprovação humana, progresso ao vivo e histórico de execuções.
 
-**Voz: resposta completa e limpa (transcrito da CLI)**- A fala de resposta agora lê o **transcrito oficial da sessão** (o JSONL que Claude/Codex/Kimi gravam em disco) em vez de raspar a tela do terminal: vem a **resposta completa** do agente, sem caracteres invisíveis, molduras ou logs de ferramentas.
+**Voz: resposta completa e limpa (transcrito da CLI)**
+- A fala de resposta agora lê o **transcrito oficial da sessão** (o JSONL que Claude/Codex/Kimi gravam em disco) em vez de raspar a tela do terminal: vem a **resposta completa** do agente, sem caracteres invisíveis, molduras ou logs de ferramentas.
 - Se a sessão ainda não tem id rastreado, cai no método anterior como fallback.
 
 **Voz (ditado + agentes falando em pt-BR)**

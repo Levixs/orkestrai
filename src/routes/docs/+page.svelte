@@ -101,7 +101,7 @@
       id: 'cli',
       icon: MessageSquare,
       title: 'CLI orkestrai (a ponte)',
-      body: `Os agentes usam a CLI orkestrai para agir no canvas: list --agent <id> (agentes, suas notas e portais), ask (perguntar a outro agente), note read/write/edit/create, task list/add/assign/done, role show/write/edit, floor create/list/preview/land/remove, notify (notificação nativa para você), recruit/dismiss/connect/reassign (Modo Maestro), portal (automação de browser), port (devolve uma porta livre — os agentes usam ao subir dev servers para nunca brigarem pela 5173/3000 entre workspaces). O token fica em .orkestrai/workspace.json no diretório do workspace.`,
+      body: `Os agentes usam a CLI orkestrai para agir no canvas: list --agent <id> (agentes, suas notas e portais), ask (perguntar a outro agente), note read/write/edit/create, task list/add/assign/done/archive/history (+ link/unlink de nota de spec), role show/write/edit, floor create/list/preview/land/remove, notify (notificação nativa para você), recruit/dismiss/connect/reassign (Modo Maestro), portal (automação de browser), port (porta livre para dev servers), fs read/write/search, run (re-despacha tarefa), say (fala no desktop), clip (lê a área de transferência), notes/portals (listagens). Agentes que falam MCP ganham tudo isso como tools nativas via orkestrai mcp — o .mcp.json é provisionado sozinho na raiz do projeto; gerencie servidores MCP extras no editor do workspace. O token fica em .orkestrai/workspace.json no diretório do workspace.`,
     },
     {
       id: 'atalhos',
@@ -167,6 +167,24 @@
       title: 'Sentinela de deploy/testes',
       body: 'Rotina de hora em hora num shell ou agente: “rode os testes; se falhar, abra uma tarefa para o time e me notifique (orkestrai notify)”. Você recebe notificação nativa do sistema e o kanban já tem o cartão.',
       tags: ['Rotinas', 'notify', 'CI local'],
+    },
+    {
+      icon: Layers,
+      title: 'Preset do seu framework (projeto novo em 30s)',
+      body: 'Monte uma vez o time padrão do seu framework (líder + devs + roles + nota de bootstrap com as convenções), salve como preset no editor do workspace, e todo projeto novo nasce com o time completo: agentes, notas de spec, tarefas-template no quadro e MCPs configurados.',
+      tags: ['Presets', 'bootstrap', 'tarefas-template'],
+    },
+    {
+      icon: Workflow,
+      title: 'Pipeline escreve → revisa → aprova',
+      body: 'Fluxo com 3 passos: Dev escreve a feature, Revisor critica (a saída de um vira {{input}} do outro) e o passo de Aprovação pausa até você dar OK no nó. O progresso aparece ao vivo e as últimas execuções ficam no histórico do fluxo.',
+      tags: ['Fluxos', 'aprovação humana', 'pipeline'],
+    },
+    {
+      icon: Cable,
+      title: 'Agentes com tools externas via MCP',
+      body: 'Adicione servidores MCP no editor do workspace (ex.: filesystem, web, banco) — os agentes ganham as tools nativamente, e o Orkestrai em si aparece como servidor MCP com as ações do canvas (orkestrai mcp). Presets podem carregar os MCPs junto com o time.',
+      tags: ['MCP', 'tools tipadas', '.mcp.json'],
     },
   ];
 
