@@ -9,6 +9,10 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **⌘K / Ctrl+K global**: de qualquer tela, abre a busca da documentação (tópicos, casos de uso, quickstart e changelog), com navegação por setas/Enter/Esc.
 - Fix: desenhar um **Fluxo** pela toolbar funciona (schema de tipos aceita `flow`).
 
+**i18n: app em Português, English e Español**
+- Internacionalização com paraglide (Svelar): seletor de idioma em Configurações aplica **na hora** — a interface remonta no idioma escolhido, sem reload.
+- Migradas nesta leva: página de Configurações inteira, tooltips da toolbar e o estado vazio do canvas. As demais telas entram nas próximas levas (a regra no AGENTS.md exige `m.*()` em toda string nova).
+
 **Marketplace de MCPs**
 - Nova aba **MCPs** na página Skills: pesquise e instale servidores MCP como quem instala skills — curadoria dos oficiais/populares (GitHub, Gmail, Google Drive, Figma, Vercel, Postgres, Brave, DeepWiki...) mais busca no registry oficial do MCP.
 - Servidores remotos instalam com **1 clique** (só a URL); os que pedem chave/token abrem um diálogo explicando onde conseguir cada campo.

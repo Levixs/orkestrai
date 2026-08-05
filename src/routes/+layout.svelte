@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import UpdateNotifier from '$lib/components/agent-room/UpdateNotifier.svelte';
+  import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
 
   // Wire apiFetch error handling to the toast UI
   registerToast((variant: string, title: string, opts?: any) => {
@@ -15,6 +16,7 @@
   let { children } = $props();
 
   onMount(() => {
+    initLocaleRuntime();
     // Cmd/Ctrl+K global: de qualquer tela, abre a busca da documentacao.
     const docsSearchShortcut = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
@@ -67,7 +69,11 @@
 
 <!-- Tooltip.Provider global: qualquer pagina pode usar Tooltip shadcn -->
 <Tooltip.Provider>
-  {@render children()}
+  <!-- #key no locale: ao trocar de idioma, a arvore inteira remonta e todo
+       m.*() reavalia — i18n reativo garantido por construcao. -->
+  {#key localeState.current}
+    {@render children()}
+  {/key}
 </Tooltip.Provider>
 
 <Toaster position="bottom-right" />

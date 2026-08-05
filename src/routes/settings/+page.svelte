@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ArrowLeft, Check, Keyboard, Layers, Mic, Pencil, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
+  import { ArrowLeft, Check, Keyboard, Languages, Layers, Mic, Pencil, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
+  import * as m from '$lib/paraglide/messages.js';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
@@ -42,8 +43,9 @@
     if (desktop?.appVersion) appVersion = await desktop.appVersion().catch(() => '');
     // Feedback da checagem manual: "ja esta na versao mais recente".
     desktop?.onUpdate?.((payload) => {
-      if (payload.status === 'none' && checkingUpdate === false && updateMessage.startsWith('Verificando')) {
-        updateMessage = 'Voce esta na versao mais recente.';
+      if (payload.status === 'none' && manualCheckInFlight) {
+        manualCheckInFlight = false;
+        updateMessage = m['settings.update_latest']();
       }
     });
   });
@@ -119,6 +121,7 @@
   let appVersion = $state('');
   let checkingUpdate = $state(false);
   let updateMessage = $state('');
+  let manualCheckInFlight = $state(false);
 
   async function checkUpdates() {
     if (!desktop?.checkForUpdates) return;
@@ -126,12 +129,21 @@
     updateMessage = '';
     try {
       const result = await desktop.checkForUpdates();
-      if (result.status === 'unsupported') updateMessage = 'Atualizacao automatica so existe no app instalado.';
-      else if (result.status === 'error') updateMessage = 'Nao consegui verificar agora — tente mais tarde.';
-      else updateMessage = 'Verificando... se houver versao nova, o download comeca sozinho.';
+      if (result.status === 'unsupported') updateMessage = m['settings.update_unsupported']();
+      else if (result.status === 'error') updateMessage = m['settings.update_error']();
+      else {
+        manualCheckInFlight = true;
+        updateMessage = m['settings.update_checking']();
+      }
     } finally {
       checkingUpdate = false;
     }
+  }
+
+  /** Troca de idioma: salva e aplica na hora (a store reativa invalida a UI). */
+  async function changeLanguage(value: string) {
+    settings = { ...settings, uiLanguage: value };
+    await save();
   }
 
   async function refreshModelStatus() {
@@ -206,12 +218,12 @@
       Canvas
     </Button>
     <div class="header-titles">
-      <h1>Configuracoes</h1>
-      <p>Preferencias globais do app — aplicadas imediatamente ao salvar.</p>
+      <h1>{m['settings.title']()}</h1>
+      <p>{m['settings.subtitle']()}</p>
     </div>
     <span class="header-spacer"></span>
     <Button size="sm" onclick={save} class="save-btn">
-      {#if saved}<Check size={14} aria-hidden="true" />Salvo!{:else}Salvar alteracoes{/if}
+      {#if saved}<Check size={14} aria-hidden="true" />{m['settings.saved']()}{:else}{m['settings.save']()}{/if}
     </Button>
   </header>
 
@@ -237,38 +249,38 @@
     <header class="section-head">
       <span class="icon-chip"><SquareTerminal size={15} aria-hidden="true" /></span>
       <div class="section-titles">
-        <h2>Terminal</h2>
-        <p>Minimapa, controles do canvas, tema e dimensoes padrao dos nos.</p>
+        <h2>{m['settings.section_terminal']()}</h2>
+        <p>{m['settings.section_terminal_desc']()}</p>
       </div>
     </header>
 
     <div class="grid-fields">
       <div class="field">
-        <span class="field-label">Minimapa do canvas</span>
+        <span class="field-label">{m['settings.minimap']()}</span>
         <Select.Root type="single" value={settings.showMinimap} onValueChange={(value: string) => (settings = { ...settings, showMinimap: value })}>
           <Select.Trigger data-slot="select-trigger">
-            {settings.showMinimap === 'true' ? 'Mostrar' : 'Ocultar'}
+            {settings.showMinimap === 'true' ? m['settings.show']() : m['settings.hide']()}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="true">Mostrar</Select.Item>
-            <Select.Item value="false">Ocultar</Select.Item>
+            <Select.Item value="true">{m['settings.show']()}</Select.Item>
+            <Select.Item value="false">{m['settings.hide']()}</Select.Item>
           </Select.Content>
         </Select.Root>
       </div>
       <div class="field">
-        <span class="field-label">Controles de zoom (+/-, lock)</span>
+        <span class="field-label">{m['settings.controls']()}</span>
         <Select.Root type="single" value={settings.showControls} onValueChange={(value: string) => (settings = { ...settings, showControls: value })}>
           <Select.Trigger data-slot="select-trigger">
-            {settings.showControls === 'true' ? 'Mostrar' : 'Ocultar'}
+            {settings.showControls === 'true' ? m['settings.show']() : m['settings.hide']()}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="true">Mostrar</Select.Item>
-            <Select.Item value="false">Ocultar</Select.Item>
+            <Select.Item value="true">{m['settings.show']()}</Select.Item>
+            <Select.Item value="false">{m['settings.hide']()}</Select.Item>
           </Select.Content>
         </Select.Root>
       </div>
       <div class="field">
-        <span class="field-label">Tema de novos terminais</span>
+        <span class="field-label">{m['settings.theme']()}</span>
         <Select.Root type="single" value={settings.terminalTheme} onValueChange={(value: string) => (settings = { ...settings, terminalTheme: value })}>
           <Select.Trigger data-slot="select-trigger">
             {TERMINAL_THEMES[settings.terminalTheme as keyof typeof TERMINAL_THEMES]?.label ?? settings.terminalTheme}
@@ -284,34 +296,34 @@
 
     <div class="grid-fields">
       <div class="field">
-        <span class="field-label">Tamanho da fonte (px)</span>
+        <span class="field-label">{m['settings.font_size']()}</span>
         <Input type="number" min="9" max="24" bind:value={settings.terminalFontSize} />
       </div>
       <div class="field span-2">
-        <span class="field-label">Familia da fonte</span>
+        <span class="field-label">{m['settings.font_family']()}</span>
         <Input bind:value={settings.terminalFontFamily} placeholder="ui-monospace, Menlo, monospace" />
       </div>
       <div class="field">
-        <span class="field-label">Padding</span>
+        <span class="field-label">{m['settings.padding']()}</span>
         <Input type="number" min="0" max="24" bind:value={settings.terminalPadding} />
       </div>
     </div>
 
     <div class="grid-fields">
       <div class="field">
-        <span class="field-label">Largura do terminal (px)</span>
+        <span class="field-label">{m['settings.terminal_width']()}</span>
         <Input type="number" bind:value={settings.newTerminalWidth} />
       </div>
       <div class="field">
-        <span class="field-label">Altura do terminal (px)</span>
+        <span class="field-label">{m['settings.terminal_height']()}</span>
         <Input type="number" bind:value={settings.newTerminalHeight} />
       </div>
       <div class="field">
-        <span class="field-label">Largura da nota (px)</span>
+        <span class="field-label">{m['settings.note_width']()}</span>
         <Input type="number" bind:value={settings.newNoteWidth} />
       </div>
       <div class="field">
-        <span class="field-label">Altura da nota (px)</span>
+        <span class="field-label">{m['settings.note_height']()}</span>
         <Input type="number" bind:value={settings.newNoteHeight} />
       </div>
     </div>
@@ -321,13 +333,13 @@
     <header class="section-head">
       <span class="icon-chip"><Mic size={15} aria-hidden="true" /></span>
       <div class="section-titles">
-        <h2>Ditado por voz</h2>
-        <p>Atalho que transcreve sua fala direto no terminal focado.</p>
+        <h2>{m['settings.section_dictation']()}</h2>
+        <p>{m['settings.section_dictation_desc']()}</p>
       </div>
     </header>
 
     <div class="field">
-      <span class="field-label">Tecla de atalho (terminal focado)</span>
+      <span class="field-label">{m['settings.hotkey']()}</span>
       <div class="hotkey-row">
         <Button
           variant="outline"
@@ -335,18 +347,16 @@
           class={capturingHotkey ? 'hotkey-capture capturing' : 'hotkey-capture'}
           onclick={() => (capturingHotkey = true)}
         >
-          {capturingHotkey ? 'Pressione as teclas... (Esc cancela)' : hotkeyLabel}
+          {capturingHotkey ? m['settings.hotkey_capturing']() : hotkeyLabel}
         </Button>
         {#if settings.dictationHotkey && settings.dictationHotkey !== DEFAULT_DICTATION_HOTKEY}
           <Button variant="ghost" size="sm" onclick={() => (settings = { ...settings, dictationHotkey: DEFAULT_DICTATION_HOTKEY })}>
-            Restaurar padrao
+            {m['settings.restore_default']()}
           </Button>
         {/if}
       </div>
       <p class="field-hint">
-        Transcricao 100% offline, roda local no app. Na primeira vez o app baixa o modelo de
-        voz (~790 MB) uma unica vez — pergunta antes. Se outro app do sistema usa o mesmo
-        atalho global, escolha uma combinacao diferente aqui.
+        {m['settings.dictation_hint']()}
       </p>
     </div>
   </section>
@@ -355,26 +365,26 @@
     <header class="section-head">
       <span class="icon-chip"><Volume2 size={15} aria-hidden="true" /></span>
       <div class="section-titles">
-        <h2>Voz (ditado e fala pt-BR)</h2>
-        <p>Motor local por padrao; servico externo como opcao avancada.</p>
+        <h2>{m['settings.section_voice']()}</h2>
+        <p>{m['settings.section_voice_desc']()}</p>
       </div>
     </header>
 
     <div class="grid-fields">
       <div class="field">
-        <span class="field-label">Motor de voz</span>
+        <span class="field-label">{m['settings.voice_engine']()}</span>
         <Select.Root type="single" value={settings.voiceBackend ?? 'embedded'} onValueChange={(value: string) => (settings = { ...settings, voiceBackend: value })}>
           <Select.Trigger data-slot="select-trigger">
-            {(settings.voiceBackend ?? 'embedded') === 'embedded' ? 'Local (recomendado)' : 'Servico externo (Docker)'}
+            {(settings.voiceBackend ?? 'embedded') === 'embedded' ? m['settings.voice_engine_local']() : m['settings.voice_engine_sidecar']()}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="embedded">Local (recomendado)</Select.Item>
-            <Select.Item value="sidecar">Servico externo (Docker)</Select.Item>
+            <Select.Item value="embedded">{m['settings.voice_engine_local']()}</Select.Item>
+            <Select.Item value="sidecar">{m['settings.voice_engine_sidecar']()}</Select.Item>
           </Select.Content>
         </Select.Root>
       </div>
       <div class="field">
-        <span class="field-label">Voz das respostas</span>
+        <span class="field-label">{m['settings.tts_voice']()}</span>
         <Select.Root type="single" value={settings.voiceTtsVoice} onValueChange={(value: string) => (settings = { ...settings, voiceTtsVoice: value })}>
           <Select.Trigger data-slot="select-trigger">
             {settings.voiceTtsVoice ?? 'pf_dora'}
@@ -391,11 +401,11 @@
     {#if (settings.voiceBackend ?? 'embedded') === 'sidecar'}
       <div class="grid-fields">
         <div class="field">
-          <span class="field-label">URL do sidecar</span>
+          <span class="field-label">{m['settings.sidecar_url']()}</span>
           <Input bind:value={settings.voiceStackUrl} placeholder="http://localhost:8000" />
         </div>
         <div class="field">
-          <span class="field-label">Modelo STT (sidecar)</span>
+          <span class="field-label">{m['settings.sidecar_model']()}</span>
           <Input bind:value={settings.voiceSttModel} placeholder="whisper-large-v3-turbo" />
         </div>
       </div>
@@ -403,7 +413,7 @@
 
     <div class="hotkey-row">
       <Button variant="outline" size="sm" disabled={checkingVoice} onclick={checkVoiceStack}>
-        {checkingVoice ? 'Testando...' : 'Testar conexao'}
+        {checkingVoice ? m['settings.testing']() : m['settings.test_connection']()}
       </Button>
       {#if voiceHealth}
         <span class="status-pill" class:ok={voiceHealth.ok}>
@@ -416,34 +426,32 @@
     {#if modelBytes !== null && modelBytes > 0}
       <div class="model-card">
         <div class="model-info">
-          <span class="field-label">Modelo de voz baixado</span>
+          <span class="field-label">{m['settings.model_downloaded']()}</span>
           <strong class="model-size">{formatMb(modelBytes)}</strong>
         </div>
         <Button variant="outline" size="sm" onclick={() => (confirmDeleteModels = true)}>
-          Apagar modelo (liberar espaco)
+          {m['settings.delete_model']()}
         </Button>
       </div>
     {/if}
 
     <p class="field-hint">
-      Na primeira vez o app baixa o modelo de voz (whisper, ~790 MB) uma unica vez —
-      pergunta antes. Depois disso tudo roda local.
+      {m['settings.voice_hint']()}
     </p>
   </section>
 
   <AlertDialog.Root bind:open={confirmDeleteModels}>
     <AlertDialog.Content>
       <AlertDialog.Header>
-        <AlertDialog.Title>Apagar o modelo de voz?</AlertDialog.Title>
+        <AlertDialog.Title>{m['settings.delete_model_title']()}</AlertDialog.Title>
         <AlertDialog.Description>
-          Isso libera {modelBytes ? formatMb(modelBytes) : 'espaco'} de disco. Ditado e fala
-          param ate voce baixar de novo (o app pergunta antes de baixar).
+          {m['settings.delete_model_desc']({ size: modelBytes ? formatMb(modelBytes) : '—' })}
         </AlertDialog.Description>
       </AlertDialog.Header>
       <AlertDialog.Footer>
-        <AlertDialog.Cancel onclick={() => (confirmDeleteModels = false)}>Cancelar</AlertDialog.Cancel>
+        <AlertDialog.Cancel onclick={() => (confirmDeleteModels = false)}>{m['settings.cancel']()}</AlertDialog.Cancel>
         <AlertDialog.Action disabled={deletingModels} onclick={deleteModels}>
-          {deletingModels ? 'Apagando...' : 'Apagar'}
+          {deletingModels ? m['settings.deleting']() : m['settings.delete']()}
         </AlertDialog.Action>
       </AlertDialog.Footer>
     </AlertDialog.Content>
@@ -453,8 +461,8 @@
     <header class="section-head">
       <span class="icon-chip"><Keyboard size={15} aria-hidden="true" /></span>
       <div class="section-titles">
-        <h2>Atalhos</h2>
-        <p>Referencia rapida dos atalhos do canvas e dos terminais.</p>
+        <h2>{m['settings.section_shortcuts']()}</h2>
+        <p>{m['settings.section_shortcuts_desc']()}</p>
       </div>
     </header>
     <div class="shortcuts-grid">
@@ -471,12 +479,12 @@
     <header class="section-head">
       <span class="icon-chip"><Layers size={15} aria-hidden="true" /></span>
       <div class="section-titles">
-        <h2>Presets de equipe</h2>
-        <p>Templates salvos dos seus workspaces — aparecem ao criar um workspace novo.</p>
+        <h2>{m['settings.section_presets']()}</h2>
+        <p>{m['settings.section_presets_desc']()}</p>
       </div>
     </header>
     {#if presets.length === 0}
-      <p class="field-hint">Nenhum preset ainda. Monte um time no canvas e use "Salvar como preset" no editor do workspace.</p>
+      <p class="field-hint">{m['settings.presets_empty']()}</p>
     {:else}
       <ul class="preset-list">
         {#each presets as preset (preset.id)}
@@ -512,14 +520,14 @@
   <AlertDialog.Root open={deletingPreset !== null} onOpenChange={(isOpen) => !isOpen && (deletingPreset = null)}>
     <AlertDialog.Content>
       <AlertDialog.Header>
-        <AlertDialog.Title>Apagar preset</AlertDialog.Title>
+        <AlertDialog.Title>{m['settings.delete_preset_title']()}</AlertDialog.Title>
         <AlertDialog.Description>
-          Apagar o preset "{deletingPreset?.name}"? Workspaces ja criados com ele nao mudam nada.
+          {m['settings.delete_preset_desc']({ name: deletingPreset?.name ?? '' })}
         </AlertDialog.Description>
       </AlertDialog.Header>
       <AlertDialog.Footer>
-        <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-        <AlertDialog.Action onclick={deletePreset}>Apagar</AlertDialog.Action>
+        <AlertDialog.Cancel>{m['settings.cancel']()}</AlertDialog.Cancel>
+        <AlertDialog.Action onclick={deletePreset}>{m['settings.delete']()}</AlertDialog.Action>
       </AlertDialog.Footer>
     </AlertDialog.Content>
   </AlertDialog.Root>
@@ -528,21 +536,43 @@
     <header class="section-head">
       <span class="icon-chip"><RefreshCw size={15} aria-hidden="true" /></span>
       <div class="section-titles">
-        <h2>Atualizacoes</h2>
-        <p>O app busca versao nova sozinho (no boot e a cada 6h) e instala na troca — seus dados ficam intactos.</p>
+        <h2>{m['settings.section_updates']()}</h2>
+        <p>{m['settings.section_updates_desc']()}</p>
       </div>
     </header>
     <div class="hotkey-row">
-      <span class="field-label">Versao instalada: <strong class="model-size">{appVersion || '—'}</strong></span>
+      <span class="field-label">{m['settings.version']()}: <strong class="model-size">{appVersion || '—'}</strong></span>
       {#if desktop?.checkForUpdates}
         <Button variant="outline" size="sm" disabled={checkingUpdate} onclick={checkUpdates}>
-          {checkingUpdate ? 'Verificando...' : 'Verificar agora'}
+          {checkingUpdate ? m['settings.checking']() : m['settings.check_updates']()}
         </Button>
       {/if}
     </div>
     {#if updateMessage}
       <p class="field-hint">{updateMessage}</p>
     {/if}
+  </section>
+
+  <section class="settings-section">
+    <header class="section-head">
+      <span class="icon-chip"><Languages size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>{m['settings.language']()}</h2>
+        <p>{m['settings.language_desc']()}</p>
+      </div>
+    </header>
+    <div class="field" style="max-width: 240px">
+      <Select.Root type="single" value={settings.uiLanguage ?? 'pt-BR'} onValueChange={changeLanguage}>
+        <Select.Trigger data-slot="select-trigger">
+          {{ 'pt-BR': 'Português (Brasil)', en: 'English', es: 'Español' }[settings.uiLanguage ?? 'pt-BR']}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="pt-BR">Português (Brasil)</Select.Item>
+          <Select.Item value="en">English</Select.Item>
+          <Select.Item value="es">Español</Select.Item>
+        </Select.Content>
+      </Select.Root>
+    </div>
   </section>
   {/if}
 </main>

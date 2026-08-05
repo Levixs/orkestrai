@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
+    "@inlang/paraglide-js": "^2.23.1",
     "@lucide/svelte": "^1.28.0",
     "@playwright/test": "^1.48.0",
     "@sveltejs/adapter-node": "^5.5.4",

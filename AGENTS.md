@@ -68,6 +68,12 @@
 
 - Toda mudança de funcionalidade, correção visível ou UX **exige** atualizar, no MESMO commit: `CHANGELOG.md` (raiz, em pt-BR), o changelog in-app (array `changelog` em `src/routes/docs/+page.svelte`) e, quando aplicável, as seções/casos de uso da página "Como usar" e o `README.md`. Nunca empacotar/instalar com docs ou changelog desatualizados.
 
+## i18n (pt-BR / en / es)
+
+- O app é internacionalizado com paraglide (`project.inlang`, `messages/{pt-BR,en,es}.json` compilado para `src/lib/paraglide`). **Toda string nova de UI passa por `m['chave']()`** de `$lib/paraglide/messages.js` — nunca texto hardcoded; sempre adicione a chave nos 3 idiomas no mesmo commit.
+- O locale vem da setting `uiLanguage` (seletor em Configurações) via `overwriteGetLocale` em `src/lib/i18n/locale.svelte.ts`; o layout raiz usa `{#key localeState.current}` para remontar a árvore na troca (é o mecanismo de reatividade — não remova).
+- Migração é progressiva: páginas já migradas usam `m.*`; as demais seguem em pt-BR até serem migradas.
+
 ## Verification
 
 - Before shipping meaningful changes, run focused tests and `npm run build` when feasible.

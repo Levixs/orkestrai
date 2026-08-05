@@ -18,6 +18,7 @@
   import WorkspaceCreateDialog from '$lib/components/agent-room/canvas/WorkspaceCreateDialog.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import { Skeleton } from '$lib/components/ui/skeleton';
+  import * as m from '$lib/paraglide/messages.js';
   import FileTreeCanvasNode from '$lib/components/agent-room/canvas/FileTreeCanvasNode.svelte';
   import EditorCanvasNode from '$lib/components/agent-room/canvas/EditorCanvasNode.svelte';
   import DiffCanvasNode from '$lib/components/agent-room/canvas/DiffCanvasNode.svelte';
@@ -1354,7 +1355,7 @@
               </button>
             {/if}
             <div class="toolbar" bind:this={toolbarEl} onscroll={updateToolbarScroll}>
-            <ToolbarButton label="Terminal de comando puro (bash/zsh/powershell)" active={drawTool === 'terminal' && !drawProvider} onclick={() => toggleDrawTool('terminal')}>
+            <ToolbarButton label={m['tool.shell']()} active={drawTool === 'terminal' && !drawProvider} onclick={() => toggleDrawTool('terminal')}>
               <img src="/images/cli.svg" width="15" height="15" alt="" class="tool-icon" /> Shell
             </ToolbarButton>
             {#each providers as provider}
@@ -1367,41 +1368,41 @@
                 {provider.displayName}
               </ToolbarButton>
             {/each}
-            <ToolbarButton label="Nota markdown compartilhada com os agentes (specs, briefings)" active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
+            <ToolbarButton label={m['tool.note']()} active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
               <StickyNote size={15} class="tool-icon-svg" /> Nota
             </ToolbarButton>
-            <ToolbarButton label="Arvore de arquivos do projeto" active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
+            <ToolbarButton label={m['tool.files']()} active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
               <FolderTree size={15} class="tool-icon-svg" /> Arquivos
             </ToolbarButton>
-            <ToolbarButton label="Diff: compara lado a lado o que mudou no codigo — so leitura, nao mexe em nada" active={drawTool === 'diff'} onclick={() => toggleDrawTool('diff')}>
+            <ToolbarButton label={m['tool.diff']()} active={drawTool === 'diff'} onclick={() => toggleDrawTool('diff')}>
               <FileDiff size={15} class="tool-icon-svg" /> Diff
             </ToolbarButton>
-            <ToolbarButton label="Navegador embutido que os agentes controlam (testar apps, pesquisar)" active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
+            <ToolbarButton label={m['tool.portal']()} active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
               <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> Portal
             </ToolbarButton>
-            <ToolbarButton label="Loop Ralph: o time repete sozinho o ciclo planejar, fazer e revisar ate ficar pronto" active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
+            <ToolbarButton label={m['tool.loop']()} active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
               <img src="/images/loop.svg" width="15" height="15" alt="" class="tool-icon" /> Loop
             </ToolbarButton>
-            <ToolbarButton label="Quadro kanban do workspace (com historico e imagens)" active={drawTool === 'tasks'} onclick={() => toggleDrawTool('tasks')}>
+            <ToolbarButton label={m['tool.tasks']()} active={drawTool === 'tasks'} onclick={() => toggleDrawTool('tasks')}>
               <SquareKanban size={15} class="tool-icon-svg" /> Tarefas
             </ToolbarButton>
-            <ToolbarButton label="Pipeline de agentes em sequencia (com aprovacao humana)" active={drawTool === 'flow'} onclick={() => toggleDrawTool('flow')}>
+            <ToolbarButton label={m['tool.flow']()} active={drawTool === 'flow'} onclick={() => toggleDrawTool('flow')}>
               <Workflow size={15} class="tool-icon-svg" /> Fluxo
             </ToolbarButton>
-            <ToolbarButton label="Formas e anotacoes visuais (retangulo, elipse, seta)" active={drawTool === 'shape'} onclick={() => toggleDrawTool('shape')}>
+            <ToolbarButton label={m['tool.shape']()} active={drawTool === 'shape'} onclick={() => toggleDrawTool('shape')}>
               <Shapes size={15} class="tool-icon-svg" /> Forma
             </ToolbarButton>
             <span class="toolbar-sep"></span>
-            <ToolbarButton label="Andares: copias separadas do projeto — cada time trabalha numa sem baguncar a versao principal" active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label={m['tool.floors']()} active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
               <Layers size={15} class="tool-icon-svg" /> Andares{floors.length ? ` (${floors.length})` : ''}
             </ToolbarButton>
-            <ToolbarButton label="Rotinas: prompts agendados que disparam em qualquer terminal" active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label={m['tool.routines']()} active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>
               <CalendarClock size={15} class="tool-icon-svg" /> Rotinas
             </ToolbarButton>
-            <ToolbarButton label="Roles: papeis reutilizaveis para os agentes (viajam com o repo)" active={showRolesPanel} onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; }}>
+            <ToolbarButton label={m['tool.roles']()} active={showRolesPanel} onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; }}>
               <BadgeCheck size={15} class="tool-icon-svg" /> Roles
             </ToolbarButton>
-            <ToolbarButton label="Usage: cota de uso dos providers (5h/semanal, reset)" active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label={m['tool.usage']()} active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
               <Gauge size={15} class="tool-icon-svg" /> Usage
             </ToolbarButton>
             </div>
@@ -1416,7 +1417,7 @@
     {:else}
       <div class="canvas-empty">
         <img src="/brand/icon.svg" width="56" height="56" alt="" />
-        <p>Crie ou selecione um workspace para abrir o canvas.</p>
+        <p>{m['canvas.empty']()}</p>
       </div>
     {/if}
     {#if showPalette}

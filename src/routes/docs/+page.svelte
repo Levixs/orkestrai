@@ -296,6 +296,7 @@
         'Tooltips em toda a toolbar; textos de Diff/Loop/Andares em linguagem simples.',
         '⌘K / Ctrl+K global: busca na documentação de qualquer tela.',
         'Marketplace de MCPs na página Skills: curadoria oficial + registry, instalação com 1 clique e campos de token guiados.',
+        'App em Português, English e Español: seletor de idioma nas Configurações (paraglide).',
       ],
     },
     {
