@@ -15,6 +15,7 @@
   import { blobToWav16k } from './audio-pcm.js';
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -168,7 +169,7 @@
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      dictateError = 'Sem acesso ao microfone. Verifique as permissoes do sistema.';
+      dictateError = m['voice.mic_denied']();
       return;
     }
     audioChunks = [];
@@ -183,7 +184,7 @@
       mediaRecorder = null;
       dictating = false;
       transcribing = true;
-      dictateStatus = 'Transcrevendo...';
+      dictateStatus = m['voice.transcribing']();
       try {
         const blob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' });
         // Decodifica no renderer: o backend embarcado espera WAV PCM16 16 kHz.
@@ -201,9 +202,9 @@
           // da resposta arma SOMENTE no submit (ver terminal.onData abaixo) —
           // sem Enter, nada e falado.
           if (voiceOn && provider) pendingDictation = true;
-        } else dictateError = 'Nada foi transcrito. Tente falar mais perto do microfone.';
+        } else dictateError = m['voice.nothing_transcribed']();
       } catch (error) {
-        dictateError = error instanceof Error ? error.message : 'Erro no ditado.';
+        dictateError = error instanceof Error ? error.message : m['voice.dictation_error']();
       } finally {
         transcribing = false;
         dictateStatus = '';
@@ -331,7 +332,7 @@
           rows: terminal.rows,
         });
       } else {
-        statusMessage = 'Nenhuma sessao informada.';
+        statusMessage = m['term.no_session']();
       }
     };
 
@@ -406,7 +407,7 @@
     };
 
     const handleError = () => {
-      statusMessage = 'Falha na conexao WebSocket com o servidor.';
+      statusMessage = m['term.ws_error']();
     };
 
     const handleClose = () => {
@@ -415,11 +416,11 @@
       // re-attach com backoff. Se a sessao PTY morreu junto, o 'error' do
       // attach aciona o respawn com resume (o contexto volta sozinho).
       if (reconnectAttempts >= 6) {
-        statusMessage = 'Conexao encerrada.';
+        statusMessage = m['term.connection_closed']();
         return;
       }
       reconnectAttempts += 1;
-      statusMessage = `Reconectando (${reconnectAttempts}/6)...`;
+      statusMessage = m['term.reconnecting']({ attempt: reconnectAttempts });
       reconnectTimer = setTimeout(connect, 2_000 * reconnectAttempts);
     };
 
@@ -483,10 +484,10 @@
     <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
-            <span {...props} class="attention-dot" aria-label="Aguardando atencao"></span>
+            <span {...props} class="attention-dot" aria-label={m['term.waiting_attention']()}></span>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="left">Aguardando atencao</Tooltip.Content>
+        <Tooltip.Content side="left">{m['term.waiting_attention']()}</Tooltip.Content>
       </Tooltip.Root>
   {/if}
   {#if dictationSupported}
@@ -494,10 +495,10 @@
       {#if dictating}
         <span class="dictate-rec" aria-live="polite">● {recSeconds}s</span>
       {:else if transcribing}
-        <span class="dictate-transcribing">Transcrevendo…</span>
+        <span class="dictate-transcribing">{m['voice.transcribing']()}</span>
       {/if}
       <Select.Root type="single" value={dictateLang} onValueChange={(value: string) => (dictateLang = value as 'auto' | 'pt' | 'en')} disabled={dictating || transcribing}>
-        <Select.Trigger class="dictate-lang" aria-label="Idioma do ditado">
+        <Select.Trigger class="dictate-lang" aria-label={m['voice.dictation_lang']()}>
           {dictateLang === 'auto' ? 'Auto' : dictateLang.toUpperCase()}
         </Select.Trigger>
         <Select.Content>
@@ -507,7 +508,7 @@
         </Select.Content>
       </Select.Root>
       <HeaderIconButton
-        label={dictating ? `Parar ditado (${comboLabel(dictateHotkey)})` : transcribing ? 'Transcrevendo...' : `Ditar (${comboLabel(dictateHotkey)})`}
+        label={dictating ? m['voice.stop_dictation']({ hotkey: comboLabel(dictateHotkey) }) : transcribing ? m['voice.transcribing']() : m['voice.dictate']({ hotkey: comboLabel(dictateHotkey) })}
         class="dictate-btn"
         side="left"
         active={dictating}
@@ -516,7 +517,7 @@
         {#if dictating}<Square size={11} />{:else}<Mic size={12} />{/if}
       </HeaderIconButton>
       <HeaderIconButton
-        label={voiceOn ? 'Voz ativada: o agente fala as respostas em voz alta' : 'Ativar voz: o agente fala as respostas em voz alta'}
+        label={voiceOn ? m['voice.on_tooltip']() : m['voice.off_tooltip']()}
         class="dictate-btn"
         side="left"
         active={voiceOn}
@@ -531,10 +532,10 @@
       <input
         bind:value={searchQuery}
         oninput={() => searchQuery && searchAddon?.findNext(searchQuery)}
-        placeholder="Buscar no terminal... (Enter = proximo)"
+        placeholder={m['ph.search_terminal']()}
         spellcheck="false"
       />
-      <span class="search-hint">Esc fecha</span>
+      <span class="search-hint">{m['term.esc_closes']()}</span>
     </div>
   {/if}
   {#if dictateError}
@@ -547,7 +548,7 @@
     <p class="terminal-status">{statusMessage}</p>
   {/if}
   {#if exited !== null}
-    <p class="terminal-status">Processo finalizado (codigo {exited}).</p>
+    <p class="terminal-status">{m['term.process_exited']({ code: exited })}</p>
   {/if}
   <div class="terminal-container" bind:this={container} style:--terminal-padding="{terminalPaddingPx}px"></div>
   <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => toggleDictation()} onCancel={() => {}} />

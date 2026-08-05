@@ -10,6 +10,7 @@
   import { Plane, Play, Trash2, X, Zap } from '@lucide/svelte';
   import { createFloorSchema } from '$lib/modules/agent-room/contracts/schemas/floorSchemas.js';
   import type { Floor, Workspace, WorkspaceHooks } from '$lib/modules/agent-room/domain/types.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   type Props = {
     workspace: Workspace;
@@ -52,7 +53,7 @@
         $formData.cloneLayout = false;
         await refresh();
       } catch (error) {
-        errorMessage = error instanceof Error ? error.message : 'Falha ao criar andar.';
+        errorMessage = error instanceof Error ? error.message : m['floor.error_create']();
       }
     },
   });
@@ -88,7 +89,7 @@
       );
       landingPreview = { floor, ...preview };
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha no preview.';
+      errorMessage = error instanceof Error ? error.message : m['floor.error_preview']();
     }
   }
 
@@ -104,7 +105,7 @@
       landingPreview = null;
       await refresh();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao aterrissar.';
+      errorMessage = error instanceof Error ? error.message : m['floor.error_land']();
     }
   }
 
@@ -130,9 +131,9 @@
         { method: 'POST', body: JSON.stringify({ kind }) }
       );
       const failed = results.filter((result) => !result.ok);
-      if (failed.length) errorMessage = `${failed.length} hook(s) falharam.`;
+      if (failed.length) errorMessage = m['floor.error_hooks_failed']({ count: failed.length });
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao rodar hooks.';
+      errorMessage = error instanceof Error ? error.message : m['floor.error_hooks_run']();
     }
   }
 
@@ -144,15 +145,15 @@
 
 <aside class="side-panel">
   <header class="panel-header">
-    <h3>Andares</h3>
+    <h3>{m['floor.title']()}</h3>
     <div class="panel-header-actions">
-      <IconAction label="Hooks" onclick={() => (showHooks = !showHooks)}><Zap size={14} /></IconAction>
-      <IconAction label="Fechar" onclick={onClose}><X size={14} /></IconAction>
+      <IconAction label={m['floor.hooks']()} onclick={() => (showHooks = !showHooks)}><Zap size={14} /></IconAction>
+      <IconAction label={m['floor.close']()} onclick={onClose}><X size={14} /></IconAction>
     </div>
   </header>
 
   <button class="floor-item" class:active={visibleFloorId === null} onclick={() => onSelectFloor(null)}>
-    Térreo
+    {m['floor.ground']()}
   </button>
 
   {#each floors as floor (floor.id)}
@@ -162,10 +163,10 @@
         <small>{floor.branch}</small>
       </button>
       <div class="floor-actions">
-        <IconAction label="Preview aterrissagem" onclick={() => previewLanding(floor)}><Plane size={13} /></IconAction>
-        <IconAction label="Rodar hooks run" onclick={() => runHooksNow(floor, 'run')}><Play size={13} /></IconAction>
-        <IconAction label="Excluir (manter branch)" onclick={() => removeFloor(floor, false)}><X size={13} /></IconAction>
-        <IconAction label="Excluir (apagar branch)" danger onclick={() => removeFloor(floor, true)}><Trash2 size={13} /></IconAction>
+        <IconAction label={m['floor.preview_landing']()} onclick={() => previewLanding(floor)}><Plane size={13} /></IconAction>
+        <IconAction label={m['floor.run_hooks']()} onclick={() => runHooksNow(floor, 'run')}><Play size={13} /></IconAction>
+        <IconAction label={m['floor.delete_keep_branch']()} onclick={() => removeFloor(floor, false)}><X size={13} /></IconAction>
+        <IconAction label={m['floor.delete_branch']()} danger onclick={() => removeFloor(floor, true)}><Trash2 size={13} /></IconAction>
       </div>
     </div>
   {/each}
@@ -174,8 +175,8 @@
     <Form.Field {form} name="name">
       <Form.Control>
         {#snippet children({ props })}
-          <Form.Label>Nome do andar</Form.Label>
-          <Input {...props} bind:value={$formData.name} placeholder="Nome do andar" />
+          <Form.Label>{m['floor.name_label']()}</Form.Label>
+          <Input {...props} bind:value={$formData.name} placeholder={m['ph.floor_name']()} />
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
@@ -184,8 +185,8 @@
     <Form.Field {form} name="branch">
       <Form.Control>
         {#snippet children({ props })}
-          <Form.Label>Branch (opcional)</Form.Label>
-          <Input {...props} bind:value={$formData.branch} placeholder="orkestrai/meu-andar" />
+          <Form.Label>{m['floor.branch_label']()}</Form.Label>
+          <Input {...props} bind:value={$formData.branch} placeholder={m['floor.branch_ph']()} />
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
@@ -196,7 +197,7 @@
         {#snippet children({ props })}
           <div class="flex items-center gap-2">
             <Checkbox {...props} checked={$formData.cloneLayout} onCheckedChange={(value: boolean | 'indeterminate') => ($formData.cloneLayout = value === true)} />
-            <Form.Label>Clonar layout do Térreo</Form.Label>
+            <Form.Label>{m['floor.clone_layout']()}</Form.Label>
           </div>
         {/snippet}
       </Form.Control>
@@ -207,42 +208,42 @@
       <p class="text-sm text-destructive">{errorMessage}</p>
     {/if}
 
-    <Button type="submit" size="sm">Criar andar</Button>
+    <Button type="submit" size="sm">{m['floor.create']()}</Button>
   </form>
 
   {#if landingPreview}
     <div class="landing-preview">
-      <h4>Aterrissar {landingPreview.floor.name}</h4>
+      <h4>{m['floor.land_title']({ name: landingPreview.floor.name })}</h4>
       <p class="preview-route">{landingPreview.from} → {landingPreview.to}</p>
       {#if landingPreview.stat}
         <pre>{landingPreview.stat}</pre>
       {:else}
-        <p class="muted">Sem diferenças.</p>
+        <p class="muted">{m['floor.no_diff']()}</p>
       {/if}
       {#if landingPreview.conflicts.length}
-        <p class="conflict">Conflitos potenciais: {landingPreview.conflicts.join(', ')}</p>
+        <p class="conflict">{m['floor.conflicts']({ list: landingPreview.conflicts.join(', ') })}</p>
       {/if}
       {#if landingPreview.targetDirty}
-        <p class="conflict">O checkout principal tem alterações não commitadas.</p>
+        <p class="conflict">{m['floor.dirty_warning']()}</p>
       {/if}
       <div class="preview-actions">
-        <Button variant="outline" size="sm" onclick={() => (landingPreview = null)}>Cancelar</Button>
-        <Button size="sm" onclick={confirmLanding} disabled={landingPreview.targetDirty}>Aterrissar</Button>
+        <Button variant="outline" size="sm" onclick={() => (landingPreview = null)}>{m['settings.cancel']()}</Button>
+        <Button size="sm" onclick={confirmLanding} disabled={landingPreview.targetDirty}>{m['floor.land']()}</Button>
       </div>
     </div>
   {/if}
 
   {#if showHooks}
     <div class="hooks-editor">
-      <h4>Hooks</h4>
-      <label>Setup (ao criar andar)<Textarea bind:value={hooksText.setup} rows={2} /></label>
-      <label>Run (botão play)<Textarea bind:value={hooksText.run} rows={2} /></label>
-      <label>Teardown (ao excluir/aterrissar)<Textarea bind:value={hooksText.teardown} rows={2} /></label>
+      <h4>{m['floor.hooks']()}</h4>
+      <label>{m['floor.hook_setup']()}<Textarea bind:value={hooksText.setup} rows={2} /></label>
+      <label>{m['floor.hook_run']()}<Textarea bind:value={hooksText.run} rows={2} /></label>
+      <label>{m['floor.hook_teardown']()}<Textarea bind:value={hooksText.teardown} rows={2} /></label>
       <div class="flex items-center gap-2">
         <Checkbox checked={hooks.autoRunSetup ?? false} onCheckedChange={(value: boolean | 'indeterminate') => (hooks = { ...hooks, autoRunSetup: value === true })} />
-        <span class="text-xs text-muted-foreground">Auto-run setup ao criar andar</span>
+        <span class="text-xs text-muted-foreground">{m['floor.hook_auto']()}</span>
       </div>
-      <Button size="sm" onclick={saveHooks}>Salvar hooks</Button>
+      <Button size="sm" onclick={saveHooks}>{m['floor.save_hooks']()}</Button>
     </div>
   {/if}
 </aside>

@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import { Button } from '$lib/components/ui/button';
+  import * as m from '$lib/paraglide/messages.js';
 
   const RELEASES_URL = 'https://github.com/beeblock/orkestrai-releases/releases/latest';
 
@@ -65,7 +66,7 @@
 
 {#if status === 'downloading'}
   <div class="update-progress" role="status">
-    <span class="update-progress-label">Baixando atualizacao… {percent}%</span>
+    <span class="update-progress-label">{m['update.downloading']({ percent })}</span>
     <span class="update-progress-bar"><span class="update-progress-fill" style:width="{percent}%"></span></span>
   </div>
 {/if}
@@ -73,23 +74,21 @@
 <AlertDialog.Root bind:open={dialogOpen}>
   <AlertDialog.Content>
     <AlertDialog.Header>
-      <AlertDialog.Title>{failed ? 'Atualizacao manual necessaria' : 'Nova versao pronta'}</AlertDialog.Title>
+      <AlertDialog.Title>{failed ? m['update.manual_title']() : m['update.ready_title']()}</AlertDialog.Title>
       <AlertDialog.Description>
         {#if failed}
-          Nao consegui instalar a atualizacao automaticamente. Baixe a versao nova na
-          pagina de releases — seus workspaces, configuracoes e modelos ficam intactos.
+          {m['update.manual_desc']()}
         {:else}
-          A versao {version} foi baixada e verificada. Reinicie para atualizar — leva
-          segundos e seus workspaces continuam onde estavam.
+          {m['update.ready_desc']({ version })}
         {/if}
       </AlertDialog.Description>
     </AlertDialog.Header>
     <AlertDialog.Footer>
-      <AlertDialog.Cancel>Depois</AlertDialog.Cancel>
+      <AlertDialog.Cancel>{m['update.later']()}</AlertDialog.Cancel>
       {#if failed}
-        <Button size="sm" onclick={downloadManually}>Baixar do site</Button>
+        <Button size="sm" onclick={downloadManually}>{m['update.download_site']()}</Button>
       {:else}
-        <Button size="sm" onclick={install}>Reiniciar e atualizar</Button>
+        <Button size="sm" onclick={install}>{m['update.restart']()}</Button>
       {/if}
     </AlertDialog.Footer>
   </AlertDialog.Content>

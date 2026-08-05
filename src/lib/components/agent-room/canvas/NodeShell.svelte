@@ -3,6 +3,7 @@
   import { Handle, NodeResizer, Position, useEdges, useNodes, type NodeProps } from '@xyflow/svelte';
   import * as Popover from '$lib/components/ui/popover';
   import { Link2, X } from '@lucide/svelte';
+  import * as m from '$lib/paraglide/messages.js';
   import { floatingAnchorFor } from './floating-anchor.js';
 
   export type NodeConnection = {
@@ -125,14 +126,14 @@
       <span
         class="node-title"
         class:renamable={Boolean(onRename)}
-        aria-label={onRename ? 'Duplo-clique para renomear' : undefined}
+        aria-label={onRename ? m['shell.rename_hint']() : undefined}
         ondblclick={startRename}
         role={onRename ? 'button' : undefined}
       >{@render title()}</span>
     {/if}
     {#if connections.length}
       <Popover.Root>
-        <Popover.Trigger class="connections-badge nodrag" aria-label="Conexoes">
+        <Popover.Trigger class="connections-badge nodrag" aria-label={m['shell.connections']()}>
           <Link2 size={11} />{connections.length}
         </Popover.Trigger>
         <Popover.Content class="w-56 p-1">
@@ -143,7 +144,7 @@
                 <span class="connection-title">{connection.targetTitle}</span>
                 <span class="connection-type">{connection.targetType}</span>
               </button>
-              <button class="connection-remove" aria-label="Remover conexao" onclick={() => onRemoveConnection?.(connection.edgeId)}>
+              <button class="connection-remove" aria-label={m['shell.remove_connection']()} onclick={() => onRemoveConnection?.(connection.edgeId)}>
                 <X size={11} />
               </button>
             </div>

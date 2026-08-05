@@ -7,6 +7,7 @@
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import { Slider } from '$lib/components/ui/slider';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type ShapeKind = 'rectangle' | 'rounded' | 'ellipse' | 'diamond' | 'arrow';
 
@@ -280,11 +281,11 @@
 >
   <NodeResizer isVisible={selected ?? false} minWidth={60} minHeight={40} onResizeEnd={(_e, params) => data.onResize?.(id, params)} />
   {#if selected}
-    <HeaderIconButton label="Remover" class="shape-delete nodrag" side="left" onclick={() => data.onDelete(id)}>
+    <HeaderIconButton label={m['shape.remove']()} class="shape-delete nodrag" side="left" onclick={() => data.onDelete(id)}>
       <X size={12} />
     </HeaderIconButton>
 
-    <button class="shape-settings nodrag" class:style-open={styleOpen} aria-label="Estilo da forma" onclick={openStylePanel}>
+    <button class="shape-settings nodrag" class:style-open={styleOpen} aria-label={m['shape.style_title']()} onclick={openStylePanel}>
       <Settings2 size={12} />
     </button>
   {/if}
@@ -296,7 +297,7 @@
       style:left="{panelPos.x}px"
       style:top="{panelPos.y}px"
       role="dialog"
-      aria-label="Estilo da forma"
+      aria-label={m['shape.style_title']()}
       onclick={(event) => event.stopPropagation()}
       ondblclick={(event) => event.stopPropagation()}
     >
@@ -307,30 +308,30 @@
         onpointerup={panelPointerUp}
         role="button"
         tabindex="0"
-        aria-label="Arrastar painel"
+        aria-label={m['shape.drag_panel']()}
       >
         <GripHorizontal size={13} />
-        <span>Estilo da forma</span>
-        <button class="style-panel-close" aria-label="Fechar" onclick={() => (styleOpen = false)}>
+        <span>{m['shape.style_title']()}</span>
+        <button class="style-panel-close" aria-label={m['shape.close']()} onclick={() => (styleOpen = false)}>
           <X size={12} />
         </button>
       </div>
       <div class="pop-grid">
-        <span class="pop-label">Tipo</span>
+        <span class="pop-label">{m['shape.lbl_type']()}</span>
         <Select.Root type="single" value={shape} onValueChange={(value: string) => patch({ shape: value })}>
           <Select.Trigger class="h-7 w-full text-xs" data-slot="select-trigger">
-            {{ rectangle: 'Retangulo', rounded: 'Arredondado', ellipse: 'Elipse', diamond: 'Losango', arrow: 'Seta' }[shape]}
+            {{ rectangle: m['shape.kind_rectangle'](), rounded: m['shape.kind_rounded'](), ellipse: m['shape.kind_ellipse'](), diamond: m['shape.kind_diamond'](), arrow: m['shape.kind_arrow']() }[shape]}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="rectangle">Retangulo</Select.Item>
-            <Select.Item value="rounded">Arredondado</Select.Item>
-            <Select.Item value="ellipse">Elipse</Select.Item>
-            <Select.Item value="diamond">Losango</Select.Item>
-            <Select.Item value="arrow">Seta</Select.Item>
+            <Select.Item value="rectangle">{m['shape.kind_rectangle']()}</Select.Item>
+            <Select.Item value="rounded">{m['shape.kind_rounded']()}</Select.Item>
+            <Select.Item value="ellipse">{m['shape.kind_ellipse']()}</Select.Item>
+            <Select.Item value="diamond">{m['shape.kind_diamond']()}</Select.Item>
+            <Select.Item value="arrow">{m['shape.kind_arrow']()}</Select.Item>
           </Select.Content>
         </Select.Root>
 
-        <span class="pop-label">Fundo</span>
+        <span class="pop-label">{m['shape.lbl_fill']()}</span>
         <div class="swatches">
           {#each SWATCHES as swatch (swatch)}
             <button
@@ -338,13 +339,13 @@
               class:active={style.fill === swatch}
               class:transparent={swatch === 'transparent'}
               style:background={swatch === 'transparent' ? 'transparent' : swatch}
-              aria-label={`Fundo ${swatch}`}
+              aria-label={m['shape.swatch_fill']({ color: swatch })}
               onclick={() => patch({ fill: swatch })}
             ></button>
           {/each}
         </div>
 
-        <span class="pop-label">Opacidade</span>
+        <span class="pop-label">{m['shape.lbl_opacity']()}</span>
         <Slider
           type="single"
           value={Math.round(style.fillOpacity * 100)}
@@ -354,20 +355,20 @@
           onValueChange={(value: number) => patch({ fillOpacity: value / 100 })}
         />
 
-        <span class="pop-label">Borda</span>
+        <span class="pop-label">{m['shape.lbl_stroke']()}</span>
         <div class="swatches">
           {#each SWATCHES.filter((swatch) => swatch !== 'transparent') as swatch (swatch)}
             <button
               class="swatch"
               class:active={style.stroke === swatch}
               style:background={swatch}
-              aria-label={`Borda ${swatch}`}
+              aria-label={m['shape.swatch_stroke']({ color: swatch })}
               onclick={() => patch({ stroke: swatch })}
             ></button>
           {/each}
         </div>
 
-        <span class="pop-label">Espessura</span>
+        <span class="pop-label">{m['shape.lbl_stroke_width']()}</span>
         <div class="pop-row">
           <Slider
             type="single"
@@ -381,7 +382,7 @@
         </div>
 
         {#if shape === 'arrow'}
-          <span class="pop-label">Cabeca</span>
+          <span class="pop-label">{m['shape.lbl_head']()}</span>
           <div class="pop-row">
             <Slider
               type="single"
@@ -395,25 +396,25 @@
           </div>
         {/if}
 
-        <span class="pop-label">Tracejada</span>
+        <span class="pop-label">{m['shape.lbl_dashed']()}</span>
         <button class="mini-toggle" class:active={style.strokeDash} onclick={() => patch({ strokeDash: !style.strokeDash })}>
-          {style.strokeDash ? 'Sim' : 'Nao'}
+          {style.strokeDash ? m['shape.yes']() : m['shape.no']()}
         </button>
 
-        <span class="pop-label">Texto</span>
+        <span class="pop-label">{m['shape.lbl_text']()}</span>
         <div class="swatches">
           {#each ['#e6e6eb', '#8b8c96', '#7C4DFF', '#00BFFF', '#FFC857', '#3dd68c', '#e5484d'] as swatch (swatch)}
             <button
               class="swatch"
               class:active={style.textColor === swatch}
               style:background={swatch}
-              aria-label={`Texto ${swatch}`}
+              aria-label={m['shape.swatch_text']({ color: swatch })}
               onclick={() => patch({ textColor: swatch })}
             ></button>
           {/each}
         </div>
 
-        <span class="pop-label">Tamanho</span>
+        <span class="pop-label">{m['shape.lbl_size']()}</span>
         <Input
           class="h-7 w-20 text-xs"
           type="number"
@@ -423,33 +424,33 @@
           oninput={(event) => patch({ fontSize: Number((event.target as HTMLInputElement).value) || DEFAULTS.fontSize })}
         />
 
-        <span class="pop-label">Peso</span>
+        <span class="pop-label">{m['shape.lbl_weight']()}</span>
         <Select.Root type="single" value={String(style.fontWeight)} onValueChange={(value: string) => patch({ fontWeight: Number(value) })}>
           <Select.Trigger class="h-7 w-full text-xs" data-slot="select-trigger">
-            {{ '400': 'Normal', '500': 'Medio', '600': 'Semibold', '700': 'Bold' }[String(style.fontWeight)]}
+            {{ '400': m['shape.weight_400'](), '500': m['shape.weight_500'](), '600': m['shape.weight_600'](), '700': m['shape.weight_700']() }[String(style.fontWeight)]}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="400">Normal</Select.Item>
-            <Select.Item value="500">Medio</Select.Item>
-            <Select.Item value="600">Semibold</Select.Item>
-            <Select.Item value="700">Bold</Select.Item>
+            <Select.Item value="400">{m['shape.weight_400']()}</Select.Item>
+            <Select.Item value="500">{m['shape.weight_500']()}</Select.Item>
+            <Select.Item value="600">{m['shape.weight_600']()}</Select.Item>
+            <Select.Item value="700">{m['shape.weight_700']()}</Select.Item>
           </Select.Content>
         </Select.Root>
 
-        <span class="pop-label">Alinhamento</span>
+        <span class="pop-label">{m['shape.lbl_align']()}</span>
         <div class="pop-row">
           {#each (['left', 'center', 'right'] as const) as align (align)}
             <button
               class="mini-toggle"
               class:active={style.textAlign === align}
               onclick={() => patch({ textAlign: align })}
-            >{{ left: 'Esq', center: 'Centro', right: 'Dir' }[align]}</button>
+            >{{ left: m['shape.align_left'](), center: m['shape.align_center'](), right: m['shape.align_right']() }[align]}</button>
           {/each}
         </div>
 
         {#if shape === 'arrow'}
-          <span class="pop-label">Pontos</span>
-          <span class="pop-hint">Arraste os pontos · 2x clique no traco adiciona · 2x clique no ponto remove</span>
+          <span class="pop-label">{m['shape.lbl_points']()}</span>
+          <span class="pop-hint">{m['shape.points_hint']()}</span>
         {/if}
       </div>
     </div>

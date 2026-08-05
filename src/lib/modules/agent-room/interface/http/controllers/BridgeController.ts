@@ -304,6 +304,7 @@ export class BridgeController extends Controller {
       const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
       const task = await taskBoardService.create(workspace.id, {
         title: input.title,
+        description: input.description ?? null,
         assigneeNodeId: await this.assigneeNodeId(workspace.id, input.assignee),
         noteId: (await this.noteNodeId(workspace.id, input.note)) ?? null,
         createdBy: input.from ?? 'agente',
@@ -322,6 +323,7 @@ export class BridgeController extends Controller {
       const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
       const task = await taskBoardService.update(workspace.id, event.params.taskId, {
         status: input.status,
+        description: input.description,
         assigneeNodeId: input.assignee !== undefined ? await this.assigneeNodeId(workspace.id, input.assignee) : undefined,
         noteId: await this.noteNodeId(workspace.id, input.note),
       });

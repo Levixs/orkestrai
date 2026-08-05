@@ -4,6 +4,7 @@
   import * as Select from '$lib/components/ui/select';
   import NodeShell from './NodeShell.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   type FlowStep = { kind: 'agent' | 'approval'; target?: string; prompt?: string };
   type FlowRunStep = { index: number; label: string; status: 'pending' | 'running' | 'waiting' | 'done' | 'error'; excerpt?: string };
@@ -40,6 +41,18 @@
   let agents = $state<Array<{ id: string; title: string }>>([]);
   let flowInput = $state('');
   let busy = $state(false);
+  /** Erro visivel no topo do no — nada de falhar em silencio. */
+  let errorMsg = $state('');
+  let errorTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function showError(message: string) {
+    errorMsg = message;
+    if (errorTimer) clearTimeout(errorTimer);
+    errorTimer = setTimeout(() => { errorMsg = ''; }, 12_000);
+  }
+
+  /** Ultima execucao falhou: mostra o erro ate uma nova run comecar. */
+  const lastFailure = $derived(!run?.active && runs.length && !runs[0].ok ? runs[0] : null);
 
   async function api<T>(path: string, init?: RequestInit): Promise<T | null> {
     try {
@@ -48,9 +61,13 @@
         headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
       });
       const payload = await response.json();
-      if (!response.ok || payload.error) return null;
+      if (!response.ok || payload.error) {
+        showError(String(payload.error ?? m['flow.error_api']()));
+        return null;
+      }
       return payload.data as T;
     } catch {
+      showError(m['flow.error_api']());
       return null;
     }
   }
@@ -70,6 +87,11 @@
   }
 
   function addStep(kind: 'agent' | 'approval') {
+    if (kind === 'agent' && !agents.length) {
+      showError(m['flow.no_agents_hint']());
+      return;
+    }
+    errorMsg = '';
     const step: FlowStep = kind === 'approval' ? { kind } : { kind, target: agents[0]?.title ?? '', prompt: '{{input}}' };
     patchPayload({ steps: [...steps, step] });
   }
@@ -91,12 +113,17 @@
   }
 
   async function startRun() {
+    if (!steps.length) {
+      showError(m['flow.no_steps_hint']());
+      return;
+    }
     busy = true;
-    await api(`/api/agent-room/workspaces/${data.workspaceId}/flows/run`, {
+    errorMsg = '';
+    const started = await api(`/api/agent-room/workspaces/${data.workspaceId}/flows/run`, {
       method: 'POST',
       body: JSON.stringify({ nodeId: id, input: flowInput }),
     });
-    flowInput = '';
+    if (started) flowInput = '';
     busy = false;
   }
 
@@ -127,24 +154,36 @@
   onRemoveConnection={data.onRemoveConnection}
 >
   {#snippet icon()}<Workflow size={13} />{/snippet}
-  {#snippet title()}{data.title || 'Fluxo'}{/snippet}
+  {#snippet title()}{data.title || m['flow.title_default']()}{/snippet}
   {#snippet actions()}
-    <HeaderIconButton label="Remover fluxo" class="node-action-btn" danger side="left" onclick={() => data.onDelete(id)}>
+    <HeaderIconButton label={m['flow.remove']()} class="node-action-btn" danger side="left" onclick={() => data.onDelete(id)}>
       <Trash2 size={13} /></HeaderIconButton>
   {/snippet}
 
   <div class="flow-body nodrag nowheel">
+    {#if errorMsg}
+      <div class="flow-banner error" role="alert"><CircleX size={12} /> <span>{errorMsg}</span></div>
+    {:else if lastFailure}
+      <div class="flow-banner error" role="alert">
+        <CircleX size={12} />
+        <span>{m['flow.last_run_failed']()}: {lastFailure.error ?? m['flow.history_failed']()}</span>
+      </div>
+    {/if}
+
     <div class="flow-steps">
       {#each steps as step, index (index)}
         {@const runStep = run?.steps?.[index]}
+        {@const StepStatusIcon = runStep ? stepIcon(runStep.status) : null}
         <div class="flow-step" class:running={runStep?.status === 'running'} class:waiting={runStep?.status === 'waiting'}>
-          <span class="flow-step-num">{index + 1}</span>
+          <span class="flow-step-num">
+            {#if StepStatusIcon}<StepStatusIcon size={12} class={runStep?.status === 'running' ? 'flow-spin' : ''} />{:else}{index + 1}{/if}
+          </span>
           {#if step.kind === 'approval'}
-            <span class="flow-step-kind approval"><UserCheck size={11} /> aprovacao</span>
+            <span class="flow-step-kind approval"><UserCheck size={11} /> {m['flow.kind_approval']()}</span>
           {:else}
             <Select.Root type="single" value={step.target ?? ''} onValueChange={(value: string) => updateStep(index, { target: value })}>
               <Select.Trigger class="flow-step-target" data-slot="select-trigger">
-                {step.target || 'agente?'}
+                {step.target || m['flow.agent_fallback']()}
               </Select.Trigger>
               <Select.Content>
                 {#each agents as agent (agent.id)}
@@ -154,16 +193,16 @@
             </Select.Root>
           {/if}
           <span class="flow-step-actions">
-            <button class="flow-mini-btn" aria-label="Subir passo" onclick={() => moveStep(index, -1)}>↑</button>
-            <button class="flow-mini-btn" aria-label="Descer passo" onclick={() => moveStep(index, 1)}>↓</button>
-            <button class="flow-mini-btn danger" aria-label="Remover passo" onclick={() => removeStep(index)}>×</button>
+            <button class="flow-mini-btn" aria-label={m['flow.move_up']()} onclick={() => moveStep(index, -1)}>↑</button>
+            <button class="flow-mini-btn" aria-label={m['flow.move_down']()} onclick={() => moveStep(index, 1)}>↓</button>
+            <button class="flow-mini-btn danger" aria-label={m['flow.remove_step']()} onclick={() => removeStep(index)}>×</button>
           </span>
           {#if step.kind === 'agent'}
             <textarea
               class="flow-step-prompt"
               rows="2"
               value={step.prompt ?? ''}
-              placeholder="Prompt do passo — {{input}} = saida do passo anterior"
+              placeholder={m['ph.flow_step_prompt']()}
               onchange={(event) => updateStep(index, { prompt: (event.target as HTMLTextAreaElement).value })}
             ></textarea>
           {/if}
@@ -172,15 +211,19 @@
           {/if}
         </div>
       {:else}
-        <span class="flow-empty">Sem passos. Adicione agentes em sequencia — a saida de um vira a entrada do proximo.</span>
+        <div class="flow-empty">
+          <Workflow size={18} />
+          <strong>{m['flow.empty']()}</strong>
+          <span>{m['flow.empty_guide']()}</span>
+        </div>
       {/each}
     </div>
 
     <div class="flow-add">
-      <button class="flow-add-btn" onclick={() => addStep('agent')} disabled={!agents.length}><Plus size={12} /> Agente</button>
-      <button class="flow-add-btn" onclick={() => addStep('approval')}><UserCheck size={12} /> Aprovacao</button>
+      <button class="flow-add-btn" onclick={() => addStep('agent')} title={agents.length ? '' : m['flow.no_agents_hint']()}><Plus size={12} /> {m['flow.add_agent']()}</button>
+      <button class="flow-add-btn" onclick={() => addStep('approval')}><UserCheck size={12} /> {m['flow.add_approval']()}</button>
       <label class="flow-iter">
-        repetir
+        {m['flow.repeat']()}
         <input
           type="number"
           min="1"
@@ -196,22 +239,22 @@
       {#if run?.active}
         <div class="flow-run-status">
           <Loader2 size={12} class="flow-spin" />
-          rodando passo {(run.steps.findIndex((step) => step.status === 'running' || step.status === 'waiting') + 1) || run.steps.length}/{run.steps.length}
-          {run.iterations > 1 ? ` · rodada ${run.iteration}/${run.iterations}` : ''}
+          {m['flow.running_status']({ current: (run.steps.findIndex((step) => step.status === 'running' || step.status === 'waiting') + 1) || run.steps.length, total: run.steps.length })}
+          {run.iterations > 1 ? m['flow.round_suffix']({ iteration: run.iteration, total: run.iterations }) : ''}
         </div>
         {#if run.steps.some((step) => step.status === 'waiting')}
-          <button class="flow-approve-btn" onclick={approveStep}><Check size={12} /> Aprovar e continuar</button>
+          <button class="flow-approve-btn" onclick={approveStep}><Check size={12} /> {m['flow.approve']()}</button>
         {/if}
-        <button class="flow-stop-btn" onclick={stopRun}><Square size={11} /> Parar</button>
+        <button class="flow-stop-btn" onclick={stopRun}><Square size={11} /> {m['flow.stop']()}</button>
       {:else}
         <input
           class="flow-input"
           bind:value={flowInput}
-          placeholder="Entrada inicial do fluxo (opcional)"
-          aria-label="Entrada inicial do fluxo"
+          placeholder={m['ph.flow_initial_input']()}
+          aria-label={m['flow.input_aria']()}
         />
-        <button class="flow-run-btn" disabled={busy || !steps.length} onclick={startRun}>
-          <Play size={12} /> Rodar
+        <button class="flow-run-btn" disabled={busy} onclick={startRun}>
+          {#if busy}<Loader2 size={12} class="flow-spin" /> {m['flow.starting']()}{:else}<Play size={12} /> {m['flow.run']()}{/if}
         </button>
       {/if}
     </div>
@@ -222,7 +265,7 @@
           <div class="flow-history-row" class:failed={!pastRun.ok}>
             {#if pastRun.ok}<CircleCheck size={11} />{:else}<CircleX size={11} />{/if}
             <span>{new Date(pastRun.finishedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-            <span class="flow-history-detail">{pastRun.ok ? `${pastRun.steps.filter((step) => step.status === 'done').length} passos ok` : (pastRun.error ?? 'falhou')}</span>
+            <span class="flow-history-detail">{pastRun.ok ? m['flow.history_ok']({ count: pastRun.steps.filter((step) => step.status === 'done').length }) : (pastRun.error ?? m['flow.history_failed']())}</span>
           </div>
         {/each}
       </div>
@@ -346,9 +389,49 @@
   }
 
   .flow-empty {
-    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 16px 12px;
+    text-align: center;
     color: #6d6d78;
-    padding: 6px 2px;
+    border: 1.5px dashed rgba(91, 141, 239, 0.3);
+    border-radius: 10px;
+    background: rgba(91, 141, 239, 0.04);
+  }
+
+  .flow-empty strong {
+    font-size: 11.5px;
+    color: #9d9ea8;
+    font-weight: 600;
+  }
+
+  .flow-empty span {
+    font-size: 10.5px;
+    line-height: 1.45;
+    max-width: 34ch;
+  }
+
+  .flow-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    font-size: 10.5px;
+    line-height: 1.4;
+  }
+
+  .flow-banner.error {
+    background: rgba(229, 72, 77, 0.1);
+    border: 1px solid rgba(229, 72, 77, 0.35);
+    color: #ff9c9f;
+  }
+
+  .flow-banner :global(svg) {
+    flex-shrink: 0;
+    margin-top: 1px;
   }
 
   .flow-add {

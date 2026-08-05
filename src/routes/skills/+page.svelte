@@ -8,6 +8,7 @@
   import { Spinner } from '$lib/components/ui/spinner';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import * as Dialog from '$lib/components/ui/dialog';
+  import * as m from '$lib/paraglide/messages.js';
 
   type Workspace = { id: string; name: string };
   type SkillResult = { id: string; skillId: string; name: string; source: string; installs: number };
@@ -54,9 +55,9 @@
     mcpFeedback = '';
     try {
       mcpResults = await api<McpEntry[]>(`/api/agent-room/workspaces/${workspaceId || 'x'}/mcp-market?q=${encodeURIComponent(mcpQuery.trim())}`);
-      if (!mcpResults.length) mcpFeedback = 'Nenhum MCP encontrado.';
+      if (!mcpResults.length) mcpFeedback = m['skills.mcp_no_results']();
     } catch (error) {
-      mcpFeedback = error instanceof Error ? error.message : 'Falha na busca.';
+      mcpFeedback = error instanceof Error ? error.message : m['skills.search_failed']();
       mcpResults = [];
     } finally {
       mcpSearching = false;
@@ -70,7 +71,7 @@
   /** Abre a instalacao: direto se nao pede env; dialog com campos se pede. */
   function openMcpInstall(entry: McpEntry) {
     if (!workspaceId) {
-      mcpFeedback = 'Escolha um workspace para instalar.';
+      mcpFeedback = m['skills.choose_workspace_first']();
       return;
     }
     mcpInstallError = '';
@@ -92,10 +93,10 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ entry, env: mcpEnvValues }),
       });
-      mcpFeedback = `MCP "${entry.title}" instalado em ${activeWorkspaceName} — os agentes descobrem na proxima sessao.`;
+      mcpFeedback = m['skills.mcp_install_success']({ title: entry.title, workspace: activeWorkspaceName });
       mcpInstallEntry = null;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao instalar.';
+      const message = error instanceof Error ? error.message : m['skills.install_failed']();
       if (mcpInstallEntry) mcpInstallError = message;
       else mcpFeedback = message;
     } finally {
@@ -121,7 +122,7 @@
   async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(path, init);
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload.error) throw new Error(payload.error || `Erro ${response.status}`);
+    if (!response.ok || payload.error) throw new Error(payload.error || m['skills.error_status']({ status: response.status }));
     return payload.data as T;
   }
 
@@ -139,9 +140,9 @@
     feedback = '';
     try {
       results = await api<SkillResult[]>(`/api/agent-room/skills/search?q=${encodeURIComponent(query.trim())}`);
-      if (!results.length) feedback = 'Nenhuma skill encontrada.';
+      if (!results.length) feedback = m['skills.no_results']();
     } catch (error) {
-      feedback = error instanceof Error ? error.message : 'Falha na busca.';
+      feedback = error instanceof Error ? error.message : m['skills.search_failed']();
       results = [];
     } finally {
       searching = false;
@@ -150,7 +151,7 @@
 
   async function install(skill: SkillResult) {
     if (!workspaceId) {
-      feedback = 'Escolha um workspace para instalar.';
+      feedback = m['skills.choose_workspace_first']();
       return;
     }
     installingId = skill.id;
@@ -162,9 +163,9 @@
         body: JSON.stringify({ source: skill.source, skillId: skill.skillId }),
       });
       await loadInstalled();
-      feedback = `Skill "${skill.name}" instalada em ${activeWorkspaceName}. Os agentes descobrem na proxima sessao.`;
+      feedback = m['skills.install_success']({ name: skill.name, workspace: activeWorkspaceName });
     } catch (error) {
-      feedback = error instanceof Error ? error.message : 'Falha ao instalar.';
+      feedback = error instanceof Error ? error.message : m['skills.install_failed']();
     } finally {
       installingId = null;
     }
@@ -176,7 +177,7 @@
       await api(`/api/agent-room/workspaces/${workspaceId}/skills/${skillId}`, { method: 'DELETE' });
       await loadInstalled();
     } catch (error) {
-      feedback = error instanceof Error ? error.message : 'Falha ao remover.';
+      feedback = error instanceof Error ? error.message : m['skills.remove_failed']();
     }
   }
 
@@ -201,25 +202,25 @@
   });
 </script>
 <svelte:head>
-  <title>Orkestrai — Skills</title>
+  <title>Orkestrai — {m['skills.title']()}</title>
 </svelte:head>
 
 <main class="skills-page">
   <header class="page-header">
     <Button variant="ghost" size="sm" href="/canvas">
       <ArrowLeft size={15} aria-hidden="true" />
-      Canvas
+      {m['skills.back_canvas']()}
     </Button>
     <div class="header-titles">
-      <h1>Skills & MCPs</h1>
-      <p>Busque e instale ferramentas no workspace — os agentes usam na proxima sessao.</p>
+      <h1>{m['skills.title']()}</h1>
+      <p>{m['skills.subtitle']()}</p>
     </div>
     <span class="header-spacer"></span>
     <div class="workspace-picker">
-      <span class="picker-label">Instalar em</span>
+      <span class="picker-label">{m['skills.install_in']()}</span>
       <Select.Root type="single" value={workspaceId} onValueChange={async (value: string) => { workspaceId = value; await Promise.all([loadInstalled(), loadInstalledMcps()]); }}>
         <Select.Trigger class="w-56" data-slot="select-trigger">
-          {activeWorkspaceName || 'Escolha um workspace'}
+          {activeWorkspaceName || m['skills.choose_workspace']()}
         </Select.Trigger>
         <Select.Content>
           {#each workspaces as workspace (workspace.id)}
@@ -232,10 +233,10 @@
 
   <div class="tab-bar" role="tablist">
     <button class="tab-btn" class:active={tab === 'skills'} role="tab" aria-selected={tab === 'skills'} onclick={() => (tab = 'skills')}>
-      <Blocks size={14} aria-hidden="true" /> Skills
+      <Blocks size={14} aria-hidden="true" /> {m['skills.tab_skills']()}
     </button>
     <button class="tab-btn" class:active={tab === 'mcps'} role="tab" aria-selected={tab === 'mcps'} onclick={() => (tab = 'mcps')}>
-      <Plug size={14} aria-hidden="true" /> MCPs
+      <Plug size={14} aria-hidden="true" /> {m['skills.tab_mcps']()}
     </button>
   </div>
 
@@ -244,8 +245,8 @@
       <header class="section-head">
         <span class="icon-chip"><Blocks size={15} aria-hidden="true" /></span>
         <div class="section-titles">
-          <h2>Instaladas neste workspace</h2>
-          <p>{installed.length ? `${installed.length} skill${installed.length === 1 ? '' : 's'} ativa${installed.length === 1 ? '' : 's'}.` : 'Nada instalado ainda — busque abaixo.'}</p>
+          <h2>{m['skills.installed_title']()}</h2>
+          <p>{installed.length ? (installed.length === 1 ? m['skills.installed_count_one']({ count: installed.length }) : m['skills.installed_count_other']({ count: installed.length })) : m['skills.installed_empty']()}</p>
         </div>
       </header>
       {#if installed.length}
@@ -257,14 +258,14 @@
                 <span class="item-name">{skill.name}</span>
                 {#if skill.description}<span class="item-desc">{skill.description}</span>{/if}
               </div>
-              <Button variant="ghost" size="sm" onclick={() => uninstall(skill.skillId)} aria-label={`Remover ${skill.name}`}>
+              <Button variant="ghost" size="sm" onclick={() => uninstall(skill.skillId)} aria-label={m['skills.remove_label']({ name: skill.name })}>
                 <Trash2 size={13} />
               </Button>
             </li>
           {/each}
         </ul>
       {:else}
-        <p class="empty-hint">Use a busca abaixo para instalar a primeira skill neste workspace.</p>
+        <p class="empty-hint">{m['skills.empty_hint']()}</p>
       {/if}
     </section>
 
@@ -272,15 +273,15 @@
       <header class="section-head">
         <span class="icon-chip"><Search size={15} aria-hidden="true" /></span>
         <div class="section-titles">
-          <h2>Buscar no skills.sh</h2>
-          <p>Catalogo publico de skills prontas para os agentes.</p>
+          <h2>{m['skills.search_title']()}</h2>
+          <p>{m['skills.search_desc']()}</p>
         </div>
       </header>
       <form class="search-row" onsubmit={(event) => { event.preventDefault(); search(); }}>
-        <Input bind:value={query} placeholder="ex.: web design, react, seo, postgres..." class="search-input" aria-label="Buscar skills" />
+        <Input bind:value={query} placeholder={m['ph.search_skills']()} class="search-input" aria-label={m['ph.search_skills']()} />
         <Button type="submit" size="sm" disabled={searching || !query.trim()}>
           {#if searching}<Spinner class="size-3.5" />{:else}<Search size={14} aria-hidden="true" />{/if}
-          Buscar
+          {m['skills.search_btn']()}
         </Button>
       </form>
 
@@ -305,16 +306,16 @@
               <div class="item-info">
                 <div class="item-title">
                   <span class="item-name">{skill.name}</span>
-                  <Badge variant="secondary">{formatInstalls(skill.installs)} instalacoes</Badge>
+                  <Badge variant="secondary">{m['skills.installs_count']({ count: formatInstalls(skill.installs) })}</Badge>
                 </div>
                 <span class="item-desc">{skill.id}</span>
               </div>
               {#if isInstalled(skill)}
-                <Badge variant="outline">Instalada</Badge>
+                <Badge variant="outline">{m['skills.installed_badge']()}</Badge>
               {:else}
                 <Button variant="outline" size="sm" disabled={installingId === skill.id || !workspaceId} onclick={() => install(skill)}>
                   {#if installingId === skill.id}<Spinner class="size-3.5" />{:else}<Download size={13} aria-hidden="true" />{/if}
-                  Instalar
+                  {m['skills.install_btn']()}
                 </Button>
               {/if}
             </li>
@@ -327,8 +328,8 @@
       <header class="section-head">
         <span class="icon-chip"><Plug size={15} aria-hidden="true" /></span>
         <div class="section-titles">
-          <h2>MCPs instalados neste workspace</h2>
-          <p>{installedMcps.length ? `${installedMcps.length} servidor${installedMcps.length === 1 ? '' : 'es'} configurado${installedMcps.length === 1 ? '' : 's'}.` : 'Nada instalado alem da ponte — busque abaixo.'}</p>
+          <h2>{m['skills.mcp_installed_title']()}</h2>
+          <p>{installedMcps.length ? (installedMcps.length === 1 ? m['skills.mcp_count_one']({ count: installedMcps.length }) : m['skills.mcp_count_other']({ count: installedMcps.length })) : m['skills.mcp_installed_empty']()}</p>
         </div>
       </header>
       {#if installedMcps.length}
@@ -337,11 +338,11 @@
             <li class="item-row installed-row">
               <span class="item-icon"><Plug size={14} aria-hidden="true" /></span>
               <div class="item-info">
-                <span class="item-name">{server.name}{#if server.builtin} <span class="builtin-tag">da ponte</span>{/if}</span>
+                <span class="item-name">{server.name}{#if server.builtin} <span class="builtin-tag">{m['skills.builtin_tag']()}</span>{/if}</span>
                 <span class="item-desc">{server.url ?? `${server.command} ${server.args.join(' ')}`}</span>
               </div>
               {#if !server.builtin}
-                <Button variant="ghost" size="sm" onclick={() => removeMcp(server.name)} aria-label={`Remover ${server.name}`}>
+                <Button variant="ghost" size="sm" onclick={() => removeMcp(server.name)} aria-label={m['skills.remove_label']({ name: server.name })}>
                   <Trash2 size={13} />
                 </Button>
               {/if}
@@ -349,7 +350,7 @@
           {/each}
         </ul>
       {:else}
-        <p class="empty-hint">O servidor da ponte (orkestrai) vem sozinho. Adicione mais pela busca abaixo.</p>
+        <p class="empty-hint">{m['skills.mcp_empty_hint']()}</p>
       {/if}
     </section>
 
@@ -357,15 +358,15 @@
       <header class="section-head">
         <span class="icon-chip"><Search size={15} aria-hidden="true" /></span>
         <div class="section-titles">
-          <h2>Buscar MCPs</h2>
-          <p>Curadoria oficial + registry MCP. Remotos instalam com 1 clique.</p>
+          <h2>{m['skills.mcp_search_title']()}</h2>
+          <p>{m['skills.mcp_search_desc']()}</p>
         </div>
       </header>
       <form class="search-row" onsubmit={(event) => { event.preventDefault(); searchMcps(); }}>
-        <Input bind:value={mcpQuery} placeholder="ex.: github, gmail, figma, drive, postgres..." class="search-input" aria-label="Buscar MCPs" />
+        <Input bind:value={mcpQuery} placeholder={m['ph.search_mcps']()} class="search-input" aria-label={m['ph.search_mcps']()} />
         <Button type="submit" size="sm" disabled={mcpSearching}>
           {#if mcpSearching}<Spinner class="size-3.5" />{:else}<Search size={14} aria-hidden="true" />{/if}
-          Buscar
+          {m['skills.search_btn']()}
         </Button>
       </form>
 
@@ -390,19 +391,19 @@
               <div class="item-info">
                 <div class="item-title">
                   <span class="item-name">{entry.title}</span>
-                  {#if entry.official}<Badge variant="secondary">oficial</Badge>{/if}
-                  <Badge variant="outline">{entry.source === 'curadoria' ? 'curadoria' : 'registry'}</Badge>
-                  {#if entry.url}<Badge variant="outline">1 clique</Badge>{/if}
+                  {#if entry.official}<Badge variant="secondary">{m['skills.badge_official']()}</Badge>{/if}
+                  <Badge variant="outline">{entry.source === 'curadoria' ? m['skills.badge_curated']() : 'registry'}</Badge>
+                  {#if entry.url}<Badge variant="outline">{m['skills.badge_one_click']()}</Badge>{/if}
                 </div>
                 <span class="item-desc">{entry.description}</span>
                 <span class="item-source">{entry.url ?? `${entry.command ?? ''} ${(entry.args ?? []).join(' ')}`.trim()}</span>
               </div>
               {#if isMcpInstalled(entry)}
-                <Badge variant="outline">Instalado</Badge>
+                <Badge variant="outline">{m['skills.mcp_installed_badge']()}</Badge>
               {:else}
                 <Button variant="outline" size="sm" disabled={!workspaceId || mcpInstalling} onclick={() => openMcpInstall(entry)}>
                   <Download size={13} aria-hidden="true" />
-                  Instalar
+                  {m['skills.install_btn']()}
                 </Button>
               {/if}
             </li>
@@ -417,11 +418,11 @@
   <Dialog.Root open={mcpInstallEntry !== null} onOpenChange={(open: boolean) => !open && (mcpInstallEntry = null)}>
     <Dialog.Content class="sm:max-w-md">
       <Dialog.Header>
-        <Dialog.Title>Instalar {mcpInstallEntry.title}</Dialog.Title>
+        <Dialog.Title>{m['skills.mcp_install_dialog_title']({ title: mcpInstallEntry.title })}</Dialog.Title>
         <Dialog.Description>
-          Preencha para ativar o MCP neste workspace.
+          {m['skills.mcp_install_dialog_desc']()}
           {#if mcpInstallEntry.homepage}
-            {' '}<a class="mcp-help-link" href={mcpInstallEntry.homepage} target="_blank" rel="noreferrer">onde conseguir →</a>
+            {' '}<a class="mcp-help-link" href={mcpInstallEntry.homepage} target="_blank" rel="noreferrer">{m['skills.mcp_help_link']()}</a>
           {/if}
         </Dialog.Description>
       </Dialog.Header>
@@ -443,9 +444,9 @@
         {/if}
       </div>
       <Dialog.Footer>
-        <Button variant="outline" onclick={() => (mcpInstallEntry = null)}>Cancelar</Button>
+        <Button variant="outline" onclick={() => (mcpInstallEntry = null)}>{m['settings.cancel']()}</Button>
         <Button disabled={mcpInstalling} onclick={() => mcpInstallEntry && confirmMcpInstall(mcpInstallEntry)}>
-          {mcpInstalling ? 'Instalando...' : 'Instalar'}
+          {mcpInstalling ? m['skills.installing']() : m['skills.install_btn']()}
         </Button>
       </Dialog.Footer>
     </Dialog.Content>

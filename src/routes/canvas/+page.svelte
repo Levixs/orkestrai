@@ -35,6 +35,7 @@
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
   import FlowCanvasNode from '$lib/components/agent-room/canvas/FlowCanvasNode.svelte';
+  import ImageCanvasNode from '$lib/components/agent-room/canvas/ImageCanvasNode.svelte';
   import ToolbarButton from '$lib/components/agent-room/canvas/ToolbarButton.svelte';
   import RoutinePanel from '$lib/components/agent-room/canvas/RoutinePanel.svelte';
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
@@ -43,7 +44,7 @@
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
   import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -67,6 +68,7 @@
     shape: ShapeCanvasNode,
     tasks: TasksCanvasNode,
     flow: FlowCanvasNode,
+    image: ImageCanvasNode,
   };
 
   // Icones de marca dos providers (SVG em static/images); opencode cai no
@@ -169,7 +171,7 @@
   }
 
   // Modo "desenhar no": clique na ferramenta e arraste o retangulo no canvas.
-  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'loop' | 'shape' | 'tasks' | 'flow';
+  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image';
   let drawTool = $state<DrawTool | null>(null);
   let drawStart = $state<{ x: number; y: number } | null>(null);
   let drawCurrent = $state<{ x: number; y: number } | null>(null);
@@ -199,6 +201,7 @@
     shape: async (rect) => { await addShape(rect); },
     tasks: async (rect) => { await addTasksNode(rect); },
     flow: async (rect) => { await addFlowNode(rect); },
+    image: async (rect) => { await addImageNode(rect); },
   };
 
   function toggleDrawTool(tool: DrawTool, provider?: AgentProviderInfo) {
@@ -296,7 +299,7 @@
       headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
     });
     const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || 'Falha na API local.');
+    if (!response.ok || payload.error) throw new Error(payload.error || m['canvas.error_api']());
     return payload.data as T;
   }
 
@@ -482,8 +485,8 @@
         return {
           edgeId: edge.id,
           targetId: otherId,
-          targetTitle: String(other?.data?.title ?? other?.type ?? 'no'),
-          targetType: String(other?.type ?? 'no'),
+          targetTitle: String(other?.data?.title ?? other?.type ?? m['canvas.fallback_node']()),
+          targetType: String(other?.type ?? m['canvas.fallback_node']()),
           direction: (outgoing ? 'out' : 'in') as 'out' | 'in',
         };
       });
@@ -548,7 +551,7 @@
       const visibleIds = new Set(nodes.map((node) => node.id));
       edges = canvasEdges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao abrir workspace.';
+      errorMessage = error instanceof Error ? error.message : m['canvas.error_open_ws']();
     }
   }
 
@@ -593,7 +596,7 @@
       workspaces = [workspace, ...workspaces];
       await selectWorkspace(workspace.id);
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao importar workspace.';
+      errorMessage = error instanceof Error ? error.message : m['canvas.error_import_ws']();
     } finally {
       importInput.value = '';
     }
@@ -631,8 +634,10 @@
       nodes = canvasNodes.filter((node) => (node.floorId ?? null) === visibleFloorId).map(toFlowNode);
       const count = result?.killedSessions ?? 0;
       unloadMessage = count > 0
-        ? `${count} ${count === 1 ? 'terminal encerrado' : 'terminais encerrados'} — layout mantido.`
-        : 'Nenhum terminal em execucao neste workspace.';
+        ? count === 1
+          ? m['canvas.unload_done_one']({ count })
+          : m['canvas.unload_done_many']({ count })
+        : m['canvas.unload_none']();
     } finally {
       unloading = false;
       confirmUnload = false;
@@ -723,7 +728,7 @@
       method: 'POST',
       body: JSON.stringify({
         type: 'terminal',
-        title: creation?.title || provider?.displayName || 'Shell',
+        title: creation?.title || provider?.displayName || m['canvas.default_shell'](),
         ...position,
         width: nodeSize(rect, 360, 220, Number(appSettings.newTerminalWidth ?? 560), Number(appSettings.newTerminalHeight ?? 340)).width,
         height: nodeSize(rect, 360, 220, Number(appSettings.newTerminalWidth ?? 560), Number(appSettings.newTerminalHeight ?? 340)).height,
@@ -739,7 +744,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'fileTree', title: 'Arquivos', ...position, ...nodeSize(rect, 260, 200, 300, 380), payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'fileTree', title: m['canvas.default_files'](), ...position, ...nodeSize(rect, 260, 200, 300, 380), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -754,7 +759,7 @@
       method: 'POST',
       body: JSON.stringify({
         type: 'editor',
-        title: path.split('/').at(-1) ?? 'editor',
+        title: path.split('/').at(-1) ?? m['canvas.default_editor'](),
         ...position,
         width: 640,
         height: 440,
@@ -793,7 +798,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'portal', title: 'Portal', ...position, ...nodeSize(rect, 360, 260, 720, 520), payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'portal', title: m['canvas.default_portal'](), ...position, ...nodeSize(rect, 360, 260, 720, 520), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -803,7 +808,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'loop', title: 'Loop Ralph', ...position, ...nodeSize(rect, 380, 280, 560, 460), payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'loop', title: m['canvas.default_loop'](), ...position, ...nodeSize(rect, 380, 280, 560, 460), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -813,7 +818,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'tasks', title: 'Tarefas', ...position, ...nodeSize(rect, 400, 260, 560, 360), payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'tasks', title: m['canvas.default_tasks'](), ...position, ...nodeSize(rect, 400, 260, 560, 360), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -823,7 +828,17 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'flow', title: 'Fluxo', ...position, ...nodeSize(rect, 420, 300, 480, 420), payload: { steps: [], iterations: 1 }, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'flow', title: m['canvas.default_flow'](), ...position, ...nodeSize(rect, 420, 300, 480, 420), payload: { steps: [], iterations: 1 }, floorId: visibleFloorId }),
+    });
+    nodes = [...nodes, toFlowNode(node)];
+  }
+
+  async function addImageNode(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({ type: 'image', title: m['node.image'](), ...position, ...nodeSize(rect, 220, 160, 320, 240), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -833,7 +848,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'diff', title: 'Diff', ...position, ...nodeSize(rect, 380, 240, 720, 440), payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'diff', title: m['canvas.default_diff'](), ...position, ...nodeSize(rect, 380, 240, 720, 440), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -846,7 +861,7 @@
       method: 'POST',
       body: JSON.stringify({
         type: 'note',
-        title: 'Nota',
+        title: m['canvas.default_note'](),
         ...position,
         width: nodeSize(rect, 220, 140, Number(appSettings.newNoteWidth ?? 320), Number(appSettings.newNoteHeight ?? 220)).width,
         height: nodeSize(rect, 220, 140, Number(appSettings.newNoteWidth ?? 320), Number(appSettings.newNoteHeight ?? 220)).height,
@@ -899,7 +914,7 @@
       method: 'POST',
       body: JSON.stringify({
         type: 'group',
-        title: 'Grupo',
+        title: m['canvas.default_group'](),
         x: box.x - padding,
         y: box.y - padding - headerSpace,
         width: box.width + padding * 2,
@@ -975,24 +990,24 @@
   }
 
   const paletteActions = $derived<PaletteAction[]>([
-    { id: 'shell', label: 'Novo terminal (shell)', hint: 'acao', run: () => (pendingAgentCreation = { provider: null }) },
+    { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
     ...providers
       .filter((provider) => provider.installed && provider.tui)
       .map((provider) => ({
         id: `agent-${provider.id}`,
-        label: `Novo terminal (${provider.displayName})`,
-        hint: 'acao',
+        label: m['canvas.palette_new_agent']({ name: provider.displayName }),
+        hint: m['canvas.hint_action'](),
         run: () => (pendingAgentCreation = { provider }),
       })),
-    { id: 'note', label: 'Nova nota', hint: 'acao', run: () => addNote() },
-    { id: 'tasks', label: 'Novo quadro de tarefas (kanban)', hint: 'acao', run: () => addTasksNode() },
-    { id: 'files', label: 'Nova arvore de arquivos', hint: 'acao', run: () => addFileTree() },
-    { id: 'diff', label: 'Novo diff', hint: 'acao', run: () => addDiff() },
-    { id: 'fit', label: 'Zoom para ajustar', hint: 'view', run: () => zoomApi?.fitView({ duration: 300 }) },
+    { id: 'note', label: m['canvas.palette_new_note'](), hint: m['canvas.hint_action'](), run: () => addNote() },
+    { id: 'tasks', label: m['canvas.palette_new_tasks'](), hint: m['canvas.hint_action'](), run: () => addTasksNode() },
+    { id: 'files', label: m['canvas.palette_new_files'](), hint: m['canvas.hint_action'](), run: () => addFileTree() },
+    { id: 'diff', label: m['canvas.palette_new_diff'](), hint: m['canvas.hint_action'](), run: () => addDiff() },
+    { id: 'fit', label: m['canvas.palette_fit'](), hint: m['canvas.hint_view'](), run: () => zoomApi?.fitView({ duration: 300 }) },
     {
       id: 'bg',
-      label: `Fundo do canvas: ${backgroundVariant}`,
-      hint: 'view',
+      label: m['canvas.palette_bg']({ variant: backgroundVariant }),
+      hint: m['canvas.hint_view'](),
       run: () => {
         backgroundVariant =
           backgroundVariant === BackgroundVariant.Dots
@@ -1002,17 +1017,17 @@
               : BackgroundVariant.Dots;
       },
     },
-    { id: 'align-left', label: 'Alinhar a esquerda', hint: 'selecao', run: () => applyPositions(alignRects(selectedRects(), 'left')) },
-    { id: 'align-right', label: 'Alinhar a direita', hint: 'selecao', run: () => applyPositions(alignRects(selectedRects(), 'right')) },
-    { id: 'align-top', label: 'Alinhar ao topo', hint: 'selecao', run: () => applyPositions(alignRects(selectedRects(), 'top')) },
-    { id: 'align-bottom', label: 'Alinhar a base', hint: 'selecao', run: () => applyPositions(alignRects(selectedRects(), 'bottom')) },
-    { id: 'align-centerH', label: 'Centralizar horizontalmente', hint: 'selecao', run: () => applyPositions(alignRects(selectedRects(), 'centerH')) },
-    { id: 'align-centerV', label: 'Centralizar verticalmente', hint: 'selecao', run: () => applyPositions(alignRects(selectedRects(), 'centerV')) },
-    { id: 'dist-h', label: 'Distribuir horizontalmente', hint: 'selecao', run: () => applyPositions(distributeRects(selectedRects(), 'horizontal')) },
-    { id: 'dist-v', label: 'Distribuir verticalmente', hint: 'selecao', run: () => applyPositions(distributeRects(selectedRects(), 'vertical')) },
-    { id: 'tidy', label: 'Organizar em grade', hint: 'selecao', run: () => applyPositions(tidyRects(selectedRects())) },
-    { id: 'group', label: 'Agrupar selecao', hint: 'selecao', run: () => groupSelection() },
-    { id: 'zoom-sel', label: 'Zoom para a selecao', hint: 'view', run: zoomToSelection },
+    { id: 'align-left', label: m['canvas.palette_align_left'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(alignRects(selectedRects(), 'left')) },
+    { id: 'align-right', label: m['canvas.palette_align_right'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(alignRects(selectedRects(), 'right')) },
+    { id: 'align-top', label: m['canvas.palette_align_top'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(alignRects(selectedRects(), 'top')) },
+    { id: 'align-bottom', label: m['canvas.palette_align_bottom'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(alignRects(selectedRects(), 'bottom')) },
+    { id: 'align-centerH', label: m['canvas.palette_center_h'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(alignRects(selectedRects(), 'centerH')) },
+    { id: 'align-centerV', label: m['canvas.palette_center_v'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(alignRects(selectedRects(), 'centerV')) },
+    { id: 'dist-h', label: m['canvas.palette_dist_h'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(distributeRects(selectedRects(), 'horizontal')) },
+    { id: 'dist-v', label: m['canvas.palette_dist_v'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(distributeRects(selectedRects(), 'vertical')) },
+    { id: 'tidy', label: m['canvas.palette_tidy'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(tidyRects(selectedRects())) },
+    { id: 'group', label: m['canvas.palette_group'](), hint: m['canvas.hint_selection'](), run: () => groupSelection() },
+    { id: 'zoom-sel', label: m['canvas.palette_zoom_sel'](), hint: m['canvas.hint_view'](), run: zoomToSelection },
   ]);
 
   function isTypingTarget(target: EventTarget | null): boolean {
@@ -1190,7 +1205,7 @@
 </script>
 
 <svelte:head>
-  <title>Orkestrai — Canvas</title>
+  <title>{m['canvas.page_title']()}</title>
 </svelte:head>
 
 <svelte:window onkeydown={handleGlobalKeydown} />
@@ -1205,36 +1220,36 @@
     {/if}
     <div class="sidebar-header">
       {#if !sidebarCollapsed}
-        <h2>Workspaces</h2>
+        <h2>{m['canvas.workspaces']()}</h2>
       {/if}
       <div class="sidebar-header-actions">
         {#if !sidebarCollapsed}
-          <HeaderIconButton label="Como usar" href="/docs">
+          <HeaderIconButton label={m['canvas.how_to_use']()} href="/docs">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
         </HeaderIconButton>
         <HeaderIconButton label="Skills (skills.sh)" href={activeWorkspace ? `/skills?workspace=${activeWorkspace.id}` : '/skills'}>
           <Blocks size={14} />
         </HeaderIconButton>
-        <HeaderIconButton label="Configuracoes" href="/settings">
+        <HeaderIconButton label={m['settings.title']()} href="/settings">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
         </HeaderIconButton>
-        <HeaderIconButton label="Importar workspace (.orkestrai.json)" onclick={() => importInput.click()}>
+        <HeaderIconButton label={m['canvas.import_ws']()} onclick={() => importInput.click()}>
             <Upload size={14} />
           </HeaderIconButton>
           {#if activeWorkspace}
-            <HeaderIconButton label="Exportar workspace" onclick={exportActiveWorkspace}>
+            <HeaderIconButton label={m['canvas.export_ws']()} onclick={exportActiveWorkspace}>
               <Download size={14} />
             </HeaderIconButton>
-            <HeaderIconButton label="Descarregar (encerra os terminais vivos, mantem o layout)" onclick={() => (confirmUnload = true)}>
+            <HeaderIconButton label={m['canvas.unload_tooltip']()} onclick={() => (confirmUnload = true)}>
               <Power size={14} />
             </HeaderIconButton>
           {/if}
-          <HeaderIconButton label="Novo workspace" onclick={() => (showWorkspaceForm = !showWorkspaceForm)}>
+          <HeaderIconButton label={m['canvas.new_ws']()} onclick={() => (showWorkspaceForm = !showWorkspaceForm)}>
             <Plus size={15} />
           </HeaderIconButton>
         {/if}
         <HeaderIconButton
-          label={sidebarCollapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+          label={sidebarCollapsed ? m['canvas.sidebar_expand']() : m['canvas.sidebar_collapse']()}
           side={sidebarCollapsed ? 'right' : 'bottom'}
           onclick={() => (sidebarCollapsed = !sidebarCollapsed)}
         >
@@ -1249,8 +1264,8 @@
         <Search size={13} aria-hidden="true" />
         <input
           bind:value={workspaceQuery}
-          placeholder="Filtrar workspaces…"
-          aria-label="Filtrar workspaces"
+          placeholder={m['ph.filter_workspaces']()}
+          aria-label={m['canvas.filter_ws_aria']()}
           autocomplete="off"
           spellcheck="false"
         />
@@ -1272,7 +1287,7 @@
         {:else}
         {#each visibleWorkspaces as workspace (workspace.id)}
           <li class:active={activeWorkspace?.id === workspace.id}>
-            <HeaderIconButton label={activity[workspace.id] ? `${workspace.name} — ${activity[workspace.id]} sessao(oes) ativa(s)` : workspace.name} side="right" class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
+            <HeaderIconButton label={activity[workspace.id] ? m['canvas.ws_active_sessions']({ name: workspace.name, count: activity[workspace.id] }) : workspace.name} side="right" class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
               <span class="workspace-icon">
                 {#if activity[workspace.id]}<span class="live-dot rail" aria-hidden="true"></span>{/if}
                 <WorkspaceIcon name={workspace.icon} size={14} />
@@ -1297,22 +1312,22 @@
               </span>
               <span class="workspace-name">{workspace.name}</span>
               {#if activity[workspace.id]}
-                <span class="live-dot" role="status" aria-label={`${activity[workspace.id]} sessao(oes) ativa(s)`}></span>
+                <span class="live-dot" role="status" aria-label={m['canvas.active_sessions_aria']({ count: activity[workspace.id] })}></span>
               {/if}
             </button>
-            <HeaderIconButton label="Editar workspace" side="right" onclick={() => (editingWorkspace = workspace)}>
+            <HeaderIconButton label={m['canvas.edit_ws']()} side="right" onclick={() => (editingWorkspace = workspace)}>
               <Pencil size={13} />
             </HeaderIconButton>
-            <HeaderIconButton label="Apagar workspace" side="right" danger onclick={() => (deletingWorkspace = workspace)}>
+            <HeaderIconButton label={m['canvas.delete_ws']()} side="right" danger onclick={() => (deletingWorkspace = workspace)}>
               <X size={13} />
             </HeaderIconButton>
           </li>
         {/each}
         {#if workspaces.length > 0 && visibleWorkspaces.length === 0}
-          <li class="empty-filter">Nenhum workspace para “{workspaceQuery.trim()}”.</li>
+          <li class="empty-filter">{m['canvas.no_ws_match']({ query: workspaceQuery.trim() })}</li>
         {/if}
         {#if workspaces.length === 0}
-          <li class="empty">Nenhum workspace. Crie o primeiro com +.</li>
+          <li class="empty">{m['canvas.no_ws']()}</li>
         {/if}
         {/if}
       </ul>
@@ -1365,13 +1380,13 @@
         <Panel position="bottom-center">
           <div class="toolbar-wrap">
             {#if canScrollLeft}
-              <button class="toolbar-arrow" aria-label="Rolar o menu para a esquerda" onclick={() => scrollToolbar(-1)}>
+              <button class="toolbar-arrow" aria-label={m['canvas.scroll_left']()} onclick={() => scrollToolbar(-1)}>
                 <ChevronLeft size={14} />
               </button>
             {/if}
             <div class="toolbar" bind:this={toolbarEl} onscroll={updateToolbarScroll}>
             <ToolbarButton label={m['tool.shell']()} active={drawTool === 'terminal' && !drawProvider} onclick={() => toggleDrawTool('terminal')}>
-              <img src="/images/cli.svg" width="15" height="15" alt="" class="tool-icon" /> Shell
+              <img src="/images/cli.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.default_shell']()}
             </ToolbarButton>
             {#each providers as provider}
               <ToolbarButton label={provider.detail ?? provider.displayName} active={drawTool === 'terminal' && drawProvider?.id === provider.id} disabled={!provider.installed} onclick={() => toggleDrawTool('terminal', provider)}>
@@ -1384,45 +1399,48 @@
               </ToolbarButton>
             {/each}
             <ToolbarButton label={m['tool.note']()} active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
-              <StickyNote size={15} class="tool-icon-svg" /> Nota
+              <StickyNote size={15} class="tool-icon-svg" /> {m['canvas.default_note']()}
+            </ToolbarButton>
+            <ToolbarButton label={m['tool.image']()} active={drawTool === 'image'} onclick={() => toggleDrawTool('image')}>
+              <ImageIcon size={15} class="tool-icon-svg" /> {m['node.image']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.files']()} active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
-              <FolderTree size={15} class="tool-icon-svg" /> Arquivos
+              <FolderTree size={15} class="tool-icon-svg" /> {m['canvas.default_files']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.diff']()} active={drawTool === 'diff'} onclick={() => toggleDrawTool('diff')}>
-              <FileDiff size={15} class="tool-icon-svg" /> Diff
+              <FileDiff size={15} class="tool-icon-svg" /> {m['canvas.default_diff']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.portal']()} active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
-              <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> Portal
+              <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.default_portal']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.loop']()} active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
-              <img src="/images/loop.svg" width="15" height="15" alt="" class="tool-icon" /> Loop
+              <img src="/images/loop.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.label_loop']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.tasks']()} active={drawTool === 'tasks'} onclick={() => toggleDrawTool('tasks')}>
-              <SquareKanban size={15} class="tool-icon-svg" /> Tarefas
+              <SquareKanban size={15} class="tool-icon-svg" /> {m['canvas.default_tasks']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.flow']()} active={drawTool === 'flow'} onclick={() => toggleDrawTool('flow')}>
-              <Workflow size={15} class="tool-icon-svg" /> Fluxo
+              <Workflow size={15} class="tool-icon-svg" /> {m['canvas.default_flow']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.shape']()} active={drawTool === 'shape'} onclick={() => toggleDrawTool('shape')}>
-              <Shapes size={15} class="tool-icon-svg" /> Forma
+              <Shapes size={15} class="tool-icon-svg" /> {m['canvas.label_shape']()}
             </ToolbarButton>
             <span class="toolbar-sep"></span>
             <ToolbarButton label={m['tool.floors']()} active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
-              <Layers size={15} class="tool-icon-svg" /> Andares{floors.length ? ` (${floors.length})` : ''}
+              <Layers size={15} class="tool-icon-svg" /> {m['canvas.label_floors']()}{floors.length ? ` (${floors.length})` : ''}
             </ToolbarButton>
             <ToolbarButton label={m['tool.routines']()} active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>
-              <CalendarClock size={15} class="tool-icon-svg" /> Rotinas
+              <CalendarClock size={15} class="tool-icon-svg" /> {m['canvas.label_routines']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.roles']()} active={showRolesPanel} onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; }}>
-              <BadgeCheck size={15} class="tool-icon-svg" /> Roles
+              <BadgeCheck size={15} class="tool-icon-svg" /> {m['canvas.label_roles']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.usage']()} active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
-              <Gauge size={15} class="tool-icon-svg" /> Usage
+              <Gauge size={15} class="tool-icon-svg" /> {m['canvas.label_usage']()}
             </ToolbarButton>
             </div>
             {#if canScrollRight}
-              <button class="toolbar-arrow" aria-label="Rolar o menu para a direita" onclick={() => scrollToolbar(1)}>
+              <button class="toolbar-arrow" aria-label={m['canvas.scroll_right']()} onclick={() => scrollToolbar(1)}>
                 <ChevronRight size={14} />
               </button>
             {/if}
@@ -1453,7 +1471,7 @@
     {#if showRoutinePanel && activeWorkspace}
       <RoutinePanel
         workspace={activeWorkspace}
-        terminals={nodes.filter((node) => node.type === 'terminal').map((node) => ({ id: node.id, title: String(node.data?.title ?? 'terminal') }))}
+        terminals={nodes.filter((node) => node.type === 'terminal').map((node) => ({ id: node.id, title: String(node.data?.title ?? m['canvas.fallback_terminal']()) }))}
         onClose={() => (showRoutinePanel = false)}
         {api}
       />
@@ -1481,14 +1499,14 @@
     <AlertDialog.Root open={deletingWorkspace !== null} onOpenChange={(isOpen) => !isOpen && (deletingWorkspace = null)}>
       <AlertDialog.Content>
         <AlertDialog.Header>
-          <AlertDialog.Title>Apagar workspace</AlertDialog.Title>
+          <AlertDialog.Title>{m['canvas.delete_ws']()}</AlertDialog.Title>
           <AlertDialog.Description>
-            Apagar "{deletingWorkspace?.name}" e todo o seu canvas? Esta ação não pode ser desfeita.
+            {m['canvas.delete_ws_desc']({ name: deletingWorkspace?.name ?? '' })}
           </AlertDialog.Description>
         </AlertDialog.Header>
         <AlertDialog.Footer>
-          <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-          <AlertDialog.Action onclick={confirmDeleteWorkspace}>Apagar</AlertDialog.Action>
+          <AlertDialog.Cancel>{m['settings.cancel']()}</AlertDialog.Cancel>
+          <AlertDialog.Action onclick={confirmDeleteWorkspace}>{m['settings.delete']()}</AlertDialog.Action>
         </AlertDialog.Footer>
       </AlertDialog.Content>
     </AlertDialog.Root>
@@ -1496,17 +1514,15 @@
     <AlertDialog.Root open={confirmUnload} onOpenChange={(isOpen) => !isOpen && (confirmUnload = false)}>
       <AlertDialog.Content>
         <AlertDialog.Header>
-          <AlertDialog.Title>Descarregar workspace</AlertDialog.Title>
+          <AlertDialog.Title>{m['canvas.unload_title']()}</AlertDialog.Title>
           <AlertDialog.Description>
-            Isso encerra os terminais em execucao (Claude, Codex, Kimi, shell), liberando
-            memoria e CPU. O layout do canvas fica salvo e cada agente retoma a conversa
-            ao reabrir o terminal.
+            {m['canvas.unload_desc']()}
           </AlertDialog.Description>
         </AlertDialog.Header>
         <AlertDialog.Footer>
-          <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+          <AlertDialog.Cancel>{m['settings.cancel']()}</AlertDialog.Cancel>
           <AlertDialog.Action disabled={unloading} onclick={unloadActiveWorkspace}>
-            {unloading ? 'Descarregando...' : 'Descarregar'}
+            {unloading ? m['canvas.unloading']() : m['canvas.unload_action']()}
           </AlertDialog.Action>
         </AlertDialog.Footer>
       </AlertDialog.Content>

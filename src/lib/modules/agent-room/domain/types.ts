@@ -180,7 +180,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 
 export type Workspace = {

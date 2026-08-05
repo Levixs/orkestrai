@@ -9,6 +9,7 @@ export class AgentBoardTask extends Model {
     'id',
     'workspace_id',
     'title',
+    'description',
     'status',
     'assignee_node_id',
     'image_path',
@@ -26,6 +27,7 @@ export class AgentBoardTask extends Model {
   declare id: string;
   declare workspace_id: string;
   declare title: string;
+  declare description: string | null;
   declare status: string;
   declare assignee_node_id: string | null;
   declare image_path: string | null;

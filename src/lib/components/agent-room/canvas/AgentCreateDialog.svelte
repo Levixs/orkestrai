@@ -10,6 +10,7 @@
   import { Label } from '$lib/components/ui/label';
   import { createAgentNodeSchema } from '$lib/modules/agent-room/contracts/schemas/schemas.js';
   import type { AgentProviderInfo } from '$lib/modules/agent-room/domain/types.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type AgentCreation = {
     title: string;
@@ -30,14 +31,14 @@
 
   let { open, provider, defaultLeader = false, onConfirm, onCancel }: Props = $props();
 
-  const EFFORT_LABELS: Record<string, string> = {
-    low: 'Baixo',
-    medium: 'Medio',
-    high: 'Alto',
-    xhigh: 'Altissimo',
-    max: 'Maximo',
-    ultra: 'Ultra',
-  };
+  const EFFORT_LABELS: Record<string, string> = $derived({
+    low: m['dlg.effort_low'](),
+    medium: m['dlg.effort_medium'](),
+    high: m['dlg.effort_high'](),
+    xhigh: m['dlg.effort_xhigh'](),
+    max: m['dlg.effort_max'](),
+    ultra: m['dlg.effort_ultra'](),
+  });
 
   const PROVIDER_EFFORTS: Record<string, string[]> = {
     claude: ['low', 'medium', 'high', 'xhigh', 'max'],
@@ -92,9 +93,9 @@
 <Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
   <Dialog.Content class="sm:max-w-md">
     <Dialog.Header>
-      <Dialog.Title>{provider ? `Novo agente — ${provider.displayName}` : 'Novo terminal'}</Dialog.Title>
+      <Dialog.Title>{provider ? m['dlg.new_agent_title']({ provider: provider.displayName }) : m['dlg.new_terminal_title']()}</Dialog.Title>
       <Dialog.Description>
-        {provider ? 'Nomeie a janela e escolha modelo, esforco e se ele lidera a equipe.' : 'Nomeie a janela do terminal.'}
+        {provider ? m['dlg.new_agent_desc']() : m['dlg.new_terminal_desc']()}
       </Dialog.Description>
     </Dialog.Header>
 
@@ -102,8 +103,8 @@
         <Form.Field {form} name="title">
           <Form.Control>
             {#snippet children({ props })}
-              <Form.Label>Nome</Form.Label>
-              <Input {...props} bind:value={$formData!.title} placeholder="Ex.: Backend, Reviewer, Ops..." autofocus />
+              <Form.Label>{m['dlg.name']()}</Form.Label>
+              <Input {...props} bind:value={$formData!.title} placeholder={m['ph.agent_title']()} autofocus />
             {/snippet}
           </Form.Control>
           <Form.FieldErrors />
@@ -113,13 +114,13 @@
           <Form.Field {form} name="model">
             <Form.Control>
               {#snippet children({ props })}
-                <Form.Label>Modelo</Form.Label>
+                <Form.Label>{m['dlg.model']()}</Form.Label>
                 <Select.Root type="single" value={$formData!.model || '__default__'} onValueChange={(value) => ($formData!.model = value === '__default__' ? '' : value)}>
                   <Select.Trigger {...props} class="w-full">
-                    {$formData!.model ? (modelOptions.find((option) => option.value === $formData!.model)?.label ?? $formData!.model) : 'Padrao do provider'}
+                    {$formData!.model ? (modelOptions.find((option) => option.value === $formData!.model)?.label ?? $formData!.model) : m['dlg.provider_default']()}
                   </Select.Trigger>
                   <Select.Content>
-                    <Select.Item value="__default__" label="Padrao do provider" />
+                    <Select.Item value="__default__" label={m['dlg.provider_default']()} />
                     {#each modelOptions as option (option.value)}
                       <Select.Item value={option.value} label={option.label} />
                     {/each}
@@ -135,13 +136,13 @@
           <Form.Field {form} name="effort">
             <Form.Control>
               {#snippet children({ props })}
-                <Form.Label>Esforco de raciocinio</Form.Label>
+                <Form.Label>{m['dlg.effort_label']()}</Form.Label>
                 <Select.Root type="single" value={$formData!.effort || '__default__'} onValueChange={(value) => ($formData!.effort = (value === '__default__' ? null : value) as AgentCreation['effort'])}>
                   <Select.Trigger {...props} class="w-full">
-                    {$formData!.effort ? (EFFORT_LABELS[$formData!.effort] ?? $formData!.effort) : 'Padrao do provider'}
+                    {$formData!.effort ? (EFFORT_LABELS[$formData!.effort] ?? $formData!.effort) : m['dlg.provider_default']()}
                   </Select.Trigger>
                   <Select.Content>
-                    <Select.Item value="__default__" label="Padrao do provider" />
+                    <Select.Item value="__default__" label={m['dlg.provider_default']()} />
                     {#each effortOptions as option (option.value)}
                       <Select.Item value={option.value} label={option.label} />
                     {/each}
@@ -160,19 +161,19 @@
                 <div class="flex items-center gap-2">
                   <Checkbox {...props} checked={Boolean($formData!.leader)} onCheckedChange={(checked) => ($formData!.leader = checked === true)} />
                   <Label class="cursor-pointer" onclick={() => ($formData!.leader = !$formData!.leader)}>
-                    Lider da equipe (Modo Maestro)
+                    {m['dlg.leader_label']()}
                   </Label>
                 </div>
               {/snippet}
             </Form.Control>
-            <Form.Description>O lider recruta e demite agentes sob demanda e distribui tarefas das notas.</Form.Description>
+            <Form.Description>{m['dlg.leader_desc']()}</Form.Description>
             <Form.FieldErrors />
           </Form.Field>
         {/if}
 
         <Dialog.Footer>
-          <Button type="button" variant="outline" onclick={onCancel}>Cancelar</Button>
-          <Button type="submit">Criar agente</Button>
+          <Button type="button" variant="outline" onclick={onCancel}>{m['dlg.cancel']()}</Button>
+          <Button type="submit">{m['dlg.create_agent']()}</Button>
         </Dialog.Footer>
       </form>
   </Dialog.Content>

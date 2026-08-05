@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const createBoardTaskSchema = z.object({
   title: z.string().trim().min(1, 'Informe o titulo da tarefa.'),
+  description: z.string().trim().nullish(),
   assigneeNodeId: z.string().trim().nullish(),
   noteId: z.string().trim().nullish(),
   createdBy: z.string().trim().optional(),
@@ -9,6 +10,7 @@ export const createBoardTaskSchema = z.object({
 
 export const updateBoardTaskSchema = z.object({
   title: z.string().trim().min(1).optional(),
+  description: z.string().trim().nullish(),
   status: z.enum(['todo', 'doing', 'done']).optional(),
   assigneeNodeId: z.string().trim().nullish(),
   imagePath: z.string().trim().nullish(),
@@ -18,6 +20,7 @@ export const updateBoardTaskSchema = z.object({
 export const bridgeBoardTaskSchema = z.object({
   token: z.string().trim().min(1).nullish(),
   title: z.string().trim().min(1, 'Informe o titulo da tarefa.'),
+  description: z.string().trim().nullish(),
   assignee: z.string().trim().nullish(),
   note: z.string().trim().nullish(),
   from: z.string().trim().nullish(),
@@ -26,6 +29,7 @@ export const bridgeBoardTaskSchema = z.object({
 export const bridgeBoardTaskUpdateSchema = z.object({
   token: z.string().trim().min(1).nullish(),
   status: z.enum(['todo', 'doing', 'done']).optional(),
+  description: z.string().trim().nullish(),
   assignee: z.string().trim().nullish(),
   note: z.string().trim().nullish(),
 });

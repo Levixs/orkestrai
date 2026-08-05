@@ -1,0 +1,240 @@
+import type { DocsCatalog } from './types.js';
+
+/** /docs page content in English — mirror of pt-BR.js (same ids, order and structure). */
+export const DOCS_EN: DocsCatalog = {
+  quickstart: [
+    'Create a workspace (+ button in the sidebar) pointing to your project folder.',
+    'Click + Claude in the bottom bar and drag a rectangle on the canvas — name the agent, pick model/effort and check Leader if it will command the team.',
+    'Draw more agents and connect them by dragging from one handle dot to the other.',
+    'Open the Tasks board (+ Tasks), create cards and assign them — each task lands straight in the agent\'s terminal.',
+    'Talk to any agent through its own terminal, or let the leader distribute everything on its own via the orkestrai CLI.',
+  ],
+  sections: [
+    {
+      id: 'workspaces',
+      title: 'Workspaces',
+      body: `A workspace = a team on a project: working directory, icon and canvas layout saved. Create it with the + button in the sidebar. Several workspaces run at the same time — agents stay alive in the background when you switch. Instructions in AGENTS.md/CLAUDE.md are injected into the agents (edit with the pencil next to the name). The ⏻ button (Unload) shuts down the live terminals of the active workspace — frees memory/CPU without deleting anything: the layout stays saved and each agent resumes the conversation when the terminal reopens.`,
+    },
+    {
+      id: 'agentes',
+      title: 'Agents: create, name, model & effort',
+      body: `When you draw an agent (+ Claude/Codex/Kimi), the creation dialog asks: window name, model (the provider's real list), reasoning effort (low→max, where supported) and whether it is the team Leader (Maestro Mode). After it's created: double-click the title to rename any node (agent, note, whatever). The badge in the terminal header assigns a role; ◐ toggles the theme; ★ toggles Maestro Mode.`,
+    },
+    {
+      id: 'roles',
+      title: 'Roles (team roles)',
+      body: `Roles are sets of instructions ("you are the reviewer: only point out problems, don't edit code") saved in .orkestrai/roles/<slug>/role.json — they travel with the repository. Manage them in the Roles panel (bottom bar). Assign via the badge in the terminal header: the role is injected as the agent's first message. The leader can also reassign team roles via CLI (orkestrai reassign).`,
+    },
+    {
+      id: 'times',
+      title: 'Teams: parallel, leader & Loop',
+      body: `All agents run in parallel (independent processes). Coordination happens through connections: agent asks agent with orkestrai ask, or the Leader (★ Maestro) distributes with task/ask and recruits/dismisses with recruit/dismiss. The Loop Ralph node is the sequential mode: leader plans → engineer implements → tester reviews, for up to N rounds. Routines fire scheduled prompts into any terminal.`,
+    },
+    {
+      id: 'notas',
+      title: 'Notes as work channels',
+      body: `Notes are living markdown shared with the agents. The convention: connect the note to whoever should read/write it and state the purpose in the title and content. E.g.: a "Backlog (leader writes)" note connected to the leader — you write "break this into tasks for the team" and it reads it with orkestrai note read and distributes it on the board. A "For me (human)" note — ask the leader to log status/decisions there with orkestrai note write/edit, and you follow along formatted (eye icon). Double-click the title to rename the note. Paste images straight into the editor.`,
+    },
+    {
+      id: 'tarefas',
+      title: 'Tasks (kanban)',
+      body: `The Tasks node (+ Tasks in the bottom bar) is the workspace board: cards in To do/Doing/Done. The "Add task" button opens a full composer: title, markdown description (checklists, links, code — rendered on the card, double-click to edit) and reference images ATTACHED RIGHT AT CREATION (Ctrl+V or picker, with thumbnails). Assigning a card to an agent dispatches the task straight to its terminal (continuous loop) — it works and marks it done on its own. The leader operates the board via CLI: orkestrai task list/add/assign/done (task add accepts --description). Each task can have ONE linked spec note (the same note can serve several tasks): link it on the card (chain icon) or via CLI (task add --note / task link). Completed tasks stay in the Done column until you (or the leader) archive them: they leave the board together with the linked note, but NOTHING is deleted — the history icon (clock) opens the timeline, and the note chip there opens the content even when archived. Protection rules: a linked note cannot be deleted via the canvas X; deleting the task deletes the note along with it (when it's the last task using it). In the CLI: orkestrai task archive/archive-done/history/link/unlink.`,
+    },
+    {
+      id: 'imagens',
+      title: 'Image node (visual reference)',
+      body: `The Image tool (bottom bar) creates a visual reference node on the canvas: mockup, screenshot, architecture diagram. Paste with Ctrl+V or click to pick the file — the image is saved in the workspace (.orkestrai/images/). Connect the node to the leader (or to a specific agent, like the designer) to make clear who should use that reference, and say in chat what to do with it. Double-click the title to rename; the image icon in the header swaps the file.`,
+    },
+    {
+      id: 'presets',
+      title: 'Team presets',
+      body: `A preset is a workspace template: team (agents with provider/leader/roles), canvas layout, notes with content and routines. Save the current workspace as a preset in the edit pencil (sidebar) → "Save as preset". When creating a new workspace, pick the preset under "Start from a preset" — the whole team is born instantiated in your project, with no runtime state (sessions are left out). Applying to an existing workspace ADDS the team to the canvas without deleting anything. Typical case: your default framework — build it once, save it, and every new project starts with the team ready.`,
+    },
+    {
+      id: 'fluxos',
+      title: 'Flows (agent pipelines)',
+      body: `The Flow node (+ Flow in the bottom bar) is a visual pipeline: steps in sequence, where one agent's output becomes the next one's input via {{input}} in the prompt. An "Agent" step talks to the chosen agent (the edge lights up meanwhile) — if the agent's terminal was never opened, the flow starts its session by itself; an "Approval" step pauses until you click Approve — human in the loop. Repetition with a limit (up to 5 rounds). Progress shows live on the node, errors show in a banner at the top of the node (nothing fails silently) and the history of the last 5 runs is stored in it. Use it for chained reviews (writes → reviews → approves), staged processing or any multi-step team routine.`,
+    },
+    {
+      id: 'sem-medo',
+      title: 'Diff, Loop & Floors — fearlessly (for non-devs)',
+      body: `Three buttons that look scary but are friendly: DIFF is just a comparator — it shows side by side what changed in the code between two versions, without touching anything. LOOP (Loop Ralph) is an autopilot: the team repeats the plan → do → review cycle by itself until the number of rounds you picked. FLOORS are safety copies of the project: each team works on a separate copy and nobody messes with the main version — in the end, the app helps merge everything back (and warns about conflicts beforehand). Click away without fear: nothing here deletes your work.`,
+    },
+    {
+      id: 'conexoes',
+      title: 'Connections',
+      body: `Drag from one node's dot to another — the connection is bidirectional and the dot floats along the edge, always at the closest point to the other node. The dashed rope has physics (swings when you move) and glows animated green while the agents talk. Hover shows the remove X; click pins the X. Connecting installs the bridge skill on the agents (they learn the orkestrai CLI on their own).`,
+    },
+    {
+      id: 'andares',
+      title: 'Floors (worktrees)',
+      body: `A floor is a git worktree of the workspace repo with its own branch — two work fronts on the same project without stepping on each other: floor agents run with cwd on the floor checkout. Create it in the Floors panel (bottom bar, which also lists floors and switches the visible canvas layer) or agents create it via CLI: orkestrai floor create/list/preview/land/remove. Landing = merging the branch back, with a diff and conflicts preview beforehand. Conflicts are not resolved automatically: the error lists the files and the resolution becomes a task for an agent (or you in the editor) — then repeat the land. Setup/run/teardown hooks with $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME, $ORKESTRAI_ROOT_PATH variables.`,
+    },
+    {
+      id: 'rotinas',
+      title: 'Routines',
+      body: `Scheduled prompts that fire into a terminal every X minutes (or just once). Use && on a line to chain steps. The history shows every firing. E.g.: "run the tests every 30 min", "check the deploy every hour". Routines fire even with the workspace in the background.`,
+    },
+    {
+      id: 'portal',
+      title: "Portal (the agents' browser)",
+      body: `The Portal node is an embedded browser. Connected to an agent, it becomes the agent's eyes: orkestrai portal <nodeId> navigate (open URL), eval (run JS on the page), dom (read the HTML), screenshot. Use it to test the app the team is building (point the portal at the dev server) or to research the web. Full automation runs in the desktop app (Electron); in a regular browser the portal is viewer-only.`,
+    },
+    {
+      id: 'mcp',
+      title: 'MCP (external tools for agents)',
+      body: `MCP is the standard for giving external tools to agents (GitHub, Gmail, Figma, Drive, Postgres...). THE EASY WAY: Skills page (sidebar) → MCPs tab — search the official curation or the MCP registry and install with one click; if the server asks for a key/token, the app asks with instructions on where to get it. Remote servers install with 1 click (no command). ADVANCED: pencil next to the workspace name → "MCP Servers" section to edit .mcp.json by hand. AUTOMATIC: Orkestrai itself already appears as an "orkestrai" MCP server (self-provisioned) — agents get the canvas actions as typed tools. Presets carry their MCPs along with the team.`,
+    },
+    {
+      id: 'cli',
+      title: 'orkestrai CLI (the bridge)',
+      body: `Agents use the orkestrai CLI to act on the canvas: list --agent <id> (agents, their notes and portals), ask (ask another agent), note read/write/edit/create, task list/add/assign/done/archive/history (+ link/unlink of spec note), role show/write/edit, floor create/list/preview/land/remove, notify (native notification to you), recruit/dismiss/connect/reassign (Maestro Mode), portal (browser automation), port (free port for dev servers), fs read/write/search, run (re-dispatches a task), say (speaks on the desktop), clip (reads the clipboard), notes/portals (listings). MCP-speaking agents get all of this as native tools via orkestrai mcp — the .mcp.json is self-provisioned at the project root; manage extra MCP servers in the workspace editor. The token lives in .orkestrai/workspace.json in the workspace directory.`,
+    },
+    {
+      id: 'atalhos',
+      title: 'Shortcuts',
+      body: `⌘P palette · ⌘K (or Ctrl+K) search the documentation from any screen · ⌘⇧A next attention · ⌘⇧T tidy up · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation (configurable in Settings) · ⌘F search in terminal · ⌘Z undo · Backspace delete. Full list in Settings.`,
+    },
+  ],
+  useCases: [
+    {
+      id: 'leader-team',
+      title: 'Dev team with a leader (zero-config)',
+      body: 'Create a Claude and say: "orchestrate feature X for me". It proposes the team (e.g.: 2 backend, 1 frontend, 1 reviewer), you approve, and it recruits, connects and distributes via kanban. At the end, it dismisses the agents it no longer needs.',
+      tags: ['Leader/Maestro', 'recruit/dismiss', 'kanban'],
+    },
+    {
+      id: 'watch-24-7',
+      title: '24/7 employee (task watcher)',
+      body: 'Routine every 1–5 min on the leader: "check the board (orkestrai task list); assign whatever is unassigned; if an agent is missing, recruit". The whole team works without you touching anything — assigning dispatches the task straight to the agent\'s terminal.',
+      tags: ['Routines', 'task assign', 'auto-dispatch'],
+    },
+    {
+      id: 'parallel-features',
+      title: 'Two features in parallel with no conflicts',
+      body: 'One floor (worktree) per feature: team A on the Ground floor on main, team B on the "auth-refactor" floor. When done, floor preview shows conflicts first; land merges. A conflict becomes a task for an agent to resolve.',
+      tags: ['Floors/worktrees', 'floor land', 'branches'],
+    },
+    {
+      id: 'visual-qa',
+      title: 'Visual QA of your application',
+      body: 'Portal pointed at the dev server (http://localhost:5173) connected to an agent: "open the portal, run the checkout flow, take a screenshot and tell me what broke". The agent navigates, runs JS, reads the DOM and reports.',
+      tags: ['Portal', 'screenshot', 'eval/dom'],
+    },
+    {
+      id: 'research-summary',
+      title: 'Automated research with summary',
+      body: '"Use the Research Portal to read about X, create a note called X Summary and write the findings in bullet points." The agent browses, extracts and writes — you read it formatted in the connected note.',
+      tags: ['Portal', 'notes', 'note create'],
+    },
+    {
+      id: 'inbox-files',
+      title: 'File inbox processed by itself',
+      body: 'Routine every 2 min: "list ./inbox; for each new image, describe and classify it; move it to ./inbox/done and log it on the board". Drop files in the folder and the team processes them in batches, nonstop.',
+      tags: ['Routines', 'folders', 'batch'],
+    },
+    {
+      id: 'cross-review',
+      title: 'Cross-review between providers',
+      body: 'Connect Claude and Codex: Claude implements, Codex reviews (orkestrai ask), the verdict comes back on the same rope (it glows green during the conversation). Two different model perspectives on every change.',
+      tags: ['Connections', 'ask', 'multi-provider'],
+    },
+    {
+      id: 'deploy-sentinel',
+      title: 'Deploy/test sentinel',
+      body: 'Hourly routine on a shell or agent: "run the tests; if they fail, open a task for the team and notify me (orkestrai notify)". You get a native system notification and the kanban already has the card.',
+      tags: ['Routines', 'notify', 'local CI'],
+    },
+    {
+      id: 'framework-preset',
+      title: 'Preset for your framework (new project in 30s)',
+      body: 'Build your framework\'s default team once (leader + devs + roles + bootstrap note with the conventions), save it as a preset in the workspace editor, and every new project is born with the full team: agents, spec notes, template tasks on the board and configured MCPs.',
+      tags: ['Presets', 'bootstrap', 'template tasks'],
+    },
+    {
+      id: 'approval-pipeline',
+      title: 'Pipeline writes → reviews → approves',
+      body: 'Flow with 3 steps: Dev writes the feature, Reviewer critiques it (one output becomes the other\'s {{input}}) and the Approval step pauses until you OK it on the node. Progress shows live and the latest runs stay in the flow history.',
+      tags: ['Flows', 'human approval', 'pipeline'],
+    },
+    {
+      id: 'mcp-tools',
+      title: 'Agents with external tools via MCP',
+      body: 'Add MCP servers in the workspace editor (e.g.: filesystem, web, database) — agents get the tools natively, and Orkestrai itself appears as an MCP server with the canvas actions (orkestrai mcp). Presets can carry the MCPs along with the team.',
+      tags: ['MCP', 'typed tools', '.mcp.json'],
+    },
+  ],
+  changelog: [
+    {
+      date: 'Aug 05, 2026',
+      items: [
+        'Trello-style kanban: composer with title, markdown description and images attached right at task creation (Ctrl+V or picker, with thumbnails).',
+        'Task description rendered on the card (double-click to edit) and supported in the API/CLI.',
+        'Full markdown in notes, roles and kanban history: links, checkboxes, tables and code — sanitized.',
+        'New Image node on the canvas: visual reference connectable to agents (paste with Ctrl+V or pick the file).',
+        'All app placeholders translated (pt-BR/English/Español).',
+        '100% i18n coverage: the whole app (canvas, nodes, panels, dialogs, palette, pages) speaks pt-BR, English and Español — 500+ new keys.',
+        '"How to use" documentation fully translated: topics, use cases, quickstart and changelog follow the chosen language.',
+        'CLI: task add accepts --description in markdown (also in the MCP tool).',
+        'Flow that actually works: agents without a session are started by the pipeline itself, errors show in a banner on the node (no more silent failures) and empty states guide you.',
+        'Folder icon (the default) selectable in the workspace editor — the picker had 24 icons but not the original one.',
+      ],
+    },
+    {
+      date: 'Aug 04, 2026',
+      items: [
+        'Voice conversation cycle: you dictate, the agent replies speaking — in real Brazilian Portuguese.',
+        '100% self-contained voice (no Node, no Docker): its own runtime downloaded together with the model, disk-space check and option to delete the model.',
+        'Speech reads only the current reply — no markdown, URLs or weird characters.',
+        'Kanban: attaching images to cards working (Ctrl+V and picker).',
+        'No more leaking arrow tip; style panel with sliders and configurable arrowhead.',
+        'Kimi usage renews the credential by itself.',
+        'No port fights between workspaces: orkestrai port returns a free port and agents learn to never kill a process on someone else\'s port.',
+        'Unload button with confirmation and feedback; redesigned Settings; changelog right here on the page.',
+        'Automatic updates: the app fetches a new version by itself and installs on switch, without touching your data.',
+        'Loading skeletons in the sidebar, usage, skills and Settings — no UI jumps.',
+        'Kanban with history: archive completed tasks without losing the record of what was delivered.',
+        'Task with linked spec note: archived together, protected against deletion, readable from the history.',
+        'Voice reads the session transcript: the agent\'s full reply, without invisible characters.',
+        'Team presets: save the workspace as a template and start projects with the team ready.',
+        'Flows: visual agent pipelines with human approval and run history.',
+        'Own MCP server + new CLI tools (fs, say, run, clip) + MCP manager.',
+        'Agent-to-agent reply submitted by itself — composer no longer hangs.',
+        'Automatic reconnection after laptop suspension, with context restored.',
+        'Reload button on every terminal (restarts the session with context).',
+        'Windows are never born smaller than the minimum — no leaking buttons.',
+        'Tooltips across the toolbar; Diff/Loop/Floors copy in plain language.',
+        '⌘K / Ctrl+K global: search the documentation from any screen.',
+        'MCP marketplace on the Skills page: official curation + registry, 1-click install and guided token fields.',
+        'App in Portuguese, English and Spanish: language selector in Settings (paraglide).',
+        'Design pass: redesigned Skills & MCPs page (segmented tabs, cards with badges) and polished docs.',
+        'Interactive onboarding: 11 guided tours by use case, with "Do it for me" and auto-completion, in 3 languages.',
+        'Workspace icon is now a Lucide picker (sidebar, editor and presets); old emoji keeps working.',
+      ],
+    },
+    {
+      date: 'Aug 03, 2026',
+      items: [
+        'Embedded voice with no Docker and no Python, with confirmation before the download.',
+        'Kanban with reference images and leader notified of new tasks; roles with markdown editor.',
+        'Full Windows support; native notifications with brand, workspace and agent.',
+      ],
+    },
+    {
+      date: 'Aug 02, 2026',
+      items: [
+        'Maestro Mode fixed end to end: the leader recruits, connects and distributes on its own.',
+        'Provider usage panel and skills marketplace (skills.sh) inside the app.',
+        'Automatic orchestration on the canvas: org chart, live edges, kanban and portal.',
+        'Offline dictation with configurable shortcut; Linux/Windows builds and DMG background with the brand.',
+      ],
+    },
+    {
+      date: 'Aug 01, 2026',
+      items: [
+        'Orkestrai is born: agent canvas, CLI bridge, floors (worktrees), routines, roles, kanban, portal and Maestro Mode.',
+        'Multi-workspace with exact context resume; desktop app for macOS, Linux and Windows.',
+      ],
+    },
+  ],
+};

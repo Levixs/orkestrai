@@ -4,7 +4,7 @@
   import { defaults, superForm } from 'sveltekit-superforms';
   import { zod } from 'sveltekit-superforms/adapters';
   import { z } from 'zod';
-  import { marked } from 'marked';
+  import MarkdownView from '../MarkdownView.svelte';
   import * as Form from '$lib/components/ui/form';
   import { Input } from '$lib/components/ui/input';
   import { Textarea } from '$lib/components/ui/textarea';
@@ -12,6 +12,7 @@
   import { Pencil, ScanSearch, Trash2, X } from '@lucide/svelte';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   type Props = {
     workspace: Workspace;
@@ -28,9 +29,9 @@
   let editingSlug = $state<string | null>(null);
 
   const roleFormSchema = z.object({
-    name: z.string().trim().min(1, 'Informe o nome.'),
+    name: z.string().trim().min(1, m['roles.error_name_required']()),
     color: z.string().trim().default('#7C4DFF'),
-    prompt: z.string().trim().min(1, 'Informe as instrucoes.'),
+    prompt: z.string().trim().min(1, m['roles.error_prompt_required']()),
   });
   // Cast por causa do zod aninhado do superforms (4.x) vs zod 3.25 do app.
   const schema = roleFormSchema as unknown as Parameters<typeof zod>[0];
@@ -58,18 +59,15 @@
         editingSlug = null;
         await refresh();
       } catch (error) {
-        errorMessage = error instanceof Error ? error.message : 'Falha ao salvar.';
+        errorMessage = error instanceof Error ? error.message : m['roles.error_save']();
       }
     },
   });
 
   const { form: formData, enhance } = form;
 
-  // Editor markdown: aba Escrever (textarea) x Preview (HTML renderizado).
+  // Editor markdown: aba Escrever (textarea) x Preview (renderizado).
   let promptTab = $state<'edit' | 'preview'>('edit');
-  const promptHtml = $derived(
-    $formData.prompt.trim() ? (marked.parse($formData.prompt, { async: false }) as string) : ''
-  );
 
   function startEdit(role: AgentRole) {
     editingSlug = role.slug;
@@ -98,11 +96,11 @@
         { method: 'POST' }
       );
       infoMessage = result.imported
-        ? `${result.imported} responsabilidade(s) importada(s).`
-        : 'Nenhuma role.json nova encontrada no repositorio.';
+        ? m['roles.imported']({ count: result.imported })
+        : m['roles.none_found']();
       await refresh();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao descobrir.';
+      errorMessage = error instanceof Error ? error.message : m['roles.error_discover']();
     }
   }
 
@@ -118,17 +116,17 @@
 
 <aside class="side-panel">
   <header class="panel-header">
-    <h3>Responsabilidades</h3>
+    <h3>{m['roles.title']()}</h3>
     <div class="panel-header-actions">
-      <HeaderIconButton label="Descobrir no repositorio" class="node-action-btn" side="left" onclick={discover}><ScanSearch size={14} /></HeaderIconButton>
-      <HeaderIconButton label="Fechar" class="node-action-btn" side="left" onclick={onClose}><X size={14} /></HeaderIconButton>
+      <HeaderIconButton label={m['roles.discover']()} class="node-action-btn" side="left" onclick={discover}><ScanSearch size={14} /></HeaderIconButton>
+      <HeaderIconButton label={m['roles.close']()} class="node-action-btn" side="left" onclick={onClose}><X size={14} /></HeaderIconButton>
     </div>
   </header>
 
   <p class="hint">
-    Roles sao conjuntos de instrucoes injetados no inicio do agente. Ficam em
-    <code>.orkestrai/roles/</code> e viajam com o repositorio. O editor aceita
-    <strong>markdown</strong> (abas Escrever/Preview) — e o formato nativo do AGENTS.md.
+    {m['roles.hint_1']()}
+    <code>.orkestrai/roles/</code> {m['roles.hint_2']()}
+    <strong>markdown</strong> {m['roles.hint_3']()}
   </p>
 
   {#each roles as role (role.slug)}
@@ -136,14 +134,14 @@
       <span class="role-color" style:background={role.color}></span>
       <div class="role-info">
         <strong>{role.name}</strong>
-        <small>{role.slug} · {role.prompt.length} chars</small>
+        <small>{role.slug} · {m['roles.char_count']({ count: role.prompt.length })}</small>
       </div>
-      <HeaderIconButton label="Editar" class="node-action-btn" side="left" onclick={() => (editingSlug === role.slug ? cancelEdit() : startEdit(role))}><Pencil size={13} /></HeaderIconButton>
-      <HeaderIconButton label="Excluir" class="node-action-btn" danger side="left" onclick={() => remove(role)}><Trash2 size={13} /></HeaderIconButton>
+      <HeaderIconButton label={m['roles.edit']()} class="node-action-btn" side="left" onclick={() => (editingSlug === role.slug ? cancelEdit() : startEdit(role))}><Pencil size={13} /></HeaderIconButton>
+      <HeaderIconButton label={m['roles.delete']()} class="node-action-btn" danger side="left" onclick={() => remove(role)}><Trash2 size={13} /></HeaderIconButton>
     </div>
   {/each}
   {#if roles.length === 0}
-    <p class="empty">Nenhuma responsabilidade. Crie ou descubra no repositorio.</p>
+    <p class="empty">{m['roles.empty']()}</p>
   {/if}
 
   {#if infoMessage}
@@ -155,13 +153,13 @@
 
   <form method="POST" use:enhance class="role-form">
     {#if editingSlug}
-      <p class="editing-hint">Editando “{editingSlug}” — <button type="button" class="link-btn" onclick={cancelEdit}>cancelar</button></p>
+      <p class="editing-hint">{m['roles.editing']({ slug: editingSlug })} — <button type="button" class="link-btn" onclick={cancelEdit}>{m['settings.cancel']()}</button></p>
     {/if}
     <Form.Field {form} name="name">
       <Form.Control>
         {#snippet children({ props })}
-          <Form.Label>Nome</Form.Label>
-          <Input {...props} bind:value={$formData.name} placeholder="Revisor" />
+          <Form.Label>{m['roles.name_label']()}</Form.Label>
+          <Input {...props} bind:value={$formData.name} placeholder={m['ph.role_name']()} />
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
@@ -171,22 +169,20 @@
       <Form.Control>
         {#snippet children({ props })}
           <div class="prompt-head">
-            <Form.Label>Instrucoes (markdown)</Form.Label>
+            <Form.Label>{m['roles.prompt_label']()}</Form.Label>
             <div class="prompt-tabs" role="tablist">
-              <button type="button" class:active={promptTab === 'edit'} role="tab" onclick={() => (promptTab = 'edit')}>Escrever</button>
-              <button type="button" class:active={promptTab === 'preview'} role="tab" onclick={() => (promptTab = 'preview')}>Preview</button>
+              <button type="button" class:active={promptTab === 'edit'} role="tab" onclick={() => (promptTab = 'edit')}>{m['roles.tab_write']()}</button>
+              <button type="button" class:active={promptTab === 'preview'} role="tab" onclick={() => (promptTab = 'preview')}>{m['roles.tab_preview']()}</button>
             </div>
           </div>
           {#if promptTab === 'edit'}
-            <Textarea {...props} bind:value={$formData.prompt} rows={8} placeholder={'## Papel\nVoce revisa codigo com foco em seguranca...\n\n- cheque inputs\n- **nunca** exponha segredos\n\n```ts\n// exemplos do que apontar\n```'} />
+            <Textarea {...props} bind:value={$formData.prompt} rows={8} placeholder={m['roles.prompt_ph']()} />
           {:else}
             <div class="md-preview">
-              {#if promptHtml}
-                <!-- Preview do proprio autor (conteudo local, nao remoto). -->
-                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                {@html promptHtml}
+              {#if $formData.prompt.trim()}
+                <MarkdownView content={$formData.prompt} />
               {:else}
-                <span class="md-empty">Nada para prever — escreva em markdown na aba Escrever.</span>
+                <span class="md-empty">{m['roles.preview_empty']()}</span>
               {/if}
             </div>
           {/if}
@@ -195,7 +191,7 @@
       <Form.FieldErrors />
     </Form.Field>
 
-    <Button type="submit" size="sm">{editingSlug ? 'Salvar alteracoes' : 'Salvar responsabilidade'}</Button>
+    <Button type="submit" size="sm">{editingSlug ? m['settings.save']() : m['roles.save']()}</Button>
   </form>
 </aside>
 

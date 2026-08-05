@@ -12,6 +12,7 @@
   import { createWorkspaceSchema } from '$lib/modules/agent-room/contracts/schemas/workspaceSchemas.js';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
   import { onMount } from 'svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   type PresetSummary = { id: string; name: string; icon: string | null; description: string | null; agents: number };
 
@@ -56,7 +57,7 @@ const form = superForm(defaults(zod(schema)), {
           body: JSON.stringify(f.data),
         });
         const payload = await response.json();
-        if (!response.ok || payload.error) throw new Error(payload.error || 'Falha ao criar workspace.');
+        if (!response.ok || payload.error) throw new Error(payload.error || m['dlg.ws_create_error']());
         const workspace = payload.data as Workspace;
         // Com preset selecionado: instancia o time no workspace recem-criado.
         if (presetId) {
@@ -66,12 +67,12 @@ const form = superForm(defaults(zod(schema)), {
             body: JSON.stringify({ workspaceId: workspace.id }),
           });
           const applyPayload = await applyResponse.json();
-          if (!applyResponse.ok || applyPayload.error) throw new Error(applyPayload.error || 'Falha ao aplicar o preset.');
+          if (!applyResponse.ok || applyPayload.error) throw new Error(applyPayload.error || m['dlg.preset_apply_error']());
         }
         onCreated(workspace);
         onClose();
       } catch (error) {
-        submitError = error instanceof Error ? error.message : 'Falha ao criar workspace.';
+        submitError = error instanceof Error ? error.message : m['dlg.ws_create_error']();
       }
     },
   });
@@ -88,16 +89,16 @@ const form = superForm(defaults(zod(schema)), {
 <Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onClose()}>
   <Dialog.Content class="sm:max-w-md">
     <Dialog.Header>
-      <Dialog.Title>Novo workspace</Dialog.Title>
-      <Dialog.Description>Um workspace agrupa um diretorio de trabalho e o layout do canvas.</Dialog.Description>
+      <Dialog.Title>{m['dlg.new_ws_title']()}</Dialog.Title>
+      <Dialog.Description>{m['dlg.new_ws_desc']()}</Dialog.Description>
     </Dialog.Header>
 
     <form method="POST" use:enhance class="space-y-4">
       <Form.Field {form} name="name">
         <Form.Control>
           {#snippet children({ props })}
-            <Form.Label>Nome</Form.Label>
-            <Input {...props} bind:value={$formData.name} placeholder="Nome" />
+            <Form.Label>{m['dlg.name']()}</Form.Label>
+            <Input {...props} bind:value={$formData.name} placeholder={m['ph.ws_name']()} />
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
@@ -106,56 +107,56 @@ const form = superForm(defaults(zod(schema)), {
       <Form.Field {form} name="workingDir">
         <Form.Control>
           {#snippet children({ props })}
-            <Form.Label>Diretorio de trabalho</Form.Label>
+            <Form.Label>{m['dlg.working_dir']()}</Form.Label>
             <div class="flex gap-2">
-              <Input {...props} bind:value={$formData.workingDir} placeholder="Diretorio de trabalho" class="flex-1" />
+              <Input {...props} bind:value={$formData.workingDir} placeholder={m['ph.ws_dir']()} class="flex-1" />
               {#if desktop}
                 <Tooltip.Root>
                   <Tooltip.Trigger>
                     {#snippet child({ props })}
-                      <Button {...props} type="button" variant="outline" size="icon" aria-label="Escolher pasta" onclick={pickDirectory}>
+                      <Button {...props} type="button" variant="outline" size="icon" aria-label={m['dlg.pick_folder']()} onclick={pickDirectory}>
                         <FolderOpen size={15} />
                       </Button>
                     {/snippet}
                   </Tooltip.Trigger>
-                  <Tooltip.Content side="top">Escolher pasta</Tooltip.Content>
+                  <Tooltip.Content side="top">{m['dlg.pick_folder']()}</Tooltip.Content>
                 </Tooltip.Root>
               {/if}
             </div>
           {/snippet}
         </Form.Control>
-        <Form.Description>Pasta raiz do projeto. Novos terminais abrem aqui.</Form.Description>
+        <Form.Description>{m['dlg.new_ws_dir_hint']()}</Form.Description>
         <Form.FieldErrors />
       </Form.Field>
 
       {#if presets.length}
         <div class="space-y-2">
-          <span class="text-sm font-medium leading-none">Comecar de um preset (opcional)</span>
+          <span class="text-sm font-medium leading-none">{m['dlg.preset_start_label']()}</span>
           <Select.Root type="single" value={presetId} onValueChange={(value: string) => (presetId = value === '__none' ? '' : value)}>
             <Select.Trigger data-slot="select-trigger" class="w-full">
               {#if presetId}
                 {@const preset = presets.find((item) => item.id === presetId)}
                 <span class="preset-option">
                   <WorkspaceIcon name={preset?.icon} size={13} />
-                  {preset?.name} ({preset?.agents} agentes)
+                  {preset?.name} ({m['dlg.preset_agents']({ count: String(preset?.agents ?? 0) })})
                 </span>
               {:else}
-                Em branco
+                {m['dlg.preset_blank']()}
               {/if}
             </Select.Trigger>
             <Select.Content>
-              <Select.Item value="__none">Em branco</Select.Item>
+              <Select.Item value="__none">{m['dlg.preset_blank']()}</Select.Item>
               {#each presets as preset (preset.id)}
                 <Select.Item value={preset.id}>
                   <span class="preset-option">
                     <WorkspaceIcon name={preset.icon} size={13} />
-                    {preset.name} — {preset.agents} agentes{preset.description ? ` · ${preset.description}` : ''}
+                    {preset.name} — {m['dlg.preset_agents']({ count: String(preset.agents) })}{preset.description ? ` · ${preset.description}` : ''}
                   </span>
                 </Select.Item>
               {/each}
             </Select.Content>
           </Select.Root>
-          <p class="text-xs text-muted-foreground">O preset instancia o time, as notas, as roles e as rotinas no workspace novo.</p>
+          <p class="text-xs text-muted-foreground">{m['dlg.preset_apply_hint']()}</p>
         </div>
       {/if}
 
@@ -164,8 +165,8 @@ const form = superForm(defaults(zod(schema)), {
       {/if}
 
       <Dialog.Footer>
-        <Button type="button" variant="outline" onclick={onClose}>Cancelar</Button>
-        <Button type="submit">Criar</Button>
+        <Button type="button" variant="outline" onclick={onClose}>{m['dlg.cancel']()}</Button>
+        <Button type="submit">{m['dlg.create']()}</Button>
       </Dialog.Footer>
     </form>
   </Dialog.Content>

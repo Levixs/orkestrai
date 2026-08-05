@@ -4,6 +4,7 @@
   import { GitCompareArrows, RefreshCw, X } from '@lucide/svelte';
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type DiffNodeData = {
     title: string;
@@ -31,7 +32,7 @@
       headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
     });
     const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || 'Falha na API.');
+    if (!response.ok || payload.error) throw new Error(payload.error || m['diff.error_api']());
     return payload.data as T;
   }
 
@@ -48,7 +49,7 @@
         diffText = '';
       }
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao ler status.';
+      errorMessage = error instanceof Error ? error.message : m['diff.error_status']();
     }
   }
 
@@ -59,9 +60,9 @@
       const result = await api<{ diff: string }>(
         `/api/agent-room/workspaces/${data.workspaceId}/git/diff?path=${encodeURIComponent(change.path)}&staged=${change.staged}`
       );
-      diffText = result.diff || '(diff vazio — arquivo novo ou sem alteracoes de conteudo)';
+      diffText = result.diff || m['diff.empty_diff']();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao ler diff.';
+      errorMessage = error instanceof Error ? error.message : m['diff.error_read']();
     }
   }
 
@@ -74,7 +75,7 @@
       });
       await refresh();
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : `Falha em ${action}.`;
+      errorMessage = error instanceof Error ? error.message : m['diff.error_action']({ action });
     }
   }
 
@@ -126,18 +127,18 @@
     {/if}
   {/snippet}
   {#snippet actions()}
-    <IconAction label="Recarregar" onclick={refresh}><RefreshCw size={13} /></IconAction>
-    <IconAction label="Remover" danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
+    <IconAction label={m['diff.reload']()} onclick={refresh}><RefreshCw size={13} /></IconAction>
+    <IconAction label={m['diff.remove']()} danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
   {/snippet}
 
   {#if !isRepo}
-    <p class="empty">Este workspace nao e um repositorio git.</p>
+    <p class="empty">{m['diff.not_repo']()}</p>
   {:else}
     <div class="diff-columns nodrag nowheel">
       <aside class="change-list">
         {#each changes as change (change.path + change.staged)}
           <div class="change-row" class:active={selectedPath === change.path}>
-            <button class="change-open" onclick={() => openDiff(change)} aria-label="Ver diff">
+            <button class="change-open" onclick={() => openDiff(change)} aria-label={m['diff.view_diff']()}>
               <span class="change-status" class:staged={change.staged}>{statusLabel(change)}</span>
               {change.path}
             </button>
@@ -146,14 +147,14 @@
                 <button aria-label="Unstage" onclick={() => gitAction('unstage', change.path)}>unstage</button>
               {:else}
                 <button aria-label="Stage" onclick={() => gitAction('stage', change.path)}>stage</button>
-                <button aria-label="Descartar alteracoes" onclick={() => gitAction('discard', change.path)}>descartar</button>
+                <button aria-label={m['diff.discard_label']()} onclick={() => gitAction('discard', change.path)}>{m['diff.discard']()}</button>
               {/if}
-              <button aria-label="Abrir no editor" onclick={() => data.onOpenFile?.(change.path)}>abrir</button>
+              <button aria-label={m['diff.open_editor_label']()} onclick={() => data.onOpenFile?.(change.path)}>{m['diff.open']()}</button>
             </span>
           </div>
         {/each}
         {#if changes.length === 0}
-          <p class="empty">Working tree limpo.</p>
+          <p class="empty">{m['diff.clean']()}</p>
         {/if}
       </aside>
 
@@ -163,7 +164,7 @@
           <pre class="diff-text">{#each diffText.split('\n') as line}<span class={lineClass(line)}>{line}
 </span>{/each}</pre>
         {:else}
-          <p class="empty">Selecione um arquivo para ver o diff.</p>
+          <p class="empty">{m['diff.select_file']()}</p>
         {/if}
       </div>
     </div>

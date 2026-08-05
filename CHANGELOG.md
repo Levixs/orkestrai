@@ -2,6 +2,34 @@
 
 Todas as mudanças notáveis do projeto, em português, da mais recente para a mais antiga.
 
+## 2026-08-05
+
+**Kanban estilo Trello (composer + descrição + imagens antes de criar)**
+- O botão "Adicionar tarefa" virou um **composer completo**: título, **descrição em markdown** (checklists, links, código) e **anexos de imagem já na criação** — cole com Ctrl+V ou escolha arquivos, com miniaturas e X para remover antes de salvar. Não precisa mais criar a tarefa correndo para anexar a referência antes do líder pegar.
+- A descrição aparece formatada no cartão (duplo-clique edita) e viaja pela API/CLI (`task add --description`).
+
+**Markdown de verdade em tudo**
+- Novo `MarkdownView` (marked + DOMPurify) compartilhado: **notas, roles e histórico do kanban** agora renderizam GFM completo — links que abrem fora do app, checkboxes, tabelas, código com destaque, citações — sanitizado contra HTML malicioso.
+
+**Nó de Imagem no canvas**
+- Nova ferramenta **Imagem** na toolbar: um nó de referência visual (mockup, screenshot, diagrama) que você conecta ao líder ou a qualquer agente. Cole com Ctrl+V ou escolha um arquivo; a imagem fica salva no workspace (`.orkestrai/images/`).
+
+**i18n: placeholders e buscas traduzidos**
+- Todos os placeholders de inputs do app (busca de workspaces, docs, skills/MCPs, composer do kanban, painéis de andares/rotinas/roles, diálogos de workspace/agente, nós de terminal/nota/fluxo/loop/portal/arquivos) agora passam pelo paraglide em pt-BR/English/Español.
+
+**i18n: cobertura total (100%)**
+- O app inteiro fala pt-BR, English e Español: canvas, sidebar, todos os nós (terminal, nota, arquivos, editor, diff, portal, loop, grupo, forma, tarefas, fluxo, imagem), painéis (andares, rotinas, roles, usage), diálogos, paleta de comandos, páginas de Configurações/Skills/Terminal, modal de voz, notificador de atualização — mais de 500 chaves novas nos 3 idiomas.
+- A página "Como usar" inteira (tópicos, casos de uso, quickstart e changelog) virou catálogo por idioma (`src/lib/i18n/docs/`), traduzida integralmente — troque o idioma nas Configurações e a documentação acompanha.
+- Limpeza: removidos os componentes mortos do chat clássico (ChatView, MessageBubble, KanbanBoard, TeamPanel, AgentControls, ProjectPanel), sem uso desde o canvas.
+- CLI: `orkestrai task add` aceita `--description` (markdown) — também na tool MCP `task_add`.
+
+**Fluxo refeito (funciona de verdade)**
+- O pipeline agora **inicia sozinho a sessão PTY de agentes** cujo terminal nunca foi aberto (ou cuja sessão morreu) — antes o passo falhava com "sem sessão PTY ativa" escondido no histórico.
+- **Fim das falhas silenciosas**: qualquer erro (rodar sem passos, "+ Agente" sem agentes no canvas, falha da API) aparece num **banner vermelho no topo do nó**; a última execução falha fica visível até a próxima run.
+- Estados vazios guiados (o que é um fluxo e como montar), botão Rodar com feedback de "iniciando..." e ícones de status em cada passo durante a execução.
+- Cobertura nova: spec e2e do fluxo (monta, roda, aprova, histórico + auto-spawn) e teste de feature do auto-spawn.
+- Ícone **pasta** (o default do app) agora é selecionável no editor do workspace — o picker tinha 24 ícones mas não o original. Trocar o ícone não derruba o workspace (verificado com os dados reais do workspace afetado).
+
 ## 2026-08-04
 
 **Tooltips, busca e polish**

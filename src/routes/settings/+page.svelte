@@ -183,31 +183,31 @@
       const response = await fetch('/api/agent-room/voice/health');
       voiceHealth = (await response.json()).data ?? null;
     } catch {
-      voiceHealth = { ok: false, url: settings.voiceStackUrl ?? '', detail: 'falha na consulta' };
+      voiceHealth = { ok: false, url: settings.voiceStackUrl ?? '', detail: m['settings.voice_health_failed']() };
     } finally {
       checkingVoice = false;
     }
   }
 
   const SHORTCUTS = $derived<Array<[string, string]>>([
-    ['Cmd/Ctrl+P', 'Paleta de comandos'],
-    ['Cmd/Ctrl+K', 'Buscar na documentacao (de qualquer tela)'],
-    ['Cmd/Ctrl+Shift+A', 'Proximo agente com atencao'],
-    ['Cmd/Ctrl+Shift+T', 'Organizar selecao em grade'],
-    ['Cmd/Ctrl+G', 'Agrupar selecao'],
-    ['Cmd/Ctrl+Shift+G', 'Desagrupar'],
-    ['Cmd/Ctrl+Shift+!', 'Zoom para a selecao'],
-    ['N', 'Nova nota'],
-    ['L', 'Conectar selecionados'],
-    ['Alt+1..9', 'Focar terminal por indice'],
-    [hotkeyLabel, 'Ditado por voz (terminal focado)'],
-    ['Cmd/Ctrl+S', 'Salvar arquivo (editor)'],
-    ['Backspace/Delete', 'Excluir no selecionado'],
+    ['Cmd/Ctrl+P', m['settings.shortcut_palette']()],
+    ['Cmd/Ctrl+K', m['settings.shortcut_search_docs']()],
+    ['Cmd/Ctrl+Shift+A', m['settings.shortcut_next_attention']()],
+    ['Cmd/Ctrl+Shift+T', m['settings.shortcut_arrange']()],
+    ['Cmd/Ctrl+G', m['settings.shortcut_group']()],
+    ['Cmd/Ctrl+Shift+G', m['settings.shortcut_ungroup']()],
+    ['Cmd/Ctrl+Shift+!', m['settings.shortcut_zoom']()],
+    ['N', m['settings.shortcut_new_note']()],
+    ['L', m['settings.shortcut_connect']()],
+    ['Alt+1..9', m['settings.shortcut_focus_terminal']()],
+    [hotkeyLabel, m['settings.shortcut_dictation']()],
+    ['Cmd/Ctrl+S', m['settings.shortcut_save']()],
+    ['Backspace/Delete', m['settings.shortcut_delete']()],
   ]);
 </script>
 
 <svelte:head>
-  <title>Orkestrai — Configuracoes</title>
+  <title>Orkestrai — {m['settings.title']()}</title>
 </svelte:head>
 
 <svelte:window onkeydown={captureHotkey} />
@@ -216,7 +216,7 @@
   <header class="settings-header">
     <Button variant="ghost" size="sm" href="/canvas">
       <ArrowLeft size={15} aria-hidden="true" />
-      Canvas
+      {m['settings.back_canvas']()}
     </Button>
     <div class="header-titles">
       <h1>{m['settings.title']()}</h1>
@@ -391,9 +391,9 @@
             {settings.voiceTtsVoice ?? 'pf_dora'}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="pf_dora">pf_dora (feminina)</Select.Item>
-            <Select.Item value="pm_alex">pm_alex (masculina)</Select.Item>
-            <Select.Item value="pm_santa">pm_santa (masculina)</Select.Item>
+            <Select.Item value="pf_dora">pf_dora ({m['settings.tts_voice_female']()})</Select.Item>
+            <Select.Item value="pm_alex">pm_alex ({m['settings.tts_voice_male']()})</Select.Item>
+            <Select.Item value="pm_santa">pm_santa ({m['settings.tts_voice_male']()})</Select.Item>
           </Select.Content>
         </Select.Root>
       </div>
@@ -419,7 +419,7 @@
       {#if voiceHealth}
         <span class="status-pill" class:ok={voiceHealth.ok}>
           <span class="status-dot"></span>
-          {voiceHealth.ok ? `${voiceHealth.url === 'embedded' ? 'Motor local ativo' : `Sidecar no ar (${voiceHealth.url})`}${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}` : `Fora do ar (${voiceHealth.url})${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}`}
+          {voiceHealth.ok ? `${voiceHealth.url === 'embedded' ? m['settings.voice_local_active']() : m['settings.voice_sidecar_up']({ url: voiceHealth.url })}${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}` : `${m['settings.voice_down']({ url: voiceHealth.url })}${voiceHealth.detail ? ` — ${voiceHealth.detail}` : ''}`}
         </span>
       {/if}
     </div>
@@ -495,7 +495,7 @@
               <input
                 class="preset-rename"
                 bind:value={presetDraft}
-                aria-label="Renomear preset"
+                aria-label={m['settings.preset_rename_aria']()}
                 onkeydown={(event) => {
                   if (event.key === 'Enter') renamePreset(preset);
                   if (event.key === 'Escape') editingPresetId = null;
@@ -505,11 +505,11 @@
             {:else}
               <span class="preset-name">{preset.name}</span>
             {/if}
-            <span class="preset-meta">{preset.agents} agentes{preset.description ? ` · ${preset.description}` : ''}</span>
-            <button class="preset-action" aria-label={`Renomear ${preset.name}`} onclick={() => startPresetRename(preset)}>
+            <span class="preset-meta">{m['settings.preset_agents']({ count: preset.agents })}{preset.description ? ` · ${preset.description}` : ''}</span>
+            <button class="preset-action" aria-label={m['settings.preset_rename_named']({ name: preset.name })} onclick={() => startPresetRename(preset)}>
               <Pencil size={12} />
             </button>
-            <button class="preset-action danger" aria-label={`Apagar ${preset.name}`} onclick={() => (deletingPreset = preset)}>
+            <button class="preset-action danger" aria-label={m['settings.preset_delete_named']({ name: preset.name })} onclick={() => (deletingPreset = preset)}>
               <Trash2 size={12} />
             </button>
           </li>

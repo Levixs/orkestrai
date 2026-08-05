@@ -51,7 +51,7 @@ Uso:
   orkestrai dismiss <agente> --from <maestro>
   orkestrai connect <de> <para> --from <maestro>
   orkestrai task list [--json]
-  orkestrai task add <titulo> [--assign <agente>] [--note <nota>] [--from <agente>]
+  orkestrai task add <titulo> [--description <md>] [--assign <agente>] [--note <nota>] [--from <agente>]
   orkestrai task done <taskId>
   orkestrai task assign <taskId> <agente>
   orkestrai task link <taskId> <nota> | unlink <taskId>
@@ -380,9 +380,10 @@ export async function run(argv, options = {}) {
       }
       if (action === 'add') {
         const title = values.join(' ');
-        if (!title) throw new Error('Uso: orkestrai task add <titulo> [--assign <agente>] [--note <nota>] [--from <agente>]');
+        if (!title) throw new Error('Uso: orkestrai task add <titulo> [--description <md>] [--assign <agente>] [--note <nota>] [--from <agente>]');
         const data = await bridge(config, 'POST', '/api/agent-room/bridge/tasks', {
           title,
+          description: flags.description,
           assignee: flags.assign,
           note: flags.note,
           from: flags.from,

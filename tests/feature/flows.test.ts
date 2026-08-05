@@ -91,6 +91,38 @@ describe('FlowService', () => {
     ptySessionManager.kill(session.id);
   }, 30_000);
 
+  it('spawna a sessao do agente sozinho quando o terminal nunca foi aberto', async () => {
+    // Terminal SEM sessionId (nunca aberto no canvas): o fluxo spawna no
+    // servidor, persiste o sessionId no payload e conclui mesmo assim.
+    const workspace = await workspaceRepository.createWorkspace({ name: 'flows-spawn', workingDir: '/tmp' });
+    const agent = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Dorminhoco',
+      payload: { command: '/bin/cat' },
+    });
+    const flow = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'flow',
+      title: 'F4',
+      payload: { steps: [{ kind: 'agent', target: 'Dorminhoco', prompt: 'acorda {{input}}' }], iterations: 1 },
+    });
+
+    await flowService.run(workspace.id, flow.id, 'ai');
+    await expect.poll(() => runsOf(flow.id), { timeout: 20_000, interval: 500 }).toHaveLength(1);
+
+    const runs = (await runsOf(flow.id)) as Array<{ ok: boolean; steps: Array<{ status: string; excerpt?: string }> }>;
+    expect(runs[0].ok).toBe(true);
+    expect(runs[0].steps[0].excerpt).toContain('acorda ai');
+
+    // sessionId persistido no payload e sessao viva no gerenciador
+    const updated = await workspaceRepository.getNode(agent.id);
+    const sessionId = (updated?.payload as { sessionId?: string }).sessionId;
+    expect(sessionId).toBeTruthy();
+    expect(ptySessionManager.get(sessionId!)?.exited).toBe(false);
+    ptySessionManager.kill(sessionId!);
+  }, 30_000);
+
   it('validacoes: sem passos, passo sem alvo, no inexistente', async () => {
     const { workspace, session } = await createWorkspaceWithAgent();
     const empty = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'flow', title: 'Vazio', payload: { steps: [] } });

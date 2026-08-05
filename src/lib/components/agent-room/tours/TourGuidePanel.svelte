@@ -10,7 +10,7 @@
 </script>
 
 {#if tourState.tour && step}
-  <aside class="tour-panel nodrag nowheel" role="complementary" aria-label="Tour guiado">
+  <aside class="tour-panel nodrag nowheel" role="complementary" aria-label={m['tour.panel_aria']()}>
     {#if tourState.done}
       <div class="tour-done">
         <CircleCheck size={20} aria-hidden="true" />

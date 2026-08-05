@@ -172,6 +172,27 @@ describe('TaskBoardService', () => {
     ptySessionManager.kill(session.id);
   });
 
+  it('descricao em markdown na criacao e edicao da tarefa', async () => {
+    const { workspace, session } = await createWorkspaceWithTerminal();
+
+    const task = await taskBoardService.create(workspace.id, {
+      title: 'Landing page',
+      description: '## Escopo\n\n- [ ] hero\n- [ ] footer\n\nVeja [ref](https://exemplo.com).',
+    });
+    expect(task.description).toContain('- [ ] hero');
+
+    const updated = await taskBoardService.update(workspace.id, task.id, { description: 'desc **nova**' });
+    expect(updated.description).toBe('desc **nova**');
+
+    const listed = await taskBoardService.list(workspace.id);
+    expect(listed[0].description).toBe('desc **nova**');
+
+    // limpar a descricao volta para null
+    const cleared = await taskBoardService.update(workspace.id, task.id, { description: null });
+    expect(cleared.description).toBeNull();
+    ptySessionManager.kill(session.id);
+  });
+
   it('task nova avisa o lider no terminal dele; task da ponte nao ecoa', async () => {
     const { workspace, leaderSession } = await createWorkspaceWithLeader();
 

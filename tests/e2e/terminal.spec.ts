@@ -33,7 +33,7 @@ test.describe('terminais PTY', () => {
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
     await page.getByPlaceholder('Nome').fill(workspaceName);
-    await page.getByPlaceholder('Diretorio de trabalho').fill('/tmp');
+    await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
     await expect(page.locator('.workspace-list li.active')).toContainText(workspaceName);

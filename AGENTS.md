@@ -72,7 +72,7 @@
 
 - O app é internacionalizado com paraglide (`project.inlang`, `messages/{pt-BR,en,es}.json` compilado para `src/lib/paraglide`). **Toda string nova de UI passa por `m['chave']()`** de `$lib/paraglide/messages.js` — nunca texto hardcoded; sempre adicione a chave nos 3 idiomas no mesmo commit.
 - O locale vem da setting `uiLanguage` (seletor em Configurações) via `overwriteGetLocale` em `src/lib/i18n/locale.svelte.ts`; o layout raiz usa `{#key localeState.current}` para remontar a árvore na troca (é o mecanismo de reatividade — não remova).
-- Migração é progressiva: páginas já migradas usam `m.*`; as demais seguem em pt-BR até serem migradas.
+- **Cobertura é 100%**: não existe "página ainda não migrada" — toda string visível usa `m.*()`. Conteúdo longo e estruturado NÃO vai para o paraglide: a página "Como usar" usa catálogos TS por idioma em `src/lib/i18n/docs/{pt-BR,en,es}.ts` (mesmo padrão dos tours em `tours/catalog/`), com teste de integridade (`tests/unit/docs-catalog.test.ts`) garantindo estrutura idêntica nos 3 idiomas — ao editar docs/changelog in-app, edite os 3 catálogos no mesmo commit.
 
 ## Verification
 

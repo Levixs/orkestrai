@@ -8,7 +8,7 @@ async function createWorkspaceIn(page: import('@playwright/test').Page, name: st
   await page.goto('/canvas');
   await page.getByRole('button', { name: 'Novo workspace' }).click();
   await page.getByPlaceholder('Nome').fill(name);
-  await page.getByPlaceholder('Diretorio de trabalho').fill(dir);
+  await page.getByPlaceholder('Diretório de trabalho').fill(dir);
   await page.getByRole('button', { name: 'Criar' }).click();
   await page.locator('.workspace-list .workspace-item', { hasText: name }).click();
   await expect(page.locator('.workspace-list li.active')).toContainText(name, { timeout: 15_000 });

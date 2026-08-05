@@ -9,6 +9,7 @@ import {
  * ver WorkspaceIcon.svelte.
  */
 export const WORKSPACE_ICONS = [
+  { name: 'folder', component: Folder },
   { name: 'rocket', component: Rocket },
   { name: 'zap', component: Zap },
   { name: 'bot', component: Bot },

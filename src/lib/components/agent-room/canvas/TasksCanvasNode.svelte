@@ -6,11 +6,14 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
+  import MarkdownView from '../MarkdownView.svelte';
   import { arrayBufferToBase64 } from '../base64.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   type BoardTask = {
     id: string;
     title: string;
+    description: string | null;
     status: 'todo' | 'doing' | 'done';
     assigneeNodeId: string | null;
     assigneeTitle: string | null;
@@ -36,11 +39,11 @@
 
   let { id, data, selected } = $props<NodeProps & { data: TasksNodeData }>();
 
-  const COLUMNS: Array<{ status: BoardTask['status']; label: string; hint: string }> = [
-    { status: 'todo', label: 'A fazer', hint: '#7DE5FF' },
-    { status: 'doing', label: 'Fazendo', hint: '#FFC857' },
-    { status: 'done', label: 'Feito', hint: '#8ec98e' },
-  ];
+  const COLUMNS: Array<{ status: BoardTask['status']; label: string; hint: string }> = $derived([
+    { status: 'todo', label: m['tasks.col_todo'](), hint: '#7DE5FF' },
+    { status: 'doing', label: m['tasks.col_doing'](), hint: '#FFC857' },
+    { status: 'done', label: m['tasks.col_done'](), hint: '#8ec98e' },
+  ]);
 
   let tasks = $state<BoardTask[]>([]);
   let agents = $state<Array<{ id: string; title: string }>>([]);
@@ -68,7 +71,7 @@
       return;
     }
     const node = await api<{ title: string | null; payload?: { content?: string } }>(`/api/agent-room/workspaces/${data.workspaceId}/nodes/${noteId}`);
-    if (node) noteViewer = { title: node.title ?? 'Nota', content: node.payload?.content ?? '' };
+    if (node) noteViewer = { title: node.title ?? m['tasks.note_title_fallback'](), content: node.payload?.content ?? '' };
   }
 
   const doneCount = $derived(tasks.filter((task) => task.status === 'done').length);
@@ -120,8 +123,8 @@
     ]);
     if (taskList) tasks = taskList;
     if (nodeList) {
-      agents = nodeList.filter((node) => node.type === 'terminal').map((node) => ({ id: node.id, title: node.title ?? 'terminal' }));
-      notes = nodeList.filter((node) => node.type === 'note').map((node) => ({ id: node.id, title: node.title ?? 'nota' }));
+      agents = nodeList.filter((node) => node.type === 'terminal').map((node) => ({ id: node.id, title: node.title ?? m['tasks.terminal_fallback']() }));
+      notes = nodeList.filter((node) => node.type === 'note').map((node) => ({ id: node.id, title: node.title ?? m['tasks.note_fallback']() }));
     }
   }
 
@@ -135,9 +138,60 @@
   async function addTask() {
     const title = draft.trim();
     if (!title) return;
+    const description = draftDescription.trim();
+    const task = await api<BoardTask>(`/api/agent-room/workspaces/${data.workspaceId}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify({ title, description: description || undefined }),
+    });
+    // Imagens anexadas ANTES de criar: sobem logo apos o cartao nascer.
+    if (task && stagedImages.length) {
+      for (const file of stagedImages) await uploadImage(file, task.id);
+    }
     draft = '';
-    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks`, { method: 'POST', body: JSON.stringify({ title }) });
+    draftDescription = '';
+    clearStaged();
+    composerOpen = false;
     await refresh();
+  }
+
+  // -- Imagens no composer (anexar ANTES de criar a tarefa) ----------------------
+  let composerOpen = $state(false);
+  let draftDescription = $state('');
+  let stagedImages = $state<File[]>([]);
+  let stagedPreviews = $state<string[]>([]);
+
+  function stageImages(files: File[]) {
+    for (const file of files) {
+      if (stagedImages.length >= 6) break;
+      stagedImages = [...stagedImages, file];
+      stagedPreviews = [...stagedPreviews, URL.createObjectURL(file)];
+    }
+  }
+
+  function unstageImage(index: number) {
+    URL.revokeObjectURL(stagedPreviews[index]);
+    stagedImages = stagedImages.filter((_, i) => i !== index);
+    stagedPreviews = stagedPreviews.filter((_, i) => i !== index);
+  }
+
+  function clearStaged() {
+    for (const preview of stagedPreviews) URL.revokeObjectURL(preview);
+    stagedImages = [];
+    stagedPreviews = [];
+  }
+
+  function onComposerFilePicked(event: Event) {
+    const input = event.target as HTMLInputElement;
+    stageImages([...(input.files ?? [])]);
+    input.value = '';
+  }
+
+  function onComposerPaste(event: ClipboardEvent) {
+    const item = [...(event.clipboardData?.items ?? [])].find((entry) => entry.type.startsWith('image/'));
+    if (!item) return;
+    event.preventDefault();
+    const file = item.getAsFile();
+    if (file) stageImages([file]);
   }
 
   async function patchTask(taskId: string, patch: Record<string, unknown>) {
@@ -161,6 +215,21 @@
     editingId = null;
     const title = editDraft.trim();
     if (taskId && title) await patchTask(taskId, { title });
+  }
+
+  // -- Edicao inline da descricao (markdown, duplo-clique) -----------------------
+  let editingDescId = $state<string | null>(null);
+  let editDescDraft = $state('');
+
+  function startDescEdit(task: BoardTask) {
+    editingDescId = task.id;
+    editDescDraft = task.description ?? '';
+  }
+
+  async function commitDescEdit() {
+    const taskId = editingDescId;
+    editingDescId = null;
+    if (taskId) await patchTask(taskId, { description: editDescDraft.trim() || null });
   }
 
   // -- Drag and drop entre colunas ----------------------------------------------
@@ -209,7 +278,7 @@
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ path, base64 }),
       });
-      if (!response.ok) throw new Error(`Falha ao salvar a imagem (HTTP ${response.status}).`);
+      if (!response.ok) throw new Error(m['tasks.err_image_http']({ status: response.status }));
       await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${taskId}/images`, {
         method: 'POST',
         body: JSON.stringify({ path }),
@@ -217,7 +286,7 @@
       imageError = '';
       await refresh();
     } catch (error) {
-      imageError = error instanceof Error ? error.message : 'Nao consegui anexar a imagem.';
+      imageError = error instanceof Error ? error.message : m['tasks.err_image_attach']();
     }
   }
 
@@ -225,8 +294,12 @@
     const input = event.target as HTMLInputElement;
     const files = [...(input.files ?? [])];
     input.value = '';
-    if (files.length && imageTargetId) {
+    if (!files.length) return;
+    if (imageTargetId) {
       for (const file of files) await uploadImage(file, imageTargetId);
+    } else {
+      // Sem alvo: composer de nova tarefa (anexar ANTES de criar).
+      stageImages(files);
     }
     imageTargetId = null;
   }
@@ -282,20 +355,20 @@
   onRemoveConnection={data.onRemoveConnection}
 >
   {#snippet icon()}<SquareKanban size={13} />{/snippet}
-  {#snippet title()}{data.title || 'Tarefas'}{/snippet}
+  {#snippet title()}{data.title || m['tasks.title_default']()}{/snippet}
   {#snippet actions()}
     {#if view === 'board'}
       {#if doneCount > 0}
-        <HeaderIconButton label={`Arquivar ${doneCount} concluida(s) (somem do quadro, ficam no historico)`} class="node-action-btn" side="left" onclick={archiveAllDone}>
+        <HeaderIconButton label={m['tasks.archive_done_label']({ count: doneCount })} class="node-action-btn" side="left" onclick={archiveAllDone}>
           <Archive size={13} /></HeaderIconButton>
       {/if}
-      <HeaderIconButton label="Historico (concluidas e arquivadas)" class="node-action-btn" side="left" onclick={openHistory}>
+      <HeaderIconButton label={m['tasks.history_action']()} class="node-action-btn" side="left" onclick={openHistory}>
         <History size={13} /></HeaderIconButton>
     {:else}
-      <HeaderIconButton label="Voltar ao quadro" class="node-action-btn" side="left" onclick={() => (view = 'board')}>
+      <HeaderIconButton label={m['tasks.back_to_board']()} class="node-action-btn" side="left" onclick={() => (view = 'board')}>
         <ArchiveRestore size={13} /></HeaderIconButton>
     {/if}
-    <HeaderIconButton label="Remover quadro" class="node-action-btn" danger side="left" onclick={() => data.onDelete(id)}>
+    <HeaderIconButton label={m['tasks.remove_board']()} class="node-action-btn" danger side="left" onclick={() => data.onDelete(id)}>
       <X size={13} /></HeaderIconButton>
   {/snippet}
 
@@ -308,49 +381,84 @@
   {#if view === 'history'}
     <div class="tb-history nodrag nowheel">
       {#if historyLoading}
-        <span class="tb-empty">Carregando historico…</span>
+        <span class="tb-empty">{m['tasks.history_loading']()}</span>
       {:else if historyItems.length === 0}
-        <span class="tb-empty">Nada concluido ainda — o que o time entregar aparece aqui.</span>
+        <span class="tb-empty">{m['tasks.history_empty']()}</span>
       {:else}
         {#each historyItems as item (item.id)}
           <article class="tb-history-row">
             <div class="tb-history-main">
               <span class="tb-history-title">{item.title}</span>
               <span class="tb-history-meta">
-                {item.assigneeTitle ?? 'sem responsavel'} · {fmtWhen(item.updatedAt)}
-                {#if item.archivedAt} · arquivada{/if}
+                {item.assigneeTitle ?? m['tasks.no_assignee_inline']()} · {fmtWhen(item.updatedAt)}
+                {#if item.archivedAt} · {m['tasks.status_archived']()}{/if}
               </span>
             </div>
             {#if item.noteId}
               <button
                 class="tb-note-chip"
-                title={`Abrir nota vinculada: ${item.noteTitle ?? 'nota'}`}
+                title={m['tasks.open_note_title']({ title: item.noteTitle ?? m['tasks.note_fallback']() })}
                 onclick={() => openLinkedNote(item.noteId!, !item.archivedAt)}
               >
                 <StickyNote size={10} />
-                <span class="tb-note-chip-label">{item.noteTitle ?? 'nota'}</span>
+                <span class="tb-note-chip-label">{item.noteTitle ?? m['tasks.note_fallback']()}</span>
               </button>
             {/if}
-            <span class="tb-history-status" class:archived={Boolean(item.archivedAt)}>{item.archivedAt ? 'arquivada' : 'feito'}</span>
+            <span class="tb-history-status" class:archived={Boolean(item.archivedAt)}>{item.archivedAt ? m['tasks.status_archived']() : m['tasks.status_done']()}</span>
           </article>
         {/each}
       {/if}
     </div>
   {:else}
   <div class="tb-add nodrag">
-    <input
-      bind:value={draft}
-      placeholder="Nova tarefa… (Enter adiciona)"
-      aria-label="Nova tarefa"
-      autocomplete="off"
-      spellcheck="false"
-      onkeydown={(event) => {
-        if (event.key === 'Enter') addTask();
-      }}
-    />
-    <HeaderIconButton label="Adicionar tarefa" class="tb-add-btn" side="top" onclick={addTask} disabled={!draft.trim()}>
-      <Plus size={14} />
-    </HeaderIconButton>
+    {#if composerOpen}
+      <div class="tb-composer">
+        <input
+          bind:value={draft}
+          placeholder={m['ph.task_title']()}
+          aria-label={m['tasks.title_aria']()}
+          autocomplete="off"
+          spellcheck="false"
+          onpaste={onComposerPaste}
+          onkeydown={(event) => {
+            if (event.key === 'Enter') addTask();
+            if (event.key === 'Escape') composerOpen = false;
+          }}
+        />
+        <textarea
+          bind:value={draftDescription}
+          placeholder={m['ph.task_desc']()}
+          aria-label={m['tasks.desc_aria']()}
+          rows="3"
+          spellcheck="false"
+          onpaste={onComposerPaste}
+        ></textarea>
+        {#if stagedPreviews.length}
+          <div class="tb-staged">
+            {#each stagedPreviews as preview, index (preview)}
+              <span class="tb-staged-thumb">
+                <img src={preview} alt="" />
+                <button class="tb-staged-x" aria-label={m['tasks.image_remove']()} onclick={() => unstageImage(index)}>×</button>
+              </span>
+            {/each}
+          </div>
+        {/if}
+        <div class="tb-composer-actions">
+          <HeaderIconButton label={m['tasks.attach_image']()} class="tb-icon-btn subtle" side="top" onclick={() => { imageTargetId = null; fileInput.click(); }}>
+            <ImagePlus size={13} />
+          </HeaderIconButton>
+          <span class="tb-spacer"></span>
+          <button class="tb-cancel" onclick={() => { composerOpen = false; clearStaged(); }}>{m['tasks.cancel']()}</button>
+          <HeaderIconButton label={m['tasks.add_task']()} class="tb-add-btn" side="top" onclick={addTask} disabled={!draft.trim()}>
+            <Plus size={14} />
+          </HeaderIconButton>
+        </div>
+      </div>
+    {:else}
+      <button class="tb-add-open" onclick={() => (composerOpen = true)}>
+        <Plus size={14} /> {m['tasks.add_task']()}
+      </button>
+    {/if}
   </div>
 
   <div class="tb-board nodrag nowheel">
@@ -385,7 +493,7 @@
               {#if task.images?.length}
                 <div class="tb-thumbs">
                   {#each task.images as path, index (path)}
-                    <button class="tb-thumb-btn" aria-label={`Ver imagem ${index + 1} de ${task.images.length}`} onclick={() => openViewer(task, index)}>
+                    <button class="tb-thumb-btn" aria-label={m['tasks.view_image']({ index: index + 1, total: task.images.length })} onclick={() => openViewer(task, index)}>
                       <img class="tb-thumb" src={imageUrl(path)} alt="" loading="lazy" />
                     </button>
                   {/each}
@@ -396,7 +504,7 @@
                   <input
                     class="tb-edit nodrag"
                     bind:value={editDraft}
-                    aria-label="Editar tarefa"
+                    aria-label={m['tasks.edit_task']()}
                     spellcheck="false"
                     onkeydown={(event) => {
                       if (event.key === 'Enter') commitEdit();
@@ -408,17 +516,36 @@
                   <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <span class="tb-title" title={undefined} ondblclick={() => startEdit(task)}>{task.title}</span>
                 {/if}
-                <HeaderIconButton label="Remover tarefa" class="tb-icon-btn" side="top" onclick={() => removeTask(task)}>
+                <HeaderIconButton label={m['tasks.remove_task']()} class="tb-icon-btn" side="top" onclick={() => removeTask(task)}>
                   <Trash2 size={11} />
                 </HeaderIconButton>
               </div>
+              {#if task.description?.trim()}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div class="tb-desc" ondblclick={() => startDescEdit(task)}>
+                  <MarkdownView content={task.description} compact />
+                </div>
+              {:else if editingDescId === task.id}{/if}
+              {#if editingDescId === task.id}
+                <textarea
+                  class="tb-desc-edit nodrag"
+                  bind:value={editDescDraft}
+                  aria-label={m['tasks.edit_desc']()}
+                  rows="4"
+                  spellcheck="false"
+                  onkeydown={(event) => {
+                    if (event.key === 'Escape') editingDescId = null;
+                  }}
+                  onblur={commitDescEdit}
+                ></textarea>
+              {/if}
               <div class="tb-card-bottom">
                 <DropdownMenu.Root>
-                  <DropdownMenu.Trigger class="tb-assignee" aria-label="Atribuir a um agente">
-                    {task.assigneeTitle ?? 'atribuir'}
+                  <DropdownMenu.Trigger class="tb-assignee" aria-label={m['tasks.assign_aria']()}>
+                    {task.assigneeTitle ?? m['tasks.assign_fallback']()}
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Content class="w-44">
-                    <DropdownMenu.Item onclick={() => patchTask(task.id, { assigneeNodeId: null })}>Sem responsavel</DropdownMenu.Item>
+                    <DropdownMenu.Item onclick={() => patchTask(task.id, { assigneeNodeId: null })}>{m['tasks.no_assignee']()}</DropdownMenu.Item>
                     <DropdownMenu.Separator />
                     {#each agents as agent (agent.id)}
                       <DropdownMenu.Item onclick={() => patchTask(task.id, { assigneeNodeId: agent.id })}>{agent.title}</DropdownMenu.Item>
@@ -428,41 +555,41 @@
                 {#if task.noteId}
                   <button
                     class="tb-note-chip"
-                    title={`Nota vinculada: ${task.noteTitle ?? 'nota'}`}
+                    title={m['tasks.linked_note_title']({ title: task.noteTitle ?? m['tasks.note_fallback']() })}
                     onclick={() => openLinkedNote(task.noteId!, true)}
                   >
                     <StickyNote size={10} />
-                    <span class="tb-note-chip-label">{task.noteTitle ?? 'nota'}</span>
+                    <span class="tb-note-chip-label">{task.noteTitle ?? m['tasks.note_fallback']()}</span>
                   </button>
                 {/if}
                 <DropdownMenu.Root>
-                  <DropdownMenu.Trigger class="tb-icon-btn subtle tb-link-trigger" aria-label="Vincular nota de spec">
+                  <DropdownMenu.Trigger class="tb-icon-btn subtle tb-link-trigger" aria-label={m['tasks.link_note_aria']()}>
                     <Link2 size={11} />
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Content class="w-52">
                     {#if task.noteId}
-                      <DropdownMenu.Item onclick={() => patchTask(task.id, { noteId: null })}>Desvincular nota</DropdownMenu.Item>
+                      <DropdownMenu.Item onclick={() => patchTask(task.id, { noteId: null })}>{m['tasks.unlink_note']()}</DropdownMenu.Item>
                       <DropdownMenu.Separator />
                     {/if}
                     {#each notes.filter((note) => note.id !== task.noteId) as note (note.id)}
                       <DropdownMenu.Item onclick={() => patchTask(task.id, { noteId: note.id })}>{note.title}</DropdownMenu.Item>
                     {:else}
-                      <DropdownMenu.Item disabled>Sem notas no canvas</DropdownMenu.Item>
+                      <DropdownMenu.Item disabled>{m['tasks.no_notes']()}</DropdownMenu.Item>
                     {/each}
                   </DropdownMenu.Content>
                 </DropdownMenu.Root>
-                <HeaderIconButton label="Anexar imagem (ou cole com Ctrl+V no cartao)" class="tb-icon-btn subtle" side="top" onclick={() => pickImage(task)}>
+                <HeaderIconButton label={m['tasks.attach_image_card']()} class="tb-icon-btn subtle" side="top" onclick={() => pickImage(task)}>
                   <ImagePlus size={11} />
                 </HeaderIconButton>
                 {#if task.status === 'done'}
-                  <HeaderIconButton label="Arquivar (sai do quadro, fica no historico)" class="tb-icon-btn subtle" side="top" onclick={() => archiveTask(task)}>
+                  <HeaderIconButton label={m['tasks.archive_task']()} class="tb-icon-btn subtle" side="top" onclick={() => archiveTask(task)}>
                     <Archive size={11} />
                   </HeaderIconButton>
                 {/if}
               </div>
             </article>
           {:else}
-            <span class="tb-empty">Arraste cartoes para ca</span>
+            <span class="tb-empty">{m['tasks.drop_hint']()}</span>
           {/each}
         </div>
       </section>
@@ -476,20 +603,20 @@
     <Dialog.Content class="tb-viewer-content">
       <Dialog.Header>
         <Dialog.Title>{viewerTask.title}</Dialog.Title>
-        <Dialog.Description>Imagem {viewerIndex + 1} de {viewerTask.images.length} — referencia da tarefa</Dialog.Description>
+        <Dialog.Description>{m['tasks.viewer_desc']({ index: viewerIndex + 1, total: viewerTask.images.length })}</Dialog.Description>
       </Dialog.Header>
       <div class="tb-viewer-body">
-        <button class="tb-viewer-nav" aria-label="Imagem anterior" onclick={() => viewerMove(-1)} disabled={viewerTask.images.length < 2}>
+        <button class="tb-viewer-nav" aria-label={m['tasks.img_prev']()} onclick={() => viewerMove(-1)} disabled={viewerTask.images.length < 2}>
           <ChevronLeft size={18} />
         </button>
-        <img class="tb-viewer-img" src={imageUrl(viewerTask.images[viewerIndex])} alt="Referencia da tarefa" />
-        <button class="tb-viewer-nav" aria-label="Proxima imagem" onclick={() => viewerMove(1)} disabled={viewerTask.images.length < 2}>
+        <img class="tb-viewer-img" src={imageUrl(viewerTask.images[viewerIndex])} alt={m['tasks.img_alt']()} />
+        <button class="tb-viewer-nav" aria-label={m['tasks.img_next']()} onclick={() => viewerMove(1)} disabled={viewerTask.images.length < 2}>
           <ChevronRight size={18} />
         </button>
       </div>
       <Dialog.Footer>
         <button class="tb-viewer-delete" onclick={viewerDelete}>
-          <Trash2 size={13} /> Remover imagem
+          <Trash2 size={13} /> {m['tasks.image_remove']()}
         </button>
       </Dialog.Footer>
     </Dialog.Content>
@@ -501,10 +628,10 @@
     <Dialog.Content class="tb-viewer-content">
       <Dialog.Header>
         <Dialog.Title>{noteViewer.title}</Dialog.Title>
-        <Dialog.Description>Nota vinculada — arquivada junto com a tarefa, guardada no historico</Dialog.Description>
+        <Dialog.Description>{m['tasks.note_viewer_desc']()}</Dialog.Description>
       </Dialog.Header>
       <div class="tb-note-viewer-body nodrag nowheel">
-        <pre class="tb-note-viewer-text">{noteViewer.content || '(nota vazia)'}</pre>
+        <MarkdownView content={noteViewer.content} />
       </div>
     </Dialog.Content>
   </Dialog.Root>
@@ -623,14 +750,131 @@
     padding: 4px 2px;
   }
 
-  .tb-note-viewer-text {
-    margin: 0;
+  /* ---- Composer estilo Trello ---------------------------------------------- */
+  .tb-add-open {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px dashed rgba(255, 255, 255, 0.14);
+    background: transparent;
+    color: #8b8c96;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+
+  .tb-add-open:hover {
+    color: #e6e6eb;
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .tb-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(91, 141, 239, 0.35);
+    background: rgba(91, 141, 239, 0.06);
+  }
+
+  .tb-composer input,
+  .tb-composer textarea,
+  .tb-desc-edit {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    background: rgba(13, 11, 46, 0.6);
+    color: #e6e6eb;
+    font-size: 12px;
     font-family: inherit;
-    font-size: 12.5px;
-    line-height: 1.65;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: #c9cad2;
+    padding: 6px 9px;
+    outline: none;
+    resize: vertical;
+  }
+
+  .tb-composer input:focus,
+  .tb-composer textarea:focus,
+  .tb-desc-edit:focus {
+    border-color: rgba(91, 141, 239, 0.55);
+  }
+
+  .tb-staged {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .tb-staged-thumb {
+    position: relative;
+    width: 52px;
+    height: 40px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .tb-staged-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .tb-staged-x {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 9px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tb-composer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tb-spacer {
+    flex: 1;
+  }
+
+  .tb-cancel {
+    border: none;
+    background: transparent;
+    color: #8b8c96;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+
+  .tb-cancel:hover {
+    color: #e6e6eb;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  /* ---- Descricao markdown no cartao ------------------------------------------ */
+  .tb-desc {
+    margin: 2px 6px 0;
+    padding: 6px 8px;
+    border-radius: 7px;
+    background: rgba(13, 11, 46, 0.45);
+    max-height: 130px;
+    overflow-y: auto;
+    cursor: text;
   }
 
   .tb-add {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Node } from '@xyflow/svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type PaletteAction = {
     id: string;
@@ -28,14 +29,14 @@
     const nodeItems: Item[] = nodes.map((node) => ({
       kind: 'node',
       id: node.id,
-      label: String(node.data?.title ?? node.type ?? 'no'),
-      hint: `ir para ${node.type}`,
+      label: String(node.data?.title ?? node.type ?? m['palette.node_fallback']()),
+      hint: m['palette.go_to']({ type: String(node.type) }),
     }));
     const actionItems: Item[] = actions.map((action) => ({
       kind: 'action',
       id: action.id,
       label: action.label,
-      hint: action.hint ?? 'acao',
+      hint: action.hint ?? m['palette.action_hint'](),
     }));
     const all = [...actionItems, ...nodeItems];
     if (!q) return all;
@@ -78,12 +79,12 @@
 </script>
 
 <div class="palette-backdrop" role="presentation" onclick={(event) => event.target === event.currentTarget && onClose()}>
-  <div class="palette" role="dialog" aria-label="Paleta de comandos">
+  <div class="palette" role="dialog" aria-label={m['palette.title']()}>
     <input
       bind:this={inputEl}
       bind:value={query}
       onkeydown={handleKeydown}
-      placeholder="Buscar noes e acoes..."
+      placeholder={m['ph.palette']()}
       class="palette-input"
     />
     <ul class="palette-list">
@@ -96,7 +97,7 @@
           </button>
         </li>
       {:else}
-        <li class="empty">Nada encontrado.</li>
+        <li class="empty">{m['palette.empty']()}</li>
       {/each}
     </ul>
   </div>

@@ -8,20 +8,22 @@ test.describe('quadro de tarefas (kanban)', () => {
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
     await page.getByPlaceholder('Nome').fill(workspaceName);
-    await page.getByPlaceholder('Diretorio de trabalho').fill('/tmp');
+    await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
 
     await createNodeOnCanvas(page, 'Tarefas');
     await expect(page.locator('.canvas-tasks')).toHaveCount(1);
 
-    // Adiciona duas tarefas pelo input do quadro
+    // Adiciona duas tarefas pelo composer (abre, preenche, Enter — fecha e reabre)
     const board = page.locator('.canvas-tasks');
-    const input = board.locator('.tb-add input');
-    await input.fill('Revisar PR do auth');
-    await input.press('Enter');
-    await input.fill('Escrever testes do parser');
-    await input.press('Enter');
+    for (const title of ['Revisar PR do auth', 'Escrever testes do parser']) {
+      await board.locator('.tb-add-open').click();
+      const input = board.locator('.tb-composer input');
+      await input.fill(title);
+      await input.press('Enter');
+      await expect(board.locator('.tb-composer')).toHaveCount(0);
+    }
     await expect(board.locator('.tb-card')).toHaveCount(2);
     await expect(board.locator('.tb-column').first()).toContainText('A fazer');
 

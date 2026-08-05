@@ -3,6 +3,7 @@
   import { RefreshCw, TriangleAlert, X } from '@lucide/svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
   import { Skeleton } from '$lib/components/ui/skeleton';
+  import * as m from '$lib/paraglide/messages.js';
   import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
 
   type Props = {
@@ -47,19 +48,30 @@
     if (!resetsAt) return '';
     const target = new Date(resetsAt).getTime();
     const diffMs = target - Date.now();
-    if (diffMs <= 0) return 'resetando...';
+    if (diffMs <= 0) return m['usage.resetting']();
     const minutes = Math.floor(diffMs / 60_000);
-    if (minutes < 60) return `reseta em ${minutes}min`;
+    if (minutes < 60) return m['usage.reset_minutes']({ minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 48) return `reseta em ${hours}h${String(minutes % 60).padStart(2, '0')}m`;
+    if (hours < 48) return m['usage.reset_hours']({ hours, minutes: String(minutes % 60).padStart(2, '0') });
     const date = new Date(resetsAt);
-    return `reseta ${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    return m['usage.reset_at']({
+      date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      time: date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    });
   }
 
   function updatedText(): string {
     if (!lastFetchAt) return '';
     const seconds = Math.max(0, Math.floor((Date.now() - lastFetchAt.getTime()) / 1000));
-    return seconds < 5 ? 'agora mesmo' : `ha ${seconds}s`;
+    return seconds < 5 ? m['usage.just_now']() : m['usage.seconds_ago']({ seconds });
+  }
+
+  /** Labels das janelas vem do backend fixos em pt-BR; aqui localizamos por kind. */
+  function windowLabel(win: UsageWindow): string {
+    if (win.kind === '5h') return m['usage.window_5h']();
+    if (win.kind === 'weekly') return m['usage.window_weekly']();
+    if (win.kind === 'monthly') return m['usage.window_monthly']();
+    return win.label;
   }
 
   // Tick de 5s so para re-renderizar os textos relativos (reseta em / ha Xs).
@@ -84,12 +96,12 @@
 
 <aside class="usage-panel">
   <header class="panel-header">
-    <h3>Uso dos providers</h3>
+    <h3>{m['usage.title']()}</h3>
     <div class="panel-actions">
-      <HeaderIconButton label="Atualizar agora" class="node-action-btn" side="left" onclick={refresh}>
+      <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={refresh}>
         <RefreshCw size={13} />
       </HeaderIconButton>
-      <HeaderIconButton label="Fechar" class="node-action-btn" side="left" onclick={onClose}>
+      <HeaderIconButton label={m['usage.close']()} class="node-action-btn" side="left" onclick={onClose}>
         <X size={13} />
       </HeaderIconButton>
     </div>
@@ -120,12 +132,12 @@
       {#if usage.error}
         <p class="usage-error"><TriangleAlert size={12} /> {usage.error}</p>
       {:else if !usage.windows.length}
-        <p class="hint">Sem janelas de uso reportadas.</p>
+        <p class="hint">{m['usage.no_windows']()}</p>
       {:else}
         {#each usage.windows as win (win.kind)}
           <div class="window-row">
             <div class="window-top">
-              <span class="window-label">{win.label}</span>
+              <span class="window-label">{windowLabel(win)}</span>
               <span class="window-percent" style:color={barColor(win.usedPercent)}>{win.usedPercent}%</span>
             </div>
             <div class="bar-track">
@@ -143,7 +155,7 @@
   {/each}
 
   {#if lastFetchAt}
-    <footer class="panel-footer">Atualizado {updatedText()} · a cada 60s</footer>
+    <footer class="panel-footer">{m['usage.updated']({ when: updatedText() })} · {m['usage.refresh_interval']()}</footer>
   {/if}
 </aside>
 

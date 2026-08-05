@@ -5,6 +5,7 @@
   import IconAction from './IconAction.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
   import type { TeamMember, TeamMemberRole, AgentProviderInfo } from '$lib/modules/agent-room/domain/types.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type LoopNodeData = {
     title: string;
@@ -34,12 +35,12 @@
   let logEl: HTMLDivElement;
   let tasks = $state<LoopTask[]>([]);
 
-  const KANBAN_COLUMNS: Array<{ status: LoopTask['status']; label: string }> = [
-    { status: 'backlog', label: 'Backlog' },
-    { status: 'in_progress', label: 'Fazendo' },
-    { status: 'testing', label: 'Revisao' },
-    { status: 'done', label: 'Pronto' },
-  ];
+  const KANBAN_COLUMNS: Array<{ status: LoopTask['status']; label: string }> = $derived([
+    { status: 'backlog', label: m['loop.col_backlog']() },
+    { status: 'in_progress', label: m['loop.col_doing']() },
+    { status: 'testing', label: m['loop.col_review']() },
+    { status: 'done', label: m['loop.col_done']() },
+  ]);
 
   async function refreshTasks() {
     if (!data.payload.conversationId) return;
@@ -62,10 +63,10 @@
     const response = await fetch('/api/agent-room/conversations', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: `Loop: ${(objective || 'time').slice(0, 40)}`, mode: 'implement' }),
+      body: JSON.stringify({ title: m['loop.conversation_title']({ objective: (objective || 'time').slice(0, 40) }), mode: 'implement' }),
     });
     const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || 'Falha ao criar conversa do loop.');
+    if (!response.ok || payload.error) throw new Error(payload.error || m['loop.err_create_conversation']());
     data.onPayloadChange?.(id, { conversationId: payload.data.id });
     return payload.data.id;
   }
@@ -75,7 +76,7 @@
     running = true;
     log = [];
     abortController = new AbortController();
-    pushLog('system', `Iniciando loop (max ${maxRounds} rodadas, writes ${allowWrites ? 'on' : 'off'})...`);
+    pushLog('system', m['loop.log_starting']({ rounds: maxRounds, writes: allowWrites ? 'on' : 'off' }));
 
     try {
       const conversationId = await ensureConversation();
@@ -89,7 +90,7 @@
 
       if (!response.ok || !response.body) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || `Falha no loop (HTTP ${response.status}).`);
+        throw new Error(payload.error || m['loop.err_loop_http']({ status: response.status }));
       }
 
       const reader = response.body.getReader();
@@ -110,12 +111,12 @@
           }
         }
       }
-      pushLog('system', 'Loop finalizado.');
+      pushLog('system', m['loop.log_finished']());
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
-        pushLog('system', 'Loop interrompido pelo usuario.');
+        pushLog('system', m['loop.log_aborted']());
       } else {
-        pushLog('error', error instanceof Error ? error.message : 'Falha no loop.');
+        pushLog('error', error instanceof Error ? error.message : m['loop.err_loop']());
       }
     } finally {
       running = false;
@@ -127,16 +128,16 @@
     const type = String(event.type ?? '');
     switch (type) {
       case 'run_started':
-        pushLog('agent', `▶ ${event.memberTitle ?? event.agent} iniciou`);
+        pushLog('agent', m['loop.log_agent_started']({ name: String(event.memberTitle ?? event.agent) }));
         break;
       case 'agent_output':
         pushLog('output', String(event.text ?? '').slice(0, 400));
         break;
       case 'run_finished':
-        pushLog('agent', `■ ${event.memberTitle ?? event.agent} finalizou (${event.exitCode ?? '?'})`);
+        pushLog('agent', m['loop.log_agent_finished']({ name: String(event.memberTitle ?? event.agent), code: String(event.exitCode ?? '?') }));
         break;
       case 'round_started':
-        pushLog('round', `— Rodada ${event.round} —`);
+        pushLog('round', m['loop.log_round']({ round: String(event.round) }));
         break;
       case 'tasks_updated': {
         const updated = (event.tasks as LoopTask[] | undefined) ?? [];
@@ -145,13 +146,13 @@
         break;
       }
       case 'loop_finished':
-        pushLog('system', `Status: ${event.status ?? 'done'}`);
+        pushLog('system', m['loop.log_status']({ status: String(event.status ?? 'done') }));
         break;
       case 'error':
-        pushLog('error', String(event.message ?? event.text ?? 'erro'));
+        pushLog('error', String(event.message ?? event.text ?? m['loop.log_error_fallback']()));
         break;
       case 'done':
-        pushLog('system', 'Concluido.');
+        pushLog('system', m['loop.log_done']());
         break;
       default:
         if (event.text) pushLog('output', String(event.text).slice(0, 300));
@@ -168,7 +169,7 @@
       headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
     });
     const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || 'Falha na API.');
+    if (!response.ok || payload.error) throw new Error(payload.error || m['loop.err_api']());
     return payload.data as T;
   }
 
@@ -184,7 +185,7 @@
       const conversationId = await ensureConversation();
       teamMembers = await teamApi<TeamMember[]>(`/api/agent-room/conversations/${conversationId}/team`);
     } catch (error) {
-      teamError = error instanceof Error ? error.message : 'Falha ao carregar o time.';
+      teamError = error instanceof Error ? error.message : m['loop.err_load_team']();
     }
   }
 
@@ -206,7 +207,7 @@
       teamMembers = [...teamMembers, member];
       newMember = { title: '', provider: newMember.provider, role: 'engineer', canWrite: true, systemPrompt: '' };
     } catch (error) {
-      teamError = error instanceof Error ? error.message : 'Falha ao adicionar membro.';
+      teamError = error instanceof Error ? error.message : m['loop.err_add_member']();
     }
   }
 
@@ -217,7 +218,7 @@
       await teamApi(`/api/agent-room/conversations/${conversationId}/team/${member.id}`, { method: 'DELETE' });
       teamMembers = teamMembers.filter((item) => item.id !== member.id);
     } catch (error) {
-      teamError = error instanceof Error ? error.message : 'Falha ao remover membro.';
+      teamError = error instanceof Error ? error.message : m['loop.err_remove_member']();
     }
   }
 </script>
@@ -237,48 +238,48 @@
   onRemoveConnection={data.onRemoveConnection}
 >
   {#snippet icon()}<Repeat size={13} />{/snippet}
-  {#snippet title()}{data.title || 'Loop Ralph'}{/snippet}
+  {#snippet title()}{data.title || m['loop.title_default']()}{/snippet}
   {#snippet actions()}
-    <HeaderIconButton label="Time de agentes" class="node-action-btn" side="top" active={teamOpen} onclick={openTeam}>
+    <HeaderIconButton label={m['loop.team_action']()} class="node-action-btn" side="top" active={teamOpen} onclick={openTeam}>
       <Users size={13} />
     </HeaderIconButton>
     {#if running}
-      <IconAction label="Parar" danger onclick={stopLoop}><Square size={13} /></IconAction>
+      <IconAction label={m['loop.stop']()} danger onclick={stopLoop}><Square size={13} /></IconAction>
     {:else}
-      <HeaderIconButton label="Rodar" class="node-action-btn" side="top" onclick={runLoop} disabled={!objective.trim()}>
+      <HeaderIconButton label={m['loop.run']()} class="node-action-btn" side="top" onclick={runLoop} disabled={!objective.trim()}>
         <span style="color:#8ec98e;display:inline-flex"><Play size={13} /></span>
       </HeaderIconButton>
     {/if}
-    <IconAction label="Remover" danger onclick={() => data.onDelete(id)}><XIcon size={13} /></IconAction>
+    <IconAction label={m['loop.remove']()} danger onclick={() => data.onDelete(id)}><XIcon size={13} /></IconAction>
   {/snippet}
 
   <div class="loop-config nodrag">
     <textarea
       bind:value={objective}
       onchange={() => data.onPayloadChange?.(id, { objective })}
-      placeholder="Objetivo do loop (lider planeja, engenheiro implementa, tester revisa)..."
+      placeholder={m['ph.loop_objective']()}
       rows="2"
       disabled={running}
     ></textarea>
     <div class="loop-options">
-      <label>Rodadas <input type="number" bind:value={maxRounds} min="1" max="12" disabled={running} /></label>
+      <label>{m['loop.rounds']()} <input type="number" bind:value={maxRounds} min="1" max="12" disabled={running} /></label>
       <label class="checkbox"><input type="checkbox" bind:checked={allowWrites} disabled={running} /> full access</label>
     </div>
   </div>
 
   {#if teamOpen}
     <div class="team-panel nodrag nowheel">
-      <p class="team-hint">O lider precisa de capability "lead", o implementador de "implement" e o revisor de "review"/"test" — o papel define isso automaticamente.</p>
+      <p class="team-hint">{m['loop.team_hint']()}</p>
       {#each teamMembers as member (member.id)}
         <div class="member-row">
           <span class="member-title">{member.title}</span>
-          <span class="member-meta">{member.provider} · {member.role}{member.canWrite ? ' · escreve' : ''}</span>
-          <IconAction label="Remover" danger onclick={() => removeMember(member)}>
+          <span class="member-meta">{member.provider} · {member.role}{member.canWrite ? ` · ${m['loop.member_writes']()}` : ''}</span>
+          <IconAction label={m['loop.remove']()} danger onclick={() => removeMember(member)}>
             <Trash2 size={12} /></IconAction>
         </div>
       {/each}
       <form class="member-form" onsubmit={(event) => { event.preventDefault(); addMember(); }}>
-        <input bind:value={newMember.title} placeholder="Titulo (ex.: Revisor)" required />
+        <input bind:value={newMember.title} placeholder={m['ph.loop_member_title']()} required />
         <div class="member-form-row">
           <select bind:value={newMember.provider}>
             {#each providers as provider}
@@ -286,20 +287,20 @@
             {/each}
           </select>
           <select bind:value={newMember.role}>
-            <option value="leader">lider</option>
-            <option value="engineer">engenheiro</option>
-            <option value="tester">tester</option>
-            <option value="designer">designer</option>
-            <option value="documenter">documentador</option>
-            <option value="custom">custom</option>
+            <option value="leader">{m['loop.role_leader']()}</option>
+            <option value="engineer">{m['loop.role_engineer']()}</option>
+            <option value="tester">{m['loop.role_tester']()}</option>
+            <option value="designer">{m['loop.role_designer']()}</option>
+            <option value="documenter">{m['loop.role_documenter']()}</option>
+            <option value="custom">{m['loop.role_custom']()}</option>
           </select>
         </div>
-        <textarea bind:value={newMember.systemPrompt} placeholder="System prompt (opcional — papel gera um padrao)" rows="2"></textarea>
+        <textarea bind:value={newMember.systemPrompt} placeholder={m['ph.loop_member_prompt']()} rows="2"></textarea>
         <label class="checkbox">
           <input type="checkbox" bind:checked={newMember.canWrite} />
-          Pode escrever arquivos
+          {m['loop.can_write']()}
         </label>
-        <button type="submit" class="add-member"><Plus size={12} /> Adicionar agente</button>
+        <button type="submit" class="add-member"><Plus size={12} /> {m['loop.add_member']()}</button>
       </form>
       {#if teamError}
         <p class="team-error">{teamError}</p>
@@ -325,7 +326,7 @@
       <p class={`log-${entry.kind}`}>{entry.text}</p>
     {/each}
     {#if log.length === 0}
-      <p class="log-empty">Defina o objetivo e rode o loop.</p>
+      <p class="log-empty">{m['loop.log_empty']()}</p>
     {/if}
   </div>
 </NodeShell>

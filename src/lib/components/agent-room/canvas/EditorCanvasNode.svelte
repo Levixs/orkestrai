@@ -9,6 +9,7 @@
   import NodeShell, { type NodeConnection } from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type EditorNodeData = {
     title: string;
@@ -41,7 +42,7 @@
       headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
     });
     const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || 'Falha na API.');
+    if (!response.ok || payload.error) throw new Error(payload.error || m['editor.error_api']());
     return payload.data as T;
   }
 
@@ -76,7 +77,7 @@
         }),
       });
     } catch (error) {
-      statusMessage = error instanceof Error ? error.message : 'Falha ao abrir arquivo.';
+      statusMessage = error instanceof Error ? error.message : m['editor.error_open']();
     }
   }
 
@@ -91,7 +92,7 @@
       });
       dirty = false;
     } catch (error) {
-      statusMessage = error instanceof Error ? error.message : 'Falha ao salvar.';
+      statusMessage = error instanceof Error ? error.message : m['editor.error_save']();
     } finally {
       saving = false;
     }
@@ -101,13 +102,13 @@
     if (!view) return;
     const selection = view.state.selection.main;
     if (selection.empty) {
-      statusMessage = 'Selecione um trecho para citar.';
+      statusMessage = m['editor.cite_no_selection']();
       return;
     }
     const text = view.state.sliceDoc(selection.from, selection.to);
     const target = (data.connections ?? []).find((connection: NodeConnection) => connection.targetType === 'terminal');
     if (!target) {
-      statusMessage = 'Conecte este editor a um terminal para citar.';
+      statusMessage = m['editor.cite_no_terminal']();
       return;
     }
     statusMessage = '';
@@ -116,9 +117,9 @@
         method: 'POST',
         body: JSON.stringify({ data: `\n[citacao de ${fileName}:${selection.from}-${selection.to}]\n${text}\n` }),
       });
-      statusMessage = `Citacao enviada para ${target.targetTitle}.`;
+      statusMessage = m['editor.cite_sent']({ title: target.targetTitle });
     } catch (error) {
-      statusMessage = error instanceof Error ? error.message : 'Falha ao citar.';
+      statusMessage = error instanceof Error ? error.message : m['editor.error_cite']();
     }
   }
 
@@ -157,30 +158,30 @@
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
-            <span {...props} class="dirty-badge" aria-label="Alteracoes nao salvas">●</span>
+            <span {...props} class="dirty-badge" aria-label={m['editor.unsaved']()}>●</span>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="top">Alteracoes nao salvas</Tooltip.Content>
+        <Tooltip.Content side="top">{m['editor.unsaved']()}</Tooltip.Content>
       </Tooltip.Root>
     {/if}
     {#if truncated}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
-            <span {...props} class="trunc-badge" aria-label="Arquivo grande: somente os primeiros 512KB foram carregados">truncado</span>
+            <span {...props} class="trunc-badge" aria-label={m['editor.truncated_tooltip']()}>{m['editor.truncated_badge']()}</span>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="top">Arquivo grande: somente os primeiros 512KB foram carregados</Tooltip.Content>
+        <Tooltip.Content side="top">{m['editor.truncated_tooltip']()}</Tooltip.Content>
       </Tooltip.Root>
     {/if}
   {/snippet}
   {#snippet actions()}
-    <IconAction label="Citar selecao para agente conectado" onclick={citeSelection}>
+    <IconAction label={m['editor.cite_tooltip']()} onclick={citeSelection}>
       <MessageSquareQuote size={13} />
     </IconAction>
-    <IconAction label="Salvar (Cmd/Ctrl+S)" disabled={saving || !dirty} onclick={save}><Save size={13} /></IconAction>
-    <IconAction label="Recarregar" onclick={loadFile}><RefreshCw size={13} /></IconAction>
-    <IconAction label="Fechar editor" danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
+    <IconAction label={m['editor.save']()} disabled={saving || !dirty} onclick={save}><Save size={13} /></IconAction>
+    <IconAction label={m['editor.reload']()} onclick={loadFile}><RefreshCw size={13} /></IconAction>
+    <IconAction label={m['editor.close']()} danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
   {/snippet}
 
   <div role="presentation" onkeydown={handleKeydown} class="editor-wrap">

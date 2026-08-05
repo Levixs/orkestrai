@@ -10,6 +10,7 @@
   import { appSettingsStore } from '../app-settings.svelte.js';
   import { speakText } from '../voice-speech.js';
   import type { TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type MentionTarget = { id: string; title: string; type: string };
 
@@ -206,7 +207,7 @@
     if (payload.to !== id || !voiceOn || !payload.text.trim()) return;
     voiceError = '';
     speakText(payload.text).catch((error) => {
-      voiceError = error instanceof Error ? error.message : 'Falha na voz.';
+      voiceError = error instanceof Error ? error.message : m['term.voice_error']();
       setTimeout(() => (voiceError = ''), 6_000);
     });
   }
@@ -274,14 +275,14 @@
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
     <DropdownMenu.Root onOpenChange={(open: boolean) => open && loadRoles()}>
-      <DropdownMenu.Trigger class={currentRole ? 'role-trigger has-role' : 'role-trigger'} aria-label={currentRole ? `Role: ${currentRole}` : 'Atribuir role'}>
+      <DropdownMenu.Trigger class={currentRole ? 'role-trigger has-role' : 'role-trigger'} aria-label={currentRole ? m['term.role_label']({ role: currentRole }) : m['term.role_assign']()}>
         <BadgeCheck size={13} />
         {#if roleLabel}
           <span class="role-name">{roleLabel}</span>
         {/if}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content class="w-44">
-        <DropdownMenu.Item onclick={() => assignRole(null)}>Sem role</DropdownMenu.Item>
+        <DropdownMenu.Item onclick={() => assignRole(null)}>{m['term.role_none']()}</DropdownMenu.Item>
         <DropdownMenu.Separator />
         {#each roles as role (role.slug)}
           <DropdownMenu.Item onclick={() => assignRole(role.name)}>
@@ -289,23 +290,23 @@
             {role.name}
           </DropdownMenu.Item>
         {:else}
-          <DropdownMenu.Item disabled>Nenhuma role no workspace</DropdownMenu.Item>
+          <DropdownMenu.Item disabled>{m['term.role_empty']()}</DropdownMenu.Item>
         {/each}
       </DropdownMenu.Content>
     </DropdownMenu.Root>
-    <IconAction label="Trocar tema" onclick={() => data.onCycleTheme?.(id)}>
+    <IconAction label={m['term.cycle_theme']()} onclick={() => data.onCycleTheme?.(id)}>
       <SwatchBook size={13} /></IconAction>
-    <IconAction label="Recarregar (reinicia a sessao com o contexto — util apos suspensao ou atualizar a CLI)" onclick={reloadTerminal}>
+    <IconAction label={m['term.reload_tooltip']()} onclick={reloadTerminal}>
       <RotateCcw size={13} /></IconAction>
     <button
       class="node-action-btn"
       class:active={data.payload.maestro}
-      aria-label={data.payload.maestro ? 'Modo Maestro ativo' : 'Ativar Modo Maestro'}
+      aria-label={data.payload.maestro ? m['term.maestro_active']() : m['term.maestro_enable']()}
       onclick={() => data.onToggleMaestro?.(id)}
     >
       <Star size={13} fill={data.payload.maestro ? 'currentColor' : 'none'} />
     </button>
-    <IconAction label="Remover terminal" danger onclick={() => data.onDelete(id)}>
+    <IconAction label={m['term.remove_terminal']()} danger onclick={() => data.onDelete(id)}>
       <X size={13} /></IconAction>
   {/snippet}
 
@@ -359,7 +360,7 @@
         onToggleVoice={toggleVoice}
       />
     {:else}
-      <p class="terminal-empty">Sem comando associado.</p>
+      <p class="terminal-empty">{m['term.no_command']()}</p>
     {/if}
   </div>
   {#if voiceError}
@@ -373,10 +374,10 @@
       bind:value={prompt}
       oninput={handlePromptInput}
       onkeydown={handlePromptKeydown}
-      placeholder="Prompt rapido... (@ menciona agentes e notas)"
+      placeholder={m['ph.quick_prompt']()}
       spellcheck="false"
     />
-    <button class="composer-send" aria-label="Enviar" onclick={sendPrompt} disabled={!prompt.trim()}>
+    <button class="composer-send" aria-label={m['term.send']()} onclick={sendPrompt} disabled={!prompt.trim()}>
       <SendHorizontal size={13} />
     </button>
   </div>

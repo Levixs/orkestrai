@@ -1,10 +1,61 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import type { Component } from 'svelte';
   import {
     ArrowLeft, BookOpen, Cable, FolderPlus, GitBranch, History, Layers, Link2, MessageSquare,
     PlayCircle, Repeat, Rocket, Search, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
+  import * as m from '$lib/paraglide/messages.js';
+  import { localeState } from '$lib/i18n/locale.svelte.js';
+  import { DOCS_PT } from '$lib/i18n/docs/pt-BR.js';
+  import { DOCS_EN } from '$lib/i18n/docs/en.js';
+  import { DOCS_ES } from '$lib/i18n/docs/es.js';
+
+  // Conteudo longo (topicos, casos de uso, quickstart, changelog) vive em
+  // catalogs TS por locale (src/lib/i18n/docs/) — mesmo padrao dos tours.
+  const DOCS_CATALOGS = { 'pt-BR': DOCS_PT, en: DOCS_EN, es: DOCS_ES };
+  const catalog = $derived(DOCS_CATALOGS[localeState.current] ?? DOCS_PT);
+
+  // Icones ficam na pagina (componentes nao sao serializaveis no catalogo).
+  const SECTION_ICONS: Record<string, Component> = {
+    workspaces: Layers,
+    agentes: SquareTerminal,
+    roles: Users,
+    times: Cable,
+    notas: StickyNote,
+    tarefas: SquareKanban,
+    imagens: StickyNote,
+    presets: Layers,
+    fluxos: Workflow,
+    'sem-medo': BookOpen,
+    conexoes: Link2,
+    andares: GitBranch,
+    rotinas: Repeat,
+    portal: Workflow,
+    mcp: Cable,
+    cli: MessageSquare,
+    atalhos: BookOpen,
+  };
+
+  const USECASE_ICONS: Record<string, Component> = {
+    'leader-team': Users,
+    'watch-24-7': Repeat,
+    'parallel-features': GitBranch,
+    'visual-qa': Workflow,
+    'research-summary': Search,
+    'inbox-files': FolderPlus,
+    'cross-review': Cable,
+    'deploy-sentinel': Rocket,
+    'framework-preset': Layers,
+    'approval-pipeline': Workflow,
+    'mcp-tools': Cable,
+  };
+
+  const quickstart = $derived(catalog.quickstart);
+  const sections = $derived(catalog.sections.map((section) => ({ ...section, icon: SECTION_ICONS[section.id] ?? BookOpen })));
+  const useCases = $derived(catalog.useCases.map((useCase) => ({ ...useCase, icon: USECASE_ICONS[useCase.id] ?? Cable })));
+  const changelog = $derived(catalog.changelog);
 
   onMount(() => {
     document.documentElement.classList.add('dark');
@@ -20,113 +71,6 @@
     // Forca a apresentacao mesmo com workspaces existentes.
     location.href = '/canvas?onboarding=1';
   }
-
-  const quickstart = [
-    'Crie um workspace (botão + na barra lateral) apontando para a pasta do seu projeto.',
-    'Clique em + Claude na barra inferior e arraste um retângulo no canvas — nomeie o agente, escolha modelo/esforço e marque Líder se ele vai comandar o time.',
-    'Desenhe mais agentes e conecte-os arrastando da bolinha (handle) de um até o outro.',
-    'Abra o quadro Tarefas (+ Tarefas), crie cartões e atribua — cada tarefa cai direto no terminal do agente.',
-    'Fale com qualquer agente pelo próprio terminal dele, ou deixe o líder distribuir tudo sozinho via CLI orkestrai.',
-  ];
-
-  const sections = [
-    {
-      id: 'workspaces',
-      icon: Layers,
-      title: 'Workspaces',
-      body: `Um workspace = uma equipe num projeto: diretório de trabalho, ícone e layout do canvas salvos. Crie com o botão + na barra lateral. Vários workspaces rodam ao mesmo tempo — os agentes continuam vivos em background ao trocar. Instruções em AGENTS.md/CLAUDE.md são injetadas nos agentes (edite no lápis ao lado do nome). O botão ⏻ (Descarregar) encerra os terminais vivos do workspace ativo — libera memória/CPU sem apagar nada: o layout fica salvo e cada agente retoma a conversa ao reabrir o terminal.`,
-    },
-    {
-      id: 'agentes',
-      icon: SquareTerminal,
-      title: 'Agentes: criar, nomear, modelo & esforço',
-      body: `Ao desenhar um agente (+ Claude/Codex/Kimi), o diálogo de criação pergunta: nome da janela, modelo (lista real do provider), esforço de raciocínio (low→max, onde suportado) e se ele é o Líder da equipe (Modo Maestro). Depois de criado: duplo-clique no título renomeia qualquer nó (agente, nota, o que for). O selo no cabeçalho do terminal atribui uma role; ◐ troca o tema; ★ liga/desliga o Modo Maestro.`,
-    },
-    {
-      id: 'roles',
-      icon: Users,
-      title: 'Roles (papéis do time)',
-      body: `Roles são conjuntos de instruções (“você é o revisor: só aponte problemas, não edite código”) salvos em .orkestrai/roles/<slug>/role.json — viajam com o repositório. Gerencie no painel Roles (barra inferior). Atribua pelo selo no cabeçalho do terminal: a role é injetada como primeira mensagem do agente. O líder também pode reatribuir roles do time via CLI (orkestrai reassign).`,
-    },
-    {
-      id: 'times',
-      icon: Cable,
-      title: 'Times: paralelo, líder & Loop',
-      body: `Todos os agentes rodam em paralelo (processos independentes). A coordenação é por conexões: agente pergunta a agente com orkestrai ask, ou o Líder (★ Maestro) distribui com task/ask e recruta/demite com recruit/dismiss. O nó Loop Ralph é o modo sequencial: líder planeja → engenheiro implementa → tester revisa, até N rodadas. Rotinas disparam prompts agendados em qualquer terminal.`,
-    },
-    {
-      id: 'notas',
-      icon: StickyNote,
-      title: 'Notas como canais de trabalho',
-      body: `Notas são markdown vivo compartilhado com os agentes. A convenção: conecte a nota a quem deve lê-la/escrevê-la e diga o propósito no título e no conteúdo. Ex.: nota “Backlog (líder escreve)” conectada ao líder — você escreve “quebre em tarefas para o time” e ele lê com orkestrai note read e distribui no quadro. Nota “Para mim (humano)” — peça ao líder para registrar status/decisões nela com orkestrai note write/edit, e você acompanha formatado (ícone de olho). Duplo-clique no título renomeia a nota. Cole imagens direto no editor.`,
-    },
-    {
-      id: 'tarefas',
-      icon: SquareKanban,
-      title: 'Tarefas (kanban)',
-      body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace: cartões em A fazer/Fazendo/Feito. Atribuir um cartão a um agente despacha a tarefa direto para o terminal dele (loop contínuo) — ele trabalha e marca done sozinho. O líder opera o quadro pela CLI: orkestrai task list/add/assign/done. Cada tarefa pode ter UMA nota de spec vinculada (a mesma nota pode servir várias tarefas): vincule no cartão (ícone de corrente) ou pela CLI (task add --note / task link). Concluídas ficam na coluna Feito até você (ou o líder) arquivar: saem do quadro junto com a nota vinculada, mas NADA é apagado — o ícone de histórico (relógio) abre a linha do tempo, e o chip de nota ali abre o conteúdo mesmo arquivado. Regras de proteção: nota vinculada não apaga pelo X do canvas; apagar a tarefa apaga a nota junto (quando é a última tarefa que a usa). Na CLI: orkestrai task archive/archive-done/history/link/unlink.`,
-    },
-    {
-      id: 'presets',
-      icon: Layers,
-      title: 'Presets de equipe',
-      body: `Um preset é um template de workspace: time (agentes com provider/líder/roles), layout do canvas, notas com conteúdo e rotinas. Salve o workspace atual como preset no lápis de editar (barra lateral) → "Salvar como preset". Ao criar um workspace novo, escolha o preset em "Começar de um preset" — o time inteiro nasce instanciado no seu projeto, sem nada de runtime (sessões ficam de fora). Aplicar num workspace existente SOMA o time ao canvas sem apagar nada. Caso típico: seu framework padrão — monte uma vez, salve, e todo projeto novo já começa com o time pronto.`,
-    },
-    {
-      id: 'fluxos',
-      icon: Workflow,
-      title: 'Fluxos (pipelines de agentes)',
-      body: `O nó Fluxo (+ Fluxo na barra inferior) é um pipeline visual: passos em sequência, onde a saída de um agente vira a entrada do próximo via {{input}} no prompt. Passo "Agente" conversa com o agente escolhido (a aresta acende durante); passo "Aprovação" pausa até você clicar em Aprovar — humano no loop. Repetição com limite (até 5 rodadas). O progresso aparece ao vivo no nó e o histórico das últimas 5 execuções fica guardado nele. Use para revisões encadeadas (escreve → revisa → aprova), processamento em etapas ou qualquer rotina multi-passo do time.`,
-    },
-    {
-      id: 'sem-medo',
-      icon: BookOpen,
-      title: 'Diff, Loop & Andares — sem medo (para não-devs)',
-      body: `Três botões que assustam mas são amigáveis: DIFF é só um comparador — mostra lado a lado o que mudou no código entre duas versões, sem mexer em nada. LOOP (Loop Ralph) é um piloto automático: o time repete sozinho o ciclo planejar → fazer → revisar até o número de rodadas que você escolher. ANDARES são cópias de segurança do projeto: cada time trabalha numa cópia separada e ninguém bagunça a versão principal — no fim, o app ajuda a juntar tudo de volta (e avisa se houver conflito antes). Pode clicar sem receio: nada aqui apaga seu trabalho.`,
-    },
-    {
-      id: 'conexoes',
-      icon: Link2,
-      title: 'Conexões',
-      body: `Arraste da bolinha de um nó até outro — a conexão é bidirecional e a bolinha flutua pela borda sempre no ponto mais próximo do outro nó. A corda tracejada tem física (balança ao mover) e fica verde animada enquanto os agentes conversam. Hover mostra o X de remover; clique fixa o X. Conectar instala a skill da ponte nos agentes (eles aprendem a CLI orkestrai sozinhos).`,
-    },
-    {
-      id: 'andares',
-      icon: GitBranch,
-      title: 'Andares (worktrees)',
-      body: `Um andar é um git worktree do repo do workspace com branch própria — duas frentes de trabalho no mesmo projeto sem se atropelar: agentes do andar rodam com cwd no checkout do andar. Crie no painel Andares (barra inferior, que também lista os andares e troca a camada visível do canvas) ou os agentes criam pela CLI: orkestrai floor create/list/preview/land/remove. Aterrissar = merge da branch de volta, com prévia de diff e conflitos antes. Conflitos não são resolvidos automaticamente: o erro lista os arquivos e a resolução vira tarefa para um agente (ou você no editor) — depois repita o land. Hooks de setup/run/teardown com variáveis $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME, $ORKESTRAI_ROOT_PATH.`,
-    },
-    {
-      id: 'rotinas',
-      icon: Repeat,
-      title: 'Rotinas',
-      body: `Prompts agendados que disparam num terminal a cada X minutos (ou uma vez só). Use && numa linha para encadear etapas. O histórico mostra cada disparo. Ex.: “rode os testes a cada 30 min”, “verifique o deploy de hora em hora”. Rotinas disparam mesmo com o workspace em background.`,
-    },
-    {
-      id: 'portal',
-      icon: Workflow,
-      title: 'Portal (browser dos agentes)',
-      body: `O nó Portal é um navegador embutido. Conectado a um agente, ele vira os olhos do agente: orkestrai portal <nodeId> navigate (abrir URL), eval (rodar JS na página), dom (ler o HTML), screenshot. Use para testar a aplicação que o time está construindo (aponte o portal para o dev server) ou pesquisar na web. A automação completa roda no app desktop (Electron); no browser comum o portal é só visualizador.`,
-    },
-    {
-      id: 'mcp',
-      icon: Cable,
-      title: 'MCP (tools externas dos agentes)',
-      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app pergunta com instruções de onde conseguir. Remotos instalam com 1 clique (sem comando). AVANÇADO: lápis ao lado do nome do workspace → seção "Servidores MCP" para editar o .mcp.json na mão. AUTOMÁTICO: o próprio Orkestrai já aparece como servidor MCP "orkestrai" (provisionado sozinho) — os agentes ganham as ações do canvas como tools tipadas. Presets carregam seus MCPs junto com o time.`,
-    },
-    {
-      id: 'cli',
-      icon: MessageSquare,
-      title: 'CLI orkestrai (a ponte)',
-      body: `Os agentes usam a CLI orkestrai para agir no canvas: list --agent <id> (agentes, suas notas e portais), ask (perguntar a outro agente), note read/write/edit/create, task list/add/assign/done/archive/history (+ link/unlink de nota de spec), role show/write/edit, floor create/list/preview/land/remove, notify (notificação nativa para você), recruit/dismiss/connect/reassign (Modo Maestro), portal (automação de browser), port (porta livre para dev servers), fs read/write/search, run (re-despacha tarefa), say (fala no desktop), clip (lê a área de transferência), notes/portals (listagens). Agentes que falam MCP ganham tudo isso como tools nativas via orkestrai mcp — o .mcp.json é provisionado sozinho na raiz do projeto; gerencie servidores MCP extras no editor do workspace. O token fica em .orkestrai/workspace.json no diretório do workspace.`,
-    },
-    {
-      id: 'atalhos',
-      icon: BookOpen,
-      title: 'Atalhos',
-      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz (configurável em Configurações) · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. Lista completa em Configurações.`,
-    },
-  ];
 
   let query = $state('');
 
@@ -145,10 +89,10 @@
   const paletteItems = $derived.by((): PaletteItem[] => {
     const term = query.trim().toLowerCase();
     const items: PaletteItem[] = [
-      { kind: 'topico', title: 'Comece em 5 minutos', body: quickstart.join(' '), href: '#comece' },
+      { kind: 'topico', title: m['docs.quickstart_title'](), body: quickstart.join(' '), href: '#comece' },
       ...useCases.map((useCase) => ({ kind: 'caso' as const, title: useCase.title, body: useCase.body, href: '#casos-de-uso' })),
       ...sections.map((section) => ({ kind: 'topico' as const, title: section.title, body: section.body, href: `#${section.id}` })),
-      { kind: 'topico', title: 'Changelog', body: changelog.map((entry) => `${entry.date} ${entry.items.join(' ')}`).join(' '), href: '#changelog' },
+      { kind: 'topico', title: m['docs.changelog_title'](), body: changelog.map((entry) => `${entry.date} ${entry.items.join(' ')}`).join(' '), href: '#changelog' },
     ];
     if (!term) return items;
     return items.filter((item) => `${item.title} ${item.body}`.toLowerCase().includes(term));
@@ -200,137 +144,10 @@
     document.querySelector(item.href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  const useCases = [
-    {
-      icon: Users,
-      title: 'Time de desenvolvimento com líder (zero-config)',
-      body: 'Crie um Claude e diga: “orquestra pra mim a feature X”. Ele propõe o time (ex.: 2 backend, 1 frontend, 1 reviewer), você aprova, e ele recruta, conecta e distribui via kanban. Ao final, dispensa os agentes que não precisa mais.',
-      tags: ['Líder/Maestro', 'recruit/dismiss', 'kanban'],
-    },
-    {
-      icon: Repeat,
-      title: 'Funcionário 24/7 (vigia de tarefas)',
-      body: 'Rotina a cada 1–5 min no líder: “verifique o quadro (orkestrai task list); atribua o que estiver sem dono; se faltar agente, recrute”. O time inteiro trabalha sem você tocar em nada — atribuir despacha a tarefa direto pro terminal do agente.',
-      tags: ['Rotinas', 'task assign', 'auto-dispatch'],
-    },
-    {
-      icon: GitBranch,
-      title: 'Duas features em paralelo sem conflito',
-      body: 'Um andar (worktree) por feature: time A no Térreo na main, time B no andar “auth-refactor”. Ao terminar, floor preview mostra conflitos antes; o land mergeia. Conflito vira tarefa para um agente resolver.',
-      tags: ['Andares/worktrees', 'floor land', 'branches'],
-    },
-    {
-      icon: Workflow,
-      title: 'QA visual da sua aplicação',
-      body: 'Portal apontado para o dev server (http://localhost:5173) conectado a um agente: “abra o portal, faça o fluxo de checkout, tire screenshot e me diga o que quebrou”. O agente navega, executa JS, lê o DOM e reporta.',
-      tags: ['Portal', 'screenshot', 'eval/dom'],
-    },
-    {
-      icon: Search,
-      title: 'Pesquisa automatizada com resumo',
-      body: '“Use o Portal Pesquisa para ler sobre X, crie uma nota chamada Resumo X e escreva os achados em bullet points.” O agente navega, extrai e escreve — você lê formatado na nota conectada.',
-      tags: ['Portal', 'notas', 'note create'],
-    },
-    {
-      icon: FolderPlus,
-      title: 'Inbox de arquivos processada sozinha',
-      body: 'Rotina a cada 2 min: “liste ./inbox; para cada imagem nova, descreva e classifique; mova para ./inbox/done e registre no quadro”. Solte arquivos na pasta e o time processa em lote, sem parar.',
-      tags: ['Rotinas', 'pastas', 'lote'],
-    },
-    {
-      icon: Cable,
-      title: 'Revisão cruzada entre providers',
-      body: 'Conecte Claude e Codex: o Claude implementa, o Codex revisa (orkestrai ask), o veredito volta na mesma corda (ela acende verde durante a conversa). Dois olhares de modelos diferentes em cada mudança.',
-      tags: ['Conexões', 'ask', 'multi-provider'],
-    },
-    {
-      icon: Rocket,
-      title: 'Sentinela de deploy/testes',
-      body: 'Rotina de hora em hora num shell ou agente: “rode os testes; se falhar, abra uma tarefa para o time e me notifique (orkestrai notify)”. Você recebe notificação nativa do sistema e o kanban já tem o cartão.',
-      tags: ['Rotinas', 'notify', 'CI local'],
-    },
-    {
-      icon: Layers,
-      title: 'Preset do seu framework (projeto novo em 30s)',
-      body: 'Monte uma vez o time padrão do seu framework (líder + devs + roles + nota de bootstrap com as convenções), salve como preset no editor do workspace, e todo projeto novo nasce com o time completo: agentes, notas de spec, tarefas-template no quadro e MCPs configurados.',
-      tags: ['Presets', 'bootstrap', 'tarefas-template'],
-    },
-    {
-      icon: Workflow,
-      title: 'Pipeline escreve → revisa → aprova',
-      body: 'Fluxo com 3 passos: Dev escreve a feature, Revisor critica (a saída de um vira {{input}} do outro) e o passo de Aprovação pausa até você dar OK no nó. O progresso aparece ao vivo e as últimas execuções ficam no histórico do fluxo.',
-      tags: ['Fluxos', 'aprovação humana', 'pipeline'],
-    },
-    {
-      icon: Cable,
-      title: 'Agentes com tools externas via MCP',
-      body: 'Adicione servidores MCP no editor do workspace (ex.: filesystem, web, banco) — os agentes ganham as tools nativamente, e o Orkestrai em si aparece como servidor MCP com as ações do canvas (orkestrai mcp). Presets podem carregar os MCPs junto com o time.',
-      tags: ['MCP', 'tools tipadas', '.mcp.json'],
-    },
-  ];
-
-  const changelog = [
-    {
-      date: '04 ago 2026',
-      items: [
-        'Ciclo de conversa por voz: ditou, o agente responde falando — em português do Brasil de verdade.',
-        'Voz 100% autocontida (sem Node, sem Docker): runtime próprio baixado junto com o modelo, verificação de espaço em disco e opção de apagar o modelo.',
-        'A fala lê só a resposta atual — sem markdown, URLs ou caracteres estranhos.',
-        'Kanban: anexar imagens nos cartões funcionando (Ctrl+V e seletor).',
-        'Seta sem ponta vazando; painel de estilo com sliders e cabeça de seta configurável.',
-        'Usage do Kimi renova a credencial sozinho.',
-        'Sem briga de portas entre workspaces: orkestrai port devolve porta livre e os agentes aprendem a nunca matar processo de porta alheia.',
-        'Botão Descarregar com confirmação e feedback; Configurações redesenhadas; changelog aqui na página.',
-        'Atualizações automáticas: o app busca versão nova sozinho e instala na troca, sem tocar seus dados.',
-        'Skeletons de carregamento na sidebar, usage, skills e Configurações — sem pulos na UI.',
-        'Kanban com histórico: arquive concluídas sem perder o registro do que foi entregue.',
-        'Tarefa com nota de spec vinculada: arquiva junto, protegida contra exclusão, lida pelo histórico.',
-        'Voz lê o transcrito da sessão: resposta completa do agente, sem caracteres invisíveis.',
-        'Presets de equipe: salve o workspace como template e comece projetos com o time pronto.',
-        'Fluxos: pipelines visuais de agentes com aprovação humana e histórico de execuções.',
-        'Servidor MCP próprio + tools CLI novas (fs, say, run, clip) + gerenciador de MCPs.',
-        'Resposta entre agentes submetida sozinha — composer não fica mais pendurado.',
-        'Reconexão automática após suspensão do notebook, com o contexto restaurado.',
-        'Botão Recarregar em cada terminal (reinicia a sessão com o contexto).',
-        'Janelas nunca nascem menores que o mínimo — sem botões vazando.',
-        'Tooltips em toda a toolbar; textos de Diff/Loop/Andares em linguagem simples.',
-        '⌘K / Ctrl+K global: busca na documentação de qualquer tela.',
-        'Marketplace de MCPs na página Skills: curadoria oficial + registry, instalação com 1 clique e campos de token guiados.',
-        'App em Português, English e Español: seletor de idioma nas Configurações (paraglide).',
-        'Design pass: página Skills & MCPs redesenhada (abas segmentadas, cartões com badges) e docs polidas.',
-        'Onboarding interativo: 11 tours guiados por caso de uso, com "Fazer por mim" e auto-conclusão, em 3 idiomas.',
-        'Ícone de workspace agora é seletor Lucide (sidebar, editor e presets); emoji antigo continua funcionando.',
-      ],
-    },
-    {
-      date: '03 ago 2026',
-      items: [
-        'Voz embarcada sem Docker e sem Python, com confirmação antes do download.',
-        'Kanban com imagens de referência e líder avisado de tarefa nova; roles com editor markdown.',
-        'Suporte completo a Windows; notificações nativas com marca, workspace e agente.',
-      ],
-    },
-    {
-      date: '02 ago 2026',
-      items: [
-        'Modo Maestro consertado de ponta a ponta: o líder recruta, conecta e distribui sozinho.',
-        'Painel de usage dos providers e marketplace de skills (skills.sh) dentro do app.',
-        'Orquestração automática no canvas: organograma, arestas vivas, kanban e portal.',
-        'Ditado offline com atalho configurável; builds Linux/Windows e fundo do DMG com a marca.',
-      ],
-    },
-    {
-      date: '01 ago 2026',
-      items: [
-        'Nasce o Orkestrai: canvas de agentes, ponte CLI, andares (worktrees), rotinas, roles, kanban, portal e Modo Maestro.',
-        'Multi-workspace com resume exato de contexto; app desktop para macOS, Linux e Windows.',
-      ],
-    },
-  ];
 </script>
 
 <svelte:head>
-  <title>Orkestrai — Como usar</title>
+  <title>{m['docs.page_title']()}</title>
   <meta name="theme-color" content="#0D0B2E" />
 </svelte:head>
 
@@ -340,13 +157,13 @@
   <header class="docs-header">
     <Button variant="ghost" size="sm" href="/canvas">
       <ArrowLeft size={15} aria-hidden="true" />
-      Canvas
+      {m['docs.back_canvas']()}
     </Button>
-    <h1>Como usar o Orkestrai</h1>
+    <h1>{m['docs.heading']()}</h1>
     <span class="docs-spacer"></span>
     <Button variant="outline" size="sm" onclick={rewatchOnboarding}>
       <PlayCircle size={15} aria-hidden="true" />
-      Rever apresentação
+      {m['docs.rewatch']()}
     </Button>
   </header>
 
@@ -354,18 +171,18 @@
     <aside class="docs-nav">
       <label class="docs-search">
         <Search size={14} aria-hidden="true" />
-        <input bind:value={query} placeholder="Filtrar tópicos…" aria-label="Filtrar tópicos" autocomplete="off" spellcheck="false" />
+        <input bind:value={query} placeholder={m['ph.filter_topics']()} aria-label={m['ph.filter_topics']()} autocomplete="off" spellcheck="false" />
         <kbd class="search-kbd">⌘K</kbd>
       </label>
-      <nav aria-label="Tópicos da documentação">
-        <a href="#comece" class="nav-link">Comece em 5 minutos</a>
-        <a href="#casos-de-uso" class="nav-link">Casos de uso</a>
+      <nav aria-label={m['docs.nav_aria']()}>
+        <a href="#comece" class="nav-link">{m['docs.quickstart_title']()}</a>
+        <a href="#casos-de-uso" class="nav-link">{m['docs.usecases_title']()}</a>
         {#each filtered as section (section.id)}
           <a href={`#${section.id}`} class="nav-link">{section.title}</a>
         {/each}
-        <a href="#changelog" class="nav-link">Changelog</a>
+        <a href="#changelog" class="nav-link">{m['docs.changelog_title']()}</a>
         {#if !filtered.length}
-          <span class="nav-empty">Nenhum tópico para “{query}”.</span>
+          <span class="nav-empty">{m['docs.nav_empty']({ query })}</span>
         {/if}
       </nav>
     </aside>
@@ -374,7 +191,7 @@
       <article class="doc-card quickstart" id="comece">
         <header>
           <span class="icon-chip"><Rocket size={15} aria-hidden="true" /></span>
-          <h2>Comece em 5 minutos</h2>
+          <h2>{m['docs.quickstart_title']()}</h2>
         </header>
         <ol>
           {#each quickstart as step, index (index)}
@@ -384,9 +201,9 @@
       </article>
 
       <section class="usecases" id="casos-de-uso">
-        <h2 class="usecases-title">Casos de uso</h2>
+        <h2 class="usecases-title">{m['docs.usecases_title']()}</h2>
         <div class="usecases-grid">
-          {#each useCases as useCase (useCase.title)}
+          {#each useCases as useCase (useCase.id)}
             <article class="doc-card usecase-card">
               <header>
                 <span class="icon-chip"><useCase.icon size={15} aria-hidden="true" /></span>
@@ -408,7 +225,7 @@
           <header>
             <span class="icon-chip"><section.icon size={15} aria-hidden="true" /></span>
             <h2>{section.title}</h2>
-            <a href={`#${section.id}`} class="anchor-link" aria-label={`Link direto para ${section.title}`}>#</a>
+            <a href={`#${section.id}`} class="anchor-link" aria-label={m['docs.anchor_aria']({ title: section.title })}>#</a>
           </header>
           <p>{section.body}</p>
         </article>
@@ -417,8 +234,8 @@
       <article class="doc-card" id="changelog">
         <header>
           <span class="icon-chip"><History size={15} aria-hidden="true" /></span>
-          <h2>Changelog</h2>
-          <a href="#changelog" class="anchor-link" aria-label="Link direto para Changelog">#</a>
+          <h2>{m['docs.changelog_title']()}</h2>
+          <a href="#changelog" class="anchor-link" aria-label={m['docs.anchor_aria']({ title: m['docs.changelog_title']() })}>#</a>
         </header>
         <div class="changelog-list">
           {#each changelog as entry (entry.date)}
@@ -440,14 +257,14 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="palette-overlay" onclick={() => (paletteOpen = false)} onkeydown={handlePaletteKeydown}>
       <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-      <div class="palette-card" onclick={(event) => event.stopPropagation()} role="dialog" aria-label="Buscar na documentacao">
+      <div class="palette-card" onclick={(event) => event.stopPropagation()} role="dialog" aria-label={m['docs.palette_aria']()}>
         <label class="palette-input-row">
           <Search size={15} aria-hidden="true" />
           <input
             bind:this={paletteInput}
             bind:value={query}
-            placeholder="Buscar nos topicos, casos de uso e changelog…"
-            aria-label="Buscar na documentacao"
+            placeholder={m['ph.search_docs']()}
+            aria-label={m['docs.palette_aria']()}
             autocomplete="off"
             spellcheck="false"
             onkeydown={handlePaletteKeydown}
@@ -465,15 +282,15 @@
                 onclick={() => goToItem(item)}
                 onmousemove={() => (paletteSelected = index)}
               >
-                <span class="palette-kind">{item.kind === 'caso' ? 'caso de uso' : 'topico'}</span>
+                <span class="palette-kind">{item.kind === 'caso' ? m['docs.kind_usecase']() : m['docs.kind_topic']()}</span>
                 <span class="palette-title">{item.title}</span>
               </button>
             </li>
           {:else}
-            <li class="palette-empty">Nada para “{query.trim()}”.</li>
+            <li class="palette-empty">{m['docs.palette_empty']({ query: query.trim() })}</li>
           {/each}
         </ul>
-        <p class="palette-hint">↑↓ navega · Enter abre · Esc fecha</p>
+        <p class="palette-hint">{m['docs.palette_hint']()}</p>
       </div>
     </div>
   {/if}

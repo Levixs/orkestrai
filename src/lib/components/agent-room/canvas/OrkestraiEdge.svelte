@@ -1,6 +1,7 @@
 <script lang="ts">
   import { EdgeLabel, useEdges, useNodes, type EdgeProps } from '@xyflow/svelte';
   import { X } from '@lucide/svelte';
+  import * as m from '$lib/paraglide/messages.js';
   import { floatingAnchorFor } from './floating-anchor.js';
 
   /**
@@ -205,7 +206,7 @@
       stroke-width="26"
       style="pointer-events: stroke; cursor: pointer"
       role="button"
-      aria-label="Conexao"
+      aria-label={m['shell.connection']()}
       tabindex="-1"
       onpointerenter={() => (hovered = true)}
       onpointerleave={() => (hovered = false)}
@@ -227,7 +228,7 @@
         class="edge-delete"
         class:pinned
         class:visible={hovered || pinned || selected}
-        aria-label="Remover conexao"
+        aria-label={m['shell.remove_connection']()}
         onpointerenter={() => (hovered = true)}
         onpointerleave={() => (hovered = false)}
         onclick={(event) => {

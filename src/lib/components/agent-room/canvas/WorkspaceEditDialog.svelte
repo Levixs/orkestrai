@@ -13,6 +13,7 @@
   import { onMount } from 'svelte';
   import { isLegacyEmojiIcon, WORKSPACE_ICONS } from '../workspace-icons.js';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   type Props = {
     workspace: Workspace;
@@ -58,7 +59,7 @@
     });
     const payload = await response.json();
     if (!response.ok || payload.error) {
-      mcpError = payload.error || 'Falha ao adicionar.';
+      mcpError = payload.error || m['dlg.edit_mcp_add_error']();
       return;
     }
     mcps = payload.data;
@@ -84,12 +85,12 @@
         body: JSON.stringify({ workspaceId: workspace.id, name: workspace.name, icon: workspace.icon }),
       });
       const payload = await response.json();
-      if (!response.ok || payload.error) throw new Error(payload.error || 'Falha ao salvar preset.');
+      if (!response.ok || payload.error) throw new Error(payload.error || m['dlg.preset_save_error']());
       presetState = 'saved';
-      presetMessage = `Preset "${payload.data.name}" salvo — aparece ao criar um workspace novo.`;
+      presetMessage = m['dlg.preset_saved']({ name: payload.data.name });
     } catch (error) {
       presetState = 'error';
-      presetMessage = error instanceof Error ? error.message : 'Falha ao salvar preset.';
+      presetMessage = error instanceof Error ? error.message : m['dlg.preset_save_error']();
     }
   }
 
@@ -100,8 +101,8 @@
   // Variante do schema compartilhado com todos os campos presentes (o form
   // sempre envia o estado completo do workspace).
   const editWorkspaceFormSchema = z.object({
-    name: z.string().trim().min(1, 'Informe o nome do workspace.'),
-    workingDir: z.string().trim().min(1, 'Informe o diretorio de trabalho.'),
+    name: z.string().trim().min(1, m['dlg.ws_name_required']()),
+    workingDir: z.string().trim().min(1, m['dlg.ws_dir_required']()),
     icon: z.string().trim().nullable(),
     instructions: z.string().trim().nullable(),
     syncAgentInstructionFiles: z.boolean(),
@@ -136,7 +137,7 @@
           });
           onClose();
         } catch (error) {
-          submitError = error instanceof Error ? error.message : 'Falha ao salvar workspace.';
+          submitError = error instanceof Error ? error.message : m['dlg.ws_save_error']();
         }
       },
     }
@@ -156,15 +157,15 @@
 <Dialog.Root open onOpenChange={(isOpen) => !isOpen && onClose()}>
   <Dialog.Content class="sm:max-w-lg">
     <Dialog.Header>
-      <Dialog.Title>Editar workspace</Dialog.Title>
-      <Dialog.Description>Diretorio, icone e instrucoes injetadas nos agentes (AGENTS.md/CLAUDE.md).</Dialog.Description>
+      <Dialog.Title>{m['dlg.edit_ws_title']()}</Dialog.Title>
+      <Dialog.Description>{m['dlg.edit_ws_desc']()}</Dialog.Description>
     </Dialog.Header>
 
     <form method="POST" use:enhance class="space-y-4">
       <Form.Field {form} name="name">
         <Form.Control>
           {#snippet children({ props })}
-            <Form.Label>Nome</Form.Label>
+            <Form.Label>{m['dlg.name']()}</Form.Label>
             <Input {...props} bind:value={$formData.name} />
           {/snippet}
         </Form.Control>
@@ -174,19 +175,19 @@
       <Form.Field {form} name="workingDir">
         <Form.Control>
           {#snippet children({ props })}
-            <Form.Label>Diretorio de trabalho</Form.Label>
+            <Form.Label>{m['dlg.working_dir']()}</Form.Label>
             <div class="flex gap-2">
               <Input {...props} bind:value={$formData.workingDir} class="flex-1" />
               {#if desktop}
                 <Tooltip.Root>
                   <Tooltip.Trigger>
                     {#snippet child({ props })}
-                      <Button {...props} type="button" variant="outline" size="icon" aria-label="Escolher pasta" onclick={pickDirectory}>
+                      <Button {...props} type="button" variant="outline" size="icon" aria-label={m['dlg.pick_folder']()} onclick={pickDirectory}>
                         <FolderOpen size={15} />
                       </Button>
                     {/snippet}
                   </Tooltip.Trigger>
-                  <Tooltip.Content side="top">Escolher pasta</Tooltip.Content>
+                  <Tooltip.Content side="top">{m['dlg.pick_folder']()}</Tooltip.Content>
                 </Tooltip.Root>
               {/if}
             </div>
@@ -196,8 +197,8 @@
       </Form.Field>
 
       <div class="field">
-        <span class="text-sm font-medium leading-none">Icone do workspace</span>
-        <div class="icon-picker" role="radiogroup" aria-label="Icone do workspace">
+        <span class="text-sm font-medium leading-none">{m['dlg.ws_icon']()}</span>
+        <div class="icon-picker" role="radiogroup" aria-label={m['dlg.ws_icon']()}>
           {#each WORKSPACE_ICONS as option (option.name)}
             {@const OptionIcon = option.component}
             <button
@@ -214,15 +215,15 @@
           {/each}
         </div>
         {#if isLegacyEmojiIcon($formData.icon)}
-          <p class="icon-legacy-hint">Icone antigo (emoji {$formData.icon}) mantido — escolha um novo acima para trocar.</p>
+          <p class="icon-legacy-hint">{m['dlg.icon_legacy_hint']({ icon: $formData.icon ?? '' })}</p>
         {/if}
       </div>
 
       <Form.Field {form} name="instructions">
         <Form.Control>
           {#snippet children({ props })}
-            <Form.Label>Instrucoes dos agentes (AGENTS.md)</Form.Label>
-            <Textarea {...props} bind:value={$formData.instructions} rows={5} placeholder="Convencoes do projeto, contexto, instrucoes recorrentes..." />
+            <Form.Label>{m['dlg.agent_instructions']()}</Form.Label>
+            <Textarea {...props} bind:value={$formData.instructions} rows={5} placeholder={m['ph.ws_instructions']()} />
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
@@ -233,7 +234,7 @@
           {#snippet children({ props })}
             <div class="flex items-center gap-2">
               <Checkbox {...props} checked={$formData.syncAgentInstructionFiles} onCheckedChange={(value: boolean | 'indeterminate') => ($formData.syncAgentInstructionFiles = value === true)} />
-              <Form.Label>Manter CLAUDE.md e AGENTS.md sincronizados</Form.Label>
+              <Form.Label>{m['dlg.sync_instruction_files']()}</Form.Label>
             </div>
           {/snippet}
         </Form.Control>
@@ -247,10 +248,10 @@
       <div class="rounded-lg border border-border/60 p-3 space-y-2">
         <div class="flex items-center gap-2">
           <Plug size={13} class="text-muted-foreground" />
-          <span class="text-sm font-medium">Servidores MCP (.mcp.json)</span>
+          <span class="text-sm font-medium">{m['dlg.mcp_title']()}</span>
         </div>
         <p class="text-xs text-muted-foreground">
-          Tools externas para os agentes deste workspace (Claude Code, Kimi... leem da raiz do projeto).
+          {m['dlg.mcp_desc']()}
         </p>
         {#if mcps.length}
           <ul class="space-y-1">
@@ -259,9 +260,9 @@
                 <span class="font-medium">{server.name}</span>
                 <span class="text-muted-foreground truncate flex-1">{server.command} {server.args.join(' ')}</span>
                 {#if server.builtin}
-                  <span class="text-[10px] text-emerald-400">da ponte</span>
+                  <span class="text-[10px] text-emerald-400">{m['dlg.mcp_builtin']()}</span>
                 {:else}
-                  <button type="button" class="text-muted-foreground hover:text-destructive" aria-label={`Remover ${server.name}`} onclick={() => removeMcp(server.name)}>
+                  <button type="button" class="text-muted-foreground hover:text-destructive" aria-label={m['dlg.mcp_remove']({ name: server.name })} onclick={() => removeMcp(server.name)}>
                     <Trash2 size={12} />
                   </button>
                 {/if}
@@ -270,11 +271,11 @@
           </ul>
         {/if}
         <div class="flex gap-2">
-          <Input bind:value={mcpName} placeholder="nome" class="w-28 h-8 text-xs" />
-          <Input bind:value={mcpCommand} placeholder="comando (npx, node, uvx)" class="w-40 h-8 text-xs" />
-          <Input bind:value={mcpArgs} placeholder="args (ex.: -y @mcp/fs ./data)" class="flex-1 h-8 text-xs" />
+          <Input bind:value={mcpName} placeholder={m['ph.mcp_name']()} class="w-28 h-8 text-xs" />
+          <Input bind:value={mcpCommand} placeholder={m['ph.mcp_command']()} class="w-40 h-8 text-xs" />
+          <Input bind:value={mcpArgs} placeholder={m['ph.mcp_args']()} class="flex-1 h-8 text-xs" />
           <Button type="button" variant="outline" size="sm" disabled={!mcpName.trim() || !mcpCommand.trim()} onclick={addMcp}>
-            Adicionar
+            {m['dlg.add']()}
           </Button>
         </div>
         {#if mcpError}
@@ -285,10 +286,10 @@
       <div class="rounded-lg border border-border/60 p-3 space-y-2">
         <div class="flex items-center justify-between gap-3">
           <p class="text-xs text-muted-foreground">
-            Guarde este time (agentes, layout, notas, roles, rotinas) como preset reutilizavel.
+            {m['dlg.preset_hint']()}
           </p>
           <Button type="button" variant="outline" size="sm" disabled={presetState === 'saving'} onclick={saveAsPreset}>
-            {presetState === 'saving' ? 'Salvando...' : 'Salvar como preset'}
+            {presetState === 'saving' ? m['dlg.saving']() : m['dlg.save_as_preset']()}
           </Button>
         </div>
         {#if presetMessage}
@@ -297,8 +298,8 @@
       </div>
 
       <Dialog.Footer>
-        <Button type="button" variant="outline" onclick={onClose}>Cancelar</Button>
-        <Button type="submit">Salvar</Button>
+        <Button type="button" variant="outline" onclick={onClose}>{m['dlg.cancel']()}</Button>
+        <Button type="submit">{m['dlg.save']()}</Button>
       </Dialog.Footer>
     </form>
   </Dialog.Content>

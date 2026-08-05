@@ -60,7 +60,7 @@
     const created = await onCreateWorkspace({ name: name.trim(), workingDir: workingDir.trim() });
     creating = false;
     if (!created) {
-      createError = 'Nao foi possivel criar o workspace.';
+      createError = m['onboarding.create_error']();
       return;
     }
     workspaceId = created.id;
@@ -96,12 +96,12 @@
       <div class="wizard-form">
         <div class="field">
           <span class="field-label">{m['onboarding.ws_name']()}</span>
-          <Input bind:value={name} placeholder="Meu projeto" />
+          <Input bind:value={name} placeholder={m['ph.onboarding_name']()} />
         </div>
         <div class="field">
           <span class="field-label">{m['onboarding.ws_dir']()}</span>
           <div class="dir-row">
-            <Input bind:value={workingDir} placeholder="/caminho/do/projeto" class="flex-1" />
+            <Input bind:value={workingDir} placeholder={m['ph.onboarding_dir']()} class="flex-1" />
             {#if desktop}
               <Button variant="outline" size="sm" onclick={pickDirectory}>
                 <FolderPlus size={14} aria-hidden="true" />

@@ -5,6 +5,7 @@
   import { Input } from '$lib/components/ui/input';
   import TerminalNode, { type CreatePtyRequest } from '$lib/components/agent-room/TerminalNode.svelte';
   import type { AgentProviderInfo } from '$lib/modules/agent-room/domain/types.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   type TerminalInstance = {
     key: string;
@@ -25,7 +26,7 @@
 
   function openShell() {
     const shell = navigator.platform.startsWith('Win') ? 'powershell.exe' : '/bin/zsh';
-    addTerminal('Shell', { command: shell, cwd: cwd || '.' });
+    addTerminal(m['termpage.shell_btn'](), { command: shell, cwd: cwd || '.' });
   }
 
   function openAgent(provider: AgentProviderInfo) {
@@ -47,18 +48,18 @@
 </script>
 
 <svelte:head>
-  <title>Orkestrai — Terminais</title>
+  <title>Orkestrai — {m['termpage.title']()}</title>
 </svelte:head>
 
 <main class="terminals-page">
   <header class="toolbar">
     <Button variant="ghost" size="sm" href="/canvas">
       <ArrowLeft size={15} />
-      Canvas
+      {m['termpage.back_canvas']()}
     </Button>
-    <h1>Terminais</h1>
-    <Input class="cwd-input" bind:value={cwd} placeholder="Diretorio de trabalho (vazio = projeto atual)" />
-    <Button variant="secondary" size="sm" onclick={openShell}>Shell</Button>
+    <h1>{m['termpage.title']()}</h1>
+    <Input class="cwd-input" bind:value={cwd} placeholder={m['ph.cwd_terminal']()} />
+    <Button variant="secondary" size="sm" onclick={openShell}>{m['termpage.shell_btn']()}</Button>
     {#each providers as provider}
       <Button variant="secondary" size="sm" disabled={!provider.installed} onclick={() => openAgent(provider)}>
         {provider.displayName}
@@ -84,7 +85,7 @@
       </div>
     {/each}
     {#if terminals.length === 0}
-      <p class="empty">Abra um shell ou um agente para iniciar um terminal PTY.</p>
+      <p class="empty">{m['termpage.empty']()}</p>
     {/if}
   </section>
 </main>

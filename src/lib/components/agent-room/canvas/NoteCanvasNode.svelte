@@ -1,16 +1,16 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { marked } from 'marked';
-  import DOMPurify from 'dompurify';
   import { Eye, Pencil, StickyNote, X } from '@lucide/svelte';
+  import MarkdownView from '../MarkdownView.svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   const NOTE_COLORS: Record<string, { bg: string; fg: string; label: string }> = {
-    yellow: { bg: '#1f1e17', fg: '#e8ddc0', label: 'Amarelo' },
-    blue: { bg: '#161b24', fg: '#c9d8f0', label: 'Azul' },
-    green: { bg: '#15201a', fg: '#c8ecd4', label: 'Verde' },
-    purple: { bg: '#1d1726', fg: '#dccdf0', label: 'Roxo' },
-    red: { bg: '#241616', fg: '#f0cccc', label: 'Vermelho' },
-    neutral: { bg: '#1C1946', fg: '#d7d8de', label: 'Neutro' },
+    yellow: { bg: '#1f1e17', fg: '#e8ddc0', label: m['note.color_yellow']() },
+    blue: { bg: '#161b24', fg: '#c9d8f0', label: m['note.color_blue']() },
+    green: { bg: '#15201a', fg: '#c8ecd4', label: m['note.color_green']() },
+    purple: { bg: '#1d1726', fg: '#dccdf0', label: m['note.color_purple']() },
+    red: { bg: '#241616', fg: '#f0cccc', label: m['note.color_red']() },
+    neutral: { bg: '#1C1946', fg: '#d7d8de', label: m['note.color_neutral']() },
   };
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
@@ -38,8 +38,6 @@
     data.onColorChange?.(id, color);
   }
   let debounce: ReturnType<typeof setTimeout> | null = null;
-
-  const preview = $derived(DOMPurify.sanitize(marked.parse(draft, { async: false }) as string));
 
   function handleInput() {
     if (debounce) clearTimeout(debounce);
@@ -91,7 +89,7 @@
   onRemoveConnection={data.onRemoveConnection}
 >
   {#snippet icon()}<StickyNote size={13} />{/snippet}
-  {#snippet title()}{data.title || 'Nota'}{/snippet}
+  {#snippet title()}{data.title || m['note.default_title']()}{/snippet}
   {#snippet actions()}
     <span class="color-swatches nodrag">
       {#each Object.entries(NOTE_COLORS) as [name, preset]}
@@ -105,22 +103,21 @@
         ></button>
       {/each}
     </span>
-    <IconAction label={formatted ? 'Editar (raw)' : 'Ver formatado'} onclick={toggleFormatted}>
+    <IconAction label={formatted ? m['note.edit_raw']() : m['note.view_formatted']()} onclick={toggleFormatted}>
       {#if formatted}<Pencil size={13} />{:else}<Eye size={13} />{/if}
     </IconAction>
-    <IconAction label="Remover nota" danger onclick={() => data.onDelete(id)}>
+    <IconAction label={m['note.remove']()} danger onclick={() => data.onDelete(id)}>
       <X size={13} /></IconAction>
   {/snippet}
 
   {#if formatted}
-    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
     <div
       class="note-content note-preview nodrag nowheel"
       style="--note-bg: {noteColor.bg}; --note-fg: {noteColor.fg}"
       ondblclick={toggleFormatted}
       role="presentation"
     >
-      {@html preview}
+      <MarkdownView content={draft} />
     </div>
   {:else}
     <textarea
@@ -129,7 +126,7 @@
       bind:value={draft}
       oninput={handleInput}
       onpaste={handlePaste}
-      placeholder="Escreva em Markdown..."
+      placeholder={m['ph.note_content']()}
       spellcheck="false"
     ></textarea>
   {/if}

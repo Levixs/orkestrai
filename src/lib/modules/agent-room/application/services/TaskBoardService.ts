@@ -7,6 +7,8 @@ export type BoardTask = {
   id: string;
   workspaceId: string;
   title: string;
+  /** Corpo do cartao em markdown (descricao estilo Trello). */
+  description: string | null;
   status: 'todo' | 'doing' | 'done';
   assigneeNodeId: string | null;
   assigneeTitle: string | null;
@@ -43,6 +45,7 @@ function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null, not
     id: model.getAttribute('id'),
     workspaceId: model.getAttribute('workspace_id'),
     title: model.getAttribute('title'),
+    description: model.getAttribute('description') ?? null,
     status: model.getAttribute('status') as BoardTask['status'],
     assigneeNodeId: model.getAttribute('assignee_node_id'),
     assigneeTitle,
@@ -179,7 +182,7 @@ export class TaskBoardService {
 
   async create(
     workspaceId: string,
-    input: { title: string; assigneeNodeId?: string | null; createdBy?: string; noteId?: string | null }
+    input: { title: string; description?: string | null; assigneeNodeId?: string | null; createdBy?: string; noteId?: string | null }
   ): Promise<BoardTask> {
     const title = input.title.trim();
     if (!title) throw new Error('Informe o titulo da tarefa.');
@@ -190,6 +193,7 @@ export class TaskBoardService {
       id,
       workspace_id: workspaceId,
       title,
+      description: input.description?.trim() || null,
       status: input.assigneeNodeId ? 'doing' : 'todo',
       assignee_node_id: input.assigneeNodeId ?? null,
       note_node_id: input.noteId ?? null,
@@ -214,7 +218,7 @@ export class TaskBoardService {
   async update(
     workspaceId: string,
     taskId: string,
-    input: { title?: string; status?: string; assigneeNodeId?: string | null; imagePath?: string | null; noteId?: string | null }
+    input: { title?: string; description?: string | null; status?: string; assigneeNodeId?: string | null; imagePath?: string | null; noteId?: string | null }
   ): Promise<BoardTask> {
     const task = await this.requireTask(workspaceId, taskId);
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -222,6 +226,9 @@ export class TaskBoardService {
       const title = input.title.trim();
       if (!title) throw new Error('Informe o titulo da tarefa.');
       patch.title = title;
+    }
+    if (input.description !== undefined) {
+      patch.description = input.description?.trim() || null;
     }
     if (input.status !== undefined) {
       if (!VALID_STATUS.has(input.status)) throw new Error('Status invalido (todo/doing/done).');

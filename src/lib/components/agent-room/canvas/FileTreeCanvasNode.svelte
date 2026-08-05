@@ -8,6 +8,7 @@
   import { Button } from '$lib/components/ui/button';
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type FileTreeNodeData = {
     title: string;
@@ -45,9 +46,9 @@
     if (graphMode) {
       try {
         const result = await api<{ graph: string }>(`/api/agent-room/workspaces/${data.workspaceId}/git/graph`);
-        graphText = result.graph || '(sem commits)';
+        graphText = result.graph || m['files.graph_no_commits']();
       } catch {
-        graphText = '(falha ao ler historico)';
+        graphText = m['files.graph_error']();
       }
     }
   }
@@ -55,7 +56,7 @@
   async function api<T>(path: string): Promise<T> {
     const response = await fetch(path);
     const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || 'Falha na API.');
+    if (!response.ok || payload.error) throw new Error(payload.error || m['files.error_api']());
     return payload.data as T;
   }
 
@@ -72,7 +73,7 @@
       changes = status.changes;
       branch = status.branch;
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : 'Falha ao listar.';
+      errorMessage = error instanceof Error ? error.message : m['files.error_list']();
     }
   }
 
@@ -97,7 +98,7 @@
       body: JSON.stringify(body ?? {}),
     });
     const payload = await response.json();
-    if (!response.ok || payload.error) throw new Error(payload.error || 'Falha na API.');
+    if (!response.ok || payload.error) throw new Error(payload.error || m['files.error_api']());
     return payload.data as T;
   }
 
@@ -107,7 +108,7 @@
       await fn();
       await refresh();
     } catch (error) {
-      errorMessage = `${action}: ${error instanceof Error ? error.message : 'falhou'}`;
+      errorMessage = `${action}: ${error instanceof Error ? error.message : m['files.error_failed']()}`;
     }
   }
 
@@ -132,7 +133,7 @@
 
   const doCheckout = (name: string) => gitActionLabel('checkout', () => post(`/api/agent-room/workspaces/${data.workspaceId}/git/checkout`, { branch: name }));
 
-  const doCreateBranch = () => gitActionLabel('nova branch', async () => {
+  const doCreateBranch = () => gitActionLabel(m['files.new_branch'](), async () => {
     await post(`/api/agent-room/workspaces/${data.workspaceId}/git/branch`, { branch: newBranchName });
     newBranchName = '';
     branchOpen = false;
@@ -198,20 +199,20 @@
 >
   {#snippet icon()}<FolderTree size={13} />{/snippet}
   {#snippet title()}
-    {data.title || 'Arquivos'}
+    {data.title || m['files.default_title']()}
     {#if branch}
       <span class="branch-badge"><GitBranch size={10} /> {branch}</span>
     {/if}
   {/snippet}
   {#snippet actions()}
     {#if branch}
-      <IconAction label={graphMode ? 'Ver arquivos' : 'Ver grafo de commits'} onclick={toggleGraph}>
+      <IconAction label={graphMode ? m['files.view_files']() : m['files.view_graph']()} onclick={toggleGraph}>
         <GitCommitHorizontal size={13} />
       </IconAction>
     {/if}
-    <IconAction label="Voltar" disabled={!currentPath} onclick={goUp}><ArrowUp size={13} /></IconAction>
-    <IconAction label="Recarregar" onclick={refresh}><RefreshCw size={13} /></IconAction>
-    <IconAction label="Remover" danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
+    <IconAction label={m['onboarding.back']()} disabled={!currentPath} onclick={goUp}><ArrowUp size={13} /></IconAction>
+    <IconAction label={m['files.reload']()} onclick={refresh}><RefreshCw size={13} /></IconAction>
+    <IconAction label={m['files.remove']()} danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
   {/snippet}
 
   {#if currentPath && !graphMode}
@@ -229,7 +230,7 @@
     <input
       bind:value={searchQuery}
       oninput={handleSearch}
-      placeholder="Buscar nome... (> conteudo)"
+      placeholder={m['ph.file_search']()}
       spellcheck="false"
     />
   </div>
@@ -243,7 +244,7 @@
           {/if}
         </button>
       {:else}
-        <p class="empty">Nada encontrado.</p>
+        <p class="empty">{m['files.search_empty']()}</p>
       {/each}
     </div>
   {/if}
@@ -264,7 +265,7 @@
       </button>
     {/each}
     {#if entries.length === 0 && !errorMessage}
-      <p class="empty">Diretorio vazio.</p>
+      <p class="empty">{m['files.empty_dir']()}</p>
     {/if}
   </div>
 </NodeShell>
@@ -273,16 +274,16 @@
   <Dialog.Content class="sm:max-w-sm">
     <Dialog.Header>
       <Dialog.Title>Commit</Dialog.Title>
-      <Dialog.Description>Mensagem do commit em {branch}.</Dialog.Description>
+      <Dialog.Description>{m['files.commit_desc']({ branch: branch ?? '' })}</Dialog.Description>
     </Dialog.Header>
     <div class="space-y-3">
-      <Input bind:value={commitMessage} placeholder="Mensagem do commit" />
+      <Input bind:value={commitMessage} placeholder={m['ph.commit_message']()} />
       {#if errorMessage}
         <p class="text-sm text-destructive">{errorMessage}</p>
       {/if}
     </div>
     <Dialog.Footer>
-      <Button variant="outline" onclick={() => (commitOpen = false)}>Cancelar</Button>
+      <Button variant="outline" onclick={() => (commitOpen = false)}>{m['settings.cancel']()}</Button>
       <Button onclick={doCommit} disabled={!commitMessage.trim()}>Commit</Button>
     </Dialog.Footer>
   </Dialog.Content>
@@ -291,8 +292,8 @@
 <Dialog.Root open={branchOpen} onOpenChange={(open) => !open && (branchOpen = false)}>
   <Dialog.Content class="sm:max-w-sm">
     <Dialog.Header>
-      <Dialog.Title>Nova branch</Dialog.Title>
-      <Dialog.Description>Cria e muda para a nova branch.</Dialog.Description>
+      <Dialog.Title>{m['files.new_branch']()}</Dialog.Title>
+      <Dialog.Description>{m['files.new_branch_desc']()}</Dialog.Description>
     </Dialog.Header>
     <div class="space-y-3">
       <Input bind:value={newBranchName} placeholder="minha-branch" />
@@ -301,8 +302,8 @@
       {/if}
     </div>
     <Dialog.Footer>
-      <Button variant="outline" onclick={() => (branchOpen = false)}>Cancelar</Button>
-      <Button onclick={doCreateBranch} disabled={!newBranchName.trim()}>Criar</Button>
+      <Button variant="outline" onclick={() => (branchOpen = false)}>{m['settings.cancel']()}</Button>
+      <Button onclick={doCreateBranch} disabled={!newBranchName.trim()}>{m['files.create']()}</Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

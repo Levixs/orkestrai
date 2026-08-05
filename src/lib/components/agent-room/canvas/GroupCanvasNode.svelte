@@ -3,6 +3,7 @@
 
   import type { NodeProps } from '@xyflow/svelte';
   import { Group, Ungroup } from '@lucide/svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type GroupNodeData = {
     title: string;
@@ -49,7 +50,7 @@
     {:else}
       <span class="group-title">{data.title}</span>
     {/if}
-    <HeaderIconButton label="Desagrupar" class="group-ungroup nodrag" side="left" onclick={() => data.onUngroup(id)}>
+    <HeaderIconButton label={m['group.ungroup']()} class="group-ungroup nodrag" side="left" onclick={() => data.onUngroup(id)}>
       <Ungroup size={12} />
     </HeaderIconButton>
   </header>

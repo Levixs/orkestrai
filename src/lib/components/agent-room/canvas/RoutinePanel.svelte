@@ -11,6 +11,7 @@
   import { Clock, Pause, Pencil, Play, Trash2, X, Zap } from '@lucide/svelte';
   import { createRoutineSchema } from '$lib/modules/agent-room/contracts/schemas/floorSchemas.js';
   import type { Routine, Workspace } from '$lib/modules/agent-room/domain/types.js';
+  import * as m from '$lib/paraglide/messages.js';
 
   type Props = {
     workspace: Workspace;
@@ -52,7 +53,7 @@
         $formData.intervalMinutes = null;
         await refresh();
       } catch (error) {
-        submitError = error instanceof Error ? error.message : 'Falha ao salvar rotina.';
+        submitError = error instanceof Error ? error.message : m['routine.error_save']();
       }
     },
   });
@@ -112,8 +113,8 @@
 
 <aside class="side-panel">
   <header class="panel-header">
-    <h3>Rotinas</h3>
-    <IconAction label="Fechar" onclick={onClose}><X size={14} /></IconAction>
+    <h3>{m['routine.title']()}</h3>
+    <IconAction label={m['routine.close']()} onclick={onClose}><X size={14} /></IconAction>
   </header>
 
   {#each routines as routine (routine.id)}
@@ -121,19 +122,19 @@
       <div class="routine-info">
         <strong>{terminalTitle(routine.targetNodeId)}</strong>
         <small>
-          {routine.intervalMinutes ? `a cada ${routine.intervalMinutes}min` : 'execucao unica'}
+          {routine.intervalMinutes ? m['routine.every_minutes']({ minutes: routine.intervalMinutes }) : m['routine.once']()}
           · {routine.runCount}x
         </small>
         <p class="routine-prompt">{routine.prompt.split('\n')[0].replace(/^&&\s*/, '')}</p>
       </div>
       <div class="routine-actions">
-        <HeaderIconButton label={routine.enabled ? 'Desativar' : 'Ativar'} class="node-action-btn" side="left" onclick={() => toggle(routine)}>
+        <HeaderIconButton label={routine.enabled ? m['routine.disable']() : m['routine.enable']()} class="node-action-btn" side="left" onclick={() => toggle(routine)}>
           {#if routine.enabled}<Pause size={13} />{:else}<Play size={13} />{/if}
         </HeaderIconButton>
-        <IconAction label="Editar" onclick={() => (editingId === routine.id ? cancelEdit() : startEdit(routine))}><Pencil size={13} /></IconAction>
-        <IconAction label="Rodar agora" onclick={() => runNow(routine)}><Zap size={13} /></IconAction>
-        <IconAction label="Historico" onclick={() => showHistory(routine)}><Clock size={13} /></IconAction>
-        <IconAction label="Excluir" danger onclick={() => remove(routine)}><Trash2 size={13} /></IconAction>
+        <IconAction label={m['routine.edit']()} onclick={() => (editingId === routine.id ? cancelEdit() : startEdit(routine))}><Pencil size={13} /></IconAction>
+        <IconAction label={m['routine.run_now']()} onclick={() => runNow(routine)}><Zap size={13} /></IconAction>
+        <IconAction label={m['routine.history']()} onclick={() => showHistory(routine)}><Clock size={13} /></IconAction>
+        <IconAction label={m['routine.delete']()} danger onclick={() => remove(routine)}><Trash2 size={13} /></IconAction>
       </div>
       {#if historyFor?.id === routine.id}
         <ul class="history">
@@ -142,28 +143,28 @@
               {new Date(run.ranAt).toLocaleString()} — {run.detail}
             </li>
           {:else}
-            <li>Sem execucoes ainda.</li>
+            <li>{m['routine.no_runs']()}</li>
           {/each}
         </ul>
       {/if}
     </div>
   {/each}
   {#if routines.length === 0}
-    <p class="empty">Nenhuma rotina. Agende prompts para seus agentes.</p>
+    <p class="empty">{m['routine.empty']()}</p>
   {/if}
 
   <form method="POST" use:enhance class="routine-form">
     <Form.Field {form} name="targetNodeId">
       <Form.Control>
         {#snippet children({ props })}
-          <Form.Label>Terminal alvo</Form.Label>
+          <Form.Label>{m['routine.target_label']()}</Form.Label>
           <Select.Root
             type="single"
             value={$formData.targetNodeId as string | undefined}
             onValueChange={(value: string) => ($formData.targetNodeId = value)}
           >
             <Select.Trigger class="w-full" {...props}>
-              {$formData.targetNodeId ? terminalTitle(String($formData.targetNodeId)) : 'Selecione o terminal'}
+              {$formData.targetNodeId ? terminalTitle(String($formData.targetNodeId)) : m['routine.target_placeholder']()}
             </Select.Trigger>
             <Select.Content>
               {#each terminals as terminal}
@@ -179,8 +180,8 @@
     <Form.Field {form} name="prompt">
       <Form.Control>
         {#snippet children({ props })}
-          <Form.Label>Prompt</Form.Label>
-          <Textarea {...props} bind:value={$formData.prompt} placeholder="Prompt (&& na linha para etapas)" rows={3} />
+          <Form.Label>{m['routine.prompt_label']()}</Form.Label>
+          <Textarea {...props} bind:value={$formData.prompt} placeholder={m['ph.routine_prompt']()} rows={3} />
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
@@ -189,7 +190,7 @@
     <Form.Field {form} name="intervalMinutes">
       <Form.Control>
         {#snippet children({ props })}
-          <Form.Label>Intervalo (minutos, vazio = unica)</Form.Label>
+          <Form.Label>{m['routine.interval_label']()}</Form.Label>
           <Input {...props} type="number" min="1" bind:value={$formData.intervalMinutes} />
         {/snippet}
       </Form.Control>
@@ -201,9 +202,9 @@
     {/if}
 
     {#if editingId}
-      <p class="editing-hint">Editando rotina — <button type="button" class="link-btn" onclick={cancelEdit}>cancelar</button></p>
+      <p class="editing-hint">{m['routine.editing']()} — <button type="button" class="link-btn" onclick={cancelEdit}>{m['settings.cancel']()}</button></p>
     {/if}
-    <Button type="submit" size="sm">{editingId ? 'Salvar alteracoes' : 'Criar rotina'}</Button>
+    <Button type="submit" size="sm">{editingId ? m['settings.save']() : m['routine.create']()}</Button>
   </form>
 </aside>
 

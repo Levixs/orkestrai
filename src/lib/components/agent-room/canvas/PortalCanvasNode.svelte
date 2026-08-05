@@ -3,6 +3,7 @@
   import { ArrowRight, Globe, X } from '@lucide/svelte';
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
+  import * as m from '$lib/paraglide/messages.js';
 
   export type PortalNodeData = {
     title: string;
@@ -134,8 +135,8 @@
     />
   {/snippet}
   {#snippet actions()}
-    <IconAction label="Navegar" onclick={navigate}><ArrowRight size={13} /></IconAction>
-    <IconAction label="Fechar portal" danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
+    <IconAction label={m['portal.navigate']()} onclick={navigate}><ArrowRight size={13} /></IconAction>
+    <IconAction label={m['portal.close']()} danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
   {/snippet}
 
   <div class="portal-body nodrag nowheel">
@@ -143,10 +144,10 @@
       {#if isDesktop}
         <webview bind:this={frame} src={data.payload.url} class="portal-frame" websecurity="no" allowpopups></webview>
       {:else}
-        <iframe bind:this={frame} src={data.payload.url} title={data.title || 'portal'} class="portal-frame"></iframe>
+        <iframe bind:this={frame} src={data.payload.url} title={data.title || m['portal.default_title']()} class="portal-frame"></iframe>
       {/if}
     {:else}
-      <p class="portal-empty">Digite uma URL para abrir o portal.</p>
+      <p class="portal-empty">{m['portal.empty']()}</p>
     {/if}
   </div>
 </NodeShell>
