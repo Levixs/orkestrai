@@ -195,34 +195,28 @@
         <Form.FieldErrors />
       </Form.Field>
 
-      <Form.Field {form} name="icon">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Form.Label>Icone do workspace</Form.Label>
-            <div class="icon-picker" role="radiogroup" aria-label="Icone do workspace">
-              {#each WORKSPACE_ICONS as option (option.name)}
-                {@const OptionIcon = option.component}
-                <button
-                  {...props}
-                  type="button"
-                  class="icon-option"
-                  class:selected={($formData.icon ?? null) === option.name}
-                  role="radio"
-                  aria-checked={($formData.icon ?? null) === option.name}
-                  aria-label={option.name}
-                  onclick={() => ($formData.icon = ($formData.icon ?? null) === option.name ? null : option.name)}
-                >
-                  <OptionIcon size={15} />
-                </button>
-              {/each}
-            </div>
-            {#if isLegacyEmojiIcon($formData.icon)}
-              <p class="icon-legacy-hint">Icone antigo (emoji {$formData.icon}) mantido — escolha um novo acima para trocar.</p>
-            {/if}
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
+      <div class="field">
+        <span class="text-sm font-medium leading-none">Icone do workspace</span>
+        <div class="icon-picker" role="radiogroup" aria-label="Icone do workspace">
+          {#each WORKSPACE_ICONS as option (option.name)}
+            {@const OptionIcon = option.component}
+            <button
+              type="button"
+              class="icon-option"
+              class:selected={($formData.icon ?? null) === option.name}
+              role="radio"
+              aria-checked={($formData.icon ?? null) === option.name}
+              aria-label={option.name}
+              onclick={() => ($formData.icon = ($formData.icon ?? null) === option.name ? null : option.name)}
+            >
+              <OptionIcon size={15} />
+            </button>
+          {/each}
+        </div>
+        {#if isLegacyEmojiIcon($formData.icon)}
+          <p class="icon-legacy-hint">Icone antigo (emoji {$formData.icon}) mantido — escolha um novo acima para trocar.</p>
+        {/if}
+      </div>
 
       <Form.Field {form} name="instructions">
         <Form.Control>

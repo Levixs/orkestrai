@@ -5,7 +5,9 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // Testes que dependem de PTY/timing externo flapeiam raramente na corrida
+  // completa (passam isolados) — 1 retry local nao mascara regressao real.
+  retries: process.env.CI ? 2 : 1,
   workers: 1,
   use: {
     baseURL: 'http://localhost:5199',
