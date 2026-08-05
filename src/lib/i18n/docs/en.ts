@@ -53,7 +53,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'fluxos',
       title: 'Flows (agent pipelines)',
-      body: `The Flow node (+ Flow in the bottom bar) is a visual pipeline: steps in sequence, where one agent's output becomes the next one's input via {{input}} in the prompt. An "Agent" step talks to the chosen agent (the edge lights up meanwhile) — if the agent's terminal was never opened, the flow starts its session by itself; an "Approval" step pauses until you click Approve — human in the loop. Repetition with a limit (up to 5 rounds). Progress shows live on the node, errors show in a banner at the top of the node (nothing fails silently) and the history of the last 5 runs is stored in it. Use it for chained reviews (writes → reviews → approves), staged processing or any multi-step team routine.`,
+      body: `The Flow node (+ Flow in the bottom bar) is a visual pipeline: steps in sequence, where one agent's output becomes the next one's input via {{input}} in the prompt. An "Agent" step talks to the chosen agent (the edge lights up meanwhile) — if the agent's terminal was never opened, the flow starts its session by itself; an "Approval" step pauses until you click Approve — human in the loop. Repetition with a limit (up to 5 rounds). Two superpowers: the SYNC button creates an Agent step for each agent connected to the flow (in edge order — build the pipeline by drawing); and CHAINED FLOWS — when a Flow finishes successfully, its final output triggers the Flows connected to it (failure does not chain, cycles are blocked). Progress shows live on the node, errors show in a banner at the top of the node (nothing fails silently) and the history of the last 5 runs is stored in it. Use it for chained reviews (writes → reviews → approves), compound pipelines (research → writing → SEO) or fan-out from one flow to many.`,
     },
     {
       id: 'sem-medo',
@@ -158,6 +158,12 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['Flows', 'human approval', 'pipeline'],
     },
     {
+      id: 'chained-flows',
+      title: 'Chained flows (pipeline of pipelines)',
+      body: 'Connect one Flow to another on the canvas: when the first finishes successfully, its final output triggers the next one automatically (failure does not chain, cycles are blocked). E.g.: Flow "Research" → Flow "Writing" → Flow "SEO review", or fan-out — one Flow "extract topics" feeding the "EN translation" and "ES translation" Flows at the same time. And with the Sync button, each agent connected to the Flow becomes a step in edge order — the pipeline is the drawing itself.',
+      tags: ['Flows', 'chaining', 'fan-out'],
+    },
+    {
       id: 'mcp-tools',
       title: 'Agents with external tools via MCP',
       body: 'Add MCP servers in the workspace editor (e.g.: filesystem, web, database) — agents get the tools natively, and Orkestrai itself appears as an MCP server with the canvas actions (orkestrai mcp). Presets can carry the MCPs along with the team.',
@@ -179,6 +185,8 @@ export const DOCS_EN: DocsCatalog = {
         'Flow that actually works: agents without a session are started by the pipeline itself, errors show in a banner on the node (no more silent failures) and empty states guide you.',
         'Folder icon (the default) selectable in the workspace editor — the picker had 24 icons but not the original one.',
         'Terminal text injection fully unified (roles included): text and Enter always in separate writes — the composer never gets stuck on any provider (Claude, Codex, Kimi).',
+        'Chained flows: a Flow connected to another triggers the next one with its final output (failure does not chain, cycles blocked) — compound pipelines and fan-out.',
+        'Sync button on the Flow: each connected agent becomes a step in edge order — the pipeline is the drawing itself.',
       ],
     },
     {

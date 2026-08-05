@@ -687,5 +687,9 @@
   "flow.no_steps_hint": "Add at least one step before running.",
   "flow.starting": "starting...",
   "flow.last_run_failed": "Last run failed",
-  "flow.error_api": "Failed to reach the local server."
+  "flow.error_api": "Failed to reach the local server.",
+  "flow.sync": "Sync",
+  "flow.sync_tooltip": "Creates an Agent step for each agent connected to this flow (in edge order)",
+  "flow.sync_none_connected": "Connect this flow to the agents on the canvas first (drag from its handle to each agent).",
+  "flow.sync_nothing_new": "All connected agents are already in the steps."
 }

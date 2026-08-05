@@ -687,5 +687,9 @@
   "flow.no_steps_hint": "Adicione pelo menos um passo antes de rodar.",
   "flow.starting": "iniciando...",
   "flow.last_run_failed": "Última execução falhou",
-  "flow.error_api": "Falha ao falar com o servidor local."
+  "flow.error_api": "Falha ao falar com o servidor local.",
+  "flow.sync": "Sincronizar",
+  "flow.sync_tooltip": "Cria um passo Agente para cada agente conectado a este fluxo (na ordem das arestas)",
+  "flow.sync_none_connected": "Conecte este fluxo aos agentes no canvas primeiro (arraste da bolinha dele até cada agente).",
+  "flow.sync_nothing_new": "Todos os agentes conectados já estão nos passos."
 }

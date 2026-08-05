@@ -31,6 +31,11 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Ícone **pasta** (o default do app) agora é selecionável no editor do workspace — o picker tinha 24 ícones mas não o original. Trocar o ícone não derruba o workspace (verificado com os dados reais do workspace afetado).
 - Injeção de texto nos terminais **100% unificada**: atribuição de role também usa texto e Enter em writes separados — o composer não fica mais pendurado em nenhum provider (Claude, Codex, Kimi). Fix do placeholder do passo de fluxo (chaves literais quebravam a interpolação do paraglide).
 
+**Fluxos encadeados + sync com as arestas**
+- **Fluxo alimenta fluxo**: conecte um Fluxo a outro — quando o primeiro termina com sucesso, a saída final dispara o próximo automaticamente (falha não encadeia; ciclos são bloqueados por `visited`). Pipelines compostos (pesquisa → redação → SEO) e fan-out (um fluxo alimentando vários).
+- **Botão Sincronizar** no nó Fluxo: cria um passo Agente para cada agente conectado ao fluxo, na ordem das arestas — monte o pipeline desenhando as cordas.
+- Novo caso de uso "Fluxos encadeados" na página Como usar (3 idiomas); testes de feature (encadeamento, ciclo A↔B, falha não encadeia) e e2e do botão Sincronizar.
+
 ## 2026-08-04
 
 **Tooltips, busca e polish**

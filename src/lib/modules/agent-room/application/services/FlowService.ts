@@ -38,6 +38,8 @@ type RunHandle = { cancelled: boolean; onCancel?: () => void };
 
 const MAX_ITERATIONS = 5;
 const STEP_TIMEOUT_MS = 300_000;
+/** Profundidade maxima do encadeamento fluxo->fluxo (rede de seguranca extra ao visited). */
+const MAX_CHAIN_DEPTH = 10;
 
 /** Avisa o canvas para recarregar (progresso do fluxo aparece ao vivo). */
 function notifyWorkspaceChanged(workspaceId: string) {
@@ -56,7 +58,7 @@ export class FlowService {
   private running = new Map<string, RunHandle>();
   private approvalWaiters = new Map<string, () => void>();
 
-  async run(workspaceId: string, nodeId: string, input: string): Promise<{ started: boolean }> {
+  async run(workspaceId: string, nodeId: string, input: string, chain?: { visited?: string[] }): Promise<{ started: boolean }> {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId || node.type !== 'flow') throw new Error('Fluxo nao encontrado neste workspace.');
     const payload = (node.payload ?? {}) as { steps?: FlowStep[]; iterations?: number };
@@ -67,12 +69,36 @@ export class FlowService {
     }
     if (this.running.has(nodeId)) throw new Error('Este fluxo ja esta rodando.');
 
+    // Cadeia de fluxos: visited evita ciclo (A->B->A) no encadeamento.
+    const visited = [...(chain?.visited ?? []), nodeId];
     const handle: RunHandle = { cancelled: false };
     this.running.set(nodeId, handle);
     void this.execute(workspaceId, nodeId, input, handle)
+      .then(async (result) => {
+        // Encadeamento: sucesso alimenta os fluxos conectados com a saida final.
+        if (result.ok && visited.length <= MAX_CHAIN_DEPTH) {
+          await this.chainDownstream(workspaceId, nodeId, result.output, visited);
+        }
+      })
       .catch(() => {})
       .finally(() => this.running.delete(nodeId));
     return { started: true };
+  }
+
+  /** Dispara os fluxos conectados a este (arestas do canvas) com a saida final como entrada. */
+  private async chainDownstream(workspaceId: string, nodeId: string, output: string, visited: string[]): Promise<void> {
+    const edges = await workspaceRepository.listEdges(workspaceId);
+    const connectedIds = edges
+      .filter((edge) => edge.sourceNodeId === nodeId || edge.targetNodeId === nodeId)
+      .map((edge) => (edge.sourceNodeId === nodeId ? edge.targetNodeId : edge.sourceNodeId));
+    for (const id of connectedIds) {
+      if (visited.includes(id) || this.running.has(id)) continue;
+      const node = await workspaceRepository.getNode(id);
+      if (!node || node.type !== 'flow') continue;
+      const steps = ((node.payload ?? {}) as { steps?: unknown[] }).steps ?? [];
+      if (!steps.length) continue;
+      await this.run(workspaceId, id, output, { visited }).catch(() => {});
+    }
   }
 
   /** Aprova o passo 'approval' que esta esperando. */
@@ -132,7 +158,7 @@ export class FlowService {
     notifyWorkspaceChanged(workspaceId);
   }
 
-  private async execute(workspaceId: string, nodeId: string, input: string, handle: RunHandle): Promise<void> {
+  private async execute(workspaceId: string, nodeId: string, input: string, handle: RunHandle): Promise<{ ok: boolean; output: string }> {
     const startedAt = new Date().toISOString();
     const node = await workspaceRepository.getNode(nodeId);
     const payload = (node?.payload ?? {}) as { steps?: FlowStep[]; iterations?: number };
@@ -187,6 +213,7 @@ export class FlowService {
         }
       }
       await this.finish(workspaceId, nodeId, { ok: true, startedAt, finishedAt: new Date().toISOString(), steps: runSteps });
+      return { ok: true, output: currentInput };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha no fluxo.';
       const failedIndex = runSteps.findIndex((step) => step.status === 'running' || step.status === 'waiting');
@@ -198,6 +225,7 @@ export class FlowService {
         finishedAt: new Date().toISOString(),
         steps: runSteps,
       });
+      return { ok: false, output: currentInput };
     }
   }
 

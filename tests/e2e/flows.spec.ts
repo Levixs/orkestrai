@@ -92,4 +92,57 @@ test.describe('nó de fluxo (pipeline)', () => {
 
     await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
   });
+
+  test('botão sincronizar cria passos a partir das conexões do fluxo', async ({ page, request }) => {
+    const workspaceName = `E2E fluxo-sync ${Date.now()}`;
+
+    await page.goto('/canvas');
+    await page.getByRole('button', { name: 'Novo workspace' }).click();
+    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
+    await page.getByRole('button', { name: 'Criar' }).click();
+
+    let workspace: { id: string; name: string } | undefined;
+    await expect
+      .poll(
+        async () => {
+          const list = await request.get('/api/agent-room/workspaces');
+          workspace = ((await list.json()).data as Array<{ id: string; name: string }>).find((item) => item.name === workspaceName);
+          return workspace?.id;
+        },
+        { timeout: 10_000 }
+      )
+      .toBeTruthy();
+    const wsId = workspace!.id;
+    const terminalResponse = await request.post(`/api/agent-room/workspaces/${wsId}/nodes`, {
+      data: { type: 'terminal', title: 'Gato', x: 700, y: 100, width: 480, height: 320, payload: { command: '/bin/cat', args: [] } },
+    });
+    const terminalId = ((await terminalResponse.json()).data as { id: string }).id;
+    const flowResponse = await request.post(`/api/agent-room/workspaces/${wsId}/nodes`, {
+      data: { type: 'flow', title: 'Pipeline', x: 100, y: 100, width: 480, height: 420, payload: { steps: [], iterations: 1 } },
+    });
+    const flowId = ((await flowResponse.json()).data as { id: string }).id;
+    await request.post(`/api/agent-room/workspaces/${wsId}/edges`, {
+      data: { sourceNodeId: flowId, targetNodeId: terminalId },
+    });
+
+    // Abre o workspace (reload para enxergar os nós criados via API), clica em Sincronizar e o passo do agente aparece
+    await page.reload();
+    const workspaceItem = page.locator('.workspace-list .workspace-item', { hasText: workspaceName });
+    await expect(workspaceItem).toBeVisible({ timeout: 10_000 });
+    await workspaceItem.click();
+    await expect(page.locator('.svelte-flow__node').first()).toBeVisible({ timeout: 10_000 });
+    const flow = page.locator('.canvas-flow');
+    await expect(flow).toHaveCount(1, { timeout: 10_000 });
+    await flow.getByRole('button', { name: 'Sincronizar' }).click();
+    await expect(flow.locator('.flow-step')).toHaveCount(1, { timeout: 5_000 });
+    await expect(flow.locator('.flow-step-target').first()).toContainText('Gato');
+
+    // Segundo clique: nada novo (banner explica em vez de duplicar)
+    await flow.getByRole('button', { name: 'Sincronizar' }).click();
+    await expect(flow.locator('.flow-banner')).toContainText('já estão nos passos');
+    await expect(flow.locator('.flow-step')).toHaveCount(1);
+
+    await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+  });
 });

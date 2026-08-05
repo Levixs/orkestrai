@@ -53,7 +53,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'fluxos',
       title: 'Flujos (pipelines de agentes)',
-      body: `El nodo Flujo (+ Flujo en la barra inferior) es un pipeline visual: pasos en secuencia, donde la salida de un agente se vuelve la entrada del siguiente vía {{input}} en el prompt. El paso "Agente" conversa con el agente elegido (la arista se enciende mientras tanto) — si el terminal del agente nunca se abrió, el flujo inicia su sesión solo; el paso "Aprobación" pausa hasta que hagas clic en Aprobar — humano en el loop. Repetición con límite (hasta 5 rondas). El progreso aparece en vivo en el nodo, los errores aparecen en un banner arriba del nodo (nada falla en silencio) y el historial de las últimas 5 ejecuciones queda guardado en él. Úsalo para revisiones encadenadas (escribe → revisa → aprueba), procesamiento por etapas o cualquier rutina multi-paso del equipo.`,
+      body: `El nodo Flujo (+ Flujo en la barra inferior) es un pipeline visual: pasos en secuencia, donde la salida de un agente se vuelve la entrada del siguiente vía {{input}} en el prompt. El paso "Agente" conversa con el agente elegido (la arista se enciende mientras tanto) — si el terminal del agente nunca se abrió, el flujo inicia su sesión solo; el paso "Aprobación" pausa hasta que hagas clic en Aprobar — humano en el loop. Repetición con límite (hasta 5 rondas). Dos superpoderes: el botón SINCRONIZAR crea un paso Agente por cada agente conectado al flujo (en el orden de las aristas — arma el pipeline dibujando); y FLUJOS ENCADENADOS — cuando un Flujo termina con éxito, su salida final dispara los Flujos conectados a él (el fallo no encadena, los ciclos se bloquean). El progreso aparece en vivo en el nodo, los errores aparecen en un banner arriba del nodo (nada falla en silencio) y el historial de las últimas 5 ejecuciones queda guardado en él. Úsalo para revisiones encadenadas (escribe → revisa → aprueba), pipelines compuestos (investigación → redacción → SEO) o fan-out de un flujo a varios.`,
     },
     {
       id: 'sem-medo',
@@ -158,6 +158,12 @@ export const DOCS_ES: DocsCatalog = {
       tags: ['Flujos', 'aprobación humana', 'pipeline'],
     },
     {
+      id: 'chained-flows',
+      title: 'Flujos encadenados (pipeline de pipelines)',
+      body: 'Conecta un Flujo a otro en el canvas: cuando el primero termina con éxito, su salida final dispara el siguiente automáticamente (el fallo no encadena, los ciclos se bloquean). Ej.: Flujo "Investigación" → Flujo "Redacción" → Flujo "Revisión SEO", o fan-out — un Flujo "extraer tópicos" alimentando los Flujos "traducción EN" y "traducción ES" al mismo tiempo. Y con el botón Sincronizar, cada agente conectado al Flujo se vuelve un paso en el orden de las aristas — el pipeline es el propio dibujo.',
+      tags: ['Flujos', 'encadenamiento', 'fan-out'],
+    },
+    {
       id: 'mcp-tools',
       title: 'Agentes con tools externas vía MCP',
       body: 'Agrega servidores MCP en el editor del workspace (ej.: filesystem, web, base de datos) — los agentes ganan las tools nativamente, y el propio Orkestrai aparece como servidor MCP con las acciones del canvas (orkestrai mcp). Los presets pueden cargar los MCPs junto con el equipo.',
@@ -179,6 +185,8 @@ export const DOCS_ES: DocsCatalog = {
         'Flujo que funciona de verdad: los agentes sin sesión son iniciados por el propio pipeline, los errores aparecen en un banner en el nodo (fin de los fallos silenciosos) y los estados vacíos te guían.',
         'Icono de carpeta (el default) seleccionable en el editor del workspace — el picker tenía 24 iconos pero no el original.',
         'Inyección de texto en los terminales 100% unificada (roles incluidas): texto y Enter siempre en writes separados — el composer no se cuelga en ningún provider (Claude, Codex, Kimi).',
+        'Flujos encadenados: un Flujo conectado a otro dispara el siguiente con su salida final (el fallo no encadena, ciclos bloqueados) — pipelines compuestos y fan-out.',
+        'Botón Sincronizar en el Flujo: cada agente conectado se vuelve un paso en el orden de las aristas — el pipeline es el propio dibujo.',
       ],
     },
     {

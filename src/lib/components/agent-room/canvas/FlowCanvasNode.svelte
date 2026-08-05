@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { Check, CircleCheck, CircleDashed, CircleX, Clock, Loader2, Play, Plus, Square, Trash2, UserCheck, Workflow } from '@lucide/svelte';
+  import { Check, CircleCheck, CircleDashed, CircleX, Clock, Loader2, Play, Plus, RefreshCw, Square, Trash2, UserCheck, Workflow } from '@lucide/svelte';
   import * as Select from '$lib/components/ui/select';
   import NodeShell from './NodeShell.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
@@ -112,8 +112,33 @@
     patchPayload({ steps: next });
   }
 
-  async function startRun() {
-    if (!steps.length) {
+  /** Sincroniza os passos com as conexoes do no: cada agente ligado ao fluxo
+      vira um passo Agente (na ordem das arestas), sem duplicar os existentes. */
+  async function syncFromConnections() {
+    const edgeList = await api<Array<{ sourceNodeId: string; targetNodeId: string }>>(`/api/agent-room/workspaces/${data.workspaceId}/edges`);
+    const nodeList = await api<Array<{ id: string; type: string; title: string | null }>>(`/api/agent-room/workspaces/${data.workspaceId}/nodes`);
+    if (!edgeList || !nodeList) return;
+    const connectedIds = edgeList
+      .filter((edge) => edge.sourceNodeId === id || edge.targetNodeId === id)
+      .map((edge) => (edge.sourceNodeId === id ? edge.targetNodeId : edge.sourceNodeId));
+    const connectedAgents = nodeList
+      .filter((node) => connectedIds.includes(node.id) && node.type === 'terminal')
+      .map((node) => node.title ?? '');
+    if (!connectedAgents.length) {
+      showError(m['flow.sync_none_connected']());
+      return;
+    }
+    const existing = new Set(steps.map((step) => step.target));
+    const missing = connectedAgents.filter((title) => title && !existing.has(title));
+    if (!missing.length) {
+      showError(m['flow.sync_nothing_new']());
+      return;
+    }
+    errorMsg = '';
+    patchPayload({ steps: [...steps, ...missing.map((title) => ({ kind: 'agent' as const, target: title, prompt: '{{input}}' }))] });
+  }
+
+  async function startRun() {    if (!steps.length) {
       showError(m['flow.no_steps_hint']());
       return;
     }
@@ -222,6 +247,7 @@
     <div class="flow-add">
       <button class="flow-add-btn" onclick={() => addStep('agent')} title={agents.length ? '' : m['flow.no_agents_hint']()}><Plus size={12} /> {m['flow.add_agent']()}</button>
       <button class="flow-add-btn" onclick={() => addStep('approval')}><UserCheck size={12} /> {m['flow.add_approval']()}</button>
+      <button class="flow-add-btn" title={m['flow.sync_tooltip']()} onclick={syncFromConnections}><RefreshCw size={12} /> {m['flow.sync']()}</button>
       <label class="flow-iter">
         {m['flow.repeat']()}
         <input

@@ -49,6 +49,7 @@
     'deploy-sentinel': Rocket,
     'framework-preset': Layers,
     'approval-pipeline': Workflow,
+    'chained-flows': Workflow,
     'mcp-tools': Cable,
   };
 

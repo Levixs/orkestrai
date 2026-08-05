@@ -123,6 +123,84 @@ describe('FlowService', () => {
     ptySessionManager.kill(sessionId!);
   }, 30_000);
 
+  it('encadeia fluxos conectados: a saida de um dispara o proximo', async () => {
+    const { workspace, session } = await createWorkspaceWithAgent();
+    const flowA = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'flow',
+      title: 'A',
+      payload: { steps: [{ kind: 'agent', target: 'Gato', prompt: 'etapa A: {{input}}' }], iterations: 1 },
+    });
+    const flowB = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'flow',
+      title: 'B',
+      payload: { steps: [{ kind: 'agent', target: 'Gato', prompt: 'etapa B: {{input}}' }], iterations: 1 },
+    });
+    await workspaceRepository.createEdge({ workspaceId: workspace.id, sourceNodeId: flowA.id, targetNodeId: flowB.id });
+
+    await flowService.run(workspace.id, flowA.id, 'inicio');
+    // A termina e dispara B automaticamente com a saida final de A
+    await expect.poll(() => runsOf(flowB.id), { timeout: 30_000, interval: 500 }).toHaveLength(1);
+
+    const runsA = (await runsOf(flowA.id)) as Array<{ ok: boolean }>;
+    const runsB = (await runsOf(flowB.id)) as Array<{ ok: boolean; steps: Array<{ excerpt?: string }> }>;
+    expect(runsA[0].ok).toBe(true);
+    expect(runsB[0].ok).toBe(true);
+    // B recebeu a saida de A como entrada (o /bin/cat ecoa o prompt renderizado)
+    expect(runsB[0].steps[0].excerpt).toContain('etapa B:');
+    expect(runsB[0].steps[0].excerpt).toContain('etapa A: inicio');
+    ptySessionManager.kill(session.id);
+  }, 45_000);
+
+  it('ciclo A<->B nao entra em loop infinito: cada um roda uma vez', async () => {
+    const { workspace, session } = await createWorkspaceWithAgent();
+    const flowA = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'flow',
+      title: 'A',
+      payload: { steps: [{ kind: 'agent', target: 'Gato', prompt: 'A {{input}}' }], iterations: 1 },
+    });
+    const flowB = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'flow',
+      title: 'B',
+      payload: { steps: [{ kind: 'agent', target: 'Gato', prompt: 'B {{input}}' }], iterations: 1 },
+    });
+    await workspaceRepository.createEdge({ workspaceId: workspace.id, sourceNodeId: flowA.id, targetNodeId: flowB.id });
+
+    await flowService.run(workspace.id, flowA.id, 'x');
+    await expect.poll(() => runsOf(flowB.id), { timeout: 30_000, interval: 500 }).toHaveLength(1);
+    // Espera mais um pouco: B NAO pode ter re-disparado A (visited) nem se repetido
+    await new Promise((resolve) => setTimeout(resolve, 8_000));
+    expect(await runsOf(flowA.id)).toHaveLength(1);
+    expect(await runsOf(flowB.id)).toHaveLength(1);
+    ptySessionManager.kill(session.id);
+  }, 60_000);
+
+  it('fluxo que falha NAO encadeia para o proximo', async () => {
+    const { workspace, session } = await createWorkspaceWithAgent();
+    const flowA = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'flow',
+      title: 'A',
+      payload: { steps: [{ kind: 'agent', target: 'Inexistente', prompt: 'x' }], iterations: 1 },
+    });
+    const flowB = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'flow',
+      title: 'B',
+      payload: { steps: [{ kind: 'agent', target: 'Gato', prompt: 'B {{input}}' }], iterations: 1 },
+    });
+    await workspaceRepository.createEdge({ workspaceId: workspace.id, sourceNodeId: flowA.id, targetNodeId: flowB.id });
+
+    await flowService.run(workspace.id, flowA.id, 'x');
+    await expect.poll(() => runsOf(flowA.id), { timeout: 15_000, interval: 300 }).toHaveLength(1);
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    expect(await runsOf(flowB.id)).toHaveLength(0);
+    ptySessionManager.kill(session.id);
+  }, 30_000);
+
   it('validacoes: sem passos, passo sem alvo, no inexistente', async () => {
     const { workspace, session } = await createWorkspaceWithAgent();
     const empty = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'flow', title: 'Vazio', payload: { steps: [] } });

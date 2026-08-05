@@ -57,7 +57,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'fluxos',
       title: 'Fluxos (pipelines de agentes)',
-      body: `O nó Fluxo (+ Fluxo na barra inferior) é um pipeline visual: passos em sequência, onde a saída de um agente vira a entrada do próximo via {{input}} no prompt. Passo "Agente" conversa com o agente escolhido (a aresta acende durante) — se o terminal do agente nunca foi aberto, o fluxo inicia a sessão dele sozinho; passo "Aprovação" pausa até você clicar em Aprovar — humano no loop. Repetição com limite (até 5 rodadas). O progresso aparece ao vivo no nó, erros aparecem num banner no topo do nó (nada falha em silêncio) e o histórico das últimas 5 execuções fica guardado nele. Use para revisões encadeadas (escreve → revisa → aprova), processamento em etapas ou qualquer rotina multi-passo do time.`,
+      body: `O nó Fluxo (+ Fluxo na barra inferior) é um pipeline visual: passos em sequência, onde a saída de um agente vira a entrada do próximo via {{input}} no prompt. Passo "Agente" conversa com o agente escolhido (a aresta acende durante) — se o terminal do agente nunca foi aberto, o fluxo inicia a sessão dele sozinho; passo "Aprovação" pausa até você clicar em Aprovar — humano no loop. Repetição com limite (até 5 rodadas). Dois superpoderes: o botão SINCRONIZAR cria um passo Agente para cada agente conectado ao fluxo (na ordem das arestas — monte o pipeline desenhando); e FLUXOS ENCADEADOS — quando um Fluxo termina com sucesso, a saída final dispara os Fluxos conectados a ele (falha não encadeia, ciclo é bloqueado). O progresso aparece ao vivo no nó, erros aparecem num banner no topo do nó (nada falha em silêncio) e o histórico das últimas 5 execuções fica guardado nele. Use para revisões encadeadas (escreve → revisa → aprova), pipelines compostos (pesquisa → redação → SEO) ou fan-out de um fluxo para vários.`,
     },
     {
       id: 'sem-medo',
@@ -162,6 +162,12 @@ export const DOCS_PT: DocsCatalog = {
       tags: ['Fluxos', 'aprovação humana', 'pipeline'],
     },
     {
+      id: 'chained-flows',
+      title: 'Fluxos encadeados (pipeline de pipelines)',
+      body: 'Conecte um Fluxo a outro no canvas: quando o primeiro termina com sucesso, a saída final dispara o próximo automaticamente (falha não encadeia, ciclo é bloqueado). Ex.: Fluxo "Pesquisa" → Fluxo "Redação" → Fluxo "Revisão SEO", ou fan-out — um Fluxo "extrai tópicos" alimentando os Fluxos "tradução EN" e "tradução ES" ao mesmo tempo. E com o botão Sincronizar, cada agente conectado ao Fluxo vira um passo na ordem das arestas — o pipeline é o próprio desenho.',
+      tags: ['Fluxos', 'encadeamento', 'fan-out'],
+    },
+    {
       id: 'mcp-tools',
       title: 'Agentes com tools externas via MCP',
       body: 'Adicione servidores MCP no editor do workspace (ex.: filesystem, web, banco) — os agentes ganham as tools nativamente, e o Orkestrai em si aparece como servidor MCP com as ações do canvas (orkestrai mcp). Presets podem carregar os MCPs junto com o time.',
@@ -183,6 +189,8 @@ export const DOCS_PT: DocsCatalog = {
         'Fluxo que funciona de verdade: agentes sem sessão são iniciados sozinhos pelo pipeline, erros aparecem num banner no nó (fim das falhas silenciosas) e estados vazios guiam o que fazer.',
         'Ícone de pasta (o default) selecionável no editor do workspace — o picker tinha 24 ícones mas não o original.',
         'Injeção de texto nos terminais 100% unificada (roles inclusas): texto e Enter sempre em writes separados — o composer não fica mais pendurado em nenhum provider (Claude, Codex, Kimi).',
+        'Fluxos encadeados: um Fluxo conectado a outro dispara o próximo com a saída final (falha não encadeia, ciclo bloqueado) — pipelines compostos e fan-out.',
+        'Botão Sincronizar no Fluxo: cada agente conectado vira um passo na ordem das arestas — o pipeline é o próprio desenho.',
       ],
     },
     {
