@@ -297,6 +297,7 @@
         '⌘K / Ctrl+K global: busca na documentação de qualquer tela.',
         'Marketplace de MCPs na página Skills: curadoria oficial + registry, instalação com 1 clique e campos de token guiados.',
         'App em Português, English e Español: seletor de idioma nas Configurações (paraglide).',
+        'Design pass: página Skills & MCPs redesenhada (abas segmentadas, cartões com badges) e docs polidas.',
       ],
     },
     {
@@ -486,6 +487,7 @@
     flex-direction: column;
     gap: 20px;
     align-items: center;
+    scroll-behavior: smooth;
   }
 
   .docs-page > * {
@@ -785,6 +787,7 @@
     font-weight: 600;
     color: #7de5ff;
     letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
   }
 
   .changelog-entry ul {

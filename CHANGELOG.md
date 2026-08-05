@@ -13,6 +13,10 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Internacionalização com paraglide (Svelar): seletor de idioma em Configurações aplica **na hora** — a interface remonta no idioma escolhido, sem reload.
 - Migradas nesta leva: página de Configurações inteira, tooltips da toolbar e o estado vazio do canvas. As demais telas entram nas próximas levas (a regra no AGENTS.md exige `m.*()` em toda string nova).
 
+**Design pass**
+- Página **Skills & MCPs redesenhada** no mesmo shell das Configurações: cabeçalho fixo, seletor de workspace no topo, abas segmentadas, seções com icon-chips e cartões com badges (oficial/curadoria/1 clique) — fim da coluna estreita com rótulos cinza.
+- Página **"Como usar"** polida: tipografia com balanceamento de títulos, datas do changelog com números tabulares, rolagem suave por âncoras.
+
 **Marketplace de MCPs**
 - Nova aba **MCPs** na página Skills: pesquise e instale servidores MCP como quem instala skills — curadoria dos oficiais/populares (GitHub, Gmail, Google Drive, Figma, Vercel, Postgres, Brave, DeepWiki...) mais busca no registry oficial do MCP.
 - Servidores remotos instalam com **1 clique** (só a URL); os que pedem chave/token abrem um diálogo explicando onde conseguir cada campo.

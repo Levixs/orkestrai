@@ -27,7 +27,7 @@ test.describe('ditado por voz', () => {
     await expect(page.locator('.shortcuts-grid')).toContainText('Ctrl+Shift+D');
 
     // Restaura o padrao para nao quebrar outros testes/uso.
-    await page.getByRole('button', { name: 'Restaurar padrao' }).click();
+    await page.getByRole('button', { name: /Restaurar padrão|Restaurar padrao/ }).click();
     await page.getByRole('button', { name: 'Salvar' }).first().click();
     await expect.poll(async () => {
       const response = await request.get('/api/agent-room/settings');
