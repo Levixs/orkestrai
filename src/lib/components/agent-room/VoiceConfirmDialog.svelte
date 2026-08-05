@@ -14,6 +14,7 @@
   type Phase = 'confirm' | 'downloading' | 'error';
   let phase = $state<Phase>('confirm');
   let percent = $state(0);
+  let stage = $state('');
   let errorMessage = $state('');
   let freeBytes = $state<number | null>(null);
   let requiredBytes = $state(0);
@@ -64,6 +65,7 @@
         const response = await fetch('/api/agent-room/voice/models');
         const status = (await response.json()).data;
         percent = status.percent ?? 0;
+        stage = status.stage ?? '';
         if (status.error) {
           stopPolling();
           phase = 'error';
@@ -122,6 +124,9 @@
         <Progress value={percent} max={100} />
         <span class="download-percent">{percent}%</span>
       </div>
+      {#if stage}
+        <p class="download-stage">{stage}</p>
+      {/if}
     {:else if phase === 'error'}
       <p class="download-error">{errorMessage}</p>
     {:else if insufficient}
@@ -161,6 +166,12 @@
     color: var(--muted-foreground, #8b8c96);
     min-width: 36px;
     text-align: right;
+  }
+
+  .download-stage {
+    margin: 8px 0 0;
+    font-size: 11.5px;
+    color: var(--muted-foreground, #8b8c96);
   }
 
   .download-error {

@@ -1,6 +1,10 @@
-import { execFileSync, fork, type ChildProcess } from 'node:child_process';
+import { execFile, execFileSync, fork, type ChildProcess } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+/** tar assincrono — execFileSync congelava o servidor (e o progresso) na extracao. */
+const execFileAsync = promisify(execFile);
 
 /**
  * Voz EMBARCADA (sem Docker, sem Python): STT Parakeet-TDT v3 e TTS Kokoro
@@ -108,9 +112,11 @@ async function ensureModel(def: ModelDef, onProgress?: (percent: number) => void
     await downloadFile(def.url, archive, onProgress);
   }
   // Extrai com o tar do sistema (bsdtar no mac, GNU no linux, tar.exe no Win10+).
+  // ASYNC: a versao sync congelava o servidor e a modal de progresso parava.
   mkdirSync(target, { recursive: true });
+  downloadState.stage = 'Extraindo os arquivos... (pode levar um minuto)';
   try {
-    execFileSync('tar', ['xjf', archive, '-C', root], { timeout: 300_000 });
+    await execFileAsync('tar', ['xjf', archive, '-C', root], { timeout: 300_000 });
   } catch (error) {
     rmSync(target, { recursive: true, force: true });
     throw new Error(`Falha ao extrair ${def.id}: ${error instanceof Error ? error.message.split('\n')[0] : error}`);
@@ -132,8 +138,9 @@ async function ensureVoiceNode(onProgress?: (percent: number) => void): Promise<
   onProgress?.(0);
   await downloadFile(def.url, archive, onProgress);
   try {
-    // bsdtar/GNU tar auto-detectam gz/xz/zip ao extrair.
-    execFileSync('tar', ['xf', archive, '-C', root], { timeout: 120_000 });
+    // bsdtar/GNU tar auto-detectam gz/xz/zip ao extrair. Async — nao congela o servidor.
+    downloadState.stage = 'Preparando o motor de voz...';
+    await execFileAsync('tar', ['xf', archive, '-C', root], { timeout: 120_000 });
   } finally {
     rmSync(archive, { force: true });
   }
@@ -147,6 +154,9 @@ type DownloadState = {
   /** 0-100 (media ponderada dos dois modelos). */
   percent: number;
   error: string | null;
+  /** Etapa atual para a UI ("Baixando...", "Extraindo...") — a extracao nao
+      tem progresso numerico, entao o texto evita a sensacao de travamento. */
+  stage?: string;
 };
 
 let downloadState: DownloadState = { downloading: false, percent: 0, error: null };
@@ -189,14 +199,17 @@ export function ensureEmbeddedModels(): Promise<void> {
       const weighted = (doneMb: number, currentMb: number, percent: number) =>
         Math.min(100, Math.round(((doneMb + (percent / 100) * currentMb) / totalMb) * 100));
       await ensureModel(PARAKEET, (percent) => {
+        downloadState.stage = 'Baixando o modelo de ditado...';
         downloadState.percent = weighted(0, PARAKEET.sizeMb, percent);
       });
       await ensureModel(KOKORO, (percent) => {
+        downloadState.stage = 'Baixando o modelo de fala...';
         downloadState.percent = weighted(PARAKEET.sizeMb, KOKORO.sizeMb, percent);
       });
       if (runtimeMb > 0) {
         try {
           await ensureVoiceNode((percent) => {
+            downloadState.stage = 'Preparando o motor de voz...';
             downloadState.percent = weighted(PARAKEET.sizeMb + KOKORO.sizeMb, VOICE_NODE.sizeMb, percent);
           });
         } catch {

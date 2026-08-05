@@ -228,6 +228,23 @@
       env: agentEnv,
     };
   });
+
+  /**
+   * Request de criacao quando NAO ha sessao para attachar. Apos o Descarregar
+   * (sessionId removido do payload), agentes com session-id conhecido voltam
+   * COM resume — mesmo comportamento do restart do app. Agentes novinhos
+   * (sem agentSessionId) e shells continuam nascendo limpos.
+   */
+  const createRequest = $derived.by(() => {
+    const payload = data.payload as TerminalNodePayload & { provider?: string; agentSessionId?: string };
+    if (forceRespawn || (payload.provider && payload.agentSessionId)) return respawnRequest;
+    return {
+      command: payload.command ?? '',
+      args: payload.args ?? [],
+      cwd: data.workingDir,
+      env: agentEnv,
+    };
+  });
 </script>
 
 <NodeShell
@@ -312,7 +329,7 @@
       />
     {:else if data.payload.command}
       <TerminalNode
-        createRequest={forceRespawn ? respawnRequest : { command: data.payload.command, args: data.payload.args ?? [], cwd: data.workingDir, env: agentEnv }}
+        {createRequest}
         workspaceId={data.workspaceId}
         nodeId={id}
         sessionLabel={data.title}
