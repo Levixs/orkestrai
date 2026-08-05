@@ -7,8 +7,12 @@
   import { Input } from '$lib/components/ui/input';
   import { Button } from '$lib/components/ui/button';
   import { FolderOpen } from '@lucide/svelte';
+  import * as Select from '$lib/components/ui/select';
   import { createWorkspaceSchema } from '$lib/modules/agent-room/contracts/schemas/workspaceSchemas.js';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
+  import { onMount } from 'svelte';
+
+  type PresetSummary = { id: string; name: string; icon: string | null; description: string | null; agents: number };
 
   type Props = {
     open: boolean;
@@ -19,6 +23,17 @@
   let { open, onCreated, onClose }: Props = $props();
 
   let submitError = $state('');
+  let presets = $state<PresetSummary[]>([]);
+  let presetId = $state('');
+
+  onMount(async () => {
+    try {
+      const response = await fetch('/api/agent-room/presets');
+      presets = (await response.json()).data ?? [];
+    } catch {
+      presets = [];
+    }
+  });
 
   const desktop = typeof window !== 'undefined'
     ? (window as unknown as { orkestraiDesktop?: { pickDirectory: () => Promise<string | null> } }).orkestraiDesktop
@@ -41,7 +56,18 @@ const form = superForm(defaults(zod(schema)), {
         });
         const payload = await response.json();
         if (!response.ok || payload.error) throw new Error(payload.error || 'Falha ao criar workspace.');
-        onCreated(payload.data as Workspace);
+        const workspace = payload.data as Workspace;
+        // Com preset selecionado: instancia o time no workspace recem-criado.
+        if (presetId) {
+          const applyResponse = await fetch(`/api/agent-room/presets/${presetId}/apply`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ workspaceId: workspace.id }),
+          });
+          const applyPayload = await applyResponse.json();
+          if (!applyResponse.ok || applyPayload.error) throw new Error(applyPayload.error || 'Falha ao aplicar o preset.');
+        }
+        onCreated(workspace);
         onClose();
       } catch (error) {
         submitError = error instanceof Error ? error.message : 'Falha ao criar workspace.';
@@ -100,6 +126,31 @@ const form = superForm(defaults(zod(schema)), {
         <Form.Description>Pasta raiz do projeto. Novos terminais abrem aqui.</Form.Description>
         <Form.FieldErrors />
       </Form.Field>
+
+      {#if presets.length}
+        <div class="space-y-2">
+          <span class="text-sm font-medium leading-none">Comecar de um preset (opcional)</span>
+          <Select.Root type="single" value={presetId} onValueChange={(value: string) => (presetId = value === '__none' ? '' : value)}>
+            <Select.Trigger data-slot="select-trigger" class="w-full">
+              {#if presetId}
+                {@const preset = presets.find((item) => item.id === presetId)}
+                {preset?.icon ? `${preset.icon} ` : ''}{preset?.name} ({preset?.agents} agentes)
+              {:else}
+                Em branco
+              {/if}
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="__none">Em branco</Select.Item>
+              {#each presets as preset (preset.id)}
+                <Select.Item value={preset.id}>
+                  {preset.icon ? `${preset.icon} ` : ''}{preset.name} — {preset.agents} agentes{preset.description ? ` · ${preset.description}` : ''}
+                </Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
+          <p class="text-xs text-muted-foreground">O preset instancia o time, as notas, as roles e as rotinas no workspace novo.</p>
+        </div>
+      {/if}
 
       {#if submitError}
         <p class="text-sm text-destructive">{submitError}</p>

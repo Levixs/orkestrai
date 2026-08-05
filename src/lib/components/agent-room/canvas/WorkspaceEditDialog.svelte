@@ -27,6 +27,28 @@
   let { workspace, onSave, onClose }: Props = $props();
 
   let submitError = $state('');
+  let presetState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  let presetMessage = $state('');
+
+  /** Snapshot do workspace atual como preset reutilizavel (time, layout, roles...). */
+  async function saveAsPreset() {
+    presetState = 'saving';
+    presetMessage = '';
+    try {
+      const response = await fetch('/api/agent-room/presets', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ workspaceId: workspace.id, name: workspace.name, icon: workspace.icon }),
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.error) throw new Error(payload.error || 'Falha ao salvar preset.');
+      presetState = 'saved';
+      presetMessage = `Preset "${payload.data.name}" salvo — aparece ao criar um workspace novo.`;
+    } catch (error) {
+      presetState = 'error';
+      presetMessage = error instanceof Error ? error.message : 'Falha ao salvar preset.';
+    }
+  }
 
   const desktop = typeof window !== 'undefined'
     ? (window as unknown as { orkestraiDesktop?: { pickDirectory: () => Promise<string | null> } }).orkestraiDesktop
@@ -163,6 +185,20 @@
       {#if submitError}
         <p class="text-sm text-destructive">{submitError}</p>
       {/if}
+
+      <div class="rounded-lg border border-border/60 p-3 space-y-2">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-xs text-muted-foreground">
+            Guarde este time (agentes, layout, notas, roles, rotinas) como preset reutilizavel.
+          </p>
+          <Button type="button" variant="outline" size="sm" disabled={presetState === 'saving'} onclick={saveAsPreset}>
+            {presetState === 'saving' ? 'Salvando...' : 'Salvar como preset'}
+          </Button>
+        </div>
+        {#if presetMessage}
+          <p class="text-xs {presetState === 'error' ? 'text-destructive' : 'text-emerald-400'}">{presetMessage}</p>
+        {/if}
+      </div>
 
       <Dialog.Footer>
         <Button type="button" variant="outline" onclick={onClose}>Cancelar</Button>

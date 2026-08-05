@@ -62,6 +62,12 @@
       body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace: cartões em A fazer/Fazendo/Feito. Atribuir um cartão a um agente despacha a tarefa direto para o terminal dele (loop contínuo) — ele trabalha e marca done sozinho. O líder opera o quadro pela CLI: orkestrai task list/add/assign/done. Cada tarefa pode ter UMA nota de spec vinculada (a mesma nota pode servir várias tarefas): vincule no cartão (ícone de corrente) ou pela CLI (task add --note / task link). Concluídas ficam na coluna Feito até você (ou o líder) arquivar: saem do quadro junto com a nota vinculada, mas NADA é apagado — o ícone de histórico (relógio) abre a linha do tempo, e o chip de nota ali abre o conteúdo mesmo arquivado. Regras de proteção: nota vinculada não apaga pelo X do canvas; apagar a tarefa apaga a nota junto (quando é a última tarefa que a usa). Na CLI: orkestrai task archive/archive-done/history/link/unlink.`,
     },
     {
+      id: 'presets',
+      icon: Layers,
+      title: 'Presets de equipe',
+      body: `Um preset é um template de workspace: time (agentes com provider/líder/roles), layout do canvas, notas com conteúdo e rotinas. Salve o workspace atual como preset no lápis de editar (barra lateral) → "Salvar como preset". Ao criar um workspace novo, escolha o preset em "Começar de um preset" — o time inteiro nasce instanciado no seu projeto, sem nada de runtime (sessões ficam de fora). Aplicar num workspace existente SOMA o time ao canvas sem apagar nada. Caso típico: seu framework padrão — monte uma vez, salve, e todo projeto novo já começa com o time pronto.`,
+    },
+    {
       id: 'conexoes',
       icon: Link2,
       title: 'Conexões',
@@ -175,6 +181,7 @@
         'Kanban com histórico: arquive concluídas sem perder o registro do que foi entregue.',
         'Tarefa com nota de spec vinculada: arquiva junto, protegida contra exclusão, lida pelo histórico.',
         'Voz lê o transcrito da sessão: resposta completa do agente, sem caracteres invisíveis.',
+        'Presets de equipe: salve o workspace como template e comece projetos com o time pronto.',
       ],
     },
     {
