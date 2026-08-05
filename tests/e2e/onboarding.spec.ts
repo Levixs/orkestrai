@@ -61,4 +61,24 @@ test.describe('onboarding guiado', () => {
     const workspace = ((await list.json()).data as Array<{ id: string; name: string }>).find((item) => item.name === workspaceName)!;
     await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
   });
+
+  test('abre em inglês mesmo quando a troca de locale remonta a página (corrida)', async ({ page, request }) => {
+    // Locale en + settings LENTAS: o flip pt-BR→en acontece DEPOIS do mount do
+    // canvas e remonta a arvore — sem a flag em sessionStorage o wizard morria.
+    await request.put('/api/agent-room/settings', { data: { uiLanguage: 'en' } });
+    await page.route('**/api/agent-room/settings', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+      await route.continue();
+    });
+
+    await page.goto('/canvas?onboarding=1');
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    // Espera as settings chegarem (remount) — o wizard precisa CONTINUAR aberto
+    await page.waitForTimeout(3_000);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Welcome to Orkestrai')).toBeVisible();
+
+    await request.put('/api/agent-room/settings', { data: { uiLanguage: 'pt-BR' } });
+  });
 });

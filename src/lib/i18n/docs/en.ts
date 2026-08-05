@@ -191,6 +191,7 @@ export const DOCS_EN: DocsCatalog = {
         'Onboarding modal polished: the purple selection/focus ring is no longer clipped by the scroll, fade at the bottom of the list and a wider use-case step.',
         'Onboarding always guides from scratch: welcome → create a new workspace → use case, even with a workspace open (the "use current" shortcut remains).',
         '"Do it for me" shows up instantly on the canvas: nodes and connections created by tour, CLI or API trigger live refresh — no leaving and re-entering the workspace.',
+        'Fix: onboarding would not open in English/Spanish — the language switch remounted the page after the URL was cleaned and the wizard died; the intent now survives the remount (regression test included).',
       ],
     },
     {

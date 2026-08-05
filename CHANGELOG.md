@@ -39,6 +39,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Modal do onboarding polida**: o anel roxo de seleção/foco dos cards não é mais cortado pelo scroll (respiro no grid + anel customizado), fade sutil no rodapé da lista de tours e etapa de casos de uso mais larga (3 colunas em telas grandes).
 - **Onboarding sempre guia do zero**: boas-vindas → criar workspace novo → caso de uso, mesmo com um workspace aberto (antes pulava direto pros tours no primeiro workspace). Atalho "usar o workspace atual" continua disponível.
 - **"Fazer por mim" aparece na hora no canvas**: nós e arestas criados por tour, CLI ou API agora disparam live refresh do canvas (broadcast em create/delete de nó/aresta) — antes o agente criado só aparecia ao sair e voltar do workspace. `updateNode` segue sem broadcast de propósito (arrastar não pode recarregar a tela).
+- **Fix: onboarding não abria em inglês/espanhol**: a troca de idioma remonta a árvore (`{#key locale}`) depois que a URL `?onboarding=1` já tinha sido limpa — o remount recriava a página com o wizard fechado e sem o parâmetro. Agora a intenção vai para `sessionStorage` e sobrevive ao remount. Corrida reproduzida em teste e2e (settings lentas + locale en): falha sem o fix, passa com ele.
 
 ## 2026-08-04
 

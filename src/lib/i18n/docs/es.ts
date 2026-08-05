@@ -191,6 +191,7 @@ export const DOCS_ES: DocsCatalog = {
         'Modal de onboarding pulida: el anillo morado de selección/foco ya no es cortado por el scroll, fade al final de la lista y etapa de casos de uso más ancha.',
         'El onboarding siempre guía desde cero: bienvenida → crear workspace nuevo → caso de uso, incluso con un workspace abierto (el atajo "usar actual" sigue).',
         '"Hazlo por mí" aparece al instante en el canvas: nodos y conexiones creados por tour, CLI o API disparan live refresh — sin salir y volver al workspace.',
+        'Fix: el onboarding no abría en inglés/español — el cambio de idioma remontaba la página después de limpiar la URL y el wizard moría; la intención ahora sobrevive al remount (test de regresión incluido).',
       ],
     },
     {

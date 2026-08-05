@@ -360,11 +360,17 @@
     activityTimer = setInterval(refreshActivity, 10_000);
     // Onboarding: automatico na primeira vez (sem workspaces) ou forcado
     // via /canvas?onboarding=1 (botao "Rever apresentacao" do /docs).
+    // A intencao vai para sessionStorage: a troca de idioma remonta a arvore
+    // ({#key locale}) DEPOIS do replaceState — sem a flag, o remount recriava
+    // a pagina com showOnboarding=false e o wizard nunca abria fora de pt-BR.
     try {
       const forced = new URLSearchParams(location.search).has('onboarding');
       if (forced) {
-        showOnboarding = true;
+        sessionStorage.setItem('orkestrai.onboarding', '1');
         history.replaceState(null, '', '/canvas');
+      }
+      if (forced || sessionStorage.getItem('orkestrai.onboarding') === '1') {
+        showOnboarding = true;
       } else if (!workspaceList.length && !localStorage.getItem('orkestrai.onboarded')) {
         showOnboarding = true;
       }
@@ -1492,7 +1498,10 @@
     />
     <OnboardingWizard
       open={showOnboarding}
-      onClose={() => (showOnboarding = false)}
+      onClose={() => {
+        showOnboarding = false;
+        try { sessionStorage.removeItem('orkestrai.onboarding'); } catch {}
+      }}
       onCreateWorkspace={createWorkspaceFromWizard}
       activeWorkspaceId={activeWorkspace?.id ?? null}
     />
