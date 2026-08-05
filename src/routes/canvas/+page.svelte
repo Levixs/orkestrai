@@ -32,6 +32,7 @@
   import HeaderIconButton from '$lib/components/agent-room/canvas/HeaderIconButton.svelte';
   import OnboardingWizard from '$lib/components/agent-room/tours/OnboardingWizard.svelte';
   import TourGuidePanel from '$lib/components/agent-room/tours/TourGuidePanel.svelte';
+  import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
   import FlowCanvasNode from '$lib/components/agent-room/canvas/FlowCanvasNode.svelte';
   import ToolbarButton from '$lib/components/agent-room/canvas/ToolbarButton.svelte';
@@ -1274,7 +1275,7 @@
             <HeaderIconButton label={activity[workspace.id] ? `${workspace.name} — ${activity[workspace.id]} sessao(oes) ativa(s)` : workspace.name} side="right" class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
               <span class="workspace-icon">
                 {#if activity[workspace.id]}<span class="live-dot rail" aria-hidden="true"></span>{/if}
-                {#if workspace.icon}<span class="workspace-emoji">{workspace.icon}</span>{:else}<Folder size={14} />{/if}
+                <WorkspaceIcon name={workspace.icon} size={14} />
               </span>
             </HeaderIconButton>
           </li>
@@ -1292,7 +1293,7 @@
           <li class:active={activeWorkspace?.id === workspace.id}>
             <button class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
               <span class="workspace-icon">
-                {#if workspace.icon}<span class="workspace-emoji">{workspace.icon}</span>{:else}<Folder size={14} />{/if}
+                <WorkspaceIcon name={workspace.icon} size={14} />
               </span>
               <span class="workspace-name">{workspace.name}</span>
               {#if activity[workspace.id]}

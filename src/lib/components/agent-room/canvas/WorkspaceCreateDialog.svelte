@@ -8,6 +8,7 @@
   import { Button } from '$lib/components/ui/button';
   import { FolderOpen } from '@lucide/svelte';
   import * as Select from '$lib/components/ui/select';
+  import WorkspaceIcon from '../WorkspaceIcon.svelte';
   import { createWorkspaceSchema } from '$lib/modules/agent-room/contracts/schemas/workspaceSchemas.js';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
   import { onMount } from 'svelte';
@@ -134,7 +135,10 @@ const form = superForm(defaults(zod(schema)), {
             <Select.Trigger data-slot="select-trigger" class="w-full">
               {#if presetId}
                 {@const preset = presets.find((item) => item.id === presetId)}
-                {preset?.icon ? `${preset.icon} ` : ''}{preset?.name} ({preset?.agents} agentes)
+                <span class="preset-option">
+                  <WorkspaceIcon name={preset?.icon} size={13} />
+                  {preset?.name} ({preset?.agents} agentes)
+                </span>
               {:else}
                 Em branco
               {/if}
@@ -143,7 +147,10 @@ const form = superForm(defaults(zod(schema)), {
               <Select.Item value="__none">Em branco</Select.Item>
               {#each presets as preset (preset.id)}
                 <Select.Item value={preset.id}>
-                  {preset.icon ? `${preset.icon} ` : ''}{preset.name} — {preset.agents} agentes{preset.description ? ` · ${preset.description}` : ''}
+                  <span class="preset-option">
+                    <WorkspaceIcon name={preset.icon} size={13} />
+                    {preset.name} — {preset.agents} agentes{preset.description ? ` · ${preset.description}` : ''}
+                  </span>
                 </Select.Item>
               {/each}
             </Select.Content>
@@ -163,3 +170,11 @@ const form = superForm(defaults(zod(schema)), {
     </form>
   </Dialog.Content>
 </Dialog.Root>
+
+<style>
+  .preset-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+</style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ArrowLeft, Check, Keyboard, Languages, Layers, Mic, Pencil, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
+  import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -489,7 +490,7 @@
       <ul class="preset-list">
         {#each presets as preset (preset.id)}
           <li class="preset-row">
-            <span class="preset-icon">{preset.icon ?? '📦'}</span>
+            <span class="preset-icon"><WorkspaceIcon name={preset.icon} size={14} /></span>
             {#if editingPresetId === preset.id}
               <input
                 class="preset-rename"

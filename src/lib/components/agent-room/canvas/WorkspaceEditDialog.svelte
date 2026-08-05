@@ -11,6 +11,7 @@
   import { Button } from '$lib/components/ui/button';
   import { FolderOpen, Plug, Trash2 } from '@lucide/svelte';
   import { onMount } from 'svelte';
+  import { isLegacyEmojiIcon, WORKSPACE_ICONS } from '../workspace-icons.js';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
 
   type Props = {
@@ -197,8 +198,27 @@
       <Form.Field {form} name="icon">
         <Form.Control>
           {#snippet children({ props })}
-            <Form.Label>Icone (emoji)</Form.Label>
-            <Input {...props} bind:value={$formData.icon} placeholder="📁" maxlength={4} />
+            <Form.Label>Icone do workspace</Form.Label>
+            <div class="icon-picker" role="radiogroup" aria-label="Icone do workspace">
+              {#each WORKSPACE_ICONS as option (option.name)}
+                {@const OptionIcon = option.component}
+                <button
+                  {...props}
+                  type="button"
+                  class="icon-option"
+                  class:selected={($formData.icon ?? null) === option.name}
+                  role="radio"
+                  aria-checked={($formData.icon ?? null) === option.name}
+                  aria-label={option.name}
+                  onclick={() => ($formData.icon = ($formData.icon ?? null) === option.name ? null : option.name)}
+                >
+                  <OptionIcon size={15} />
+                </button>
+              {/each}
+            </div>
+            {#if isLegacyEmojiIcon($formData.icon)}
+              <p class="icon-legacy-hint">Icone antigo (emoji {$formData.icon}) mantido — escolha um novo acima para trocar.</p>
+            {/if}
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
@@ -289,3 +309,41 @@
     </form>
   </Dialog.Content>
 </Dialog.Root>
+
+<style>
+  .icon-picker {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+  }
+
+  .icon-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: transparent;
+    color: #8b8c96;
+    cursor: pointer;
+    transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  }
+
+  .icon-option:hover {
+    color: #e6e6eb;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .icon-option.selected {
+    color: #fff;
+    border-color: rgba(91, 141, 239, 0.6);
+    background: rgba(91, 141, 239, 0.18);
+  }
+
+  .icon-legacy-hint {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: #6d6d78;
+  }
+</style>

@@ -22,6 +22,10 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **11 tours guiados** (todos os casos de uso): o painel-guia no canvas conduz passo a passo até o caso funcionar — com botão **"Fazer por mim"** que cria os artefatos de verdade (agentes, notas, quadro, tarefas, conexões, portais, fluxos, rotinas, andares, MCPs) e **auto-conclusão** quando o passo aparece no workspace.
 - Tudo em pt-BR/English/Español desde o nascimento; adicionar um caso de uso novo = um objeto no catálogo (`tours/catalog/{pt-BR,en,es}.ts`) com testes de integridade garantindo estrutura idêntica nos 3 idiomas.
 
+**Ícone de workspace em Lucide**
+- O campo "Ícone (emoji)" do editor de workspace virou um **seletor de ícones Lucide** (grid com 24 opções; clique de novo para desmarcar).
+- Sidebar, presets e o seletor de preset renderizam o ícone Lucide; ícones antigos em emoji continuam funcionando (o editor avisa e oferece a troca).
+
 **Marketplace de MCPs**
 - Nova aba **MCPs** na página Skills: pesquise e instale servidores MCP como quem instala skills — curadoria dos oficiais/populares (GitHub, Gmail, Google Drive, Figma, Vercel, Postgres, Brave, DeepWiki...) mais busca no registry oficial do MCP.
 - Servidores remotos instalam com **1 clique** (só a URL); os que pedem chave/token abrem um diálogo explicando onde conseguir cada campo.

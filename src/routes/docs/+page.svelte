@@ -299,6 +299,7 @@
         'App em Português, English e Español: seletor de idioma nas Configurações (paraglide).',
         'Design pass: página Skills & MCPs redesenhada (abas segmentadas, cartões com badges) e docs polidas.',
         'Onboarding interativo: 11 tours guiados por caso de uso, com "Fazer por mim" e auto-conclusão, em 3 idiomas.',
+        'Ícone de workspace agora é seletor Lucide (sidebar, editor e presets); emoji antigo continua funcionando.',
       ],
     },
     {
