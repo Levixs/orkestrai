@@ -2,6 +2,29 @@ import { expect, test } from '@playwright/test';
 import { createNodeOnCanvas } from './helpers.js';
 
 test.describe('canvas de workspaces', () => {
+  test('cria no de fluxo pela toolbar e persiste apos reload', async ({ page, request }) => {
+    const workspaceName = `E2E flow ${Date.now()}`;
+
+    await page.goto('/canvas');
+    await page.getByRole('button', { name: 'Novo workspace' }).click();
+    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Diretorio de trabalho').fill('/tmp');
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+
+    await createNodeOnCanvas(page, 'Fluxo');
+    await expect(page.locator('.canvas-flow')).toBeVisible();
+
+    await page.reload();
+    await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+    await expect(page.locator('.canvas-flow')).toBeVisible();
+
+    const list = await request.get('/api/agent-room/workspaces');
+    const workspaces = (await list.json()).data as Array<{ id: string; name: string }>;
+    const created = workspaces.find((workspace) => workspace.name === workspaceName);
+    if (created) await request.delete(`/api/agent-room/workspaces/${created.id}`);
+  });
+
   test('cria workspace, adiciona nota e terminal, e persiste apos reload', async ({ page, request }) => {
     const workspaceName = `E2E ${Date.now()}`;
 

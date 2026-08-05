@@ -98,6 +98,12 @@
       body: `O nó Portal é um navegador embutido. Conectado a um agente, ele vira os olhos do agente: orkestrai portal <nodeId> navigate (abrir URL), eval (rodar JS na página), dom (ler o HTML), screenshot. Use para testar a aplicação que o time está construindo (aponte o portal para o dev server) ou pesquisar na web. A automação completa roda no app desktop (Electron); no browser comum o portal é só visualizador.`,
     },
     {
+      id: 'mcp',
+      icon: Cable,
+      title: 'MCP (tools externas dos agentes)',
+      body: `MCP é o padrão para dar ferramentas externas aos agentes (filesystem, web, banco...). ONDE GERENCIAR: lápis ao lado do nome do workspace na barra lateral → seção "Servidores MCP" — adicione (nome + comando + args, ex.: npx -y @mcp/fs ./data) ou remova; fica gravado no .mcp.json na raiz do projeto, que Claude Code/Kimi leem sozinhos. AUTOMÁTICO: o próprio Orkestrai já aparece como servidor MCP "orkestrai" (provisionado sozinho, marcado como "da ponte") — os agentes ganham as ações do canvas (ask, notas, tarefas, portal, andares) como tools tipadas, sem parse de shell. A entrada da ponte não pode ser removida (é recriada); as suas ficam intactas (sempre merge). Presets carregam seus MCPs junto com o time.`,
+    },
+    {
       id: 'cli',
       icon: MessageSquare,
       title: 'CLI orkestrai (a ponte)',

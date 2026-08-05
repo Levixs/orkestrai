@@ -15,7 +15,7 @@ export const updateWorkspaceSchema = z.object({
   syncAgentInstructionFiles: z.boolean().optional(),
 });
 
-export const canvasNodeTypeSchema = z.enum(['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'loop', 'group', 'shape', 'tasks']);
+export const canvasNodeTypeSchema = z.enum(['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'loop', 'group', 'shape', 'tasks', 'flow']);
 
 export const createCanvasNodeSchema = z.object({
   type: canvasNodeTypeSchema,
