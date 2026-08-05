@@ -127,6 +127,15 @@ export class WorkspaceController extends Controller {
     }
   }
 
+  /** Recarrega um terminal (mata a sessao; o no recria com resume). */
+  async reloadNode(event: any) {
+    try {
+      return this.json({ data: await workspaceService.reloadNode(event.params.id, event.params.nodeId) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao recarregar terminal.');
+    }
+  }
+
   async listEdges(event: any) {
     try {
       return this.json({ data: await workspaceService.listEdges(event.params.id) });

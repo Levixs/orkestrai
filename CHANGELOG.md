@@ -4,6 +4,13 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 
 ## 2026-08-04
 
+**Feedback de usuário Windows (pacote)**
+- **Composer não fica mais pendurado**: a resposta de um agente a outro agora é **submetida automaticamente** — antes ficava parada na caixa de texto do compositor e ia junto no próximo Enter sem querer.
+- **Reconexão após suspensão**: o notebook dormiu e matou a conexão? O terminal reconecta sozinho (6 tentativas com espera crescente) e, se a sessão morreu, recria **com o contexto** — sem mais "conexão encerrada" permanente.
+- **Botão Recarregar em cada terminal**: reinicia a sessão com o contexto — útil após suspensão ou atualização da CLI do provider (que pede reinício). O Descarregar do workspace tem o mesmo efeito para o time inteiro.
+- **Janelas pequenas sem botões vazando**: nós nunca nascem menores que o mínimo do tipo — o desenho livre respeita o tamanho mínimo de cada janela.
+- **Textos para não-devs**: tooltips de Diff/Loop/Andares em linguagem simples e nova seção "Diff, Loop & Andares — sem medo" na página Como usar.
+
 **Multi-workspace sem conflito de portas**
 - Novo comando `orkestrai port`: devolve uma porta livre de verdade (e `--check <porta>` testa uma). A skill da ponte agora ensina os agentes a sempre subir dev servers em porta livre e a **nunca matar processos por porta** (podiam derrubar o servidor de outro workspace).
 - Botão "Descarregar" com confirmação e feedback (quantos terminais foram encerrados).

@@ -178,6 +178,7 @@
 
   const SHORTCUTS = $derived<Array<[string, string]>>([
     ['Cmd/Ctrl+P', 'Paleta de comandos'],
+    ['Cmd/Ctrl+K', 'Buscar na documentacao (de qualquer tela)'],
     ['Cmd/Ctrl+Shift+A', 'Proximo agente com atencao'],
     ['Cmd/Ctrl+Shift+T', 'Organizar selecao em grade'],
     ['Cmd/Ctrl+G', 'Agrupar selecao'],

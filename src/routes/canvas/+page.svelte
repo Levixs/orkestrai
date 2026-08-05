@@ -175,6 +175,14 @@
   let drawProvider = $state<AgentProviderInfo | null>(null);
 
   type DrawRect = { x: number; y: number; width: number; height: number };
+  /** Tamanho do no criado: nunca menor que o minimo do NodeShell — desenhar
+      pequeno demais vazava os botoes do header pra fora da janela. */
+  function nodeSize(rect: DrawRect | undefined, minW: number, minH: number, defW: number, defH: number): { width: number; height: number } {
+    return {
+      width: rect?.width ? Math.max(rect.width, minW) : defW,
+      height: rect?.height ? Math.max(rect.height, minH) : defH,
+    };
+  }
   // Criacao de terminal passa pelo dialogo (nome/modelo/esforco/lider) —
   // como no Maestri, que pergunta o nome ao soltar o retangulo no canvas.
   let pendingAgentCreation = $state<{ provider: AgentProviderInfo | null; rect?: DrawRect } | null>(null);
@@ -701,8 +709,8 @@
         type: 'terminal',
         title: creation?.title || provider?.displayName || 'Shell',
         ...position,
-        width: rect?.width ? rect.width : Number(appSettings.newTerminalWidth ?? 560),
-        height: rect?.height ? rect.height : Number(appSettings.newTerminalHeight ?? 340),
+        width: nodeSize(rect, 360, 220, Number(appSettings.newTerminalWidth ?? 560), Number(appSettings.newTerminalHeight ?? 340)).width,
+        height: nodeSize(rect, 360, 220, Number(appSettings.newTerminalWidth ?? 560), Number(appSettings.newTerminalHeight ?? 340)).height,
         payload: { ...payload, theme: payload.theme ?? appSettings.terminalTheme },
         floorId: visibleFloorId,
       }),
@@ -715,7 +723,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'fileTree', title: 'Arquivos', ...position, width: rect?.width ? rect.width : 300, height: rect?.height ? rect.height : 380, payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'fileTree', title: 'Arquivos', ...position, ...nodeSize(rect, 260, 200, 300, 380), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -755,8 +763,8 @@
         type: 'shape',
         title: '',
         ...position,
-        width: rect?.width ? rect.width : kind === 'arrow' ? 220 : 160,
-        height: rect?.height ? rect.height : kind === 'arrow' ? 80 : 160,
+        width: nodeSize(rect, 120, 60, kind === 'arrow' ? 220 : 160, kind === 'arrow' ? 80 : 160).width,
+        height: nodeSize(rect, 120, 60, kind === 'arrow' ? 220 : 160, kind === 'arrow' ? 80 : 160).height,
         payload: { shape: kind, color: '#7C4DFF', label: '' },
         floorId: visibleFloorId,
       }),
@@ -769,7 +777,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'portal', title: 'Portal', ...position, width: rect?.width ? rect.width : 720, height: rect?.height ? rect.height : 520, payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'portal', title: 'Portal', ...position, ...nodeSize(rect, 360, 260, 720, 520), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -779,7 +787,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'loop', title: 'Loop Ralph', ...position, width: rect?.width ? rect.width : 560, height: rect?.height ? rect.height : 460, payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'loop', title: 'Loop Ralph', ...position, ...nodeSize(rect, 380, 280, 560, 460), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -789,7 +797,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'tasks', title: 'Tarefas', ...position, width: rect?.width ? rect.width : 560, height: rect?.height ? rect.height : 360, payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'tasks', title: 'Tarefas', ...position, ...nodeSize(rect, 400, 260, 560, 360), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -799,7 +807,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'flow', title: 'Fluxo', ...position, width: rect?.width ? rect.width : 480, height: rect?.height ? rect.height : 420, payload: { steps: [], iterations: 1 }, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'flow', title: 'Fluxo', ...position, ...nodeSize(rect, 420, 300, 480, 420), payload: { steps: [], iterations: 1 }, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -809,7 +817,7 @@
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
-      body: JSON.stringify({ type: 'diff', title: 'Diff', ...position, width: rect?.width ? rect.width : 720, height: rect?.height ? rect.height : 440, payload: {}, floorId: visibleFloorId }),
+      body: JSON.stringify({ type: 'diff', title: 'Diff', ...position, ...nodeSize(rect, 380, 240, 720, 440), payload: {}, floorId: visibleFloorId }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -824,8 +832,8 @@
         type: 'note',
         title: 'Nota',
         ...position,
-        width: rect?.width ? rect.width : Number(appSettings.newNoteWidth ?? 320),
-        height: rect?.height ? rect.height : Number(appSettings.newNoteHeight ?? 220),
+        width: nodeSize(rect, 220, 140, Number(appSettings.newNoteWidth ?? 320), Number(appSettings.newNoteHeight ?? 220)).width,
+        height: nodeSize(rect, 220, 140, Number(appSettings.newNoteWidth ?? 320), Number(appSettings.newNoteHeight ?? 220)).height,
         payload,
         floorId: visibleFloorId,
       }),
@@ -1365,13 +1373,13 @@
             <ToolbarButton label="Arvore de arquivos do projeto" active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
               <FolderTree size={15} class="tool-icon-svg" /> Arquivos
             </ToolbarButton>
-            <ToolbarButton label="Diff de mudancas entre branches/andares" active={drawTool === 'diff'} onclick={() => toggleDrawTool('diff')}>
+            <ToolbarButton label="Diff: compara lado a lado o que mudou no codigo — so leitura, nao mexe em nada" active={drawTool === 'diff'} onclick={() => toggleDrawTool('diff')}>
               <FileDiff size={15} class="tool-icon-svg" /> Diff
             </ToolbarButton>
             <ToolbarButton label="Navegador embutido que os agentes controlam (testar apps, pesquisar)" active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
               <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> Portal
             </ToolbarButton>
-            <ToolbarButton label="Loop Ralph: planeja, implementa e revisa em ciclo ate N rodadas" active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
+            <ToolbarButton label="Loop Ralph: o time repete sozinho o ciclo planejar, fazer e revisar ate ficar pronto" active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
               <img src="/images/loop.svg" width="15" height="15" alt="" class="tool-icon" /> Loop
             </ToolbarButton>
             <ToolbarButton label="Quadro kanban do workspace (com historico e imagens)" active={drawTool === 'tasks'} onclick={() => toggleDrawTool('tasks')}>
@@ -1384,7 +1392,7 @@
               <Shapes size={15} class="tool-icon-svg" /> Forma
             </ToolbarButton>
             <span class="toolbar-sep"></span>
-            <ToolbarButton label="Andares: worktrees git do projeto (frentes isoladas de trabalho)" active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label="Andares: copias separadas do projeto — cada time trabalha numa sem baguncar a versao principal" active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
               <Layers size={15} class="tool-icon-svg" /> Andares{floors.length ? ` (${floors.length})` : ''}
             </ToolbarButton>
             <ToolbarButton label="Rotinas: prompts agendados que disparam em qualquer terminal" active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>

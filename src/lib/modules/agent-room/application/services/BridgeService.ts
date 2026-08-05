@@ -131,8 +131,11 @@ export class BridgeService {
     }
 
     if (origin?.sessionId && origin.sessionAlive) {
+      // A resposta ja e SUBMETIDA (texto e Enter separados, como o dispatch) —
+      // antes ficava pendurada no composer do agente de origem e o usuario
+      // tinha que apagar na mao (ou reenviava sem querer).
       const injection = `[resposta de ${target.title}] ${reply.text}\n`;
-      ptySessionManager.write(origin.sessionId, injection);
+      ptySessionManager.writeWithSubmit(origin.sessionId, injection);
     }
 
     // Voz de volta: o no alvo pode ler a resposta em voz alta (toggle por

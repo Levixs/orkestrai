@@ -110,6 +110,20 @@ export class WorkspaceService {
     return node;
   }
 
+  /** Recarrega UM terminal: mata a sessao PTY e limpa o sessionId — o no
+      recria a sessao com resume (o contexto volta, util apos suspensao ou
+      atualizacao da CLI do provider). */
+  async reloadNode(workspaceId: string, nodeId: string) {
+    const node = await workspaceRepository.getNode(nodeId);
+    if (!node || node.workspaceId !== workspaceId) throw new Error('No nao encontrado.');
+    const payload = { ...((node.payload ?? {}) as Record<string, unknown>) };
+    const sessionId = payload.sessionId as string | undefined;
+    if (sessionId) ptySessionManager.kill(sessionId);
+    delete payload.sessionId;
+    await workspaceRepository.updateNode(nodeId, { payload: payload as never });
+    return { reloaded: true };
+  }
+
   async deleteNode(workspaceId: string, nodeId: string) {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId) throw new Error('No nao encontrado.');

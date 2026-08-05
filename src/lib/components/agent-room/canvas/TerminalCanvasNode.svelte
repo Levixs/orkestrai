@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { BadgeCheck, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { BadgeCheck, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
@@ -32,6 +32,7 @@
     onToggleMaestro?: (id: string) => void;
     onOpenFile?: (path: string) => void;
     onCycleTheme?: (id: string) => void;
+    onPayloadChange?: (id: string, partial: Record<string, unknown>) => void;
     onRename?: (id: string, title: string) => void;
     /** Nome do workspace (notificacao de fim de sessao). */
     workspaceName?: string;
@@ -66,6 +67,14 @@
       }
     }
     forceRespawn = true;
+  }
+
+  // -- Recarregar terminal (reinicia a sessao COM o contexto) -------------------
+  async function reloadTerminal() {
+    await fetch(`/api/agent-room/workspaces/${data.workspaceId}/nodes/${id}/reload`, { method: 'POST' }).catch(() => {});
+    // sessionId null no payload -> o no cai no caminho de criacao, que usa o
+    // resume exato (agentSessionId permanece no payload).
+    data.onPayloadChange?.(id, { sessionId: null });
   }
 
   // -- Role do terminal ---------------------------------------------------------
@@ -286,6 +295,8 @@
     </DropdownMenu.Root>
     <IconAction label="Trocar tema" onclick={() => data.onCycleTheme?.(id)}>
       <SwatchBook size={13} /></IconAction>
+    <IconAction label="Recarregar (reinicia a sessao com o contexto — util apos suspensao ou atualizar a CLI)" onclick={reloadTerminal}>
+      <RotateCcw size={13} /></IconAction>
     <button
       class="node-action-btn"
       class:active={data.payload.maestro}

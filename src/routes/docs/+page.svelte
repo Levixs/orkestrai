@@ -9,6 +9,11 @@
   onMount(() => {
     document.documentElement.classList.add('dark');
     document.documentElement.style.colorScheme = 'dark';
+    // Atalho global (Cmd/Ctrl+K de qualquer tela): abre a paleta ja focada.
+    if (new URLSearchParams(location.search).has('search')) {
+      history.replaceState(null, '', '/docs');
+      openPalette();
+    }
   });
 
   function rewatchOnboarding() {
@@ -74,6 +79,12 @@
       body: `O nó Fluxo (+ Fluxo na barra inferior) é um pipeline visual: passos em sequência, onde a saída de um agente vira a entrada do próximo via {{input}} no prompt. Passo "Agente" conversa com o agente escolhido (a aresta acende durante); passo "Aprovação" pausa até você clicar em Aprovar — humano no loop. Repetição com limite (até 5 rodadas). O progresso aparece ao vivo no nó e o histórico das últimas 5 execuções fica guardado nele. Use para revisões encadeadas (escreve → revisa → aprova), processamento em etapas ou qualquer rotina multi-passo do time.`,
     },
     {
+      id: 'sem-medo',
+      icon: BookOpen,
+      title: 'Diff, Loop & Andares — sem medo (para não-devs)',
+      body: `Três botões que assustam mas são amigáveis: DIFF é só um comparador — mostra lado a lado o que mudou no código entre duas versões, sem mexer em nada. LOOP (Loop Ralph) é um piloto automático: o time repete sozinho o ciclo planejar → fazer → revisar até o número de rodadas que você escolher. ANDARES são cópias de segurança do projeto: cada time trabalha numa cópia separada e ninguém bagunça a versão principal — no fim, o app ajuda a juntar tudo de volta (e avisa se houver conflito antes). Pode clicar sem receio: nada aqui apaga seu trabalho.`,
+    },
+    {
       id: 'conexoes',
       icon: Link2,
       title: 'Conexões',
@@ -113,7 +124,7 @@
       id: 'atalhos',
       icon: BookOpen,
       title: 'Atalhos',
-      body: `⌘P paleta · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz (configurável em Configurações) · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. Lista completa em Configurações.`,
+      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz (configurável em Configurações) · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. Lista completa em Configurações.`,
     },
   ];
 

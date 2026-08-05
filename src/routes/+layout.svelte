@@ -15,6 +15,15 @@
   let { children } = $props();
 
   onMount(() => {
+    // Cmd/Ctrl+K global: de qualquer tela, abre a busca da documentacao.
+    const docsSearchShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
+      if (location.pathname === '/docs') return; // a pagina trata localmente
+      event.preventDefault();
+      location.assign('/docs?search=1');
+    };
+    window.addEventListener('keydown', docsSearchShortcut);
+
     const syncCsrfToken = (event: SubmitEvent) => {
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
@@ -34,7 +43,10 @@
     };
 
     document.addEventListener('submit', syncCsrfToken, true);
-    return () => document.removeEventListener('submit', syncCsrfToken, true);
+    return () => {
+      window.removeEventListener('keydown', docsSearchShortcut);
+      document.removeEventListener('submit', syncCsrfToken, true);
+    };
   });
 </script>
 

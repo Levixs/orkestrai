@@ -308,13 +308,16 @@
     }
 
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${protocol}://${location.host}/ws/agent-room/pty`);
+    let socket: WebSocket;
+    let reconnectAttempts = 0;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let disposed = false;
 
     const send = (payload: Record<string, unknown>) => {
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
     };
 
-    socket.onopen = () => {
+    const handleOpen = () => {
       if (sessionId) {
         send({ type: 'attach', sessionId });
       } else if (createRequest) {
@@ -335,7 +338,7 @@
     let createdSessionId: string | undefined;
     const currentSessionId = () => createdSessionId ?? sessionId;
 
-    socket.onmessage = (event) => {
+    const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(String(event.data));
       switch (message.type) {
         case 'created':
@@ -343,10 +346,12 @@
           onSessionCreated?.(message.session.id);
           if (message.scrollback) terminal.write(message.scrollback);
           statusMessage = '';
+          reconnectAttempts = 0;
           break;
         case 'attached':
           if (message.scrollback) terminal.write(message.scrollback);
           statusMessage = '';
+          reconnectAttempts = 0;
           waiting = Boolean(message.session?.waiting);
           if (message.session?.exited) exited = message.session.exitCode ?? 0;
           break;
@@ -400,13 +405,32 @@
       }
     };
 
-    socket.onerror = () => {
+    const handleError = () => {
       statusMessage = 'Falha na conexao WebSocket com o servidor.';
     };
 
-    socket.onclose = () => {
-      if (exited === null) statusMessage = 'Conexao encerrada.';
+    const handleClose = () => {
+      if (exited !== null || disposed) return;
+      // Suspensao/hibernacao derruba a conexao (Windows em sleep): tenta
+      // re-attach com backoff. Se a sessao PTY morreu junto, o 'error' do
+      // attach aciona o respawn com resume (o contexto volta sozinho).
+      if (reconnectAttempts >= 6) {
+        statusMessage = 'Conexao encerrada.';
+        return;
+      }
+      reconnectAttempts += 1;
+      statusMessage = `Reconectando (${reconnectAttempts}/6)...`;
+      reconnectTimer = setTimeout(connect, 2_000 * reconnectAttempts);
     };
+
+    function connect() {
+      socket = new WebSocket(`${protocol}://${location.host}/ws/agent-room/pty`);
+      socket.onopen = handleOpen;
+      socket.onmessage = handleMessage;
+      socket.onerror = handleError;
+      socket.onclose = handleClose;
+    }
+    connect();
 
     terminal.onData((data) => {
       send({ type: 'input', sessionId: currentSessionId(), data });
@@ -432,10 +456,12 @@
     });
 
     return () => {
+      disposed = true;
       mediaRecorder?.stop();
       stopTracks();
       stopRecTimer();
       if (speakTimer) clearTimeout(speakTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       captureAfterDictation = false;
       pendingDictation = false;
       resizeObserver.disconnect();
