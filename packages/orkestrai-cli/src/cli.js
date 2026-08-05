@@ -61,6 +61,7 @@ Uso:
   orkestrai floor land <floorId> [--target <branch>]
   orkestrai floor remove <floorId> [--delete-branch]
   orkestrai port [--check <porta>]  — devolve uma porta livre (ou testa uma)
+  orkestrai mcp  — servidor MCP em stdio (tools do canvas para agentes MCP)
 
 Config: .orkestrai/workspace.json (token, apiUrl) ou env ORKESTRAI_TOKEN/ORKESTRAI_API_URL.
 Identidade: ORKESTRAI_NODE_ID/ORKESTRAI_AGENT_TITLE no ambiente ja definem --from e --agent.
@@ -494,6 +495,19 @@ export async function run(argv, options = {}) {
         return 0;
       }
       throw new Error('Uso: orkestrai floor <list|create|preview|land|remove> ...');
+    }
+    case 'mcp': {
+      // Servidor MCP em stdio: agentes que falam MCP ganham as acoes do
+      // canvas como tools nativas. NUNCA logar em stdout (corrompe o protocolo).
+      const { runMcpServer } = await import('./mcp.js');
+      await runMcpServer({
+        input: process.stdin,
+        write: (chunk) => process.stdout.write(chunk),
+        bridge: (method, path, body) => bridge(config, method, path, body),
+        findFreePort,
+        selfAgent: selfAgent ?? null,
+      });
+      return 0;
     }
     default:
       out(USAGE);

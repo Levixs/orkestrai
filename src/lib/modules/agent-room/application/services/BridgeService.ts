@@ -467,6 +467,7 @@ description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com 
 Voce esta rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` da acesso a ponte.
 Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce e, entao \`--from\` e \`--agent\` sao opcionais.
 Se \`orkestrai\` nao resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), chame a CLI DIRETO pelo node: \`node "$ORKESTRAI_CLI" ...\` (Linux/macOS), \`node %ORKESTRAI_CLI% ...\` (cmd.exe) ou \`node $env:ORKESTRAI_CLI ...\` (PowerShell) — o caminho completo da CLI esta na variavel de ambiente ORKESTRAI_CLI e funciona sempre, sem depender de PATH.
+Se as tools \`orkestrai\` (list/ask/note_*/task_*/portal_*/floor_*/notify/port/recruit/dismiss) estiverem disponiveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
 - \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
@@ -535,16 +536,32 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
         mkdirSync(dir, { recursive: true });
         writeFileSync(resolve(dir, 'SKILL.md'), skill);
       }
+      // .mcp.json na raiz do projeto: agentes que falam MCP (Claude, Kimi...)
+      // ganham as acoes do canvas como TOOLS nativas via `orkestrai mcp`.
+      // MERGE — nunca sobrescreve os servidores que o usuario ja configurou.
+      const mcpPath = resolve(workspace.workingDir, '.mcp.json');
+      let mcpConfig: { mcpServers?: Record<string, unknown> } = {};
+      try {
+        mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf8'));
+      } catch {
+        // nao existe ou invalido — cria do zero
+      }
+      const current = JSON.stringify(mcpConfig.mcpServers?.orkestrai ?? null);
+      const desired = { command: 'orkestrai', args: ['mcp'] };
+      if (current !== JSON.stringify(desired)) {
+        mcpConfig.mcpServers = { ...(mcpConfig.mcpServers ?? {}), orkestrai: desired };
+        writeFileSync(mcpPath, `${JSON.stringify(mcpConfig, null, 2)}\n`);
+      }
       // Em repos git, exclui os arquivos da ponte do status (info/exclude
       // local) — senao o checkout fica "sujo" e o land de andares falha.
       const gitDir = resolve(workspace.workingDir, '.git');
       if (existsSync(gitDir)) {
         const excludePath = resolve(gitDir, 'info', 'exclude');
-        const current = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
-        const additions = ['.orkestrai/', '.claude/skills/orkestrai/'].filter((entry) => !current.includes(entry));
+        const currentExclude = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
+        const additions = ['.orkestrai/', '.claude/skills/orkestrai/', '.mcp.json'].filter((entry) => !currentExclude.includes(entry));
         if (additions.length) {
           mkdirSync(resolve(gitDir, 'info'), { recursive: true });
-          writeFileSync(excludePath, `${current.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
+          writeFileSync(excludePath, `${currentExclude.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
         }
       }
     } catch {
