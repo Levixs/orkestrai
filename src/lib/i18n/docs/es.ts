@@ -188,6 +188,7 @@ export const DOCS_ES: DocsCatalog = {
         'Flujos encadenados: un Flujo conectado a otro dispara el siguiente con su salida final (el fallo no encadena, ciclos bloqueados) — pipelines compuestos y fan-out.',
         'Botón Sincronizar en el Flujo: cada agente conectado se vuelve un paso en el orden de las aristas — el pipeline es el propio dibujo.',
         'Nuevo tour guiado "Flujos encadenados" en el onboarding (12 tours ahora): crea los dos flujos, los conecta y ejecutas el encadenamiento.',
+        'Modal de onboarding pulida: el anillo morado de selección/foco ya no es cortado por el scroll, fade al final de la lista y etapa de casos de uso más ancha.',
       ],
     },
     {

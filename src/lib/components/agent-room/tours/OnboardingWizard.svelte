@@ -77,7 +77,7 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-  <Dialog.Content class="sm:max-w-2xl wizard-content">
+  <Dialog.Content class="{step === 'usecase' ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} wizard-content">
     {#if step === 'welcome'}
       <div class="wizard-center">
         <span class="wizard-icon"><Sparkles size={26} /></span>
@@ -228,7 +228,12 @@
     gap: 8px;
     max-height: 46vh;
     overflow-y: auto;
-    padding: 2px;
+    /* Espaco para o anel de foco/selecao respirar — com 2px ele era cortado
+       pelo overflow nas bordas do grid. */
+    padding: 6px;
+    /* Fade sutil no rodape para o corte do scroll nao parecer erro. */
+    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
   }
 
   .tour-card {
@@ -241,16 +246,24 @@
     background: rgba(255, 255, 255, 0.03);
     cursor: pointer;
     text-align: left;
-    transition: border-color 120ms ease, background 120ms ease;
+    transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
   }
 
   .tour-card:hover {
     background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-1px);
+  }
+
+  /* Anel de foco customizado: fica dentro do respiro do grid, nunca corta. */
+  .tour-card:focus-visible {
+    outline: 2px solid rgba(124, 93, 255, 0.75);
+    outline-offset: 1px;
   }
 
   .tour-card.picked {
-    border-color: rgba(91, 141, 239, 0.6);
-    background: rgba(91, 141, 239, 0.1);
+    border-color: rgba(124, 93, 255, 0.65);
+    background: rgba(124, 93, 255, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(124, 93, 255, 0.25);
   }
 
   .tour-card-icon {

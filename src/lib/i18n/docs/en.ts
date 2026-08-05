@@ -188,6 +188,7 @@ export const DOCS_EN: DocsCatalog = {
         'Chained flows: a Flow connected to another triggers the next one with its final output (failure does not chain, cycles blocked) — compound pipelines and fan-out.',
         'Sync button on the Flow: each connected agent becomes a step in edge order — the pipeline is the drawing itself.',
         'New guided tour "Chained flows" in onboarding (12 tours now): creates both flows, connects them and you run the chaining.',
+        'Onboarding modal polished: the purple selection/focus ring is no longer clipped by the scroll, fade at the bottom of the list and a wider use-case step.',
       ],
     },
     {

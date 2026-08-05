@@ -36,6 +36,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Botão Sincronizar** no nó Fluxo: cria um passo Agente para cada agente conectado ao fluxo, na ordem das arestas — monte o pipeline desenhando as cordas.
 - Novo caso de uso "Fluxos encadeados" na página Como usar (3 idiomas); testes de feature (encadeamento, ciclo A↔B, falha não encadeia) e e2e do botão Sincronizar.
 - **Novo tour guiado "Fluxos encadeados" no onboarding** (12 tours): cria os dois fluxos, conecta com aresta e você roda o encadeamento — nos 3 idiomas, com regra no AGENTS.md: toda feature nova exige caso de uso + tour.
+- **Modal do onboarding polida**: o anel roxo de seleção/foco dos cards não é mais cortado pelo scroll (respiro no grid + anel customizado), fade sutil no rodapé da lista de tours e etapa de casos de uso mais larga (3 colunas em telas grandes).
 
 ## 2026-08-04
 
