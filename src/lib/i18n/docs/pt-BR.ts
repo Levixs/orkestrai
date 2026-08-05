@@ -182,6 +182,7 @@ export const DOCS_PT: DocsCatalog = {
         'CLI: task add aceita --description em markdown (também na tool MCP).',
         'Fluxo que funciona de verdade: agentes sem sessão são iniciados sozinhos pelo pipeline, erros aparecem num banner no nó (fim das falhas silenciosas) e estados vazios guiam o que fazer.',
         'Ícone de pasta (o default) selecionável no editor do workspace — o picker tinha 24 ícones mas não o original.',
+        'Injeção de texto nos terminais 100% unificada (roles inclusas): texto e Enter sempre em writes separados — o composer não fica mais pendurado em nenhum provider (Claude, Codex, Kimi).',
       ],
     },
     {

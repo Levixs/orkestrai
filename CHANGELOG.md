@@ -29,6 +29,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Estados vazios guiados (o que é um fluxo e como montar), botão Rodar com feedback de "iniciando..." e ícones de status em cada passo durante a execução.
 - Cobertura nova: spec e2e do fluxo (monta, roda, aprova, histórico + auto-spawn) e teste de feature do auto-spawn.
 - Ícone **pasta** (o default do app) agora é selecionável no editor do workspace — o picker tinha 24 ícones mas não o original. Trocar o ícone não derruba o workspace (verificado com os dados reais do workspace afetado).
+- Injeção de texto nos terminais **100% unificada**: atribuição de role também usa texto e Enter em writes separados — o composer não fica mais pendurado em nenhum provider (Claude, Codex, Kimi). Fix do placeholder do passo de fluxo (chaves literais quebravam a interpolação do paraglide).
 
 ## 2026-08-04
 

@@ -164,10 +164,8 @@ export class RoleService {
 
     const session = ptySessionManager.get(payload.sessionId);
     if (!session || session.exited) throw new Error('Sessao PTY nao esta ativa.');
-    ptySessionManager.write(
-      payload.sessionId,
-      `[responsabilidade: ${role.name}] ${role.prompt.trim()}\r`
-    );
+    // Texto e Enter em writes separados (composer do Codex — ver writeWithSubmit).
+    ptySessionManager.writeWithSubmit(payload.sessionId, `[responsabilidade: ${role.name}] ${role.prompt.trim()}`);
     return { applied: true };
   }
 

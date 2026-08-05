@@ -178,6 +178,7 @@ export const DOCS_EN: DocsCatalog = {
         'CLI: task add accepts --description in markdown (also in the MCP tool).',
         'Flow that actually works: agents without a session are started by the pipeline itself, errors show in a banner on the node (no more silent failures) and empty states guide you.',
         'Folder icon (the default) selectable in the workspace editor — the picker had 24 icons but not the original one.',
+        'Terminal text injection fully unified (roles included): text and Enter always in separate writes — the composer never gets stuck on any provider (Claude, Codex, Kimi).',
       ],
     },
     {
