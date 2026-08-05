@@ -14,6 +14,7 @@
   import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
   import { blobToWav16k } from './audio-pcm.js';
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
+  import { speakText } from './voice-speech.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -377,6 +378,12 @@
         case 'agentReply':
           if (!workspaceId || message.workspaceId === workspaceId) {
             onAgentReply?.({ to: String(message.to), from: message.from ?? null, text: String(message.text ?? '') });
+          }
+          break;
+        case 'say':
+          // orkestrai say: TTS sob demanda no desktop (falha silenciosa sem modelo).
+          if ((!workspaceId || message.workspaceId === workspaceId) && typeof message.text === 'string' && message.text.trim()) {
+            speakText(String(message.text)).catch(() => {});
           }
           break;
         case 'killed':

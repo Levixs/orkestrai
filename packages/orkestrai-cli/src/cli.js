@@ -5,6 +5,7 @@
  * `.orkestrai/workspace.json` ({ token, apiUrl }). Variaveis de ambiente
  * ORKESTRAI_TOKEN e ORKESTRAI_API_URL tem precedencia.
  */
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { homedir } from 'node:os';
@@ -61,6 +62,11 @@ Uso:
   orkestrai floor land <floorId> [--target <branch>]
   orkestrai floor remove <floorId> [--delete-branch]
   orkestrai port [--check <porta>]  — devolve uma porta livre (ou testa uma)
+  orkestrai fs read <path> | fs write <path> <conteudo> | fs search <termo> [--content]
+  orkestrai say <texto>  — fala pt-BR no desktop
+  orkestrai run <taskId>  — re-despacha a tarefa para o responsavel
+  orkestrai notes | portals  — listagens rapidas
+  orkestrai clip  — le a area de transferencia local
   orkestrai mcp  — servidor MCP em stdio (tools do canvas para agentes MCP)
 
 Config: .orkestrai/workspace.json (token, apiUrl) ou env ORKESTRAI_TOKEN/ORKESTRAI_API_URL.
@@ -495,6 +501,77 @@ export async function run(argv, options = {}) {
         return 0;
       }
       throw new Error('Uso: orkestrai floor <list|create|preview|land|remove> ...');
+    }
+    case 'fs': {
+      const [action, ...values] = rest;
+      if (action === 'read') {
+        const path = values.join(' ');
+        if (!path) throw new Error('Uso: orkestrai fs read <path>');
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/fs/read?path=${encodeURIComponent(path)}`);
+        out(data.content ?? '');
+        return 0;
+      }
+      if (action === 'write') {
+        const path = values[0];
+        const content = values.slice(1).join(' ');
+        if (!path || !content) throw new Error('Uso: orkestrai fs write <path> <conteudo>');
+        await bridge(config, 'POST', '/api/agent-room/bridge/fs/write', { path, content });
+        out(`Escrito: ${path}`);
+        return 0;
+      }
+      if (action === 'search') {
+        const query = values.join(' ');
+        if (!query) throw new Error('Uso: orkestrai fs search <termo> [--content]');
+        const byContent = flags.content ? '&content=1' : '';
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/fs/search?q=${encodeURIComponent(query)}${byContent}`);
+        const hits = Array.isArray(data) ? data : (data.results ?? []);
+        for (const hit of hits) out(`${hit.path}${hit.line ? `:${hit.line}` : ''}${hit.preview ? `  ${hit.preview}` : ''}`);
+        if (!hits.length) out('(nada encontrado)');
+        return 0;
+      }
+      throw new Error('Uso: orkestrai fs <read|write|search> ...');
+    }
+    case 'say': {
+      const text = rest.join(' ');
+      if (!text) throw new Error('Uso: orkestrai say "<texto>"');
+      await bridge(config, 'POST', '/api/agent-room/bridge/say', { text });
+      out('Falado no desktop.');
+      return 0;
+    }
+    case 'run': {
+      const taskId = rest[0];
+      if (!taskId) throw new Error('Uso: orkestrai run <taskId>');
+      await bridge(config, 'POST', `/api/agent-room/bridge/tasks/${taskId}/dispatch`, {});
+      out('Tarefa re-despachada para o responsavel.');
+      return 0;
+    }
+    case 'notes':
+    case 'portals': {
+      const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
+      const data = await bridge(config, 'GET', `/api/agent-room/bridge/agents${query}`);
+      const items = command === 'notes' ? (data.notes ?? []) : (data.portals ?? []);
+      for (const item of items) out(`- ${item.title} (${item.id ?? item.nodeId})${item.url ? ` ${item.url}` : ''}`);
+      if (!items.length) out(command === 'notes' ? '(sem notas)' : '(sem portais)');
+      return 0;
+    }
+    case 'clip': {
+      // Le a area de transferencia LOCAL (onde o agente roda), sem bridge.
+      const attempts =
+        process.platform === 'darwin'
+          ? [['pbpaste', []]]
+          : process.platform === 'win32'
+            ? [['powershell', ['-command', 'Get-Clipboard']]]
+            : [['xclip', ['-selection', 'clipboard', '-o']], ['xsel', ['--clipboard', '--output']]];
+      for (const [bin, args] of attempts) {
+        try {
+          const text = execFileSync(bin, args, { encoding: 'utf8', timeout: 5_000 }).trim();
+          out(text || '(area de transferencia vazia)');
+          return 0;
+        } catch {
+          // proxima tentativa
+        }
+      }
+      throw new Error('Nao consegui ler a area de transferencia (sem pbpaste/xclip/xsel/powershell).');
     }
     case 'mcp': {
       // Servidor MCP em stdio: agentes que falam MCP ganham as acoes do

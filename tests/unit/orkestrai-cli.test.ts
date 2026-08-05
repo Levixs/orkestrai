@@ -148,6 +148,41 @@ describe('orkestrai CLI', () => {
     expect(lines.join('\n')).toContain('Claude');
   });
 
+  it('fs read busca o arquivo via bridge (path encodado)', async () => {
+    const { out } = capture();
+    const code = await run(['fs', 'read', 'src/app.ts'], { cwd, out, env: {} });
+    expect(code).toBe(0);
+    expect(requests.at(-1).url).toBe('/api/agent-room/bridge/fs/read?path=src%2Fapp.ts');
+  });
+
+  it('fs search passa o termo e o flag --content', async () => {
+    const { out } = capture();
+    await run(['fs', 'search', 'hello world', '--content'], { cwd, out, env: {} });
+    expect(requests.at(-1).url).toBe('/api/agent-room/bridge/fs/search?q=hello%20world&content=1');
+  });
+
+  it('say posta o texto na bridge', async () => {
+    const { out } = capture();
+    await run(['say', 'terminei a tarefa'], { cwd, out, env: {} });
+    expect(requests.at(-1).url).toBe('/api/agent-room/bridge/say');
+    expect(requests.at(-1).body).toMatchObject({ text: 'terminei a tarefa' });
+  });
+
+  it('run re-despacha a tarefa para o responsavel', async () => {
+    const { out } = capture();
+    const code = await run(['run', 't1'], { cwd, out, env: {} });
+    expect(code).toBe(0);
+    expect(requests.at(-1).url).toBe('/api/agent-room/bridge/tasks/t1/dispatch');
+    expect(requests.at(-1).method).toBe('POST');
+  });
+
+  it('notes lista vazia cai na mensagem amigavel', async () => {
+    const { lines, out } = capture();
+    const code = await run(['notes'], { cwd, out, env: {} });
+    expect(code).toBe(0);
+    expect(lines.join('\n')).toContain('(sem notas)');
+  });
+
   it('port devolve uma porta livre (sem precisar de workspace.json)', async () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'orkestrai-cli-port-'));
     const { lines, out } = capture();

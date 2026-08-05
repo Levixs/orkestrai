@@ -490,6 +490,11 @@ Se as tools \`orkestrai\` (list/ask/note_*/task_*/portal_*/floor_*/notify/port/r
 - \`orkestrai floor list\` / \`floor preview <id>\` / \`floor land <id>\` / \`floor remove <id>\` — gerencia andares; preview mostra conflitos ANTES do merge.
 - \`orkestrai notify "<mensagem>"\` — notificacao NATIVA no desktop do usuario (use ao concluir ou ao precisar de atencao).
 - \`orkestrai port\` — devolve uma porta LIVRE para subir servidores; \`orkestrai port --check <porta>\` testa se uma porta esta livre.
+- \`orkestrai fs read <path>\` / \`fs write <path> <conteudo>\` / \`fs search <termo> [--content]\` — arquivos do workspace via ponte.
+- \`orkestrai run <taskId>\` — re-despacha a tarefa para o responsavel (re-tentar/re-briefar).
+- \`orkestrai say "<texto>"\` — fala em voz alta no desktop do usuario (pt-BR).
+- \`orkestrai notes\` / \`orkestrai portals\` — listagens rapidas das suas notas/portais.
+- \`orkestrai clip\` — le a area de transferencia local.
 
 ## Portas e processos (varios workspaces rodam AO MESMO TEMPO nesta maquina)
 

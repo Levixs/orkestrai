@@ -4,6 +4,7 @@ import { roleService } from '$lib/modules/agent-room/application/services/RoleSe
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import { floorService } from '$lib/modules/agent-room/application/services/FloorService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
+import { filesystemService } from '$lib/modules/agent-room/application/services/FilesystemService.js';
 import { bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { portalService } from '$lib/modules/agent-room/application/services/PortalService.js';
@@ -338,6 +339,64 @@ export class BridgeController extends Controller {
       return this.json({ data: await taskBoardService.history(workspace.id) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao consultar o historico.', 401);
+    }
+  }
+
+  // -- FS via bridge (orkestrai fs) --------------------------------------------
+
+  async fsRead(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const path = String(event.url.searchParams.get('path') ?? '');
+      if (!path) throw new Error('Informe ?path=');
+      return this.json({ data: await filesystemService.read(workspace.id, path) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao ler arquivo.');
+    }
+  }
+
+  async fsWrite(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const body = await event.request.json();
+      return this.json({ data: await filesystemService.write(workspace.id, String(body.path ?? ''), String(body.content ?? '')) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao escrever arquivo.');
+    }
+  }
+
+  async fsSearch(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const query = String(event.url.searchParams.get('q') ?? '');
+      return this.json({ data: await filesystemService.search(workspace.id, query, { byContent: event.url.searchParams.get('content') === '1' }) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha na busca.');
+    }
+  }
+
+  /** Re-despacha a tarefa para o agente atribuido (orkestrai run <taskId>). */
+  async taskDispatch(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await taskBoardService.redispatch(workspace.id, event.params.taskId) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao despachar tarefa.');
+    }
+  }
+
+  /** TTS sob demanda (orkestrai say): fala no desktop via broadcast do canvas. */
+  async say(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const body = await event.request.json();
+      const text = String(body.text ?? '').trim().slice(0, 500);
+      if (!text) throw new Error('Informe o texto.');
+      const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
+      broadcast?.({ type: 'say', workspaceId: workspace.id, text });
+      return this.json({ data: { said: true } });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao falar.');
     }
   }
 

@@ -312,6 +312,17 @@ export class TaskBoardService {
   }
 
   /**
+   * Re-despacho: injeta o prompt da tarefa de novo no terminal do agente
+   * atribuido (orkestrai run <taskId>) — util para re-tentar ou re-briefar.
+   */
+  async redispatch(workspaceId: string, taskId: string): Promise<{ dispatched: boolean }> {
+    const task = await this.requireTask(workspaceId, taskId);
+    if (!task.getAttribute('assignee_node_id')) throw new Error('Tarefa sem responsavel para despachar.');
+    await this.dispatch(workspaceId, taskId);
+    return { dispatched: true };
+  }
+
+  /**
    * Despacho automatico: injeta o prompt da tarefa no terminal do agente
    * atribuido (se a sessao estiver viva). E o gatilho do "loop continuo".
    */
