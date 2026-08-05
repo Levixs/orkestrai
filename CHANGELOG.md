@@ -17,6 +17,11 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Página **Skills & MCPs redesenhada** no mesmo shell das Configurações: cabeçalho fixo, seletor de workspace no topo, abas segmentadas, seções com icon-chips e cartões com badges (oficial/curadoria/1 clique) — fim da coluna estreita com rótulos cinza.
 - Página **"Como usar"** polida: tipografia com balanceamento de títulos, datas do changelog com números tabulares, rolagem suave por âncoras.
 
+**Onboarding interativo (tours guiados)**
+- Novo onboarding em 3 etapas: boas-vindas → criação do workspace inline → escolha do **caso de uso** para explorar.
+- **11 tours guiados** (todos os casos de uso): o painel-guia no canvas conduz passo a passo até o caso funcionar — com botão **"Fazer por mim"** que cria os artefatos de verdade (agentes, notas, quadro, tarefas, conexões, portais, fluxos, rotinas, andares, MCPs) e **auto-conclusão** quando o passo aparece no workspace.
+- Tudo em pt-BR/English/Español desde o nascimento; adicionar um caso de uso novo = um objeto no catálogo (`tours/catalog/{pt-BR,en,es}.ts`) com testes de integridade garantindo estrutura idêntica nos 3 idiomas.
+
 **Marketplace de MCPs**
 - Nova aba **MCPs** na página Skills: pesquise e instale servidores MCP como quem instala skills — curadoria dos oficiais/populares (GitHub, Gmail, Google Drive, Figma, Vercel, Postgres, Brave, DeepWiki...) mais busca no registry oficial do MCP.
 - Servidores remotos instalam com **1 clique** (só a URL); os que pedem chave/token abrem um diálogo explicando onde conseguir cada campo.

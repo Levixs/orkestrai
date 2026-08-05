@@ -298,6 +298,7 @@
         'Marketplace de MCPs na página Skills: curadoria oficial + registry, instalação com 1 clique e campos de token guiados.',
         'App em Português, English e Español: seletor de idioma nas Configurações (paraglide).',
         'Design pass: página Skills & MCPs redesenhada (abas segmentadas, cartões com badges) e docs polidas.',
+        'Onboarding interativo: 11 tours guiados por caso de uso, com "Fazer por mim" e auto-conclusão, em 3 idiomas.',
       ],
     },
     {

@@ -30,7 +30,8 @@
   import FloorPanel from '$lib/components/agent-room/canvas/FloorPanel.svelte';
   import AgentCreateDialog from '$lib/components/agent-room/canvas/AgentCreateDialog.svelte';
   import HeaderIconButton from '$lib/components/agent-room/canvas/HeaderIconButton.svelte';
-  import OnboardingDialog from '$lib/components/agent-room/canvas/OnboardingDialog.svelte';
+  import OnboardingWizard from '$lib/components/agent-room/tours/OnboardingWizard.svelte';
+  import TourGuidePanel from '$lib/components/agent-room/tours/TourGuidePanel.svelte';
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
   import FlowCanvasNode from '$lib/components/agent-room/canvas/FlowCanvasNode.svelte';
   import ToolbarButton from '$lib/components/agent-room/canvas/ToolbarButton.svelte';
@@ -643,6 +644,19 @@
     workspaces = [workspace, ...workspaces];
     showWorkspaceForm = false;
     await selectWorkspace(workspace.id);
+  }
+
+  /** Cria workspace pelo wizard de onboarding (ja seleciona e devolve). */
+  async function createWorkspaceFromWizard(input: { name: string; workingDir: string }): Promise<Workspace | null> {
+    const workspace = await api<Workspace>('/api/agent-room/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    if (!workspace) return null;
+    selectionRequestId += 1;
+    workspaces = [workspace, ...workspaces];
+    await selectWorkspace(workspace.id);
+    return workspace;
   }
 
   async function saveWorkspace(changes: {
@@ -1457,13 +1471,11 @@
       }}
       onCancel={() => (pendingAgentCreation = null)}
     />
-    <OnboardingDialog
+    <OnboardingWizard
       open={showOnboarding}
       onClose={() => (showOnboarding = false)}
-      onCreateWorkspace={() => {
-        showOnboarding = false;
-        showWorkspaceForm = true;
-      }}
+      onCreateWorkspace={createWorkspaceFromWizard}
+      activeWorkspaceId={activeWorkspace?.id ?? null}
     />
     <AlertDialog.Root open={deletingWorkspace !== null} onOpenChange={(isOpen) => !isOpen && (deletingWorkspace = null)}>
       <AlertDialog.Content>
@@ -1508,6 +1520,7 @@
     {#if unloadMessage}
       <p class="notice-banner">{unloadMessage}</p>
     {/if}
+    <TourGuidePanel />
     </SvelteFlowProvider>
   </section>
 </main>
