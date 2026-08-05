@@ -2,3 +2,4 @@ import { PresetController } from '$lib/modules/agent-room/interface/http/control
 
 const ctrl = new PresetController();
 export const DELETE = ctrl.handle('remove');
+export const PATCH = ctrl.handle('update');

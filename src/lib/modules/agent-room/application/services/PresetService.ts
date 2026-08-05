@@ -4,6 +4,8 @@ import { workspaceRepository } from '../../infrastructure/repositories/Workspace
 import { workspaceService } from './WorkspaceService.js';
 import { roleService } from './RoleService.js';
 import { routineService } from './RoutineService.js';
+import { taskBoardService } from './TaskBoardService.js';
+import { mcpService } from './McpService.js';
 
 export type PresetSummary = {
   id: string;
@@ -38,6 +40,10 @@ export type PresetData = {
   edges: Array<{ sourceIndex: number; targetIndex: number; style?: 'cord' | 'circuit' }>;
   roles: Array<{ name: string; color?: string; prompt: string }>;
   routines: Array<{ targetTitle: string; prompt: string; intervalMinutes?: number | null }>;
+  /** Tarefas-template do quadro (nascem como todo/doing ao aplicar). */
+  tasks: Array<{ title: string; assigneeTitle?: string | null; noteTitle?: string | null }>;
+  /** Servidores MCP extras (a entrada 'orkestrai' da ponte NAO entra — e automatica). */
+  mcpServers: Array<{ name: string; command: string; args: string[] }>;
 };
 
 /** Campos de runtime que NUNCA viajam num preset. */
@@ -106,6 +112,18 @@ export class PresetService {
         intervalMinutes: routine.intervalMinutes,
       });
     }
+    // Tarefas-template: titulo + responsavel/nota por TITULO (mesma regra).
+    const sourceNodes = await workspaceRepository.listNodes(workspaceId, undefined, true);
+    const titleOf = (id: string | null) => (id ? (sourceNodes.find((node) => node.id === id)?.title ?? null) : null);
+    const tasks = (await taskBoardService.list(workspaceId)).map((task) => ({
+      title: task.title,
+      assigneeTitle: task.assigneeTitle ?? titleOf(task.assigneeNodeId),
+      noteTitle: task.noteTitle ?? titleOf(task.noteId),
+    }));
+    // MCPs extras (sem a entrada 'orkestrai' — provisionada sozinha).
+    const mcpServers = (await mcpService.list(workspaceId).catch(() => []))
+      .filter((server) => !server.builtin)
+      .map(({ name, command, args }) => ({ name, command, args }));
     const data: PresetData = {
       format: 'orkestrai-preset',
       version: 1,
@@ -115,6 +133,8 @@ export class PresetService {
       edges: exported.edges,
       roles: await roleService.list(workspaceId),
       routines,
+      tasks,
+      mcpServers,
     };
     const now = new Date().toISOString();
     const id = uuidv7();
@@ -217,7 +237,43 @@ export class PresetService {
       routinesApplied += 1;
     }
 
-    return { workspaceId, nodes: nodeIds.length, edges: preset.edges.length, roles: rolesApplied, routines: routinesApplied };
+    // Tarefas-template: responsavel e nota por TITULO (mesma regra das rotinas).
+    const nodeIdByTitle = new Map(preset.nodes.map((node, index) => [node.title ?? '', nodeIds[index]]));
+    let tasksApplied = 0;
+    for (const task of preset.tasks ?? []) {
+      await taskBoardService.create(workspaceId, {
+        title: task.title,
+        assigneeNodeId: task.assigneeTitle ? (nodeIdByTitle.get(task.assigneeTitle) ?? null) : null,
+        noteId: task.noteTitle ? (nodeIdByTitle.get(task.noteTitle) ?? null) : null,
+        createdBy: 'preset',
+      });
+      tasksApplied += 1;
+    }
+
+    // MCPs extras do preset (merge no .mcp.json do destino).
+    let mcpsApplied = 0;
+    for (const server of preset.mcpServers ?? []) {
+      await mcpService.add(workspaceId, server).catch(() => {});
+      mcpsApplied += 1;
+    }
+
+    return { workspaceId, nodes: nodeIds.length, edges: preset.edges.length, roles: rolesApplied, routines: routinesApplied, tasks: tasksApplied, mcps: mcpsApplied };
+  }
+
+  /** Edita metadados do preset (nome/icone/descricao — o conteudo e por snapshot). */
+  async updateMeta(id: string, input: { name?: string; icon?: string | null; description?: string | null }): Promise<PresetSummary> {
+    const model = await AgentPreset.find(id);
+    if (!model) throw new Error('Preset nao encontrado.');
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (input.name !== undefined) {
+      const name = input.name.trim();
+      if (!name) throw new Error('Informe o nome do preset.');
+      patch.name = name;
+    }
+    if (input.icon !== undefined) patch.icon = input.icon;
+    if (input.description !== undefined) patch.description = input.description;
+    await AgentPreset.query().where('id', id).update(patch);
+    return mapSummary((await AgentPreset.find(id))!);
   }
 }
 

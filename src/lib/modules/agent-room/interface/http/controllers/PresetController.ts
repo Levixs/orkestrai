@@ -35,6 +35,20 @@ export class PresetController extends Controller {
     return this.json({ data: { deleted: true } });
   }
 
+  /** Edita metadados (nome/icone/descricao). */
+  async update(event: any) {
+    try {
+      const input = z.object({
+        name: z.string().trim().optional(),
+        icon: z.string().trim().nullish(),
+        description: z.string().trim().nullish(),
+      }).parse(await event.request.json());
+      return this.json({ data: await presetService.updateMeta(event.params.id, input) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao atualizar preset.');
+    }
+  }
+
   /** Aplica: { workspaceId } (merge) ou { name, workingDir } (novo workspace). */
   async apply(event: any) {
     try {

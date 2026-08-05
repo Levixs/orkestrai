@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ArrowLeft, Check, Keyboard, Mic, RefreshCw, SquareTerminal, Volume2 } from '@lucide/svelte';
+  import { ArrowLeft, Check, Keyboard, Layers, Mic, Pencil, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
@@ -38,6 +38,7 @@
     settings = payload.data ?? {};
     loaded = true;
     await refreshModelStatus();
+    await loadPresets();
     if (desktop?.appVersion) appVersion = await desktop.appVersion().catch(() => '');
     // Feedback da checagem manual: "ja esta na versao mais recente".
     desktop?.onUpdate?.((payload) => {
@@ -67,7 +68,45 @@
   let confirmDeleteModels = $state(false);
   let deletingModels = $state(false);
 
-  // -- Atualizacoes do app (desktop) -------------------------------------------
+  // -- Presets de equipe -------------------------------------------------------
+  type Preset = { id: string; name: string; icon: string | null; description: string | null; agents: number };
+  let presets = $state<Preset[]>([]);
+  let editingPresetId = $state<string | null>(null);
+  let presetDraft = $state('');
+  let deletingPreset = $state<Preset | null>(null);
+
+  async function loadPresets() {
+    try {
+      const response = await fetch('/api/agent-room/presets');
+      presets = (await response.json()).data ?? [];
+    } catch {
+      presets = [];
+    }
+  }
+
+  function startPresetRename(preset: Preset) {
+    editingPresetId = preset.id;
+    presetDraft = preset.name;
+  }
+
+  async function renamePreset(preset: Preset) {
+    const name = presetDraft.trim();
+    editingPresetId = null;
+    if (!name || name === preset.name) return;
+    await fetch(`/api/agent-room/presets/${preset.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    await loadPresets();
+  }
+
+  async function deletePreset() {
+    if (!deletingPreset) return;
+    await fetch(`/api/agent-room/presets/${deletingPreset.id}`, { method: 'DELETE' });
+    deletingPreset = null;
+    await loadPresets();
+  }
   type DesktopBridge = {
     appVersion?: () => Promise<string>;
     checkForUpdates?: () => Promise<{ status: string; message?: string }>;
@@ -429,6 +468,63 @@
 
   <section class="settings-section">
     <header class="section-head">
+      <span class="icon-chip"><Layers size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>Presets de equipe</h2>
+        <p>Templates salvos dos seus workspaces — aparecem ao criar um workspace novo.</p>
+      </div>
+    </header>
+    {#if presets.length === 0}
+      <p class="field-hint">Nenhum preset ainda. Monte um time no canvas e use "Salvar como preset" no editor do workspace.</p>
+    {:else}
+      <ul class="preset-list">
+        {#each presets as preset (preset.id)}
+          <li class="preset-row">
+            <span class="preset-icon">{preset.icon ?? '📦'}</span>
+            {#if editingPresetId === preset.id}
+              <input
+                class="preset-rename"
+                bind:value={presetDraft}
+                aria-label="Renomear preset"
+                onkeydown={(event) => {
+                  if (event.key === 'Enter') renamePreset(preset);
+                  if (event.key === 'Escape') editingPresetId = null;
+                }}
+                onblur={() => renamePreset(preset)}
+              />
+            {:else}
+              <span class="preset-name">{preset.name}</span>
+            {/if}
+            <span class="preset-meta">{preset.agents} agentes{preset.description ? ` · ${preset.description}` : ''}</span>
+            <button class="preset-action" aria-label={`Renomear ${preset.name}`} onclick={() => startPresetRename(preset)}>
+              <Pencil size={12} />
+            </button>
+            <button class="preset-action danger" aria-label={`Apagar ${preset.name}`} onclick={() => (deletingPreset = preset)}>
+              <Trash2 size={12} />
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+
+  <AlertDialog.Root open={deletingPreset !== null} onOpenChange={(isOpen) => !isOpen && (deletingPreset = null)}>
+    <AlertDialog.Content>
+      <AlertDialog.Header>
+        <AlertDialog.Title>Apagar preset</AlertDialog.Title>
+        <AlertDialog.Description>
+          Apagar o preset "{deletingPreset?.name}"? Workspaces ja criados com ele nao mudam nada.
+        </AlertDialog.Description>
+      </AlertDialog.Header>
+      <AlertDialog.Footer>
+        <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+        <AlertDialog.Action onclick={deletePreset}>Apagar</AlertDialog.Action>
+      </AlertDialog.Footer>
+    </AlertDialog.Content>
+  </AlertDialog.Root>
+
+  <section class="settings-section">
+    <header class="section-head">
       <span class="icon-chip"><RefreshCw size={15} aria-hidden="true" /></span>
       <div class="section-titles">
         <h2>Atualizacoes</h2>
@@ -565,6 +661,74 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+
+  /* ---- Presets ------------------------------------------------------------ */
+  .preset-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .preset-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(13, 11, 46, 0.55);
+  }
+
+  .preset-icon {
+    flex-shrink: 0;
+  }
+
+  .preset-name {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #e6e6eb;
+  }
+
+  .preset-meta {
+    flex: 1;
+    font-size: 11px;
+    color: #6d6d78;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .preset-rename {
+    font-size: 12.5px;
+    background: #262155;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #e6e6eb;
+    padding: 3px 8px;
+    outline: none;
+  }
+
+  .preset-action {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #8b8c96;
+    cursor: pointer;
+  }
+
+  .preset-action:hover {
+    color: #e6e6eb;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .preset-action.danger:hover {
+    color: #ff9c9f;
   }
 
   /* ---- Campos em grade responsiva --------------------------------------- */
