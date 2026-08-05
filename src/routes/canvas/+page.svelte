@@ -32,6 +32,7 @@
   import HeaderIconButton from '$lib/components/agent-room/canvas/HeaderIconButton.svelte';
   import OnboardingDialog from '$lib/components/agent-room/canvas/OnboardingDialog.svelte';
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
+  import FlowCanvasNode from '$lib/components/agent-room/canvas/FlowCanvasNode.svelte';
   import RoutinePanel from '$lib/components/agent-room/canvas/RoutinePanel.svelte';
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
@@ -39,7 +40,7 @@
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
   import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -62,6 +63,7 @@
     group: GroupCanvasNode,
     shape: ShapeCanvasNode,
     tasks: TasksCanvasNode,
+    flow: FlowCanvasNode,
   };
 
   // Icones de marca dos providers (SVG em static/images); opencode cai no
@@ -164,7 +166,7 @@
   }
 
   // Modo "desenhar no": clique na ferramenta e arraste o retangulo no canvas.
-  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'loop' | 'shape' | 'tasks';
+  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'loop' | 'shape' | 'tasks' | 'flow';
   let drawTool = $state<DrawTool | null>(null);
   let drawStart = $state<{ x: number; y: number } | null>(null);
   let drawCurrent = $state<{ x: number; y: number } | null>(null);
@@ -185,6 +187,7 @@
     loop: async (rect) => { await addLoop(rect); },
     shape: async (rect) => { await addShape(rect); },
     tasks: async (rect) => { await addTasksNode(rect); },
+    flow: async (rect) => { await addFlowNode(rect); },
   };
 
   function toggleDrawTool(tool: DrawTool, provider?: AgentProviderInfo) {
@@ -791,6 +794,16 @@
     nodes = [...nodes, toFlowNode(node)];
   }
 
+  async function addFlowNode(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({ type: 'flow', title: 'Fluxo', ...position, width: rect?.width ? rect.width : 480, height: rect?.height ? rect.height : 420, payload: { steps: [], iterations: 1 }, floorId: visibleFloorId }),
+    });
+    nodes = [...nodes, toFlowNode(node)];
+  }
+
   async function addDiff(rect?: { x: number; y: number; width: number; height: number }) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1377,6 +1390,9 @@
             </button>
             <button class:active={drawTool === 'tasks'} onclick={() => toggleDrawTool('tasks')}>
               <SquareKanban size={15} class="tool-icon-svg" /> Tarefas
+            </button>
+            <button class:active={drawTool === 'flow'} onclick={() => toggleDrawTool('flow')}>
+              <Workflow size={15} class="tool-icon-svg" /> Fluxo
             </button>
             <button class:active={drawTool === 'shape'} onclick={() => toggleDrawTool('shape')}>
               <Shapes size={15} class="tool-icon-svg" /> Forma

@@ -28,6 +28,13 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - "Salvar como preset" no editor do workspace guarda o time inteiro: agentes (provider/líder/roles), layout, notas com conteúdo e rotinas — sem nada de runtime.
 - Ao criar um workspace novo, "Começar de um preset" instancia tudo no projeto; aplicar num workspace existente soma o time sem apagar nada.
 
+**Ecossistema: MCP, tools CLI, presets completos e fluxos**
+- **Orkestrai como servidor MCP** (`orkestrai mcp`): as ações do canvas viram tools nativas tipadas para agentes que falam MCP; o `.mcp.json` é provisionado por workspace (merge, sem clobberar o seu).
+- **Gerenciador de MCPs** no editor do workspace (adicionar/remover servidores).
+- **Tools CLI novas**: `fs read/write/search`, `say` (TTS), `run` (re-despacho), `notes`, `portals`, `clip`.
+- **Presets completos**: levam tarefas-template e servidores MCP; gerenciamento (renomear/apagar) nas Configurações.
+- **Fluxos no canvas**: nó Fluxo com passos em sequência (agente/aprovação), `{{input}}` encadeado, repetição com limite, aprovação humana, progresso ao vivo e histórico de execuções.
+
 **Voz: resposta completa e limpa (transcrito da CLI)**- A fala de resposta agora lê o **transcrito oficial da sessão** (o JSONL que Claude/Codex/Kimi gravam em disco) em vez de raspar a tela do terminal: vem a **resposta completa** do agente, sem caracteres invisíveis, molduras ou logs de ferramentas.
 - Se a sessão ainda não tem id rastreado, cai no método anterior como fallback.
 

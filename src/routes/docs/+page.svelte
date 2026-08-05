@@ -68,6 +68,12 @@
       body: `Um preset é um template de workspace: time (agentes com provider/líder/roles), layout do canvas, notas com conteúdo e rotinas. Salve o workspace atual como preset no lápis de editar (barra lateral) → "Salvar como preset". Ao criar um workspace novo, escolha o preset em "Começar de um preset" — o time inteiro nasce instanciado no seu projeto, sem nada de runtime (sessões ficam de fora). Aplicar num workspace existente SOMA o time ao canvas sem apagar nada. Caso típico: seu framework padrão — monte uma vez, salve, e todo projeto novo já começa com o time pronto.`,
     },
     {
+      id: 'fluxos',
+      icon: Workflow,
+      title: 'Fluxos (pipelines de agentes)',
+      body: `O nó Fluxo (+ Fluxo na barra inferior) é um pipeline visual: passos em sequência, onde a saída de um agente vira a entrada do próximo via {{input}} no prompt. Passo "Agente" conversa com o agente escolhido (a aresta acende durante); passo "Aprovação" pausa até você clicar em Aprovar — humano no loop. Repetição com limite (até 5 rodadas). O progresso aparece ao vivo no nó e o histórico das últimas 5 execuções fica guardado nele. Use para revisões encadeadas (escreve → revisa → aprova), processamento em etapas ou qualquer rotina multi-passo do time.`,
+    },
+    {
       id: 'conexoes',
       icon: Link2,
       title: 'Conexões',
@@ -182,6 +188,8 @@
         'Tarefa com nota de spec vinculada: arquiva junto, protegida contra exclusão, lida pelo histórico.',
         'Voz lê o transcrito da sessão: resposta completa do agente, sem caracteres invisíveis.',
         'Presets de equipe: salve o workspace como template e comece projetos com o time pronto.',
+        'Fluxos: pipelines visuais de agentes com aprovação humana e histórico de execuções.',
+        'Servidor MCP próprio + tools CLI novas (fs, say, run, clip) + gerenciador de MCPs.',
       ],
     },
     {
