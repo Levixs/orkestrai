@@ -251,7 +251,7 @@
       {#if installed.length}
         <ul class="item-list">
           {#each installed as skill (skill.skillId)}
-            <li class="item-row">
+            <li class="item-row installed-row">
               <span class="item-icon"><Blocks size={14} aria-hidden="true" /></span>
               <div class="item-info">
                 <span class="item-name">{skill.name}</span>
@@ -301,7 +301,7 @@
       {:else if results.length}
         <ul class="item-list">
           {#each results as skill (skill.id)}
-            <li class="item-row">
+            <li class="item-row result-row">
               <div class="item-info">
                 <div class="item-title">
                   <span class="item-name">{skill.name}</span>
@@ -334,7 +334,7 @@
       {#if installedMcps.length}
         <ul class="item-list">
           {#each installedMcps as server (server.name)}
-            <li class="item-row">
+            <li class="item-row installed-row">
               <span class="item-icon"><Plug size={14} aria-hidden="true" /></span>
               <div class="item-info">
                 <span class="item-name">{server.name}{#if server.builtin} <span class="builtin-tag">da ponte</span>{/if}</span>
@@ -386,7 +386,7 @@
       {:else if mcpResults.length}
         <ul class="item-list">
           {#each mcpResults as entry (entry.key + entry.title)}
-            <li class="item-row">
+            <li class="item-row result-row">
               <div class="item-info">
                 <div class="item-title">
                   <span class="item-name">{entry.title}</span>
