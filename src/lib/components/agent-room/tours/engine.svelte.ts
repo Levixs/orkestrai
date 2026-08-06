@@ -29,6 +29,8 @@ export const tourState = $state({
   done: false,
   /** Ids dos passos auto-concluidos pelos checks. */
   autoCompleted: new Set<string>(),
+  /** Passo cuja acao ja rodou (botao desabilita ate o passo virar — anti-duplicata). */
+  actionDoneFor: null as string | null,
 });
 
 const POLL_MS = 3_000;
@@ -108,6 +110,7 @@ export async function startTour(id: string, workspace: string): Promise<void> {
   tourState.stepIndex = 0;
   tourState.done = false;
   tourState.error = '';
+  tourState.actionDoneFor = null;
   tourState.autoCompleted = new Set();
   await evaluateChecks();
   startPolling();
@@ -128,6 +131,7 @@ export function tourNext(): void {
     tourState.done = true;
     stopPolling();
   }
+  tourState.actionDoneFor = null;
   tourState.error = '';
 }
 
@@ -254,6 +258,7 @@ async function runAction(action: TourAction): Promise<void> {
 
 /** Executa a(s) acao(oes) reais do passo ("Fazer por mim") — em sequencia. */
 export async function tourRunAction(action: TourAction | TourAction[]): Promise<void> {
+  if (tourState.busy) return; // clique duplo enquanto executa: ignora
   tourState.busy = true;
   tourState.error = '';
   try {
@@ -261,16 +266,16 @@ export async function tourRunAction(action: TourAction | TourAction[]): Promise<
       await runAction(single);
     }
     await evaluateChecks();
-    // Ultimo passo com acao e SEM check: a acao bem sucedida conclui o tour.
-    if (
-      !tourState.error &&
-      tourState.tour &&
-      tourState.stepIndex === tourState.tour.steps.length - 1 &&
-      !tourState.tour.steps[tourState.stepIndex].check
-    ) {
-      tourState.autoCompleted.add(tourState.tour.steps[tourState.stepIndex].id);
-      tourState.done = true;
-      stopPolling();
+    const current = tourState.tour?.steps[tourState.stepIndex];
+    if (!tourState.error && current) {
+      // Marca o passo como feito: o botao desabilita ate o passo virar (sem
+      // isso, clicar de novo antes do poll duplicava o agente/no criado).
+      tourState.actionDoneFor = current.id;
+      // Passo com acao SEM check nao tem o que esperar: avanca (ou conclui).
+      if (!current.check) {
+        tourState.autoCompleted.add(current.id);
+        tourNext();
+      }
     }
   } catch (error) {
     tourState.error = error instanceof Error ? error.message : 'Falha na acao.';

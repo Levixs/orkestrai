@@ -48,6 +48,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Respostas do `ask` agora vêm do transcrito limpo da CLI** (JSONL em disco, já usado pela voz) em vez da raspagem de tela — a captura crua vazava barra de status, histórico e caracteres duplicados de redraw para o composer do outro agente (foi o que abriu o editor externo do VS Code com texto corrompido).
 - **Sanitização de composer em toda injeção** (`writeWithSubmit`, ask, resposta, roles, tarefas, rotinas): sem bytes de controle (atalhos de TUI) e sem `\n` solto (submit parcial). `sanitizeComposerText` com testes.
 - **Servidor MCP com framing correto**: falava Content-Length (LSP) e os clientes oficiais (Kimi: "timeout after 30000ms") nunca recebiam resposta. Agora é NDJSON por linha (spec stdio do MCP), tolerando o framing legado na entrada. Testes reescritos em NDJSON + tolerância LSP.
+- **Fix sério nos tours**: passo com ação mas sem check nunca avançava — o painel só oferecia "Fazer por mim" de novo e cada clique criava outro agente (um workspace de teste chegou a 40 sessões PTY duplicadas). Agora o passo avança sozinho após a ação, com guarda anti-clique-duplo. **Auditoria e2e roda os 13 tours inteiros** a cada build — sem surpresa em onboarding.
 
 ## 2026-08-04
 

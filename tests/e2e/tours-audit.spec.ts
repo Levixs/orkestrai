@@ -13,7 +13,7 @@ import { TOURS_PT } from '../../src/lib/components/agent-room/tours/catalog/pt-B
  */
 for (const tour of TOURS_PT) {
   test(`tour ${tour.id} completa sem travar`, async ({ page, request }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(300_000);
 
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-tour-'));
     execSync('git init -q && git config user.email tour@test.dev && git config user.name tour && touch README.md && git add -A && git commit -qm init', { cwd: dir });
@@ -36,17 +36,27 @@ for (const tour of TOURS_PT) {
       const panel = page.locator('.tour-panel');
       await expect(panel).toBeVisible({ timeout: 10_000 });
 
-      for (let guard = 0; guard < 40; guard += 1) {
+      for (let guard = 0; guard < 30; guard += 1) {
         if (await panel.getByText('Tour concluído!').isVisible().catch(() => false)) break;
         const errorText = await panel.locator('.tour-error').textContent({ timeout: 300 }).catch(() => null);
         expect(errorText, `erro na acao do passo: ${errorText}`).toBeFalsy();
+        const titleBefore = (await panel.locator('.tour-title').textContent().catch(() => null)) ?? '';
         const doForMe = panel.getByRole('button', { name: /Fazer por mim/ });
         const doneStep = panel.getByRole('button', { name: /Concluir passo/ });
         const next = panel.getByRole('button', { name: /Próximo passo/ });
         if (await doForMe.count()) await doForMe.click();
         else if (await doneStep.count()) await doneStep.click();
         else if (await next.count()) await next.click();
-        await page.waitForTimeout(900);
+        // Espera o passo AVANCAR (titulo muda) ou o tour concluir — passos com
+        // check avancam no poll de 3s; CLIs reais spawnando deixam tudo lento.
+        await expect
+          .poll(
+            async () =>
+              (await panel.getByText('Tour concluído!').isVisible().catch(() => false)) ||
+              ((await panel.locator('.tour-title').textContent().catch(() => null)) ?? '') !== titleBefore,
+            { timeout: 45_000, intervals: [500, 1000, 2000] }
+          )
+          .toBe(true);
       }
       await expect(panel.getByText('Tour concluído!')).toBeVisible({ timeout: 15_000 });
     } finally {

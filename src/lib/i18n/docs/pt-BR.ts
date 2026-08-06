@@ -208,6 +208,7 @@ export const DOCS_PT: DocsCatalog = {
         'Fix sério: respostas entre agentes vêm do transcrito limpo da CLI (sem lixo de TUI, barra de status ou caracteres duplicados) — fim do composer abrindo editor externo com texto corrompido.',
         'Fix: servidor MCP do Orkestrai falava framing errado (LSP) e o Kimi dava timeout de 30s — agora é NDJSON, o padrão oficial do MCP (Claude, Kimi e cia conectam).',
         'Toda injeção de texto em composer é sanitizada: sem bytes de controle e sem Enter solto (submit parcial) em nenhum provider.',
+        'Fix sério nos tours: passo com ação sem check nunca avançava (e cada clique criava outro agente) — agora avança sozinho, com guarda anti-duplicata. Auditoria e2e roda os 13 tours inteiros a cada build.',
       ],
     },
     {
