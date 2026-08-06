@@ -196,6 +196,7 @@ export const DOCS_EN: DocsCatalog = {
         'Safe port stopping with confirmation, PID revalidation and Orkestrai process protection; arbitrary machine ports are never listed.',
         'New dictation orb at the top right: triggers the leader\'s exact microphone flow and writes the transcript straight into that terminal, even on another floor; without a leader, it shows a clear toast.',
         'Fixed Claude resume tracking: subagent transcripts and startup files without a resumable message no longer replace the leader conversation\'s valid ID.',
+        'After deleting local voice models, both the terminal microphone and leader orb ask for confirmation before downloading again; the UI also reports deletion failures.',
         'Interface, documentation, use cases and two new tours translated into pt-BR, English and Español (15 onboarding tours).',
       ],
     },

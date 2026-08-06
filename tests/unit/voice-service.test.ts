@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { VoiceService } from '$lib/modules/agent-room/application/services/VoiceService.js';
+import {
+  VoiceService,
+  VOICE_MODELS_MISSING_ERROR,
+} from '$lib/modules/agent-room/application/services/VoiceService.js';
 
 function fakeFetch(routes: Record<string, { status?: number; body?: unknown; text?: string }>) {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
@@ -77,6 +80,15 @@ describe('VoiceService', () => {
     const health = await service.health();
     expect(health.ok).toBe(true);
     expect(health.url).toBe('embedded');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('backend embedded recusa STT e TTS quando os modelos foram apagados', async () => {
+    const { fn, calls } = fakeFetch({});
+    const service = new VoiceService(fn, embeddedSettings, () => false);
+
+    await expect(service.transcribe(Buffer.from('audio'), 'ditado.wav')).rejects.toThrow(VOICE_MODELS_MISSING_ERROR);
+    await expect(service.speak('bom dia')).rejects.toThrow(VOICE_MODELS_MISSING_ERROR);
     expect(calls).toHaveLength(0);
   });
 });

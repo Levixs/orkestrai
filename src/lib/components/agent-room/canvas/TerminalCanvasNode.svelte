@@ -7,7 +7,8 @@
   import IconAction from './IconAction.svelte';
   import TerminalNode from '../TerminalNode.svelte';
   import VoiceConfirmDialog from '../VoiceConfirmDialog.svelte';
-  import { appSettingsStore } from '../app-settings.svelte.js';
+  import { getAppSettings } from '../app-settings.svelte.js';
+  import { voiceModelsReadyForUse } from '../voice-model-status.js';
   import { speakText } from '../voice-speech.js';
   import type { TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
@@ -189,18 +190,27 @@
   let voiceOn = $state(false);
   let voiceError = $state('');
   let voiceConfirmOpen = $state(false);
+  let checkingVoiceModels = false;
 
-  function toggleVoice() {
+  async function toggleVoice() {
     if (voiceOn) {
       voiceOn = false;
       return;
     }
-    // 1o uso: confirma o download dos modelos (~2 GB) antes de ligar.
-    if (appSettingsStore.values.voiceModelsConfirmed !== 'true') {
-      voiceConfirmOpen = true;
-      return;
+    if (checkingVoiceModels) return;
+    checkingVoiceModels = true;
+    try {
+      if (!(await voiceModelsReadyForUse(await getAppSettings(true)))) {
+        voiceConfirmOpen = true;
+        return;
+      }
+      voiceOn = true;
+    } catch {
+      voiceError = m['voice.model_status_error']();
+      setTimeout(() => (voiceError = ''), 6_000);
+    } finally {
+      checkingVoiceModels = false;
     }
-    voiceOn = true;
   }
 
   function handleAgentReply(payload: { to: string; from: string | null; text: string }) {

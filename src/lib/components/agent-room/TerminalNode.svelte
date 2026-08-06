@@ -15,6 +15,7 @@
   import { blobToWav16k } from './audio-pcm.js';
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
+  import { voiceModelsReadyForUse } from './voice-model-status.js';
   import {
     LEADER_DICTATION_COMMAND,
     LEADER_DICTATION_STATE,
@@ -79,6 +80,7 @@
   let dictateError = $state('');
   let dictateStatus = $state('');
   let voiceConfirmOpen = $state(false);
+  let checkingVoiceModels = false;
   /** Atalho REATIVO da store global (mudanca em Configuracoes aplica na hora). */
   const dictateHotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
   let mediaRecorder: MediaRecorder | null = null;
@@ -175,10 +177,22 @@
       return;
     }
     if (transcribing) return;
-    // 1o uso: confirma o download dos modelos (~2 GB) ANTES de gravar.
-    if (appSettingsStore.values.voiceModelsConfirmed !== 'true') {
-      voiceConfirmOpen = true;
+    if (checkingVoiceModels) return;
+    checkingVoiceModels = true;
+    try {
+      // A presenca real dos modelos prevalece sobre a confirmacao persistida:
+      // eles podem ter sido apagados nas Configuracoes ou fora do app.
+      if (!(await voiceModelsReadyForUse(await getAppSettings(true)))) {
+        voiceConfirmOpen = true;
+        reportDictationState('idle');
+        return;
+      }
+    } catch {
+      dictateError = m['voice.model_status_error']();
+      reportDictationState('idle');
       return;
+    } finally {
+      checkingVoiceModels = false;
     }
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });

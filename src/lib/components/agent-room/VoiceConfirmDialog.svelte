@@ -1,7 +1,8 @@
 <script lang="ts">
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import { Progress } from '$lib/components/ui/progress';
-  import { invalidateAppSettings } from './app-settings.svelte.js';
+  import { getCsrfToken } from '@beeblock/svelar/http';
+  import { getAppSettings, invalidateAppSettings } from './app-settings.svelte.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type Props = {
@@ -43,23 +44,43 @@
     poller = null;
   }
 
+  function csrfHeaders(extra: Record<string, string> = {}): HeadersInit {
+    const token = getCsrfToken();
+    return token ? { ...extra, 'X-CSRF-Token': token } : extra;
+  }
+
+  async function markModelsConfirmed() {
+    try {
+      const response = await fetch('/api/agent-room/settings', {
+        method: 'PUT',
+        headers: csrfHeaders({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ voiceModelsConfirmed: 'true' }),
+      });
+      if (!response.ok) return;
+      invalidateAppSettings();
+      await getAppSettings(true);
+    } catch {
+      // O status real dos arquivos continua permitindo o uso nesta sessao.
+    }
+  }
+
   async function confirm() {
     phase = 'downloading';
     percent = 0;
     errorMessage = '';
+    // A confirmacao so e persistida quando os arquivos estiverem prontos.
+    // Assim uma falha/cancelamento nunca deixa uma flag true sem modelos.
     try {
-      // Persiste a confirmacao: o aviso aparece UMA vez por instalacao.
-      await fetch('/api/agent-room/settings', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ voiceModelsConfirmed: 'true' }),
+      const response = await fetch('/api/agent-room/voice/models', {
+        method: 'POST',
+        headers: csrfHeaders(),
       });
-      invalidateAppSettings();
+      if (!response.ok) throw new Error('download_start_failed');
     } catch {
-      // segue mesmo sem persistir
+      phase = 'error';
+      errorMessage = m['voice.download_start_error']();
+      return;
     }
-    // Dispara o download AGORA e acompanha o progresso.
-    await fetch('/api/agent-room/voice/models', { method: 'POST' }).catch(() => {});
     stopPolling();
     poller = setInterval(async () => {
       try {
@@ -75,6 +96,7 @@
         }
         if (status.ready) {
           stopPolling();
+          await markModelsConfirmed();
           open = false;
           onConfirm();
         }

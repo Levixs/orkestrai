@@ -7,6 +7,8 @@
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import { Skeleton } from '$lib/components/ui/skeleton';
+  import { getCsrfToken } from '@beeblock/svelar/http';
+  import { toast } from '@beeblock/svelar/ui';
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
   import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
@@ -54,7 +56,7 @@
   async function save() {
     await fetch('/api/agent-room/settings', {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: csrfHeaders({ 'content-type': 'application/json' }),
       body: JSON.stringify(settings),
     });
     // Invalida a store reativa: terminais aplicam o novo atalho na hora.
@@ -70,6 +72,11 @@
   let modelBytes = $state<number | null>(null);
   let confirmDeleteModels = $state(false);
   let deletingModels = $state(false);
+
+  function csrfHeaders(extra: Record<string, string> = {}): HeadersInit {
+    const token = getCsrfToken();
+    return token ? { ...extra, 'X-CSRF-Token': token } : extra;
+  }
 
   // -- Presets de equipe -------------------------------------------------------
   type Preset = { id: string; name: string; icon: string | null; description: string | null; agents: number };
@@ -160,11 +167,19 @@
   async function deleteModels() {
     deletingModels = true;
     try {
-      await fetch('/api/agent-room/voice/models', { method: 'DELETE' });
+      const response = await fetch('/api/agent-room/voice/models', {
+        method: 'DELETE',
+        headers: csrfHeaders(),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.error || payload.data?.deleted !== true) throw new Error('delete_models_failed');
       invalidateAppSettings();
-      await getAppSettings(true);
-      modelBytes = 0;
+      settings = { ...settings, ...(await getAppSettings(true)) };
+      await refreshModelStatus();
       voiceHealth = null;
+      toast.success(m['settings.model_deleted']());
+    } catch {
+      toast.error(m['settings.delete_model_failed']());
     } finally {
       deletingModels = false;
       confirmDeleteModels = false;

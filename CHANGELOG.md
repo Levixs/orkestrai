@@ -16,6 +16,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 
 **Correções**
 - A retomada de terminais Claude agora ignora transcripts `agent-*` de subagentes e arquivos de startup vazios ou contendo apenas snapshots. Um novo ID só substitui o anterior depois da primeira entrada conversacional retomável, impedindo a perda da referência válida do líder.
+- Depois de apagar os modelos locais de voz nas Configurações, tanto o microfone do terminal quanto o atalho global do líder voltam a pedir confirmação antes do download. O estado real dos arquivos agora prevalece sobre a confirmação antiga, e falhas de exclusão deixam de ser ocultadas pela interface.
 
 **Documentação e cobertura**
 - Dois casos de uso e dois tours guiados novos (15 tours no total) documentam gerenciamento de portas e ditado para o líder nos três idiomas.

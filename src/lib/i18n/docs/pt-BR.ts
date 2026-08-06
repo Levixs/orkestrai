@@ -200,6 +200,7 @@ export const DOCS_PT: DocsCatalog = {
         'Encerramento seguro de porta com confirmação, revalidação do PID e proteção do processo do Orkestrai; portas arbitrárias da máquina nunca aparecem.',
         'Nova bolinha de ditado no topo direito: aciona exatamente o microfone do líder e escreve a transcrição direto no terminal dele, mesmo em outro andar; sem líder, mostra um toast claro.',
         'Correção na retomada do Claude: transcripts de subagentes e arquivos de startup sem uma mensagem retomável não substituem mais o ID válido da conversa do líder.',
+        'Após apagar os modelos locais de voz, o microfone do terminal e a bolinha do líder voltam a pedir confirmação antes do download; a interface também informa se a exclusão falhar.',
         'Interface, documentação, casos de uso e dois tours novos traduzidos em pt-BR, English e Español (15 tours no onboarding).',
       ],
     },

@@ -10,6 +10,7 @@ const STT_TIMEOUT_MS = 600_000;
 const TTS_TIMEOUT_MS = 300_000;
 
 export type VoiceHealth = { ok: boolean; url: string; detail?: string };
+export const VOICE_MODELS_MISSING_ERROR = 'Os modelos locais de voz nao estao instalados. Confirme o download no app antes de usar voz.';
 
 /** WAV PCM16 mono -> Float32Array (+resample linear se nao for 16 kHz). */
 /**
@@ -20,7 +21,8 @@ export type VoiceHealth = { ok: boolean; url: string; detail?: string };
 export class VoiceService {
   constructor(
     private readonly fetchFn: typeof fetch = fetch,
-    private readonly settings: { get(key: string): Promise<string> } = settingsService
+    private readonly settings: { get(key: string): Promise<string> } = settingsService,
+    private readonly embeddedReady: () => boolean = embeddedModelsReady
   ) {}
 
   private async baseUrl(): Promise<string> {
@@ -42,7 +44,7 @@ export class VoiceService {
       return {
         ok: true,
         url: 'embedded',
-        detail: embeddedModelsReady() ? 'motor local ativo' : 'motor local — baixa ~790 MB na 1a vez',
+        detail: this.embeddedReady() ? 'motor local ativo' : 'motor local — baixa ~790 MB na 1a vez',
       };
     }
     const url = await this.baseUrl();
@@ -60,6 +62,7 @@ export class VoiceService {
   async transcribe(audio: Buffer, filename: string, language?: string | null): Promise<string> {
     const backend = await this.backend();
     if (backend === 'embedded') {
+      if (!this.embeddedReady()) throw new Error(VOICE_MODELS_MISSING_ERROR);
       const { samples } = wavToPcm16(audio);
       return transcribePcm(samples);
     }
@@ -91,6 +94,7 @@ export class VoiceService {
   async speak(text: string, voice?: string): Promise<Buffer> {
     const backend = await this.backend();
     if (backend === 'embedded') {
+      if (!this.embeddedReady()) throw new Error(VOICE_MODELS_MISSING_ERROR);
       const { samples, sampleRate } = await speakPcm(text, voice ?? (await this.ttsVoice()));
       return pcmToWav(samples, sampleRate);
     }

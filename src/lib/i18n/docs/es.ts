@@ -196,6 +196,7 @@ export const DOCS_ES: DocsCatalog = {
         'Cierre seguro de puertos con confirmación, revalidación del PID y protección del proceso de Orkestrai; los puertos arbitrarios de la máquina nunca aparecen.',
         'Nueva esfera de dictado arriba a la derecha: activa exactamente el flujo del micrófono del líder y escribe la transcripción directo en su terminal, incluso en otro piso; sin líder, muestra un toast claro.',
         'Corrección en la reanudación de Claude: los transcripts de subagentes y archivos de inicio sin un mensaje reanudable ya no reemplazan el ID válido de la conversación del líder.',
+        'Después de borrar los modelos locales de voz, el micrófono de la terminal y la esfera del líder vuelven a pedir confirmación antes de descargar; la interfaz también informa si falla el borrado.',
         'Interfaz, documentación, casos de uso y dos tours nuevos traducidos a pt-BR, English y Español (15 tours en el onboarding).',
       ],
     },
