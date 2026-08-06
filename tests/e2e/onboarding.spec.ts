@@ -81,4 +81,44 @@ test.describe('onboarding guiado', () => {
 
     await request.put('/api/agent-room/settings', { data: { uiLanguage: 'pt-BR' } });
   });
+
+  test('tour de pesquisa: 4 passos com Fazer por mim, 2 conexões e conclusão', async ({ page, request }) => {
+    const workspaceName = `E2E tour-pesquisa ${Date.now()}`;
+
+    await page.goto('/canvas');
+    await page.getByRole('button', { name: 'Novo workspace' }).click();
+    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
+    await page.getByRole('button', { name: 'Criar' }).click();
+    await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+    await expect(page.locator('.svelte-flow__pane')).toBeVisible();
+
+    await page.goto('/canvas?onboarding=1');
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await dialog.getByRole('button', { name: 'Já tenho workspace — pular' }).click();
+    await dialog.locator('.tour-card', { hasText: 'Pesquisa automatizada' }).click();
+    await dialog.getByRole('button', { name: 'Começar o tour guiado' }).click();
+
+    const panel = page.locator('.tour-panel');
+    await expect(panel).toBeVisible({ timeout: 10_000 });
+
+    // 4 passos com "Fazer por mim": nota, portal, agente, conexões
+    for (let i = 0; i < 4; i += 1) {
+      await panel.getByRole('button', { name: /Fazer por mim/ }).click();
+      await page.waitForTimeout(1_200);
+    }
+
+    // O tour CONCLUI (nao trava no ultimo passo)
+    await expect(panel.getByText('Tour concluído!')).toBeVisible({ timeout: 10_000 });
+    // Nota, portal e agente no canvas (live refresh)
+    await expect(page.locator('.svelte-flow__node')).toHaveCount(3, { timeout: 10_000 });
+    // As DUAS conexoes (pesquisador↔portal E pesquisador↔nota)
+    const list = await request.get('/api/agent-room/workspaces');
+    const workspace = ((await list.json()).data as Array<{ id: string; name: string }>).find((item) => item.name === workspaceName)!;
+    const edgesResponse = await request.get(`/api/agent-room/workspaces/${workspace.id}/edges`);
+    expect(((await edgesResponse.json()).data as unknown[]).length).toBe(2);
+
+    await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+  });
 });

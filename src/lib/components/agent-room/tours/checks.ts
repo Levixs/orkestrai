@@ -1,4 +1,10 @@
-import type { TourCheck, WorkspaceSnapshot } from './types.js';
+import type { Tour, TourCheck, WorkspaceSnapshot } from './types.js';
+
+/** O tour conclui quando o ultimo passo tem check E ele passou (auto-conclusao no poll). */
+export function isTourComplete(tour: Tour, stepIndex: number, autoCompleted: ReadonlySet<string>): boolean {
+  const last = tour.steps.at(-1);
+  return Boolean(last?.check && autoCompleted.has(last.id) && stepIndex >= tour.steps.length - 1);
+}
 
 /** Avalia um check de passo contra o snapshot do workspace (puro, sem runes). */
 export function checkPasses(check: TourCheck, snap: WorkspaceSnapshot): boolean {

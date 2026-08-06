@@ -184,8 +184,11 @@ export const TOURS_EN: Tour[] = [
         id: 'connect',
         title: 'Working connections',
         body: 'I\'ll make both connections: Researcher ↔ Research Portal and Researcher ↔ Summary. Then say: "use the portal to read about X and write the summary in the note".',
-        action: { kind: 'connect', fromTitle: 'Researcher', toTitle: 'Summary' },
-        check: { kind: 'edgeExists', fromTitle: 'Researcher', toTitle: 'Summary' },
+        action: [
+          { kind: 'connect', fromTitle: 'Researcher', toTitle: 'Research Portal' },
+          { kind: 'connect', fromTitle: 'Researcher', toTitle: 'Summary' },
+        ],
+        check: { kind: 'edgeExists', fromTitle: 'Researcher', toTitle: 'Research Portal' },
       },
     ],
   },

@@ -26,8 +26,9 @@ export type TourStep = {
   id: string;
   title: string;
   body: string;
-  /** Botao "Fazer por mim": o app executa a acao real (cria no/tarefa/portal...). */
-  action?: TourAction;
+  /** Botao "Fazer por mim": o app executa a acao real (cria no/tarefa/portal...).
+      Aceita lista — passos que criam varios artefatos de uma vez. */
+  action?: TourAction | TourAction[];
   /** Auto-conclui quando a condicao aparece no workspace. Sem check = botao manual. */
   check?: TourCheck;
 };

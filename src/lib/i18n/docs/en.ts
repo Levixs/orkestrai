@@ -192,6 +192,7 @@ export const DOCS_EN: DocsCatalog = {
         'Onboarding always guides from scratch: welcome → create a new workspace → use case, even with a workspace open (the "use current" shortcut remains).',
         '"Do it for me" shows up instantly on the canvas: nodes and connections created by tour, CLI or API trigger live refresh — no leaving and re-entering the workspace.',
         'Fix: onboarding would not open in English/Spanish — the language switch remounted the page after the URL was cleaned and the wizard died; the intent now survives the remount (regression test included).',
+        'Fix: the research tour no longer gets stuck on the last step — steps now run several actions in sequence (both connections are made) and the tour completes by itself when the last check passes.',
       ],
     },
     {

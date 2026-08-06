@@ -3,7 +3,7 @@ import { TOURS_PT } from './catalog/pt-BR.js';
 import { TOURS_EN } from './catalog/en.js';
 import { TOURS_ES } from './catalog/es.js';
 import { localeState } from '$lib/i18n/locale.svelte.js';
-import { checkPasses } from './checks.js';
+import { checkPasses, isTourComplete } from './checks.js';
 
 const CATALOGS: Record<string, Tour[]> = {
   'pt-BR': TOURS_PT,
@@ -82,10 +82,10 @@ async function evaluateChecks(): Promise<void> {
       if (i === tourState.stepIndex && i < steps.length - 1) tourState.stepIndex = i + 1;
     }
   }
-  // Tour termina quando o ultimo passo esta concluido.
-  const last = steps.at(-1);
-  if (last && (tourState.autoCompleted.has(last.id) || !last.check) && tourState.stepIndex >= steps.length - 1) {
-    if (last.check && !tourState.autoCompleted.has(last.id)) return;
+  // Tour termina quando o ultimo passo tem check e ele passou (auto-conclusao).
+  if (isTourComplete(tourState.tour, tourState.stepIndex, tourState.autoCompleted)) {
+    tourState.done = true;
+    stopPolling();
   }
 }
 
@@ -156,11 +156,8 @@ function nextPosition() {
   return { x: 80 + (positionSeq % 5) * 340, y: 80 + Math.floor(positionSeq / 5) * 300 };
 }
 
-/** Executa a acao real do passo ("Fazer por mim"). */
-export async function tourRunAction(action: TourAction): Promise<void> {
-  tourState.busy = true;
-  tourState.error = '';
-  try {
+/** Executa UMA acao (chamada em sequencia por tourRunAction). */
+async function runAction(action: TourAction): Promise<void> {
     switch (action.kind) {
       case 'createAgent': {
         await api(`/api/agent-room/workspaces/${workspaceId}/nodes`, {
@@ -253,7 +250,28 @@ export async function tourRunAction(action: TourAction): Promise<void> {
         break;
       }
     }
+}
+
+/** Executa a(s) acao(oes) reais do passo ("Fazer por mim") — em sequencia. */
+export async function tourRunAction(action: TourAction | TourAction[]): Promise<void> {
+  tourState.busy = true;
+  tourState.error = '';
+  try {
+    for (const single of Array.isArray(action) ? action : [action]) {
+      await runAction(single);
+    }
     await evaluateChecks();
+    // Ultimo passo com acao e SEM check: a acao bem sucedida conclui o tour.
+    if (
+      !tourState.error &&
+      tourState.tour &&
+      tourState.stepIndex === tourState.tour.steps.length - 1 &&
+      !tourState.tour.steps[tourState.stepIndex].check
+    ) {
+      tourState.autoCompleted.add(tourState.tour.steps[tourState.stepIndex].id);
+      tourState.done = true;
+      stopPolling();
+    }
   } catch (error) {
     tourState.error = error instanceof Error ? error.message : 'Falha na acao.';
   } finally {

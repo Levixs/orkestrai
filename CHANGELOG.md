@@ -40,6 +40,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Onboarding sempre guia do zero**: boas-vindas → criar workspace novo → caso de uso, mesmo com um workspace aberto (antes pulava direto pros tours no primeiro workspace). Atalho "usar o workspace atual" continua disponível.
 - **"Fazer por mim" aparece na hora no canvas**: nós e arestas criados por tour, CLI ou API agora disparam live refresh do canvas (broadcast em create/delete de nó/aresta) — antes o agente criado só aparecia ao sair e voltar do workspace. `updateNode` segue sem broadcast de propósito (arrastar não pode recarregar a tela).
 - **Fix: onboarding não abria em inglês/espanhol**: a troca de idioma remonta a árvore (`{#key locale}`) depois que a URL `?onboarding=1` já tinha sido limpa — o remount recriava a página com o wizard fechado e sem o parâmetro. Agora a intenção vai para `sessionStorage` e sobrevive ao remount. Corrida reproduzida em teste e2e (settings lentas + locale en): falha sem o fix, passa com ele.
+- **Fix: tour de pesquisa travado no último passo**: o passo "Conexões de trabalho" prometia duas conexões mas a ação só criava uma (portal nunca conectava), e a finalização do tour era um bloco morto — o painel ficava preso no passo 4. Passos agora executam **várias ações em sequência** (as duas conexões são feitas de verdade) e o tour **conclui sozinho** quando o último check passa. Coberto por e2e (tour inteiro até o "Tour concluído!", 2 arestas no canvas) e testes unitários da regra de conclusão.
 
 ## 2026-08-04
 

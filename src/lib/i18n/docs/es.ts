@@ -192,6 +192,7 @@ export const DOCS_ES: DocsCatalog = {
         'El onboarding siempre guía desde cero: bienvenida → crear workspace nuevo → caso de uso, incluso con un workspace abierto (el atajo "usar actual" sigue).',
         '"Hazlo por mí" aparece al instante en el canvas: nodos y conexiones creados por tour, CLI o API disparan live refresh — sin salir y volver al workspace.',
         'Fix: el onboarding no abría en inglés/español — el cambio de idioma remontaba la página después de limpiar la URL y el wizard moría; la intención ahora sobrevive al remount (test de regresión incluido).',
+        'Fix: el tour de investigación ya no se traba en el último paso — los pasos ahora ejecutan varias acciones en secuencia (las dos conexiones se hacen) y el tour concluye solo cuando pasa el último check.',
       ],
     },
     {

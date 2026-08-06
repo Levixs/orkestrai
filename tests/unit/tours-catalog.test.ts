@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TOURS_PT } from '$lib/components/agent-room/tours/catalog/pt-BR.js';
 import { TOURS_EN } from '$lib/components/agent-room/tours/catalog/en.js';
 import { TOURS_ES } from '$lib/components/agent-room/tours/catalog/es.js';
-import { checkPasses } from '$lib/components/agent-room/tours/checks.js';
+import { checkPasses, isTourComplete } from '$lib/components/agent-room/tours/checks.js';
 import type { Tour, WorkspaceSnapshot } from '$lib/components/agent-room/tours/types.js';
 
 const CATALOGS = { 'pt-BR': TOURS_PT, en: TOURS_EN, es: TOURS_ES };
@@ -10,10 +10,12 @@ const CATALOGS = { 'pt-BR': TOURS_PT, en: TOURS_EN, es: TOURS_ES };
 function createdTitles(tour: Tour): Set<string> {
   const titles = new Set<string>();
   for (const step of tour.steps) {
-    if (!step.action) continue;
-    if (step.action.kind === 'createAgent' || step.action.kind === 'createNote') titles.add(step.action.title);
-    if (step.action.kind === 'createFlow') titles.add(step.action.title);
-    if (step.action.kind === 'createPortal') titles.add(step.action.title ?? 'Portal');
+    const actions = step.action ? (Array.isArray(step.action) ? step.action : [step.action]) : [];
+    for (const action of actions) {
+      if (action.kind === 'createAgent' || action.kind === 'createNote') titles.add(action.title);
+      if (action.kind === 'createFlow') titles.add(action.title);
+      if (action.kind === 'createPortal') titles.add(action.title ?? 'Portal');
+    }
   }
   return titles;
 }
@@ -46,16 +48,18 @@ describe('catalogo de tours (integridade)', () => {
     for (const tour of TOURS_PT) {
       const titles = createdTitles(tour);
       for (const step of tour.steps) {
-        if (!step.action) continue;
-        if (step.action.kind === 'connect') {
-          expect(titles.has(step.action.fromTitle) || step.action.fromTitle === step.action.toTitle).toBe(true);
-          expect(titles.has(step.action.toTitle) || step.action.fromTitle === step.action.toTitle).toBe(true);
-        }
-        if (step.action.kind === 'createTask' && step.action.assigneeTitle) {
-          expect(titles.has(step.action.assigneeTitle)).toBe(true);
-        }
-        if (step.action.kind === 'createRoutine') {
-          expect(titles.has(step.action.targetTitle)).toBe(true);
+        const actions = step.action ? (Array.isArray(step.action) ? step.action : [step.action]) : [];
+        for (const action of actions) {
+          if (action.kind === 'connect') {
+            expect(titles.has(action.fromTitle) || action.fromTitle === action.toTitle).toBe(true);
+            expect(titles.has(action.toTitle) || action.fromTitle === action.toTitle).toBe(true);
+          }
+          if (action.kind === 'createTask' && action.assigneeTitle) {
+            expect(titles.has(action.assigneeTitle)).toBe(true);
+          }
+          if (action.kind === 'createRoutine') {
+            expect(titles.has(action.targetTitle)).toBe(true);
+          }
         }
       }
     }
@@ -110,5 +114,32 @@ describe('checkPasses', () => {
     expect(checkPasses({ kind: 'floorExists', nameIncludes: 'feature' }, snap)).toBe(true);
     expect(checkPasses({ kind: 'routineExists' }, snap)).toBe(true);
     expect(checkPasses({ kind: 'flowRunFinished' }, snap)).toBe(true);
+  });
+});
+
+describe('isTourComplete (regressao: tour nao pode ficar travado no ultimo passo)', () => {
+  const base = {
+    id: 't',
+    icon: 'Workflow',
+    title: 'Tour',
+    tagline: 'tagline de teste',
+    steps: [
+      { id: 'a', title: 'A', body: 'passo A', check: { kind: 'routineExists' } },
+      { id: 'b', title: 'B', body: 'passo B', check: { kind: 'routineExists' } },
+    ],
+  } satisfies Tour;
+
+  it('conclui quando o check do ultimo passo passou e o indice esta no fim', () => {
+    expect(isTourComplete(base, 1, new Set(['a', 'b']))).toBe(true);
+  });
+
+  it('nao conclui antes de chegar no ultimo passo nem sem o check dele', () => {
+    expect(isTourComplete(base, 0, new Set(['a', 'b']))).toBe(false);
+    expect(isTourComplete(base, 1, new Set(['a']))).toBe(false);
+  });
+
+  it('ultimo passo sem check nao auto-conclui (finalizacao manual)', () => {
+    const manual: Tour = { ...base, steps: [base.steps[0], { id: 'b', title: 'B', body: 'passo B' }] };
+    expect(isTourComplete(manual, 1, new Set(['a', 'b']))).toBe(false);
   });
 });
