@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -110,8 +110,42 @@ export class AgentSessionTracker {
     const slug = this.realCwd(cwd).replace(/[^a-zA-Z0-9]/g, '-');
     const dir = join(homedir(), '.claude', 'projects', slug);
     const pick = strategy === 'oldest' ? this.oldestFile : this.newestFile;
-    const found = pick.call(this, dir, since, (name) => name.endsWith('.jsonl') && !exclude.has(name.replace(/\.jsonl$/, '')));
+    const found = pick.call(this, dir, since, (name) => {
+      const agentSessionId = name.replace(/\.jsonl$/, '');
+      if (!name.endsWith('.jsonl') || name.startsWith('agent-') || exclude.has(agentSessionId)) return false;
+
+      // Claude cria arquivos agent-* para subagentes e transcripts que contem
+      // apenas snapshots durante o startup. So uma entrada da conversa
+      // principal torna o novo session-id retomavel.
+      try {
+        const stat = statSync(join(dir, name));
+        return stat.isFile() && this.isResumableClaudeTranscript(join(dir, name), agentSessionId, stat.size);
+      } catch {
+        return false;
+      }
+    });
     return found ? found.replace(/\.jsonl$/, '') : null;
+  }
+
+  private isResumableClaudeTranscript(path: string, agentSessionId: string, size: number): boolean {
+    if (size <= 0) return false;
+    const fd = openSync(path, 'r');
+    try {
+      const buffer = Buffer.allocUnsafe(Math.min(size, 256 * 1024));
+      const bytesRead = readSync(fd, buffer, 0, buffer.length, 0);
+      const sessionMarker = `\"sessionId\":\"${agentSessionId}\"`;
+      return buffer
+        .toString('utf8', 0, bytesRead)
+        .split('\n')
+        .some(
+          (line) =>
+            line.includes(sessionMarker) &&
+            line.includes('\"isSidechain\":false') &&
+            (line.includes('\"type\":\"user\"') || line.includes('\"type\":\"assistant\"'))
+        );
+    } finally {
+      closeSync(fd);
+    }
   }
 
   // ~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl

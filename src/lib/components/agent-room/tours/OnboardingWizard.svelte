@@ -4,7 +4,7 @@
   import { Input } from '$lib/components/ui/input';
   import * as m from '$lib/paraglide/messages.js';
   import {
-    ArrowLeft, Cable, FolderPlus, GitBranch, Layers, Palette, Repeat, Rocket, Search, Sparkles, Users, Workflow,
+    ArrowLeft, Cable, FolderPlus, GitBranch, Layers, Mic, Palette, RadioTower, Repeat, Rocket, Search, Sparkles, Users, Workflow,
   } from '@lucide/svelte';
   import { toursCatalog, startTour } from './engine.svelte.js';
   import type { Tour } from './types.js';
@@ -22,7 +22,7 @@
 
   let { open, onClose, onCreateWorkspace, activeWorkspaceId }: Props = $props();
 
-  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, Workflow, Search, FolderPlus, Cable, Rocket, Layers, Palette };
+  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, Workflow, Search, FolderPlus, Cable, Rocket, Layers, Palette, RadioTower, Mic };
 
   type WizardStep = 'welcome' | 'workspace' | 'usecase';
   let step = $state<WizardStep>('welcome');

@@ -437,4 +437,54 @@ export const TOURS_EN: Tour[] = [
       },
     ],
   },
+  {
+    id: 'managed-ports',
+    icon: 'RadioTower',
+    title: 'Release dev server ports',
+    tagline: 'See and stop local listeners without leaving the canvas.',
+    steps: [
+      {
+        id: 'portal',
+        title: 'Register the app in a Portal',
+        body: 'I create a local Portal on port 4173. This persisted link is what lets Orkestrai manage the port safely.',
+        action: { kind: 'createPortal', url: 'http://localhost:4173', title: 'Dev Portal' },
+        check: { kind: 'nodeExists', nodeType: 'portal', titleIncludes: 'Dev Portal' },
+      },
+      {
+        id: 'server',
+        title: 'Start your dev server',
+        body: 'In the project terminal, start the app on the same port as the Portal. You can use `orkestrai port 4173` to pick a free port before starting the server.',
+      },
+      {
+        id: 'panel',
+        title: 'Open Ports and release the listener',
+        body: 'In the bottom toolbar, immediately after Usage, open Ports. The process appears as in use; click the stop icon and confirm. The Portal stays saved for the next run.',
+      },
+    ],
+  },
+  {
+    id: 'leader-dictation',
+    icon: 'Mic',
+    title: 'Dictate straight to the leader',
+    tagline: 'Speak an instruction without finding the right canvas window.',
+    steps: [
+      {
+        id: 'leader',
+        title: 'Have a leader in the workspace',
+        body: 'I create an agent in Maestro Mode. The voice orb always resolves that exact leader, even when it is on another floor.',
+        action: { kind: 'createAgent', title: 'Voice Leader', provider: 'claude', leader: true },
+        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Voice Leader' },
+      },
+      {
+        id: 'record',
+        title: 'Click the voice orb',
+        body: 'Use the colored orb at the top right to start recording. It is the same microphone control inside the leader window, not a second dictation flow.',
+      },
+      {
+        id: 'deliver',
+        title: 'Stop and check the leader terminal',
+        body: 'Click again to stop. After local transcription, the text goes directly into the selected leader terminal, ready for you to review or send.',
+      },
+    ],
+  },
 ];

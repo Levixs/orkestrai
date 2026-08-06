@@ -175,8 +175,30 @@ export const DOCS_ES: DocsCatalog = {
       body: 'Agrega servidores MCP en el editor del workspace (ej.: filesystem, web, base de datos) — los agentes ganan las tools nativamente, y el propio Orkestrai aparece como servidor MCP con las acciones del canvas (orkestrai mcp). Los presets pueden cargar los MCPs junto con el equipo.',
       tags: ['MCP', 'tools tipadas', '.mcp.json'],
     },
+    {
+      id: 'managed-ports',
+      title: 'Liberar puertos dejados por dev servers',
+      body: 'Crea un Portal local para la app (ej.: http://localhost:5173). El panel Puertos, justo después de Uso en la barra inferior, muestra si ese listener está activo, qué proceso/PID lo ocupa y permite detenerlo con confirmación. Solo aparecen puertos vinculados a Portales locales del workspace; el servidor del propio Orkestrai queda protegido.',
+      tags: ['Puertos', 'Portal', 'dev server'],
+    },
+    {
+      id: 'leader-dictation',
+      title: 'Dictar una orden directo al líder',
+      body: 'Haz clic en la esfera de voz en la parte superior derecha del canvas para iniciar el mismo dictado del micrófono de la ventana del líder. Haz clic de nuevo para detener: la transcripción entra directamente en la terminal de ese líder, incluso si está en otro piso. Sin líder en el workspace, la app avisa con un toast.',
+      tags: ['Líder/Maestro', 'dictado', 'voz local'],
+    },
   ],
   changelog: [
+    {
+      date: '06 ago 2026',
+      items: [
+        'Nuevo panel Puertos justo después de Uso: lista listeners vinculados a los Portales locales del workspace, con proceso, PID y estado en uso/libre.',
+        'Cierre seguro de puertos con confirmación, revalidación del PID y protección del proceso de Orkestrai; los puertos arbitrarios de la máquina nunca aparecen.',
+        'Nueva esfera de dictado arriba a la derecha: activa exactamente el flujo del micrófono del líder y escribe la transcripción directo en su terminal, incluso en otro piso; sin líder, muestra un toast claro.',
+        'Corrección en la reanudación de Claude: los transcripts de subagentes y archivos de inicio sin un mensaje reanudable ya no reemplazan el ID válido de la conversación del líder.',
+        'Interfaz, documentación, casos de uso y dos tours nuevos traducidos a pt-BR, English y Español (15 tours en el onboarding).',
+      ],
+    },
     {
       date: '05 ago 2026',
       items: [

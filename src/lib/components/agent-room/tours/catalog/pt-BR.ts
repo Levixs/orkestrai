@@ -441,4 +441,54 @@ export const TOURS_PT: Tour[] = [
       },
     ],
   },
+  {
+    id: 'managed-ports',
+    icon: 'RadioTower',
+    title: 'Liberar portas de dev servers',
+    tagline: 'Veja e encerre listeners locais sem sair do canvas.',
+    steps: [
+      {
+        id: 'portal',
+        title: 'Registre o app num Portal',
+        body: 'Crio um Portal local na porta 4173. É esse vínculo persistido que permite ao Orkestrai gerenciar a porta com segurança.',
+        action: { kind: 'createPortal', url: 'http://localhost:4173', title: 'Portal Dev' },
+        check: { kind: 'nodeExists', nodeType: 'portal', titleIncludes: 'Portal Dev' },
+      },
+      {
+        id: 'server',
+        title: 'Inicie seu dev server',
+        body: 'No terminal do projeto, inicie o app na mesma porta do Portal. Você pode usar `orkestrai port 4173` para escolher uma porta livre antes de subir o servidor.',
+      },
+      {
+        id: 'panel',
+        title: 'Abra Portas e libere o listener',
+        body: 'Na barra inferior, logo depois de Usage, abra Portas. O processo aparece como em uso; clique no ícone de parar e confirme. O Portal fica salvo para a próxima execução.',
+      },
+    ],
+  },
+  {
+    id: 'leader-dictation',
+    icon: 'Mic',
+    title: 'Ditar direto para o líder',
+    tagline: 'Fale uma ordem sem procurar a janela certa no canvas.',
+    steps: [
+      {
+        id: 'leader',
+        title: 'Tenha um líder no workspace',
+        body: 'Crio um agente em Modo Maestro. A bolinha de voz sempre resolve esse líder exato, mesmo quando ele está em outro andar.',
+        action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
+        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
+      },
+      {
+        id: 'record',
+        title: 'Clique na bolinha de voz',
+        body: 'Use a bolinha colorida no topo direito para começar a gravar. É o mesmo controle do microfone dentro da janela do líder, não um segundo ditado.',
+      },
+      {
+        id: 'deliver',
+        title: 'Pare e confira o terminal do líder',
+        body: 'Clique novamente para parar. Depois da transcrição local, o texto entra diretamente no terminal do líder selecionado e fica pronto para você revisar ou enviar.',
+      },
+    ],
+  },
 ];

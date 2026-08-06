@@ -175,8 +175,30 @@ export const DOCS_EN: DocsCatalog = {
       body: 'Add MCP servers in the workspace editor (e.g.: filesystem, web, database) — agents get the tools natively, and Orkestrai itself appears as an MCP server with the canvas actions (orkestrai mcp). Presets can carry the MCPs along with the team.',
       tags: ['MCP', 'typed tools', '.mcp.json'],
     },
+    {
+      id: 'managed-ports',
+      title: 'Release ports left by dev servers',
+      body: 'Create a local Portal for the app (e.g. http://localhost:5173). The Ports panel, immediately after Usage in the bottom toolbar, shows whether that listener is active, which process/PID owns it, and lets you stop it with confirmation. Only ports linked to local Portals in the workspace are listed; Orkestrai\'s own server is protected.',
+      tags: ['Ports', 'Portal', 'dev server'],
+    },
+    {
+      id: 'leader-dictation',
+      title: 'Dictate an instruction straight to the leader',
+      body: 'Click the voice orb at the top right of the canvas to start the same dictation as the microphone in the leader window. Click again to stop: the transcript goes directly into that leader\'s terminal, even when it is on another floor. If the workspace has no leader, the app shows a toast.',
+      tags: ['Leader/Maestro', 'dictation', 'local voice'],
+    },
   ],
   changelog: [
+    {
+      date: 'Aug 06, 2026',
+      items: [
+        'New Ports panel immediately after Usage: lists listeners linked to local workspace Portals, including process, PID and in-use/free state.',
+        'Safe port stopping with confirmation, PID revalidation and Orkestrai process protection; arbitrary machine ports are never listed.',
+        'New dictation orb at the top right: triggers the leader\'s exact microphone flow and writes the transcript straight into that terminal, even on another floor; without a leader, it shows a clear toast.',
+        'Fixed Claude resume tracking: subagent transcripts and startup files without a resumable message no longer replace the leader conversation\'s valid ID.',
+        'Interface, documentation, use cases and two new tours translated into pt-BR, English and Español (15 onboarding tours).',
+      ],
+    },
     {
       date: 'Aug 05, 2026',
       items: [

@@ -15,6 +15,13 @@
   import { blobToWav16k } from './audio-pcm.js';
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
+  import {
+    LEADER_DICTATION_COMMAND,
+    LEADER_DICTATION_STATE,
+    type LeaderDictationCommandDetail,
+    type LeaderDictationStateDetail,
+    type LeaderDictationStatus,
+  } from './leader-dictation.js';
   import * as m from '$lib/paraglide/messages.js';
 
   export type CreatePtyRequest = {
@@ -100,6 +107,13 @@
     mediaStream = null;
   }
 
+  function reportDictationState(status: LeaderDictationStatus) {
+    if (!nodeId || typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent<LeaderDictationStateDetail>(LEADER_DICTATION_STATE, {
+      detail: { nodeId, status },
+    }));
+  }
+
   // -- Voz de volta quando EU dito (ciclo conversa: dito -> ouco a resposta) --
   // A captura NAO arma no ditado: arma so quando o texto e SUBMETIDO (Enter),
   // senao o eco do texto digitado/redraw do TUI dispara a fala sem resposta.
@@ -170,6 +184,7 @@
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       dictateError = m['voice.mic_denied']();
+      reportDictationState('idle');
       return;
     }
     audioChunks = [];
@@ -184,6 +199,7 @@
       mediaRecorder = null;
       dictating = false;
       transcribing = true;
+      reportDictationState('transcribing');
       dictateStatus = m['voice.transcribing']();
       try {
         const blob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' });
@@ -208,10 +224,12 @@
       } finally {
         transcribing = false;
         dictateStatus = '';
+        reportDictationState('idle');
       }
     };
     recorder.start();
     dictating = true;
+    reportDictationState('recording');
     pendingDictation = false; // so o ditado mais recente conta
     startRecTimer();
   }
@@ -313,6 +331,13 @@
     let reconnectAttempts = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
+
+    const handleLeaderDictation = (event: Event) => {
+      const detail = (event as CustomEvent<LeaderDictationCommandDetail>).detail;
+      if (!nodeId || detail?.nodeId !== nodeId) return;
+      void toggleDictation();
+    };
+    window.addEventListener(LEADER_DICTATION_COMMAND, handleLeaderDictation);
 
     const send = (payload: Record<string, unknown>) => {
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
@@ -458,7 +483,16 @@
 
     return () => {
       disposed = true;
-      mediaRecorder?.stop();
+      window.removeEventListener(LEADER_DICTATION_COMMAND, handleLeaderDictation);
+      reportDictationState('idle');
+      const activeRecorder = mediaRecorder;
+      if (activeRecorder && activeRecorder.state !== 'inactive') {
+        activeRecorder.onstop = null;
+        activeRecorder.stop();
+      }
+      mediaRecorder = null;
+      dictating = false;
+      transcribing = false;
       stopTracks();
       stopRecTimer();
       if (speakTimer) clearTimeout(speakTimer);

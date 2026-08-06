@@ -2,6 +2,25 @@
 
 Todas as mudanças notáveis do projeto, em português, da mais recente para a mais antiga.
 
+## 2026-08-06
+
+**Painel de portas gerenciadas**
+- Novo item **Portas** imediatamente depois de Usage na toolbar do canvas. O painel lista cada porta ligada a um nó Portal local do workspace, mostra estado em uso/livre, processo e PID e atualiza automaticamente.
+- Um listener pode ser encerrado pelo painel após confirmação. Antes do sinal, o backend valida novamente a associação Portal/workspace e o conjunto de PIDs para não matar um processo que mudou no intervalo.
+- A lista nunca expõe portas arbitrárias da máquina e protege o processo atual/pai do Orkestrai contra encerramento acidental. macOS/Linux usam `lsof` (com fallback `ss` no Linux); Windows usa `Get-NetTCPConnection`.
+
+**Ditado global para o líder**
+- Nova bolinha de voz no topo direito do canvas. Um clique aciona **o mesmo fluxo de ditado da janela do líder**, direcionado pelo `nodeId` exato; outro clique para a gravação e a transcrição entra diretamente no PTY desse líder.
+- Se o líder estiver em outro andar, o canvas navega até ele antes de disparar o microfone. Se não houver líder no workspace, um toast informa o problema sem iniciar captura de áudio.
+- Estados de gravação/transcrição, painel de portas, confirmações e erros estão traduzidos em pt-BR, English e Español.
+
+**Correções**
+- A retomada de terminais Claude agora ignora transcripts `agent-*` de subagentes e arquivos de startup vazios ou contendo apenas snapshots. Um novo ID só substitui o anterior depois da primeira entrada conversacional retomável, impedindo a perda da referência válida do líder.
+
+**Documentação e cobertura**
+- Dois casos de uso e dois tours guiados novos (15 tours no total) documentam gerenciamento de portas e ditado para o líder nos três idiomas.
+- Testes cobrem parsers de listeners, escopo por Portal/workspace, revalidação de PID e integridade dos catálogos i18n.
+
 ## 2026-08-05
 
 **Kanban estilo Trello (composer + descrição + imagens antes de criar)**

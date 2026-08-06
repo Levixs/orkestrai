@@ -179,8 +179,30 @@ export const DOCS_PT: DocsCatalog = {
       body: 'Adicione servidores MCP no editor do workspace (ex.: filesystem, web, banco) — os agentes ganham as tools nativamente, e o Orkestrai em si aparece como servidor MCP com as ações do canvas (orkestrai mcp). Presets podem carregar os MCPs junto com o time.',
       tags: ['MCP', 'tools tipadas', '.mcp.json'],
     },
+    {
+      id: 'managed-ports',
+      title: 'Liberar portas deixadas por dev servers',
+      body: 'Crie um Portal local para o app (ex.: http://localhost:5173). O painel Portas, logo depois de Usage na barra inferior, mostra se esse listener está ativo, qual processo/PID o ocupa e permite encerrá-lo com confirmação. Só portas ligadas a Portais locais do workspace entram na lista; o servidor do próprio Orkestrai fica protegido.',
+      tags: ['Portas', 'Portal', 'dev server'],
+    },
+    {
+      id: 'leader-dictation',
+      title: 'Ditar uma ordem direto para o líder',
+      body: 'Clique na bolinha de voz no topo direito do canvas para iniciar o mesmo ditado do microfone da janela do líder. Clique novamente para parar: a transcrição entra diretamente no terminal desse líder, inclusive se ele estiver em outro andar. Sem líder no workspace, o app avisa por toast.',
+      tags: ['Líder/Maestro', 'ditado', 'voz local'],
+    },
   ],
   changelog: [
+    {
+      date: '06 ago 2026',
+      items: [
+        'Novo painel Portas logo depois de Usage: lista listeners vinculados aos Portais locais do workspace, com processo, PID e estado em uso/livre.',
+        'Encerramento seguro de porta com confirmação, revalidação do PID e proteção do processo do Orkestrai; portas arbitrárias da máquina nunca aparecem.',
+        'Nova bolinha de ditado no topo direito: aciona exatamente o microfone do líder e escreve a transcrição direto no terminal dele, mesmo em outro andar; sem líder, mostra um toast claro.',
+        'Correção na retomada do Claude: transcripts de subagentes e arquivos de startup sem uma mensagem retomável não substituem mais o ID válido da conversa do líder.',
+        'Interface, documentação, casos de uso e dois tours novos traduzidos em pt-BR, English e Español (15 tours no onboarding).',
+      ],
+    },
     {
       date: '05 ago 2026',
       items: [

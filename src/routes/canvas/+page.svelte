@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import { toast } from '@beeblock/svelar/ui';
   import {
     Background,
     ConnectionMode,
@@ -17,6 +18,7 @@
   import WorkspaceEditDialog from '$lib/components/agent-room/canvas/WorkspaceEditDialog.svelte';
   import WorkspaceCreateDialog from '$lib/components/agent-room/canvas/WorkspaceCreateDialog.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import * as Tooltip from '$lib/components/ui/tooltip';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import * as m from '$lib/paraglide/messages.js';
   import FileTreeCanvasNode from '$lib/components/agent-room/canvas/FileTreeCanvasNode.svelte';
@@ -40,11 +42,18 @@
   import RoutinePanel from '$lib/components/agent-room/canvas/RoutinePanel.svelte';
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
+  import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
   import CommandPalette, { type PaletteAction } from '$lib/components/agent-room/canvas/CommandPalette.svelte';
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
   import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
+  import {
+    LEADER_DICTATION_COMMAND,
+    LEADER_DICTATION_STATE,
+    type LeaderDictationStateDetail,
+    type LeaderDictationStatus,
+  } from '$lib/components/agent-room/leader-dictation.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, Mic, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, Square, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -283,10 +292,67 @@
   let showRoutinePanel = $state(false);
   let showRolesPanel = $state(false);
   let showUsagePanel = $state(false);
+  let showPortsPanel = $state(false);
+  let leaderDictationState = $state<LeaderDictationStatus>('idle');
+  let leaderDictationNodeId = $state<string | null>(null);
   let sidebarCollapsed = $state(false);
   let importInput: HTMLInputElement;
   let visibleFloorId = $state<string | null>(null);
   let floors = $state<Floor[]>([]);
+
+  function leaderDictationLabel(): string {
+    if (leaderDictationState === 'recording') return m['leader_dictation.stop']();
+    if (leaderDictationState === 'transcribing') return m['leader_dictation.transcribing']();
+    return m['leader_dictation.start']();
+  }
+
+  function dispatchLeaderDictation(nodeId: string) {
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent(LEADER_DICTATION_COMMAND, { detail: { nodeId } }));
+    });
+  }
+
+  async function toggleLeaderDictation() {
+    if (!activeWorkspace || leaderDictationState === 'transcribing') return;
+    if (leaderDictationState === 'recording' && leaderDictationNodeId) {
+      dispatchLeaderDictation(leaderDictationNodeId);
+      return;
+    }
+    let allNodes: CanvasNode[];
+    try {
+      allNodes = await api<CanvasNode[]>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`);
+    } catch {
+      toast.error(m['leader_dictation.error']());
+      return;
+    }
+    const leader = allNodes.find((node) => node.type === 'terminal' && (node.payload as TerminalNodePayload).maestro);
+    if (!leader) {
+      leaderDictationState = 'idle';
+      leaderDictationNodeId = null;
+      toast.error(m['leader_dictation.no_leader']());
+      return;
+    }
+
+    leaderDictationNodeId = leader.id;
+    if ((leader.floorId ?? null) !== visibleFloorId) await selectFloor(leader.floorId ?? null);
+    await tick();
+    dispatchLeaderDictation(leader.id);
+  }
+
+  onMount(() => {
+    const handleDictationState = (event: Event) => {
+      const detail = (event as CustomEvent<LeaderDictationStateDetail>).detail;
+      if (!detail) return;
+      if (detail.nodeId !== leaderDictationNodeId) {
+        const source = nodes.find((node) => node.id === detail.nodeId);
+        if (source?.type !== 'terminal' || !(source.data?.payload as TerminalNodePayload | undefined)?.maestro) return;
+        leaderDictationNodeId = detail.nodeId;
+      }
+      leaderDictationState = detail.status;
+    };
+    window.addEventListener(LEADER_DICTATION_STATE, handleDictationState);
+    return () => window.removeEventListener(LEADER_DICTATION_STATE, handleDictationState);
+  });
 
   function floorPath(floorId: string | null | undefined): string | null {
     if (!floorId) return null;
@@ -534,6 +600,7 @@
     if (!options.force && activeWorkspace?.id === id) return;
     // So a selecao mais recente pode aplicar seu resultado: fetches antigos
     // (ex.: o auto-select do mount) nao sobrescrevem escolhas posteriores.
+    const changingWorkspace = activeWorkspace?.id !== id;
     const requestId = ++selectionRequestId;
     errorMessage = '';
     try {
@@ -545,6 +612,10 @@
       ]);
       if (requestId !== selectionRequestId) return;
       activeWorkspace = workspace;
+      if (changingWorkspace) {
+        leaderDictationState = 'idle';
+        leaderDictationNodeId = null;
+      }
       floors = floorList;
       if (!options.force) {
         queueMicrotask(() => {
@@ -1417,6 +1488,34 @@
         {#if appSettings.showMinimap !== 'false'}
           <MiniMap bgColor="#1C1946" maskColor="rgba(16, 16, 20, 0.72)" nodeColor="#3a3b46" />
         {/if}
+        <Panel position="top-right">
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}
+                <button
+                  {...props}
+                  type="button"
+                  class="leader-dictation-orb"
+                  class:recording={leaderDictationState === 'recording'}
+                  class:transcribing={leaderDictationState === 'transcribing'}
+                  aria-label={leaderDictationLabel()}
+                  aria-pressed={leaderDictationState === 'recording'}
+                  disabled={leaderDictationState === 'transcribing'}
+                  onclick={toggleLeaderDictation}
+                >
+                  <span class="orb-core" aria-hidden="true">
+                    {#if leaderDictationState === 'recording'}
+                      <Square size={14} fill="currentColor" />
+                    {:else}
+                      <Mic size={18} />
+                    {/if}
+                  </span>
+                </button>
+              {/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content side="left">{leaderDictationLabel()}</Tooltip.Content>
+          </Tooltip.Root>
+        </Panel>
         <Panel position="bottom-center">
           <div class="toolbar-wrap">
             {#if canScrollLeft}
@@ -1466,17 +1565,20 @@
               <Shapes size={15} class="tool-icon-svg" /> {m['canvas.label_shape']()}
             </ToolbarButton>
             <span class="toolbar-sep"></span>
-            <ToolbarButton label={m['tool.floors']()} active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label={m['tool.floors']()} active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; showUsagePanel = false; showPortsPanel = false; }}>
               <Layers size={15} class="tool-icon-svg" /> {m['canvas.label_floors']()}{floors.length ? ` (${floors.length})` : ''}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.routines']()} active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label={m['tool.routines']()} active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; showUsagePanel = false; showPortsPanel = false; }}>
               <CalendarClock size={15} class="tool-icon-svg" /> {m['canvas.label_routines']()}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.roles']()} active={showRolesPanel} onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; }}>
+            <ToolbarButton label={m['tool.roles']()} active={showRolesPanel} onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; showPortsPanel = false; }}>
               <BadgeCheck size={15} class="tool-icon-svg" /> {m['canvas.label_roles']()}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.usage']()} active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; }}>
+            <ToolbarButton label={m['tool.usage']()} active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; showPortsPanel = false; }}>
               <Gauge size={15} class="tool-icon-svg" /> {m['canvas.label_usage']()}
+            </ToolbarButton>
+            <ToolbarButton label={m['tool.ports']()} active={showPortsPanel} onclick={() => { showPortsPanel = !showPortsPanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; showUsagePanel = false; }}>
+              <RadioTower size={15} class="tool-icon-svg" /> {m['canvas.label_ports']()}
             </ToolbarButton>
             </div>
             {#if canScrollRight}
@@ -1518,6 +1620,9 @@
     {/if}
     {#if showUsagePanel}
       <UsagePanel onClose={() => (showUsagePanel = false)} />
+    {/if}
+    {#if showPortsPanel && activeWorkspace}
+      <PortsPanel workspace={activeWorkspace} onClose={() => (showPortsPanel = false)} />
     {/if}
     <AgentCreateDialog
       open={pendingAgentCreation !== null}
@@ -1890,6 +1995,62 @@
     overflow: hidden;
   }
 
+  .leader-dictation-orb {
+    width: 48px;
+    height: 48px;
+    padding: 3px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: conic-gradient(from 25deg, #58d6ff, #9674ff, #f05fb4, #ffb45e, #61e5a7, #58d6ff);
+    color: #f7f6ff;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(5, 4, 26, 0.48), 0 0 14px rgba(88, 214, 255, 0.18);
+    transition: box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  .leader-dictation-orb:hover:not(:disabled) {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 10px 26px rgba(5, 4, 26, 0.54), 0 0 20px rgba(240, 95, 180, 0.3);
+  }
+
+  .leader-dictation-orb:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
+  }
+
+  .leader-dictation-orb:disabled {
+    cursor: wait;
+  }
+
+  .leader-dictation-orb.recording {
+    animation: leader-orb-recording 1.25s ease-in-out infinite;
+  }
+
+  .leader-dictation-orb.transcribing {
+    animation: leader-orb-transcribing 900ms linear infinite;
+  }
+
+  .orb-core {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    background: #11102f;
+  }
+
+  @keyframes leader-orb-recording {
+    0%, 100% { box-shadow: 0 8px 24px rgba(5, 4, 26, 0.48), 0 0 10px rgba(240, 95, 180, 0.28); }
+    50% { box-shadow: 0 8px 24px rgba(5, 4, 26, 0.48), 0 0 25px rgba(240, 95, 180, 0.62); }
+  }
+
+  @keyframes leader-orb-transcribing {
+    to { transform: rotate(360deg); }
+  }
+
   .canvas-area :global(.svelte-flow__controls) {
     border-radius: 10px;
     overflow: hidden;
@@ -2104,5 +2265,14 @@
     padding: 6px 14px;
     border-radius: 8px;
     font-size: 12px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .leader-dictation-orb,
+    .leader-dictation-orb.recording,
+    .leader-dictation-orb.transcribing {
+      animation: none;
+      transition: none;
+    }
   }
 </style>

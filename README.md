@@ -23,13 +23,17 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
 - **Multi-workspace**: vários projetos abertos ao mesmo tempo, com indicador
   de atividade e notificações nativas quando algo termina ou precisa de você.
 - **Ditado e voz de volta em pt-BR, 100% locais**: fale com o ditado por voz
-  (atalho configurável) e ouça as respostas dos agentes em voz alta. Na
+  (atalho configurável ou pela bolinha no topo direito, que dita direto para
+  o líder) e ouça as respostas dos agentes em voz alta. Na
   primeira vez o app baixa ~790 MB uma única vez (pede confirmação antes).
   Se preferir, use um serviço de voz externo seu em Configurações.
 - **Marketplace de skills**: busque e instale skills do skills.sh direto no
   workspace.
 - **Painel de usage**: cota de cada provider (5h/semanal, plano, data de
   reset), ao vivo, sem configurar nada — lê as credenciais locais das CLIs.
+- **Painel de portas**: veja listeners usados pelos Portais locais do workspace
+  e encerre dev servers esquecidos com confirmação, escopo por workspace e
+  proteção do próprio servidor do Orkestrai.
 - **Resume de contexto**: feche o app e volte — cada terminal retoma a sua
   conversa exata (session-id real da CLI, por terminal).
 - **Rotinas e roles**: agende prompts recorrentes para agentes e atribua

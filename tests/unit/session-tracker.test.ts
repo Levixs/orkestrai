@@ -9,7 +9,8 @@ import { kimiAdapter } from '$lib/modules/agent-room/application/adapters/KimiAd
 import { openCodeAdapter } from '$lib/modules/agent-room/application/adapters/OpenCodeAdapter.js';
 
 function touch(path: string, when: Date) {
-  writeFileSync(path, 'x');
+  const sessionId = path.split('/').at(-1)?.replace(/\.jsonl$/, '') ?? '';
+  writeFileSync(path, `${JSON.stringify({ isSidechain: false, sessionId, type: 'user' })}\n`);
   utimesSync(path, when, when);
 }
 
@@ -75,6 +76,52 @@ describe('AgentSessionTracker', () => {
     // Sem exclusao: a mais recente. Excluindo-a: a segunda mais recente.
     expect(tracker.findLatestUnclaimedSessionId('claude', cwd)).toBe('nova');
     expect(tracker.findLatestUnclaimedSessionId('claude', cwd, new Set(['nova']))).toBe('media');
+  });
+
+  it('ignora transcripts de subagentes do claude', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), 'projeto-claude-subagent-' + Date.now());
+    const tracker = new AgentSessionTracker();
+
+    const home = process.env.HOME!;
+    const claudeDir = join(home, '.claude', 'projects', `-${cwd.replace(/[/\\]/g, '-').replace(/^-/, '')}`);
+    mkdirSync(claudeDir, { recursive: true });
+    touch(join(claudeDir, 'agent-a2a88b5.jsonl'), new Date(Date.now() - 5_000));
+    touch(join(claudeDir, 'sessao-principal.jsonl'), new Date());
+
+    expect(tracker.findAgentSessionId('claude', cwd, since)).toBe('sessao-principal');
+  });
+
+  it('ignora transcript principal vazio do claude', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), 'projeto-claude-vazio-' + Date.now());
+    const tracker = new AgentSessionTracker();
+
+    const home = process.env.HOME!;
+    const claudeDir = join(home, '.claude', 'projects', `-${cwd.replace(/[/\\]/g, '-').replace(/^-/, '')}`);
+    mkdirSync(claudeDir, { recursive: true });
+    const empty = join(claudeDir, 'sessao-vazia.jsonl');
+    writeFileSync(empty, '');
+    utimesSync(empty, new Date(), new Date());
+    touch(join(claudeDir, 'sessao-valida.jsonl'), new Date(Date.now() - 5_000));
+
+    expect(tracker.findLatestUnclaimedSessionId('claude', cwd)).toBe('sessao-valida');
+  });
+
+  it('ignora transcript do claude que ainda contem apenas snapshots de startup', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), 'projeto-claude-snapshot-' + Date.now());
+    const tracker = new AgentSessionTracker();
+
+    const home = process.env.HOME!;
+    const claudeDir = join(home, '.claude', 'projects', `-${cwd.replace(/[/\\]/g, '-').replace(/^-/, '')}`);
+    mkdirSync(claudeDir, { recursive: true });
+    const snapshotOnly = join(claudeDir, 'sessao-snapshot.jsonl');
+    writeFileSync(snapshotOnly, `${JSON.stringify({ type: 'file-history-snapshot', messageId: 'abc' })}\n`);
+    utimesSync(snapshotOnly, new Date(), new Date());
+    touch(join(claudeDir, 'sessao-retomavel.jsonl'), new Date(Date.now() - 5_000));
+
+    expect(tracker.findLatestUnclaimedSessionId('claude', cwd)).toBe('sessao-retomavel');
   });
 });
 

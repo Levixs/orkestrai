@@ -437,4 +437,54 @@ export const TOURS_ES: Tour[] = [
       },
     ],
   },
+  {
+    id: 'managed-ports',
+    icon: 'RadioTower',
+    title: 'Liberar puertos de dev servers',
+    tagline: 'Mira y detén listeners locales sin salir del canvas.',
+    steps: [
+      {
+        id: 'portal',
+        title: 'Registra la app en un Portal',
+        body: 'Creo un Portal local en el puerto 4173. Este vínculo persistido permite que Orkestrai gestione el puerto de forma segura.',
+        action: { kind: 'createPortal', url: 'http://localhost:4173', title: 'Portal Dev' },
+        check: { kind: 'nodeExists', nodeType: 'portal', titleIncludes: 'Portal Dev' },
+      },
+      {
+        id: 'server',
+        title: 'Inicia tu dev server',
+        body: 'En la terminal del proyecto, inicia la app en el mismo puerto del Portal. Puedes usar `orkestrai port 4173` para elegir un puerto libre antes de iniciar el servidor.',
+      },
+      {
+        id: 'panel',
+        title: 'Abre Puertos y libera el listener',
+        body: 'En la barra inferior, justo después de Uso, abre Puertos. El proceso aparece en uso; haz clic en el icono de detener y confirma. El Portal queda guardado para la próxima ejecución.',
+      },
+    ],
+  },
+  {
+    id: 'leader-dictation',
+    icon: 'Mic',
+    title: 'Dictar directo al líder',
+    tagline: 'Habla una orden sin buscar la ventana correcta en el canvas.',
+    steps: [
+      {
+        id: 'leader',
+        title: 'Ten un líder en el workspace',
+        body: 'Creo un agente en Modo Maestro. La esfera de voz siempre resuelve a ese líder exacto, incluso cuando está en otro piso.',
+        action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
+        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
+      },
+      {
+        id: 'record',
+        title: 'Haz clic en la esfera de voz',
+        body: 'Usa la esfera de colores arriba a la derecha para empezar a grabar. Es el mismo control del micrófono dentro de la ventana del líder, no un segundo dictado.',
+      },
+      {
+        id: 'deliver',
+        title: 'Detén y revisa la terminal del líder',
+        body: 'Haz clic de nuevo para detener. Después de la transcripción local, el texto entra directamente en la terminal del líder seleccionado, listo para revisar o enviar.',
+      },
+    ],
+  },
 ];
