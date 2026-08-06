@@ -215,6 +215,8 @@ export const DOCS_PT: DocsCatalog = {
         'Codex, Kimi e OpenCode agora NASCEM sabendo da ponte: bloco no AGENTS.md (merge, sem apagar nada seu), MCP do Codex no ~/.codex/config.toml e opencode.json no projeto — antes só o Claude recebia as instruções.',
         'Apagar nó pede confirmação (Delete do teclado e X do nó): sem mais perder um agente e o contexto dele por acidente.',
         'A resposta de um agente não é mais injetada no composer do outro (ela já chega pelo retorno do comando) — fim do texto emendado na sua digitação.',
+        'Kimi destravado de vez: a ponte espera o TUI terminar o boot antes de escrever (o Enter virava newline no composer), re-envia o Enter se nada acontece e lê a resposta do wire.jsonl real — verificado com o Kimi de verdade respondendo limpo.',
+        'Títulos duplicados não quebram mais o roteamento: novos agentes ganham sufixo automático (Dev 2, Dev 3) e um ask ambíguo explica como resolver em vez de mandar pro agente errado.',
       ],
     },
     {

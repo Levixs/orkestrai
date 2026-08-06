@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseClaudeTranscriptReply, parseCodexTranscriptReply } from '$lib/modules/agent-room/infrastructure/transcript/AgentTranscript.js';
+import { parseClaudeTranscriptReply, parseCodexTranscriptReply, parseKimiTranscriptReply } from '$lib/modules/agent-room/infrastructure/transcript/AgentTranscript.js';
 
 describe('parseClaudeTranscriptReply', () => {
   it('junta TODOS os blocos de texto do assistant apos a ultima pergunta (inclusive com tool calls no meio)', () => {
@@ -57,5 +57,27 @@ describe('parseCodexTranscriptReply', () => {
 
   it('sem resposta retorna null', () => {
     expect(parseCodexTranscriptReply('{"type":"session_meta","payload":{}}')).toBeNull();
+  });
+});
+
+describe('parseKimiTranscriptReply (formato real do wire.jsonl, 0.33)', () => {
+  it('junta os textos do assistente depois do ultimo turn.prompt', () => {
+    const jsonl = [
+      JSON.stringify({ type: 'profile.bind', modelAlias: 'kimi-code/k3' }),
+      JSON.stringify({ type: 'turn.prompt', input: [{ type: 'text', text: 'como voce esta?' }], origin: { kind: 'user' } }),
+      JSON.stringify({ type: 'context.append_loop_event', event: { type: 'content.part', part: { type: 'text', text: 'Estou bem.' } } }),
+      JSON.stringify({ type: 'context.append_loop_event', event: { type: 'content.part', part: { type: 'text', text: 'Pronto para trabalhar.' } } }),
+      JSON.stringify({ type: 'turn.ended', reason: 'completed' }),
+    ].join('\n');
+    expect(parseKimiTranscriptReply(jsonl)).toBe('Estou bem.\n\nPronto para trabalhar.');
+  });
+
+  it('ignora o que veio antes do ultimo prompt e retorna null sem resposta', () => {
+    const jsonl = [
+      JSON.stringify({ type: 'context.append_loop_event', event: { type: 'content.part', part: { type: 'text', text: 'resposta antiga' } } }),
+      JSON.stringify({ type: 'turn.prompt', input: [{ type: 'text', text: 'oi' }] }),
+    ].join('\n');
+    expect(parseKimiTranscriptReply(jsonl)).toBeNull();
+    expect(parseKimiTranscriptReply('{"type":"profile.bind"}')).toBeNull();
   });
 });

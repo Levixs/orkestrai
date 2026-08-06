@@ -1,5 +1,6 @@
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.js';
+import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.js';
 import { bridgeService } from './BridgeService.js';
 import { floorService } from './FloorService.js';
 
@@ -155,6 +156,18 @@ export class FlowService {
       env: { ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
     });
     await workspaceRepository.updateNode(target.id, { payload: { ...payload, sessionId: session.id } as never });
+    // Spawn server-side nao passa pelo pty-ws: registra o rastreio do
+    // session-id da CLI aqui, senao o transcrito nunca e achado (ask caia no
+    // fallback de tela crua).
+    const provider = (payload as { provider?: string }).provider;
+    if (provider && ['claude', 'codex', 'kimi', 'opencode'].includes(provider)) {
+      agentSessionTracker.watch(session.id, provider, cwd, Date.now(), (agentSessionId) => {
+        void workspaceRepository
+          .updateNode(target.id, { payload: { ...payload, sessionId: session.id, agentSessionId } as never })
+          .then(() => notifyWorkspaceChanged(workspaceId))
+          .catch(() => {});
+      });
+    }
     notifyWorkspaceChanged(workspaceId);
   }
 

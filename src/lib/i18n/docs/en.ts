@@ -211,6 +211,8 @@ export const DOCS_EN: DocsCatalog = {
         'Codex, Kimi and OpenCode now BORN knowing the bridge: block in AGENTS.md (merged, nothing of yours is erased), Codex MCP in ~/.codex/config.toml and opencode.json in the project — before, only Claude got the instructions.',
         'Deleting a node asks for confirmation (keyboard Delete and the node X): no more losing an agent and its context by accident.',
         'An agent reply is no longer injected into the other composer (it already arrives via the command result) — no more text spliced into your typing.',
+        'Kimi unlocked for good: the bridge waits for the TUI to finish booting before writing (Enter became a newline in the composer), re-sends Enter if nothing happens and reads the answer from the real wire.jsonl — verified with the real Kimi answering cleanly.',
+        'Duplicate titles no longer break routing: new agents get an automatic suffix (Dev 2, Dev 3) and an ambiguous ask explains how to fix it instead of messaging the wrong agent.',
       ],
     },
     {

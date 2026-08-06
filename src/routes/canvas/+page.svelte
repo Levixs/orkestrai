@@ -706,6 +706,16 @@
     return { x: 80 + (index % 4) * 620, y: 80 + (Math.floor(index / 4) % 4) * 460 };
   }
 
+  /** Titulo unico no canvas: "Claude" ocupado vira "Claude 2"... (ask ambiguo quebra o roteamento). */
+  function uniqueNodeTitle(base: string): string {
+    const taken = new Set(nodes.map((node) => String(node.data?.title ?? '').toLowerCase()));
+    if (!taken.has(base.toLowerCase())) return base;
+    for (let suffix = 2; ; suffix += 1) {
+      const candidate = `${base} ${suffix}`;
+      if (!taken.has(candidate.toLowerCase())) return candidate;
+    }
+  }
+
   async function addTerminal(
     provider?: AgentProviderInfo,
     rect?: { x: number; y: number; width: number; height: number },
@@ -734,7 +744,7 @@
       method: 'POST',
       body: JSON.stringify({
         type: 'terminal',
-        title: creation?.title || provider?.displayName || m['canvas.default_shell'](),
+        title: uniqueNodeTitle(creation?.title || provider?.displayName || m['canvas.default_shell']()),
         ...position,
         width: nodeSize(rect, 360, 220, Number(appSettings.newTerminalWidth ?? 560), Number(appSettings.newTerminalHeight ?? 340)).width,
         height: nodeSize(rect, 360, 220, Number(appSettings.newTerminalWidth ?? 560), Number(appSettings.newTerminalHeight ?? 340)).height,

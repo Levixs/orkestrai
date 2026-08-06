@@ -133,7 +133,7 @@ export class BridgeService {
     this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, true);
     let reply: { text: string; timedOut: boolean };
     try {
-      reply = await this.askAndWait(target.sessionId, input.message, input.timeoutMs ?? 180_000, input.signal);
+      reply = await this.askAndWait(target.sessionId, input.message, input.timeoutMs ?? 180_000, input.signal, target.provider);
     } finally {
       this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, false);
     }
@@ -347,7 +347,7 @@ export class BridgeService {
     const node = await workspaceRepository.createNode({
       workspaceId,
       type: 'terminal',
-      title: shortTitle(input.title),
+      title: await this.uniqueAgentTitle(workspaceId, shortTitle(input.title)),
       x: input.x ?? position!.x,
       y: input.y ?? position!.y,
       width: 640,
@@ -359,6 +359,17 @@ export class BridgeService {
     await this.ensureEdge(workspaceId, origin.nodeId, node.id);
     this.notifyWorkspaceChanged(workspaceId);
     return { nodeId: node.id, title: node.title, replaced: false };
+  }
+
+  /** Titulo unico por workspace: "Dev" ocupado vira "Dev 2", "Dev 3"... (ask ambiguo quebra o roteamento). */
+  private async uniqueAgentTitle(workspaceId: string, title: string): Promise<string> {
+    const agents = await this.listAgents(workspaceId);
+    const taken = new Set(agents.map((agent) => agent.title.toLowerCase()));
+    if (!taken.has(title.toLowerCase())) return title;
+    for (let suffix = 2; ; suffix += 1) {
+      const candidate = `${title} ${suffix}`;
+      if (!taken.has(candidate.toLowerCase())) return candidate;
+    }
   }
 
   /** Cria a aresta se o par ainda nao estiver conectado (qualquer direcao). */
@@ -684,10 +695,15 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
 
   // -- Internos ---------------------------------------------------------------
 
-  private findAgent(agents: BridgeAgent[], query: string): BridgeAgent {    const normalized = query.trim().toLowerCase();
+  private findAgent(agents: BridgeAgent[], query: string): BridgeAgent {
+    const normalized = query.trim().toLowerCase();
+    const exact = agents.filter((item) => item.title.toLowerCase() === normalized);
+    if (exact.length > 1) {
+      throw new Error(`Ha ${exact.length} agentes chamados "${query}" — renomeie um deles (duplo-clique no titulo do no) ou use o id do no.`);
+    }
     const agent =
       agents.find((item) => item.nodeId === query) ??
-      agents.find((item) => item.title.toLowerCase() === normalized) ??
+      exact[0] ??
       agents.find((item) => item.title.toLowerCase().includes(normalized));
     if (!agent) {
       throw new Error(`Agente "${query}" nao encontrado. Use orkestrai list para ver os disponiveis.`);
@@ -707,10 +723,12 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
     sessionId: string,
     message: string,
     timeoutMs: number,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    provider?: string | null
   ): Promise<{ text: string; timedOut: boolean }> {
     return new Promise((resolvePromise, reject) => {
       let captured = '';
+      let capturedAtSend = 0;
       let done = false;
       const sentAt = Date.now();
       let lastOutputAt = sentAt;
@@ -721,28 +739,39 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       // mensagem e a resposta se perde.
       const MIN_AFTER_SEND_MS = 3_500;
       const QUIET_MS = 2_000;
+      let retryTimer: ReturnType<typeof setInterval> | null = null;
 
       const finish = (timedOut: boolean) => {
         if (done) return;
         done = true;
         clearTimeout(timer);
         if (quietTimer) clearTimeout(quietTimer);
+        if (retryTimer) clearInterval(retryTimer);
         signal?.removeEventListener('abort', onAbort);
         detach();
-        resolvePromise({ text: stripAnsi(captured), timedOut });
+        // So conta o que saiu DEPOIS do envio (boot paint nao e resposta).
+        resolvePromise({ text: stripAnsi(captured.slice(capturedAtSend)), timedOut });
       };
 
       let quietTimer: ReturnType<typeof setTimeout> | null = null;
+      let sent = false;
+      let sentRealAt = 0;
       const maybeFinish = () => {
-        if (done) return;
+        if (done || !sent) return; // boot quieto NAO e resposta — so vale depois do envio
         const now = Date.now();
         const quietFor = now - lastOutputAt;
-        const elapsed = now - sentAt;
-        if (captured.trim() && quietFor >= QUIET_MS && elapsed >= MIN_AFTER_SEND_MS) {
+        const elapsed = now - sentRealAt;
+        // TUIs de provider precisam de tempo para pensar (8s pos-envio); o
+        // quieto imediato apos o eco nao e resposta — e o retry do Enter atua
+        // nessa janela. Shell puro segue o piso classico.
+        const sessInfo = ptySessionManager.get(sessionId);
+        const isTui = Boolean(provider && sessInfo && /claude|codex|kimi|opencode/.test(sessInfo.command));
+        const minElapsed = isTui ? 8_000 : MIN_AFTER_SEND_MS;
+        if (captured.length > capturedAtSend && quietFor >= QUIET_MS && elapsed >= minElapsed) {
           finish(false);
           return;
         }
-        const wait = Math.min(Math.max(QUIET_MS - quietFor, MIN_AFTER_SEND_MS - elapsed, 250), 3_000);
+        const wait = Math.min(Math.max(QUIET_MS - quietFor, minElapsed - elapsed, 250), 3_000);
         quietTimer = setTimeout(maybeFinish, wait);
       };
 
@@ -776,21 +805,66 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       }
       signal?.addEventListener('abort', onAbort, { once: true });
 
-      // Texto e Enter em writes separados: TUIs (Codex) tratam o \r colado
-      // ao texto como quebra de linha no composer em vez de submit. E o texto
-      // vai sanitizado: \n solto seria submit parcial no Claude; bytes de
-      // controle disparam atalhos do TUI (editor externo etc).
-      ptySessionManager.write(sessionId, sanitizeComposerText(message));
-      setTimeout(() => {
+      const send = () => {
+        sent = true;
+        sentRealAt = Date.now();
+        // Texto e Enter em writes separados: TUIs (Codex) tratam o \r colado
+        // ao texto como quebra de linha no composer em vez de submit. E o texto
+        // vai sanitizado: \n solto seria submit parcial no Claude; bytes de
+        // controle disparam atalhos do TUI (editor externo etc).
+        ptySessionManager.write(sessionId, sanitizeComposerText(message));
+        setTimeout(() => {
+          if (done) return;
+          try {
+            ptySessionManager.write(sessionId, '\r');
+          } catch {
+            finish(true);
+            return;
+          }
+          // Seguro contra Enter engolido: o eco do texto engana o "output
+          // novo". O que conta e ATIVIDADE RECENTE: se ficou quieto de novo
+          // (composer parado, nada processando), re-envia o \r — ate 3x.
+          let retries = 0;
+          retryTimer = setInterval(() => {
+            if (done || retries >= 3) {
+              if (retryTimer) clearInterval(retryTimer);
+              return;
+            }
+            if (Date.now() - lastOutputAt < 3_500) return; // atividade recente: segue
+            retries += 1;
+            try {
+              ptySessionManager.write(sessionId, '\r');
+            } catch {
+              finish(true);
+            }
+          }, 4_000);
+          retryTimer.unref?.();
+        }, 120);
+        // Rede de seguranca caso o evento de atencao nunca dispare.
+        quietTimer = setTimeout(maybeFinish, MIN_AFTER_SEND_MS);
+      };
+
+      // PRONTIDAO: escrever durante o boot faz o Enter virar newline no
+      // composer (Kimi) ou cair no limbo. Agente de provider (TUI): so escreve
+      // quando JA PRODUZIU output E ficou ocioso E a sessao tem idade minima
+      // (o boot do Kimi e bifasico: paint, depois MCP/sessao — o ocioso de
+      // 2.5s dispara no meio). Shell puro/desconhecido: escreve na hora.
+      const readyDeadline = Date.now() + 30_000;
+      const waitReady = () => {
         if (done) return;
-        try {
-          ptySessionManager.write(sessionId, '\r');
-        } catch {
-          finish(true);
+        const sess = ptySessionManager.get(sessionId);
+        const ageMs = sess ? Date.now() - Date.parse(sess.createdAt) : 0;
+        // A espera so vale para TUIs de provider de verdade (claude/codex/
+        // kimi/opencode): shell puro (ou provider simulado em teste) manda na hora.
+        const isTui = Boolean(provider && sess && /claude|codex|kimi|opencode/.test(sess.command));
+        const ready = Boolean(sess?.hasOutput && sess.waiting && ageMs >= 12_000);
+        if (!sess || sess.exited || !isTui || ready || Date.now() >= readyDeadline) {
+          send();
+          return;
         }
-      }, 120);
-      // Rede de seguranca caso o evento de atencao nunca dispare.
-      quietTimer = setTimeout(maybeFinish, MIN_AFTER_SEND_MS);
+        setTimeout(waitReady, 400);
+      };
+      waitReady();
     });
   }
 

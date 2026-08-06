@@ -227,3 +227,41 @@ describe('Modo Maestro', () => {
     ptySessionManager.kill(sessionB.id);
   });
 });
+
+describe('titulos de agente (roteamento do ask)', () => {
+  useSvelarTest({ refreshDatabase: true });
+
+  it('ask com titulo duplicado falha com orientacao clara', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'dup', workingDir: '/tmp' });
+    for (const title of ['Claude', 'Claude']) {
+      const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+      await workspaceRepository.createNode({
+        workspaceId: workspace.id,
+        type: 'terminal',
+        title,
+        payload: { command: '/bin/cat', provider: 'claude', sessionId: session.id },
+      });
+    }
+    await expect(bridgeService.ask(workspace.id, { to: 'Claude', message: 'oi' })).rejects.toThrow('agentes chamados');
+    // limpa as sessoes criadas no loop
+    const nodes = await workspaceRepository.listNodes(workspace.id);
+    for (const node of nodes) {
+      const sessionId = (node.payload as { sessionId?: string }).sessionId;
+      if (sessionId) ptySessionManager.kill(sessionId);
+    }
+  });
+
+  it('recruit gera titulo unico automaticamente', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'uniq', workingDir: '/tmp' });
+    await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Lider',
+      payload: { command: 'claude', provider: 'claude', maestro: true },
+    });
+    const first = await bridgeService.recruit(workspace.id, { from: 'Lider', title: 'Dev', provider: 'kimi' });
+    const second = await bridgeService.recruit(workspace.id, { from: 'Lider', title: 'Dev', provider: 'kimi' });
+    expect(first.title).toBe('Dev');
+    expect(second.title).toBe('Dev 2');
+  });
+});

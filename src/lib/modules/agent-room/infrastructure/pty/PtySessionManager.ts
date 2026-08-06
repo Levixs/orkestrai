@@ -18,6 +18,8 @@ export type PtySessionInfo = {
   exitCode: number | null;
   /** true quando a sessao parou de produzir saida (agente aguardando atencao). */
   waiting: boolean;
+  /** Ja produziu algum output — usado na espera de prontidao antes de escrever. */
+  hasOutput: boolean;
   /** Rotulos humanos (titulo do no / workspace) para notificacoes. */
   label?: string | null;
   workspace?: string | null;
@@ -262,6 +264,8 @@ export class PtySessionManager {
       exited: session.exited,
       exitCode: session.exitCode,
       waiting: session.waiting,
+      /** Ja produziu algum output (boot comecou/terminou) — usado na prontidao do ask. */
+      hasOutput: session.scrollback.length > 0,
     };
   }
 }

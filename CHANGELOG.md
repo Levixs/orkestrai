@@ -58,6 +58,13 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Resposta não é mais injetada no composer do outro agente** (já chega pelo retorno do comando) — fim do texto emendado na digitação.
 - **Apagar nó pede confirmação** (Delete do teclado e X do nó): modal avisa que a sessão/histórico do terminal vai junto. Sem mais perder o líder por acidente.
 
+**Kimi destravado de vez (série de bugs em cadeia)**
+- A ponte **finalizava o ask sem ter enviado a mensagem** — o silêncio do boot do TUI satisfazia a regra de conclusão. Agora o ask só conclui depois do envio real.
+- **Espera de prontidão**: para TUIs de provider (claude/codex/kimi/opencode), a ponte só escreve quando a sessão já produziu output, está ociosa e tem idade mínima — o Enter durante o boot virava newline no composer do Kimi (mensagem eternamente "digitada, não enviada").
+- **Retry do Enter** se nada acontece após o envio (até 3x).
+- **Resposta do Kimi lida do `wire.jsonl`** (parser do formato real 0.33: `turn.prompt` → `content.part` textos), com o tracker registrado também para sessões criadas pelo servidor (flows/maestro). Verificado com o Kimi real respondendo limpo: *"Sim, estou online — sou o Kimi Code CLI, pronto para ajudar."*
+- **Títulos duplicados não quebram mais o roteamento**: novos agentes ganham sufixo automático (`Dev 2`, `Dev 3`) no canvas e no recruit; um `ask` para título ambíguo falha com orientação clara em vez de mandar a mensagem para o agente errado (o "Claude falando consigo mesmo").
+
 ## 2026-08-04
 
 **Tooltips, busca e polish**

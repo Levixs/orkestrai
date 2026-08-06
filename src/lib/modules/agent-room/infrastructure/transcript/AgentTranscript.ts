@@ -101,6 +101,32 @@ export function parseGenericTranscriptReply(jsonl: string): string | null {
   return parseCodexTranscriptReply(jsonl);
 }
 
+/**
+ * Kimi (wire.jsonl): textos do assistente depois do ultimo turn.prompt.
+ *   user:      {"type":"turn.prompt","input":[{"type":"text","text":...}]}
+ *   assistant: {"type":"context.append_loop_event","event":{"type":"content.part","part":{"type":"text","text":...}}}
+ */
+export function parseKimiTranscriptReply(jsonl: string): string | null {
+  const parts: string[] = [];
+  for (const line of jsonl.trim().split('\n').reverse()) {
+    let event: any;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (event.type === 'turn.prompt') break; // fronteira: a pergunta
+    if (event.type === 'context.append_loop_event' && event.event?.type === 'content.part') {
+      const part = event.event.part;
+      if (part?.type === 'text' && typeof part.text === 'string' && part.text.trim()) {
+        parts.unshift(part.text.trim());
+      }
+    }
+  }
+  const text = parts.join('\n\n').trim();
+  return text || null;
+}
+
 function realCwd(cwd: string): string {
   try {
     return realpathSync(cwd);
@@ -155,7 +181,10 @@ function findKimiTranscript(sessionId: string): string | null {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         if (entry.name === sessionId) {
-          // Dentro da sessao: o jsonl mais recente.
+          // Formato real (0.33+): <sessao>/agents/main/wire.jsonl.
+          const wire = join(full, 'agents', 'main', 'wire.jsonl');
+          if (existsSync(wire)) return wire;
+          // Fallback: o jsonl mais recente direto na sessao.
           try {
             const files = readdirSync(full)
               .filter((name) => name.endsWith('.jsonl'))
@@ -197,7 +226,7 @@ export async function lastReplyText(provider: string, cwd: string, sessionId: st
       const path = findKimiTranscript(sessionId);
       if (!path) return null;
       const jsonl = readTail(path);
-      return jsonl ? parseGenericTranscriptReply(jsonl) : null;
+      return jsonl ? parseKimiTranscriptReply(jsonl) : null;
     }
     return null;
   } catch {
