@@ -56,7 +56,11 @@ export class WorkspaceService {
     const skillPath = resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md');
     const skillCurrent = existsSync(skillPath) && readFileSync(skillPath, 'utf8') === bridgeService.bridgeSkillContent();
     const hasConfig = existsSync(resolve(workspace.workingDir, '.orkestrai', 'workspace.json'));
-    if (skillCurrent && hasConfig) return;
+    const agentsMd = resolve(workspace.workingDir, 'AGENTS.md');
+    // Bloco AGENTS.md (codex/kimi/opencode) entrou depois — workspaces antigos
+    // so ganham os arquivos novos se o reparo verificar o marcador tambem.
+    const hasAgentsMd = existsSync(agentsMd) && readFileSync(agentsMd, 'utf8').includes('<!-- orkestrai:begin -->');
+    if (skillCurrent && hasConfig && hasAgentsMd) return;
     const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
     if (token) bridgeService.provisionSkill(workspace, token);
   }

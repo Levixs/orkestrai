@@ -83,7 +83,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'mcp',
       title: 'MCP (external tools for agents)',
-      body: `MCP is the standard for giving external tools to agents (GitHub, Gmail, Figma, Drive, Postgres...). THE EASY WAY: Skills page (sidebar) → MCPs tab — search the official curation or the MCP registry and install with one click; if the server asks for a key/token, the app asks with instructions on where to get it. Remote servers install with 1 click (no command). ADVANCED: pencil next to the workspace name → "MCP Servers" section to edit .mcp.json by hand. AUTOMATIC: Orkestrai itself already appears as an "orkestrai" MCP server (self-provisioned) — agents get the canvas actions as typed tools. Presets carry their MCPs along with the team.`,
+      body: `MCP is the standard for giving external tools to agents (GitHub, Gmail, Figma, Drive, Postgres...). THE EASY WAY: Skills page (sidebar) → MCPs tab — search the official curation or the MCP registry and install with one click; if the server asks for a key/token, the app asks with instructions on where to get it. Remote servers install with 1 click (no command). ADVANCED: pencil next to the workspace name → "MCP Servers" section to edit .mcp.json by hand. AUTOMATIC: Orkestrai self-provisions on ALL providers — .mcp.json (Claude/Kimi), ~/.codex/config.toml (Codex), opencode.json (OpenCode) plus an AGENTS.md block explaining the bridge — agents get the canvas actions as typed tools. Presets carry their MCPs along with the team.`,
     },
     {
       id: 'cli',
@@ -206,6 +206,11 @@ export const DOCS_EN: DocsCatalog = {
         'All composer text injection is sanitized: no control bytes and no stray Enter (partial submit) on any provider.',
         'Serious tour fix: a step with an action but no check never advanced (and each click created another agent) — now it advances by itself, with a duplicate guard. An e2e audit runs all 13 tours end to end on every build.',
         'Fix: MCP tools with wrong fields (ask sent text instead of message, notes pointed to nonexistent routes, dismiss sent agent instead of target) — now covered by body-to-body mapping tests against the bridge schemas.',
+        'Full MCP contract: all 23 tools are validated against the real bridge routes and schemas on every build; maestro tools without identity give a clear error instead of a 422.',
+        'Ask no longer returns boot junk: if the transcript is still empty (trust screen, composer echo), the bridge waits for the real answer instead of passing along the raw screen.',
+        'Codex, Kimi and OpenCode now BORN knowing the bridge: block in AGENTS.md (merged, nothing of yours is erased), Codex MCP in ~/.codex/config.toml and opencode.json in the project — before, only Claude got the instructions.',
+        'Deleting a node asks for confirmation (keyboard Delete and the node X): no more losing an agent and its context by accident.',
+        'An agent reply is no longer injected into the other composer (it already arrives via the command result) — no more text spliced into your typing.',
       ],
     },
     {

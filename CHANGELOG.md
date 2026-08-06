@@ -51,6 +51,13 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Fix sério nos tours**: passo com ação mas sem check nunca avançava — o painel só oferecia "Fazer por mim" de novo e cada clique criava outro agente (um workspace de teste chegou a 40 sessões PTY duplicadas). Agora o passo avança sozinho após a ação, com guarda anti-clique-duplo. **Auditoria e2e roda os 13 tours inteiros** a cada build — sem surpresa em onboarding.
 - **Fix: tools MCP com campos/rotas errados** — `ask` mandava `text` (o schema espera `message` → "The given data was invalid"), `note_write/edit/create` apontavam para rotas inexistentes (agora REST: `PUT/PATCH /notes/:id`, `POST /notes`), `dismiss` mandava `agent` (espera `target`). Teste novo compara corpo a corpo com os schemas da ponte.
 
+**Ponte para TODOS os providers + MCP auditado**
+- **Codex, Kimi e OpenCode agora nascem sabendo da ponte**: bloco mesclado no `AGENTS.md` do projeto (o que eles leem — antes só o Claude recebia a skill), MCP registrado no `~/.codex/config.toml` (Codex não lê `.mcp.json`) e `opencode.json` no projeto para o OpenCode. `recruit` aceita `opencode`.
+- **Contrato MCP completo**: as 23 tools são dirigidas contra as rotas e schemas reais da ponte em teste — campo errado ou rota inexistente quebra o build. Tools de maestro sem identidade (ORKESTRAI_NODE_ID ausente) explicam o erro em vez de devolver 422.
+- **Ask sem lixo de boot**: se o transcrito ainda não tem resposta nova (tela de trust, composer ecoando), a ponte espera a resposta de verdade em vez de repassar a tela crua.
+- **Resposta não é mais injetada no composer do outro agente** (já chega pelo retorno do comando) — fim do texto emendado na digitação.
+- **Apagar nó pede confirmação** (Delete do teclado e X do nó): modal avisa que a sessão/histórico do terminal vai junto. Sem mais perder o líder por acidente.
+
 ## 2026-08-04
 
 **Tooltips, busca e polish**

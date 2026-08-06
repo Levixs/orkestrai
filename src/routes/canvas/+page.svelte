@@ -879,11 +879,8 @@
   }
 
   async function deleteNode(id: string) {
-    snapshot();
-    if (!activeWorkspace) return;
-    await api(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes/${id}`, { method: 'DELETE' });
-    nodes = nodes.filter((node) => node.id !== id);
-    edges = edges.filter((edge) => edge.source !== id && edge.target !== id);
+    // X do no passa pela mesma confirmacao do Delete do teclado (modal).
+    pendingNodeDeletion = { nodeIds: [id], edgeIds: [] };
   }
 
   async function resizeNode(id: string, params: { x: number; y: number; width: number; height: number }) {
@@ -1168,16 +1165,42 @@
   });
 
   async function handleDelete({ nodes: deletedNodes, edges: deletedEdges }: { nodes: Node[]; edges: Edge[] }) {
-    snapshot();
     if (!activeWorkspace) return;
+    // So arestas chegam aqui (nos sao interceptados no onbeforedelete): apaga na API.
+    snapshot();
     for (const edge of deletedEdges) {
       await api(`/api/agent-room/workspaces/${activeWorkspace.id}/edges/${edge.id}`, { method: 'DELETE' }).catch(() => {});
     }
-    for (const node of deletedNodes) {
-      await api(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes/${node.id}`, { method: 'DELETE' }).catch(() => {});
-    }
   }
 
+  /**
+   * Intercepta o Delete do teclado ANTES do xyflow mexer no estado: com nos,
+   * retorna false (bloqueia) e abre a modal de confirmacao — o canvas nao
+   * perde o no se o usuario cancelar. Arestas passam direto (barato refazer).
+   */
+  function handleBeforeDelete({ nodes: deletingNodes }: { nodes: Node[]; edges: Edge[] }): boolean {
+    if (!deletingNodes.length) return true;
+    pendingNodeDeletion = { nodeIds: deletingNodes.map((node) => node.id), edgeIds: [] };
+    return false;
+  }
+
+  /** Confirma a exclusao de nos (modal): apaga nos + arestas e atualiza o estado. */
+  async function confirmNodeDeletion() {
+    const pending = pendingNodeDeletion;
+    pendingNodeDeletion = null;
+    if (!pending || !activeWorkspace) return;
+    snapshot();
+    for (const edgeId of pending.edgeIds) {
+      await api(`/api/agent-room/workspaces/${activeWorkspace.id}/edges/${edgeId}`, { method: 'DELETE' }).catch(() => {});
+    }
+    for (const nodeId of pending.nodeIds) {
+      await api(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes/${nodeId}`, { method: 'DELETE' }).catch(() => {});
+    }
+    nodes = nodes.filter((node) => !pending.nodeIds.includes(node.id));
+    edges = edges.filter((edge) => !pending.edgeIds.includes(edge.id) && !pending.nodeIds.includes(edge.source) && !pending.nodeIds.includes(edge.target));
+  }
+
+  let pendingNodeDeletion = $state<{ nodeIds: string[]; edgeIds: string[] } | null>(null);
   let selectedEdgeId = $state<string | null>(null);
 
   function handleEdgeClick({ edge }: { edge: Edge; event: MouseEvent }) {
@@ -1367,6 +1390,7 @@
         deleteKey={['Backspace', 'Delete']}
         onconnect={handleConnect}
         onedgeclick={handleEdgeClick}
+        onbeforedelete={handleBeforeDelete}
         ondelete={handleDelete}
         onnodedragstop={handleDragStop}
         onnodedragstart={handleDragStart}
@@ -1516,6 +1540,21 @@
         <AlertDialog.Footer>
           <AlertDialog.Cancel>{m['settings.cancel']()}</AlertDialog.Cancel>
           <AlertDialog.Action onclick={confirmDeleteWorkspace}>{m['settings.delete']()}</AlertDialog.Action>
+        </AlertDialog.Footer>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
+
+    <AlertDialog.Root open={pendingNodeDeletion !== null} onOpenChange={(isOpen) => !isOpen && (pendingNodeDeletion = null)}>
+      <AlertDialog.Content>
+        <AlertDialog.Header>
+          <AlertDialog.Title>{m['canvas.del_nodes_title']({ count: pendingNodeDeletion?.nodeIds.length ?? 0 })}</AlertDialog.Title>
+          <AlertDialog.Description>
+            {m['canvas.del_nodes_desc']()}
+          </AlertDialog.Description>
+        </AlertDialog.Header>
+        <AlertDialog.Footer>
+          <AlertDialog.Cancel>{m['settings.cancel']()}</AlertDialog.Cancel>
+          <AlertDialog.Action onclick={confirmNodeDeletion}>{m['settings.delete']()}</AlertDialog.Action>
         </AlertDialog.Footer>
       </AlertDialog.Content>
     </AlertDialog.Root>

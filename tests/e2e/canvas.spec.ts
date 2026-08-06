@@ -25,6 +25,42 @@ test.describe('canvas de workspaces', () => {
     if (created) await request.delete(`/api/agent-room/workspaces/${created.id}`);
   });
 
+  test('apagar nó pelo teclado pede confirmação (modal) e cancelar preserva', async ({ page, request }) => {
+    const workspaceName = `E2E delete ${Date.now()}`;
+
+    const created = await request.post('/api/agent-room/workspaces', { data: { name: workspaceName, workingDir: '/tmp' } });
+    const workspace = ((await created.json()).data as { id: string });
+    await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: { type: 'note', title: 'Nota', x: 300, y: 200, width: 320, height: 220, payload: { content: '' } },
+    });
+
+    await page.goto('/canvas');
+    await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+    await expect(page.locator('.workspace-list li.active')).toContainText(workspaceName);
+
+    const note = page.locator('.canvas-note');
+    await expect(note).toBeVisible({ timeout: 10_000 });
+
+    // Seleciona o nó PELO CABEÇALHO (clicar no corpo foca o textarea e o
+    // Delete vira edicao de texto) e aperta Delete: tem que ABRIR A MODAL
+    await note.locator('.node-header').click();
+    await page.keyboard.press('Delete');
+    const dialog = page.locator('[role="alertdialog"]');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Apagar 1 nó');
+    // Cancelar: o nó continua no canvas
+    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(note).toBeVisible();
+
+    // De novo, agora confirmando: o nó some
+    await note.locator('.node-header').click();
+    await page.keyboard.press('Delete');
+    await dialog.getByRole('button', { name: 'Apagar' }).click();
+    await expect(note).toHaveCount(0);
+
+    await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+  });
+
   test('cria workspace, adiciona nota e terminal, e persiste apos reload', async ({ page, request }) => {
     const workspaceName = `E2E ${Date.now()}`;
 

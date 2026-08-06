@@ -87,7 +87,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'mcp',
       title: 'MCP (tools externas dos agentes)',
-      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app pergunta com instruções de onde conseguir. Remotos instalam com 1 clique (sem comando). AVANÇADO: lápis ao lado do nome do workspace → seção "Servidores MCP" para editar o .mcp.json na mão. AUTOMÁTICO: o próprio Orkestrai já aparece como servidor MCP "orkestrai" (provisionado sozinho) — os agentes ganham as ações do canvas como tools tipadas. Presets carregam seus MCPs junto com o time.`,
+      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app pergunta com instruções de onde conseguir. Remotos instalam com 1 clique (sem comando). AVANÇADO: lápis ao lado do nome do workspace → seção "Servidores MCP" para editar o .mcp.json na mão. AUTOMÁTICO: o Orkestrai se provisiona sozinho em TODOS os providers — .mcp.json (Claude/Kimi), ~/.codex/config.toml (Codex), opencode.json (OpenCode) e um bloco no AGENTS.md explicando a ponte — os agentes ganham as ações do canvas como tools tipadas. Presets carregam seus MCPs junto com o time.`,
     },
     {
       id: 'cli',
@@ -210,6 +210,11 @@ export const DOCS_PT: DocsCatalog = {
         'Toda injeção de texto em composer é sanitizada: sem bytes de controle e sem Enter solto (submit parcial) em nenhum provider.',
         'Fix sério nos tours: passo com ação sem check nunca avançava (e cada clique criava outro agente) — agora avança sozinho, com guarda anti-duplicata. Auditoria e2e roda os 13 tours inteiros a cada build.',
         'Fix: tools MCP com campos errados (ask mandava text em vez de message, notes apontavam rotas inexistentes, dismiss mandava agent em vez de target) — agora cobertas por teste de mapeamento corpo-a-corpo com os schemas da ponte.',
+        'Contrato MCP completo: as 23 tools são validadas contra as rotas e schemas reais da ponte a cada build; tools de maestro sem identidade dão erro claro em vez de 422.',
+        'Ask não devolve mais lixo de boot: se o transcrito ainda está vazio (tela de trust, composer ecoando), a ponte espera a resposta de verdade em vez de repassar a tela crua.',
+        'Codex, Kimi e OpenCode agora NASCEM sabendo da ponte: bloco no AGENTS.md (merge, sem apagar nada seu), MCP do Codex no ~/.codex/config.toml e opencode.json no projeto — antes só o Claude recebia as instruções.',
+        'Apagar nó pede confirmação (Delete do teclado e X do nó): sem mais perder um agente e o contexto dele por acidente.',
+        'A resposta de um agente não é mais injetada no composer do outro (ela já chega pelo retorno do comando) — fim do texto emendado na sua digitação.',
       ],
     },
     {

@@ -16,6 +16,24 @@ describe('WorkspaceService — provisionamento da ponte', () => {
     expect(workspace.id).toBeTruthy();
     expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
     expect(existsSync(join(dir, '.claude', 'skills', 'orkestrai', 'SKILL.md'))).toBe(true);
+    // AGENTS.md (codex/kimi/opencode) com o bloco da ponte + opencode.json com o MCP
+    const agentsMd = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
+    expect(agentsMd).toContain('<!-- orkestrai:begin -->');
+    expect(agentsMd).toContain('orkestrai ask');
+    const opencode = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf8'));
+    expect(opencode.mcp.orkestrai).toMatchObject({ type: 'local', command: ['orkestrai', 'mcp'] });
+  });
+
+  it('preserva conteudo do usuario no AGENTS.md ao atualizar o bloco', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-prov-merge-'));
+    const { writeFileSync: write } = await import('node:fs');
+    write(join(dir, 'AGENTS.md'), '# Meu projeto\n\nRegras minhas aqui.\n');
+    const workspace = await workspaceService.create({ name: 'merge', workingDir: dir, icon: null, instructions: null });
+
+    const agentsMd = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
+    expect(agentsMd).toContain('Regras minhas aqui.');
+    expect(agentsMd).toContain('<!-- orkestrai:begin -->');
+    expect(workspace.id).toBeTruthy();
   });
 
   it('repara skill e token ao abrir workspace antigo (sem provisionamento)', async () => {

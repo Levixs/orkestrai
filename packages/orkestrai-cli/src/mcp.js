@@ -38,7 +38,7 @@ const TOOLS = [
   { name: 'floor_land', description: 'Aterrissa o andar (merge da branch).', inputSchema: { type: 'object', properties: { floorId: { type: 'string' } }, required: ['floorId'] } },
   { name: 'notify', description: 'Notificacao nativa no desktop do usuario.', inputSchema: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } },
   { name: 'port', description: 'Devolve uma porta livre para subir servidores.', inputSchema: { type: 'object', properties: {} } },
-  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', enum: ['claude', 'codex', 'kimi'] }, role: { type: 'string' } }, required: ['title'] } },
+  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', enum: ['claude', 'codex', 'kimi', 'opencode'] }, role: { type: 'string' } }, required: ['title'] } },
   { name: 'dismiss', description: '(maestro) Dispensa um agente.', inputSchema: { type: 'object', properties: { agent: { type: 'string' } }, required: ['agent'] } },
 ];
 
@@ -67,8 +67,10 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('PATCH', `/api/agent-room/bridge/tasks/${encodeURIComponent(args.taskId)}`, { status: 'done' });
     case 'task_history':
       return bridge('GET', '/api/agent-room/bridge/tasks/history');
-    case 'portal_create':
+    case 'portal_create': {
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — crie o portal pelo canvas ou pela CLI dentro do terminal de um agente.');
       return bridge('POST', '/api/agent-room/bridge/portal/create', { url: args.url, title: args.title, connect: args.connect, from: selfAgent });
+    }
     case 'portal_navigate':
       return bridge('POST', '/api/agent-room/bridge/portal', { nodeId: args.nodeId, action: 'navigate', args: { url: args.url } });
     case 'portal_eval':
@@ -89,10 +91,14 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('POST', '/api/agent-room/bridge/notify', { message: args.message });
     case 'port':
       return { port: await findFreePort() };
-    case 'recruit':
+    case 'recruit': {
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — recruit so funciona dentro do terminal do maestro.');
       return bridge('POST', '/api/agent-room/bridge/recruit', { title: args.title, provider: args.provider, role: args.role, from: selfAgent });
-    case 'dismiss':
+    }
+    case 'dismiss': {
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — dismiss so funciona dentro do terminal do maestro.');
       return bridge('POST', '/api/agent-room/bridge/dismiss', { target: args.agent, from: selfAgent });
+    }
     default:
       throw new Error(`Tool desconhecida: ${name}`);
   }

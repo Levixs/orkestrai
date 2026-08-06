@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import type { CanvasNode, Workspace } from '../../domain/types.js';
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
@@ -124,6 +125,11 @@ export class BridgeService {
 
     const origin = input.from ? this.findAgent(agents, input.from) : null;
     if (origin) await this.ensureEdge(workspaceId, origin.nodeId, target.nodeId);
+
+    // Baseline ANTES de mandar: a resposta so vale quando o transcrito muda
+    // (assistente novo depois da nossa mensagem) — nunca o boot do TUI.
+    const baseline = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
+
     this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, true);
     let reply: { text: string; timedOut: boolean };
     try {
@@ -136,17 +142,30 @@ export class BridgeService {
     // TUI/ANSI, sem status bar, sem caracteres duplicados de redraw). A
     // raspagem de tela crua vazava tudo isso para o composer do outro agente
     // (quebras de linha soltas disparavam submits parciais e ate o editor
-    // externo do Claude Code). Fallback: captura sanitizada.
-    const replyText = (await this.transcriptReply(workspaceId, target.nodeId).catch(() => null)) ?? sanitizeComposerText(reply.text);
-
-    if (origin?.sessionId && origin.sessionAlive) {
-      // A resposta ja e SUBMETIDA (texto e Enter separados, como o dispatch) —
-      // antes ficava pendurada no composer do agente de origem e o usuario
-      // tinha que apagar na mao (ou reenviava sem querer).
-      const injection = `[resposta de ${target.title}] ${replyText}\n`;
-      ptySessionManager.writeWithSubmit(origin.sessionId, injection);
+    // externo do Claude Code). Se o transcrito ainda nao mudou (silencio cedo
+    // demais: boot, trust screen, composer ecoando), espera ele encher.
+    let replyText = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
+    if (replyText && replyText === baseline) replyText = null;
+    if (!replyText) {
+      const node = await workspaceRepository.getNode(target.nodeId);
+      const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
+      // So espera quando a sessao da CLI ja foi identificada (transcrito
+      // localizavel) — sem isso nao ha o que pollar e o fallback e imediato.
+      if (payload.provider && payload.agentSessionId) {
+        const deadline = Date.now() + 90_000;
+        while (!replyText && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 2_000));
+          const attempt = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
+          if (attempt && attempt !== baseline) replyText = attempt;
+        }
+      }
     }
+    replyText ??= sanitizeComposerText(reply.text);
 
+    // A resposta chega ao agente de origem pelo RETORNO do comando (stdout da
+    // CLI / resultado da tool MCP). NAO injetamos mais no composer de origem:
+    // o texto digitado colidia com o que o usuario estava escrevendo naquele
+    // terminal (mensagem emendada/corrompida).
     // Voz de volta: o no alvo pode ler a resposta em voz alta (toggle por
     // terminal; TTS pt-BR via sidecar — ver /api/agent-room/voice/speak).
     const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
@@ -538,8 +557,8 @@ Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce or
 
 PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NAO aparecem no canvas, NAO tem terminal proprio e o usuario nao ve nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
 
-1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao. VARIE os providers: times com 3+ agentes devem misturar claude, codex e kimi (ex.: codex implementa, claude revisa/arquiteta, kimi cuida de design/docs) — NUNCA crie o time inteiro com um provider so.
-2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi] [--role <papel>]\`. Recrutas nascem CONECTADOS a voce no organograma (nao precisa de \`connect\`). Use titulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descricoes longas vao na nota de briefing.
+1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao. VARIE os providers: times com 3+ agentes devem misturar claude, codex, kimi e opencode (ex.: codex implementa, claude revisa/arquiteta, kimi cuida de design/docs) — NUNCA crie o time inteiro com um provider so.
+2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi|opencode] [--role <papel>]\`. Recrutas nascem CONECTADOS a voce no organograma (nao precisa de \`connect\`). Use titulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descricoes longas vao na nota de briefing.
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota ja conecta ao time inteiro por padrao).
 4. Trabalho em codigo? Cada agente trabalha no PROPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente comecar — NUNCA deixe varios agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (ve conflitos) e \`orkestrai floor land\`.
 5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente). HANDOFF: cada task tem que ser AUTOSSUFICIENTE (a descricao diz o que fazer e onde esta o spec) OU citar o id de uma nota que JA EXISTE e ja esta conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que voce ainda nao criou. E cada agente PRODUZ os proprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; nao fica esperando o lider mandar uma — deixe isso explicito na descricao da task.
@@ -583,13 +602,16 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
         mcpConfig.mcpServers = { ...(mcpConfig.mcpServers ?? {}), orkestrai: desired };
         writeFileSync(mcpPath, `${JSON.stringify(mcpConfig, null, 2)}\n`);
       }
+      this.provisionAgentsMd(workspace.workingDir);
+      this.provisionCodexMcp();
+      this.provisionOpenCodeMcp(workspace.workingDir);
       // Em repos git, exclui os arquivos da ponte do status (info/exclude
       // local) — senao o checkout fica "sujo" e o land de andares falha.
       const gitDir = resolve(workspace.workingDir, '.git');
       if (existsSync(gitDir)) {
         const excludePath = resolve(gitDir, 'info', 'exclude');
         const currentExclude = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
-        const additions = ['.orkestrai/', '.claude/skills/orkestrai/', '.mcp.json'].filter((entry) => !currentExclude.includes(entry));
+        const additions = ['.orkestrai/', '.claude/skills/orkestrai/', '.mcp.json', 'opencode.json', 'AGENTS.md'].filter((entry) => !currentExclude.includes(entry));
         if (additions.length) {
           mkdirSync(resolve(gitDir, 'info'), { recursive: true });
           writeFileSync(excludePath, `${currentExclude.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
@@ -599,6 +621,65 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       // Sem permissao de escrita no working_dir nao bloqueia a conexao.
     }
     this.writeBridgeConfig(workspace, token);
+  }
+
+  /** Bloco AGENTS.md: o que Codex, Kimi e OpenCode leem (eles nao leem .claude/skills). */
+  private agentsMdBlock(): string {
+    return [
+      '<!-- orkestrai:begin -->',
+      '## Ponte Orkestrai (agentes)',
+      '',
+      'Este projeto roda dentro de um workspace do Orkestrai. Voce tem a CLI `orkestrai` e/ou tools MCP `orkestrai` disponiveis para colaborar com o time no canvas:',
+      '- `orkestrai list` — agentes do workspace, notas e portais conectados.',
+      '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
+      '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
+      '- `orkestrai task list/add/done` — quadro kanban do time.',
+      '- `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.',
+      '- `orkestrai notify "<msg>"` — notificacao nativa para o usuario ao concluir.',
+      '- Sua identidade esta no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` sao opcionais. Se `orkestrai` nao resolver no PATH, use `node "$ORKESTRAI_CLI" ...`.',
+      '- Se as tools MCP `orkestrai` estiverem disponiveis, PREFIRA elas (chamadas tipadas); a CLI e o fallback.',
+      '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',
+      '<!-- orkestrai:end -->',
+    ].join('\n');
+  }
+
+  /** Escreve/mescla o bloco da ponte no AGENTS.md (preserva o conteudo do usuario). */
+  private provisionAgentsMd(workingDir: string): void {
+    const path = resolve(workingDir, 'AGENTS.md');
+    const block = this.agentsMdBlock();
+    const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
+    const pattern = /<!-- orkestrai:begin -->[\s\S]*?<!-- orkestrai:end -->/;
+    if (pattern.test(current)) {
+      const next = current.replace(pattern, block);
+      if (next !== current) writeFileSync(path, next);
+      return;
+    }
+    writeFileSync(path, `${current.replace(/\s*$/, '\n\n')}${block}\n`);
+  }
+
+  /** Codex le MCP de ~/.codex/config.toml ([mcp_servers.*]) — nao le .mcp.json. */
+  private provisionCodexMcp(): void {
+    const dir = resolve(homedir(), '.codex');
+    if (!existsSync(dir)) return; // codex nao instalado — nao polui o HOME
+    const path = resolve(dir, 'config.toml');
+    const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
+    if (current.includes('[mcp_servers.orkestrai]')) return;
+    writeFileSync(path, `${current.replace(/\s*$/, '\n\n')}[mcp_servers.orkestrai]\ncommand = "orkestrai"\nargs = ["mcp"]\n`);
+  }
+
+  /** OpenCode le MCP do opencode.json do projeto (secao "mcp", type local). */
+  private provisionOpenCodeMcp(workingDir: string): void {
+    const path = resolve(workingDir, 'opencode.json');
+    let config: { mcp?: Record<string, unknown> } & Record<string, unknown> = {};
+    try {
+      config = JSON.parse(readFileSync(path, 'utf8'));
+    } catch {
+      // nao existe ou invalido — cria do zero
+    }
+    const desired = { type: 'local', command: ['orkestrai', 'mcp'], enabled: true };
+    if (JSON.stringify(config.mcp?.orkestrai ?? null) === JSON.stringify(desired)) return;
+    config.mcp = { ...(config.mcp ?? {}), orkestrai: desired };
+    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
   }
 
   // -- Internos ---------------------------------------------------------------
