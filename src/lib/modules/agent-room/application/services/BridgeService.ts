@@ -18,6 +18,8 @@ export type BridgeAgent = {
   command: string | null;
   sessionId: string | null;
   sessionAlive: boolean;
+  /** true quando o agente e o lider do time (Modo Maestro). */
+  maestro: boolean;
 };
 
 // Remove sequencias ANSI (cores, cursor, etc.) do output de TUIs.
@@ -78,7 +80,7 @@ export class BridgeService {
     return nodes
       .filter((node) => node.type === 'terminal')
       .map((node) => {
-        const payload = node.payload as { provider?: string; command?: string; sessionId?: string };
+        const payload = node.payload as { provider?: string; command?: string; sessionId?: string; maestro?: boolean };
         const sessionId = payload.sessionId ?? null;
         const session = sessionId ? ptySessionManager.get(sessionId) : null;
         return {
@@ -88,6 +90,7 @@ export class BridgeService {
           command: payload.command ?? null,
           sessionId,
           sessionAlive: Boolean(session && !session.exited),
+          maestro: Boolean(payload.maestro),
         };
       });
   }
@@ -525,7 +528,7 @@ Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce 
 Se \`orkestrai\` nao resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), chame a CLI DIRETO pelo node: \`node "$ORKESTRAI_CLI" ...\` (Linux/macOS), \`node %ORKESTRAI_CLI% ...\` (cmd.exe) ou \`node $env:ORKESTRAI_CLI ...\` (PowerShell) — o caminho completo da CLI esta na variavel de ambiente ORKESTRAI_CLI e funciona sempre, sem depender de PATH.
 Se as tools \`orkestrai\` (list/ask/note_*/task_*/portal_*/floor_*/notify/port/recruit/dismiss) estiverem disponiveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
-- \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados.
+- \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, nao um titulo — fale com o lider pelo TITULO dele (ex.: \`orkestrai ask "Lider" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente nao existe).
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
 - \`orkestrai note read <nodeId>\` — le uma nota conectada a voce.
 - \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
@@ -641,7 +644,7 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       '## Ponte Orkestrai (agentes)',
       '',
       'Este projeto roda dentro de um workspace do Orkestrai. Voce tem a CLI `orkestrai` e/ou tools MCP `orkestrai` disponiveis para colaborar com o time no canvas:',
-      '- `orkestrai list` — agentes do workspace, notas e portais conectados.',
+      '- `orkestrai list` — agentes do workspace, notas e portais conectados. O [LIDER] marcado e o maestro do time: fale com ele pelo TITULO ("Maestro" e o papel, nao um nome de agente).',
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
       '- `orkestrai task list/add/done` — quadro kanban do time.',

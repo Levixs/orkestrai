@@ -211,7 +211,11 @@ export async function run(argv, options = {}) {
         out(`Workspace: ${data.workspace.name}`);
         for (const agent of data.agents) {
           const status = agent.sessionAlive ? 'vivo' : 'sem sessao';
-          out(`- ${agent.title} [${agent.provider ?? 'shell'}] (${status}) ${agent.nodeId}`);
+          const badge = agent.maestro ? ' [LIDER]' : '';
+          out(`- ${agent.title}${badge} [${agent.provider ?? 'shell'}] (${status}) ${agent.nodeId}`);
+        }
+        if (data.agents.some((agent) => agent.maestro)) {
+          out('O agente com [LIDER] e o maestro do time — fale com ele pelo TITULO (nao existe agente chamado "Maestro").');
         }
         if (data.notes?.length) {
           out(`Notas conectadas: ${data.notes.join(', ')}`);

@@ -217,6 +217,7 @@ export const DOCS_PT: DocsCatalog = {
         'A resposta de um agente não é mais injetada no composer do outro (ela já chega pelo retorno do comando) — fim do texto emendado na sua digitação.',
         'Kimi destravado de vez: a ponte espera o TUI terminar o boot antes de escrever (o Enter virava newline no composer), re-envia o Enter se nada acontece e lê a resposta do wire.jsonl real — verificado com o Kimi de verdade respondendo limpo.',
         'Títulos duplicados não quebram mais o roteamento: novos agentes ganham sufixo automático (Dev 2, Dev 3) e um ask ambíguo explica como resolver em vez de mandar pro agente errado.',
+        'orkestrai list agora marca quem é o líder com [LIDER] — agentes não chutam mais "orkestrai ask Maestro" (Maestro é o papel, não um título).',
       ],
     },
     {

@@ -213,6 +213,7 @@ export const DOCS_EN: DocsCatalog = {
         'An agent reply is no longer injected into the other composer (it already arrives via the command result) — no more text spliced into your typing.',
         'Kimi unlocked for good: the bridge waits for the TUI to finish booting before writing (Enter became a newline in the composer), re-sends Enter if nothing happens and reads the answer from the real wire.jsonl — verified with the real Kimi answering cleanly.',
         'Duplicate titles no longer break routing: new agents get an automatic suffix (Dev 2, Dev 3) and an ambiguous ask explains how to fix it instead of messaging the wrong agent.',
+        'orkestrai list now marks who leads with [LIDER] — agents no longer guess "orkestrai ask Maestro" (Maestro is the role, not a title).',
       ],
     },
     {

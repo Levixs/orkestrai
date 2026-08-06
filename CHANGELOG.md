@@ -64,6 +64,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Retry do Enter** se nada acontece após o envio (até 3x).
 - **Resposta do Kimi lida do `wire.jsonl`** (parser do formato real 0.33: `turn.prompt` → `content.part` textos), com o tracker registrado também para sessões criadas pelo servidor (flows/maestro). Verificado com o Kimi real respondendo limpo: *"Sim, estou online — sou o Kimi Code CLI, pronto para ajudar."*
 - **Títulos duplicados não quebram mais o roteamento**: novos agentes ganham sufixo automático (`Dev 2`, `Dev 3`) no canvas e no recruit; um `ask` para título ambíguo falha com orientação clara em vez de mandar a mensagem para o agente errado (o "Claude falando consigo mesmo").
+- **O líder é descobrível**: `orkestrai list` marca o maestro do time com `[LIDER]` (e a skill ensina que "Maestro" é o papel, não um título) — fim do `orkestrai ask "Maestro"` que nunca existia.
 
 ## 2026-08-04
 
