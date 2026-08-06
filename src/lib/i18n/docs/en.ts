@@ -205,6 +205,7 @@ export const DOCS_EN: DocsCatalog = {
         'Fix: the Orkestrai MCP server spoke the wrong framing (LSP) and Kimi timed out after 30s — now it is NDJSON, the official MCP stdio standard (Claude, Kimi and co. connect).',
         'All composer text injection is sanitized: no control bytes and no stray Enter (partial submit) on any provider.',
         'Serious tour fix: a step with an action but no check never advanced (and each click created another agent) — now it advances by itself, with a duplicate guard. An e2e audit runs all 13 tours end to end on every build.',
+        'Fix: MCP tools with wrong fields (ask sent text instead of message, notes pointed to nonexistent routes, dismiss sent agent instead of target) — now covered by body-to-body mapping tests against the bridge schemas.',
       ],
     },
     {

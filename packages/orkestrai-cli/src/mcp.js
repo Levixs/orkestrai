@@ -50,15 +50,15 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', `/api/agent-room/bridge/agents${query}`);
     }
     case 'ask':
-      return bridge('POST', '/api/agent-room/bridge/ask', { to: args.agent, text: args.message, from: selfAgent });
+      return bridge('POST', '/api/agent-room/bridge/ask', { to: args.agent, message: args.message, from: selfAgent });
     case 'note_read':
       return bridge('GET', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`);
     case 'note_write':
-      return bridge('POST', '/api/agent-room/bridge/notes/write', { nodeId: args.nodeId, content: args.content, from: selfAgent });
+      return bridge('PUT', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`, { content: args.content });
     case 'note_edit':
-      return bridge('POST', '/api/agent-room/bridge/notes/edit', { nodeId: args.nodeId, oldText: args.oldText, newText: args.newText, from: selfAgent });
+      return bridge('PATCH', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`, { old: args.oldText, new: args.newText });
     case 'note_create':
-      return bridge('POST', '/api/agent-room/bridge/notes/create', { title: args.title, content: args.content, connect: args.connect ?? 'all', from: selfAgent });
+      return bridge('POST', '/api/agent-room/bridge/notes', { title: args.title, content: args.content, connect: args.connect ?? 'all', from: selfAgent });
     case 'task_list':
       return bridge('GET', '/api/agent-room/bridge/tasks');
     case 'task_add':
@@ -92,7 +92,7 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
     case 'recruit':
       return bridge('POST', '/api/agent-room/bridge/recruit', { title: args.title, provider: args.provider, role: args.role, from: selfAgent });
     case 'dismiss':
-      return bridge('POST', '/api/agent-room/bridge/dismiss', { agent: args.agent, from: selfAgent });
+      return bridge('POST', '/api/agent-room/bridge/dismiss', { target: args.agent, from: selfAgent });
     default:
       throw new Error(`Tool desconhecida: ${name}`);
   }

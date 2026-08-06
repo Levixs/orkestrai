@@ -205,6 +205,7 @@ export const DOCS_ES: DocsCatalog = {
         'Fix: el servidor MCP de Orkestrai hablaba el framing equivocado (LSP) y Kimi daba timeout de 30s — ahora es NDJSON, el estándar oficial de MCP (Claude, Kimi y cia conectan).',
         'Toda inyección de texto en composer es sanitizada: sin bytes de control y sin Enter suelto (submit parcial) en ningún provider.',
         'Fix serio en los tours: un paso con acción sin check nunca avanzaba (y cada clic creaba otro agente) — ahora avanza solo, con guarda anti-duplicados. Una auditoría e2e corre los 13 tours completos en cada build.',
+        'Fix: tools MCP con campos equivocados (ask mandaba text en vez de message, notes apuntaban a rutas inexistentes, dismiss mandaba agent en vez de target) — ahora cubiertas por test de mapeo cuerpo a cuerpo con los schemas del puente.',
       ],
     },
     {

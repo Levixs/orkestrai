@@ -49,6 +49,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **Sanitização de composer em toda injeção** (`writeWithSubmit`, ask, resposta, roles, tarefas, rotinas): sem bytes de controle (atalhos de TUI) e sem `\n` solto (submit parcial). `sanitizeComposerText` com testes.
 - **Servidor MCP com framing correto**: falava Content-Length (LSP) e os clientes oficiais (Kimi: "timeout after 30000ms") nunca recebiam resposta. Agora é NDJSON por linha (spec stdio do MCP), tolerando o framing legado na entrada. Testes reescritos em NDJSON + tolerância LSP.
 - **Fix sério nos tours**: passo com ação mas sem check nunca avançava — o painel só oferecia "Fazer por mim" de novo e cada clique criava outro agente (um workspace de teste chegou a 40 sessões PTY duplicadas). Agora o passo avança sozinho após a ação, com guarda anti-clique-duplo. **Auditoria e2e roda os 13 tours inteiros** a cada build — sem surpresa em onboarding.
+- **Fix: tools MCP com campos/rotas errados** — `ask` mandava `text` (o schema espera `message` → "The given data was invalid"), `note_write/edit/create` apontavam para rotas inexistentes (agora REST: `PUT/PATCH /notes/:id`, `POST /notes`), `dismiss` mandava `agent` (espera `target`). Teste novo compara corpo a corpo com os schemas da ponte.
 
 ## 2026-08-04
 

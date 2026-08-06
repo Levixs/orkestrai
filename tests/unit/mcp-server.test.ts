@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { PassThrough } from 'node:stream';
 import { runMcpServer, MCP_TOOLS } from '../../packages/orkestrai-cli/src/mcp.js';
 
-/** Roda o servidor MCP com streams em memoria + bridge fake. */
+/** Roda o servidor MCP com streams em memoria + bridge fake (captura o body). */
 function startMcp(bridgeResult = { ok: true }) {
   const input = new PassThrough();
   const chunks = [];
   const done = runMcpServer({
     input,
     write: (chunk) => chunks.push(chunk),
-    bridge: async (method, path) => ({ ...bridgeResult, method, path }),
+    bridge: async (method, path, body) => ({ ...bridgeResult, method, path, body }),
     findFreePort: async () => 45678,
     selfAgent: 'n1',
   });
@@ -91,6 +91,41 @@ describe('servidor MCP (orkestrai mcp)', () => {
     sendLsp({ jsonrpc: '2.0', id: 5, method: 'ping' });
     const response = await waitFor(5);
     expect(response.result).toEqual({});
+    input.end();
+  });
+
+  it('corpos das tools batem com os schemas da bridge (ask/notes/dismiss)', async () => {
+    const { send, waitFor, input } = startMcp();
+    // ask: o schema exige "message" (nao "text") — o bug do "data was invalid"
+    send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'ask', arguments: { agent: 'Codex', message: 'oi' } } });
+    const ask = JSON.parse((await waitFor(1)).result.content[0].text);
+    expect(ask.path).toBe('/api/agent-room/bridge/ask');
+    expect(ask.body).toMatchObject({ to: 'Codex', message: 'oi', from: 'n1' });
+    expect(ask.body.text).toBeUndefined();
+
+    // note_write/edit: REST por nodeId (PUT/PATCH /notes/:id)
+    send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'note_write', arguments: { nodeId: 'n9', content: 'x' } } });
+    const write = JSON.parse((await waitFor(2)).result.content[0].text);
+    expect(write.method).toBe('PUT');
+    expect(write.path).toBe('/api/agent-room/bridge/notes/n9');
+    expect(write.body).toEqual({ content: 'x' });
+
+    send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'note_edit', arguments: { nodeId: 'n9', oldText: 'a', newText: 'b' } } });
+    const edit = JSON.parse((await waitFor(3)).result.content[0].text);
+    expect(edit.method).toBe('PATCH');
+    expect(edit.path).toBe('/api/agent-room/bridge/notes/n9');
+    expect(edit.body).toEqual({ old: 'a', new: 'b' });
+
+    send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'note_create', arguments: { title: 'T', content: 'c' } } });
+    const create = JSON.parse((await waitFor(4)).result.content[0].text);
+    expect(create.method).toBe('POST');
+    expect(create.path).toBe('/api/agent-room/bridge/notes');
+
+    // dismiss: o schema espera "target" (nao "agent")
+    send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'dismiss', arguments: { agent: 'Kimi' } } });
+    const dismiss = JSON.parse((await waitFor(5)).result.content[0].text);
+    expect(dismiss.body).toMatchObject({ target: 'Kimi' });
+    expect(dismiss.body.agent).toBeUndefined();
     input.end();
   });
 
