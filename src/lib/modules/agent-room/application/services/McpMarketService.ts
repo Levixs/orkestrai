@@ -233,8 +233,17 @@ export class McpMarketService {
     if (!q) return curated;
     try {
       const remote = await this.searchRegistry(q);
-      const curatedKeys = new Set(curated.map((entry) => entry.key));
-      return [...curated, ...remote.filter((entry) => !curatedKeys.has(entry.key))];
+      // Dedupe por key E por titulo: o registry pode repetir servidores (ou
+      // colidir com a curadoria) e chave duplicada quebra o each da UI.
+      const seen = new Set(curated.map((entry) => entry.key));
+      const seenTitles = new Set(curated.map((entry) => entry.title.toLowerCase()));
+      const deduped = remote.filter((entry) => {
+        if (seen.has(entry.key) || seenTitles.has(entry.title.toLowerCase())) return false;
+        seen.add(entry.key);
+        seenTitles.add(entry.title.toLowerCase());
+        return true;
+      });
+      return [...curated, ...deduped];
     } catch {
       return curated; // registry fora do ar: curadoria sempre funciona
     }

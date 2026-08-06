@@ -13,32 +13,32 @@ function startMcp(bridgeResult = { ok: true }) {
     findFreePort: async () => 45678,
     selfAgent: 'n1',
   });
+  /** NDJSON (spec stdio do MCP): 1 JSON por linha. */
   const send = (message) => {
+    input.write(`${JSON.stringify(message)}\n`);
+  };
+  /** Legado LSP: Content-Length — a entrada ainda e tolerada. */
+  const sendLsp = (message) => {
     const body = JSON.stringify(message);
     input.write(`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`);
   };
-  /** Espera a resposta com o id dado aparecer no stdout. */
+  /** Espera a resposta com o id dado aparecer no stdout (NDJSON). */
   const waitFor = async (id) => {
     for (let i = 0; i < 100; i += 1) {
-      const text = chunks.join('');
-      const match = text.match(/Content-Length: \d+\r\n\r\n/g);
-      if (match) {
-        // Parse simples: pega todos os corpos JSON completos.
-        const bodies = text.split(/Content-Length: \d+\r\n\r\n/).slice(1);
-        for (const body of bodies) {
-          try {
-            const parsed = JSON.parse(body);
-            if (parsed.id === id) return parsed;
-          } catch {
-            // corpo ainda incompleto
-          }
+      const lines = chunks.join('').split('\n').filter(Boolean);
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.id === id) return parsed;
+        } catch {
+          // linha ainda incompleta
         }
       }
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     throw new Error(`resposta ${id} nao chegou`);
   };
-  return { send, waitFor, done, input };
+  return { send, sendLsp, waitFor, done, input };
 }
 
 describe('servidor MCP (orkestrai mcp)', () => {
@@ -83,6 +83,14 @@ describe('servidor MCP (orkestrai mcp)', () => {
     send({ jsonrpc: '2.0', id: 9, method: 'resources/list' });
     const response = await waitFor(9);
     expect(response.error.code).toBe(-32601);
+    input.end();
+  });
+
+  it('tolerates framing LSP legado (Content-Length) na entrada', async () => {
+    const { sendLsp, waitFor, input } = startMcp();
+    sendLsp({ jsonrpc: '2.0', id: 5, method: 'ping' });
+    const response = await waitFor(5);
+    expect(response.result).toEqual({});
     input.end();
   });
 

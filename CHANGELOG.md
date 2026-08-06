@@ -41,6 +41,13 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - **"Fazer por mim" aparece na hora no canvas**: nós e arestas criados por tour, CLI ou API agora disparam live refresh do canvas (broadcast em create/delete de nó/aresta) — antes o agente criado só aparecia ao sair e voltar do workspace. `updateNode` segue sem broadcast de propósito (arrastar não pode recarregar a tela).
 - **Fix: onboarding não abria em inglês/espanhol**: a troca de idioma remonta a árvore (`{#key locale}`) depois que a URL `?onboarding=1` já tinha sido limpa — o remount recriava a página com o wizard fechado e sem o parâmetro. Agora a intenção vai para `sessionStorage` e sobrevive ao remount. Corrida reproduzida em teste e2e (settings lentas + locale en): falha sem o fix, passa com ele.
 - **Fix: tour de pesquisa travado no último passo**: o passo "Conexões de trabalho" prometia duas conexões mas a ação só criava uma (portal nunca conectava), e a finalização do tour era um bloco morto — o painel ficava preso no passo 4. Passos agora executam **várias ações em sequência** (as duas conexões são feitas de verdade) e o tour **conclui sozinho** quando o último check passa. Coberto por e2e (tour inteiro até o "Tour concluído!", 2 arestas no canvas) e testes unitários da regra de conclusão.
+- **Fix: busca de MCPs quebrava com duplicados do registry** (`each_key_duplicate` esvaziava a lista de resultados) — agora deduplica por chave e título; a curadoria (Figma incluso) sempre aparece ao abrir a aba.
+- **Caso de uso + tour "Do Figma ao código"** (13 tours): agente Designer, nó Imagem com o mockup colado e Figma MCP lendo frames/estilos direto do arquivo. Auditoria nova roda os 13 tours inteiros em e2e.
+
+**Ponte entre agentes saneada (bugs sérios)**
+- **Respostas do `ask` agora vêm do transcrito limpo da CLI** (JSONL em disco, já usado pela voz) em vez da raspagem de tela — a captura crua vazava barra de status, histórico e caracteres duplicados de redraw para o composer do outro agente (foi o que abriu o editor externo do VS Code com texto corrompido).
+- **Sanitização de composer em toda injeção** (`writeWithSubmit`, ask, resposta, roles, tarefas, rotinas): sem bytes de controle (atalhos de TUI) e sem `\n` solto (submit parcial). `sanitizeComposerText` com testes.
+- **Servidor MCP com framing correto**: falava Content-Length (LSP) e os clientes oficiais (Kimi: "timeout after 30000ms") nunca recebiam resposta. Agora é NDJSON por linha (spec stdio do MCP), tolerando o framing legado na entrada. Testes reescritos em NDJSON + tolerância LSP.
 
 ## 2026-08-04
 

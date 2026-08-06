@@ -3,7 +3,7 @@
   import type { Component } from 'svelte';
   import {
     ArrowLeft, BookOpen, Cable, FolderPlus, GitBranch, History, Layers, Link2, MessageSquare,
-    PlayCircle, Repeat, Rocket, Search, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
+    Palette, PlayCircle, Repeat, Rocket, Search, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import * as m from '$lib/paraglide/messages.js';
@@ -50,6 +50,7 @@
     'framework-preset': Layers,
     'approval-pipeline': Workflow,
     'chained-flows': Workflow,
+    'design-figma': Palette,
     'mcp-tools': Cable,
   };
 

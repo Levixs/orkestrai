@@ -69,6 +69,27 @@ describe('McpMarketService', () => {
     expect(results[0].source).toBe('curadoria');
   });
 
+  it('registry com entradas duplicadas nao quebra a UI (dedupe por key e titulo)', async () => {
+    // Registry devolve o MESMO servidor duas vezes e um que colide com a curadoria
+    const dupFetch = (async () =>
+      new Response(
+        JSON.stringify({
+          servers: [
+            { server: { name: 'io.figma/mcp', title: 'Figma', description: 'oficial', remotes: [{ type: 'streamable-http', url: 'https://mcp.figma.com' }] }, _meta: { 'io.modelcontextprotocol.registry/official': { status: 'active' } } },
+            { server: { name: 'io.figma/mcp-copy', title: 'Figma', description: 'duplicado', remotes: [{ type: 'streamable-http', url: 'https://mcp.figma.com' }] }, _meta: { 'io.modelcontextprotocol.registry/official': { status: 'active' } } },
+            { server: { name: 'com.figma/community', title: 'Figma Community', description: 'community', remotes: [{ type: 'streamable-http', url: 'https://figma-community.example.com' }] }, _meta: { 'io.modelcontextprotocol.registry/official': { status: 'active' } } },
+          ],
+        })
+      )) as typeof fetch;
+    const service = new McpMarketService(dupFetch);
+    const results = await service.search('figma');
+    const pairs = results.map((entry) => `${entry.key}|${entry.title}`);
+    expect(new Set(pairs).size).toBe(pairs.length); // zero duplicados
+    expect(results[0].key).toBe('figma'); // curadoria primeiro
+    expect(results.filter((entry) => entry.title === 'Figma')).toHaveLength(1); // curada vence as do registry
+    expect(results.some((entry) => entry.title === 'Figma Community')).toBe(true);
+  });
+
   it('install exige env obrigatorio e grava remoto como type http', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-mcp-market-'));
     const workspace = await workspaceRepository.createWorkspace({ name: 'market', workingDir: dir });

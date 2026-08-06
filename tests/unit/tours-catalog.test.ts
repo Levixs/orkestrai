@@ -44,35 +44,54 @@ describe('catalogo de tours (integridade)', () => {
     }
   });
 
-  it('acoes connect/task/routine referenciam titulos criados no proprio tour', () => {
-    for (const tour of TOURS_PT) {
-      const titles = createdTitles(tour);
-      for (const step of tour.steps) {
-        const actions = step.action ? (Array.isArray(step.action) ? step.action : [step.action]) : [];
-        for (const action of actions) {
-          if (action.kind === 'connect') {
-            expect(titles.has(action.fromTitle) || action.fromTitle === action.toTitle).toBe(true);
-            expect(titles.has(action.toTitle) || action.fromTitle === action.toTitle).toBe(true);
-          }
-          if (action.kind === 'createTask' && action.assigneeTitle) {
-            expect(titles.has(action.assigneeTitle)).toBe(true);
-          }
-          if (action.kind === 'createRoutine') {
-            expect(titles.has(action.targetTitle)).toBe(true);
+  it('acoes connect/task/routine/flow referenciam titulos criados no proprio tour (3 idiomas)', () => {
+    for (const catalog of Object.values(CATALOGS)) {
+      for (const tour of catalog) {
+        const titles = createdTitles(tour);
+        for (const step of tour.steps) {
+          const actions = step.action ? (Array.isArray(step.action) ? step.action : [step.action]) : [];
+          for (const action of actions) {
+            if (action.kind === 'connect') {
+              expect(titles.has(action.fromTitle) || action.fromTitle === action.toTitle, `${tour.id}: connect ${action.fromTitle}`).toBe(true);
+              expect(titles.has(action.toTitle) || action.fromTitle === action.toTitle, `${tour.id}: connect ${action.toTitle}`).toBe(true);
+            }
+            if (action.kind === 'createTask' && action.assigneeTitle) {
+              expect(titles.has(action.assigneeTitle), `${tour.id}: task assignee ${action.assigneeTitle}`).toBe(true);
+            }
+            if (action.kind === 'createRoutine') {
+              expect(titles.has(action.targetTitle), `${tour.id}: routine target ${action.targetTitle}`).toBe(true);
+            }
+            if (action.kind === 'createFlow') {
+              for (const flowStep of action.steps) {
+                if (flowStep.kind === 'agent') {
+                  expect(titles.has(flowStep.target ?? ''), `${tour.id}: flow target ${flowStep.target}`).toBe(true);
+                }
+              }
+            }
           }
         }
       }
     }
   });
 
-  it('checks do tour usam titulos coerentes com as acoes', () => {
-    for (const tour of TOURS_PT) {
-      const titles = createdTitles(tour);
-      for (const step of tour.steps) {
-        if (step.check?.kind === 'nodeExists' && step.check.titleIncludes) {
+  it('checks do tour usam titulos coerentes com as acoes (3 idiomas)', () => {
+    for (const catalog of Object.values(CATALOGS)) {
+      for (const tour of catalog) {
+        const titles = createdTitles(tour);
+        for (const step of tour.steps) {
           // nodeExists com titulo: precisa ser algo criado no tour (ou o proprio quadro/portal)
-          const allowed = ['Tarefas', 'Tasks'];
-          expect(titles.has(step.check.titleIncludes) || allowed.includes(step.check.titleIncludes)).toBe(true);
+          if (step.check?.kind === 'nodeExists' && step.check.titleIncludes) {
+            const allowed = ['Tarefas', 'Tasks', 'Tareas'];
+            expect(
+              titles.has(step.check.titleIncludes) || allowed.includes(step.check.titleIncludes),
+              `${tour.id}: check nodeExists "${step.check.titleIncludes}"`
+            ).toBe(true);
+          }
+          // edgeExists: os dois lados precisam ter sido criados no tour
+          if (step.check?.kind === 'edgeExists') {
+            expect(titles.has(step.check.fromTitle), `${tour.id}: check edge from "${step.check.fromTitle}"`).toBe(true);
+            expect(titles.has(step.check.toTitle), `${tour.id}: check edge to "${step.check.toTitle}"`).toBe(true);
+          }
         }
       }
     }

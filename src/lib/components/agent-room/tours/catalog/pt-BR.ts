@@ -373,7 +373,6 @@ export const TOURS_PT: Tour[] = [
         id: 'market',
         title: 'O marketplace de MCPs',
         body: 'Página Skills → aba MCPs: curadoria oficial (GitHub, Gmail, Figma, Drive, Vercel...) + registry completo. Os que pedem token abrem um diálogo guiado.',
-        action: { kind: 'openPage', path: '/skills?workspace={workspace}' },
       },
       {
         id: 'use',
@@ -413,6 +412,32 @@ export const TOURS_PT: Tour[] = [
         id: 'run-chain',
         title: 'Rode e veja o encadeamento',
         body: 'No Fluxo Pesquisa: clique Rodar e depois Aprovar. Quando ele termina, a Redação dispara sozinha com a saída — falha não encadeia e ciclo é bloqueado. Fan-out: conecte um terceiro fluxo à Pesquisa e os dois disparam juntos. E o botão Sincronizar transforma cada agente conectado a um fluxo em passo, na ordem das arestas.',
+      },
+    ],
+  },
+
+  {
+    id: 'design-figma',
+    icon: 'Palette',
+    title: 'Do Figma ao código',
+    tagline: 'Mockup do Figma vira UI fiel com o agente designer.',
+    steps: [
+      {
+        id: 'designer',
+        title: 'O agente designer',
+        body: 'Crio o Designer (Claude) — ele vai ler suas referências visuais e gerar a UI.',
+        action: { kind: 'createAgent', title: 'Designer', provider: 'claude' },
+        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Designer' },
+      },
+      {
+        id: 'image',
+        title: 'A referência visual',
+        body: 'Adicione um nó Imagem (barra inferior), cole o print do Figma com Ctrl+V e conecte ao Designer — é assim que ele enxerga o mockup.',
+      },
+      {
+        id: 'mcp',
+        title: 'Figma MCP (opcional e poderoso)',
+        body: 'Página Skills → aba MCPs → busque "Figma" e instale com seu token (Perfil do Figma → Settings → Personal access tokens). Com ele o Designer lê frames, componentes e estilos DIRETO do arquivo — sem print.',
       },
     ],
   },

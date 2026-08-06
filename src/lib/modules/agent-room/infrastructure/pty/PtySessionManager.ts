@@ -52,6 +52,20 @@ const SCROLLBACK_LIMIT = 256 * 1024; // 256 KB por sessao
 const ATTENTION_IDLE_MS = 2_500; // silencio apos output => aguardando atencao
 
 /**
+ * Texto seguro para composers de TUI (Claude/Codex/Kimi): remove bytes de
+ * controle (atalhos como Ctrl+X abrem o editor externo do Claude!) e achata
+ * newlines — \n solto num composer e um Enter (submit parcial da mensagem).
+ */
+export function sanitizeComposerText(text: string): string {
+  return text
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/\s*\n+\s*/g, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+    .slice(0, 4000);
+}
+
+/**
  * Gerenciador de sessoes PTY (node-pty) do Agent Room.
  *
  * As sessoes vivem no processo do servidor e sobrevivem a reloads da pagina:
@@ -193,10 +207,11 @@ export class PtySessionManager {
   /**
    * Texto + Enter em writes separados (~200ms): TUIs como o Codex tratam o
    * \r colado ao texto como quebra de linha no composer em vez de submit.
-   * (Padrao ja aplicado no ask da ponte; agora centralizado.)
+   * O texto passa por sanitizeComposerText: newlines soltas virariam Enters
+   * (submit parcial no Claude) e bytes de controle disparam atalhos do TUI.
    */
   writeWithSubmit(id: string, text: string, submitDelayMs = 200): void {
-    this.write(id, text);
+    this.write(id, sanitizeComposerText(text));
     const timer = setTimeout(() => {
       try {
         this.write(id, '\r');

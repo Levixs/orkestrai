@@ -1,8 +1,13 @@
 /**
  * Servidor MCP (Model Context Protocol) do Orkestrai — stdio, JSON-RPC 2.0
- * com framing Content-Length (estilo LSP). Expoe as acoes do canvas como
- * TOOLS nativas e tipadas para qualquer agente que fala MCP (Claude Code,
- * Kimi etc.) — em vez de parsear saida de shell.
+ * NDJSON (uma mensagem JSON por linha, como manda a spec de transporte stdio
+ * do MCP). Expoe as acoes do canvas como TOOLS nativas e tipadas para
+ * qualquer agente que fala MCP (Claude Code, Kimi etc.) — em vez de parsear
+ * saida de shell.
+ *
+ * Entrada tolera AMBOS os framings (NDJSON e Content-Length estilo LSP —
+ * este ultimo existia na primeira versao; clientes oficiais usam NDJSON).
+ * Saida e sempre NDJSON.
  *
  * Sem dependencias: protocolo minimo (initialize, ping, tools/list,
  * tools/call) sobre a bridge HTTP existente (token do workspace).
@@ -93,10 +98,9 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
   }
 }
 
-/** Envia uma mensagem JSON-RPC com framing Content-Length. */
+/** Envia uma mensagem JSON-RPC em NDJSON (spec stdio do MCP: 1 JSON por linha). */
 function writeMessage(write, message) {
-  const body = JSON.stringify(message);
-  write(`Content-Length: ${Buffer.byteLength(body, 'utf8')}\r\n\r\n${body}`);
+  write(`${JSON.stringify(message)}\n`);
 }
 
 /**
@@ -112,21 +116,37 @@ export async function runMcpServer({ input, write, bridge, findFreePort, selfAge
 
   const pump = () => {
     for (;;) {
-      const headerEnd = buffer.indexOf('\r\n\r\n');
-      if (headerEnd === -1) return;
-      const header = buffer.subarray(0, headerEnd).toString('utf8');
-      const length = Number(header.match(/Content-Length:\s*(\d+)/i)?.[1] ?? 0);
-      if (!length) {
-        buffer = buffer.subarray(headerEnd + 4);
+      // Framing LSP legado (Content-Length) — tolerado na entrada.
+      if (buffer.subarray(0, 15).toString('utf8').startsWith('Content-Length')) {
+        const headerEnd = buffer.indexOf('\r\n\r\n');
+        if (headerEnd === -1) return;
+        const header = buffer.subarray(0, headerEnd).toString('utf8');
+        const length = Number(header.match(/Content-Length:\s*(\d+)/i)?.[1] ?? 0);
+        if (!length) {
+          buffer = buffer.subarray(headerEnd + 4);
+          continue;
+        }
+        if (buffer.length < headerEnd + 4 + length) return;
+        const body = buffer.subarray(headerEnd + 4, headerEnd + 4 + length).toString('utf8');
+        buffer = buffer.subarray(headerEnd + 4 + length);
+        try {
+          pending.push(JSON.parse(body));
+        } catch {
+          // mensagem quebrada — ignora
+        }
+        waiter?.();
         continue;
       }
-      if (buffer.length < headerEnd + 4 + length) return;
-      const body = buffer.subarray(headerEnd + 4, headerEnd + 4 + length).toString('utf8');
-      buffer = buffer.subarray(headerEnd + 4 + length);
+      // NDJSON (spec stdio do MCP): uma mensagem por linha.
+      const lineEnd = buffer.indexOf('\n');
+      if (lineEnd === -1) return;
+      const line = buffer.subarray(0, lineEnd).toString('utf8').trim();
+      buffer = buffer.subarray(lineEnd + 1);
+      if (!line) continue;
       try {
-        pending.push(JSON.parse(body));
+        pending.push(JSON.parse(line));
       } catch {
-        // mensagem quebrada — ignora
+        // linha quebrada — ignora
       }
       waiter?.();
     }

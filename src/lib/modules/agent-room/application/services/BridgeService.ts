@@ -4,7 +4,9 @@ import { resolve } from 'node:path';
 import type { CanvasNode, Workspace } from '../../domain/types.js';
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
-import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
+import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pty/PtySessionManager.ts';
+import { lastReplyText } from '../../infrastructure/transcript/AgentTranscript.js';
+import { floorService } from './FloorService.js';
 import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
 
@@ -130,20 +132,41 @@ export class BridgeService {
       this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, false);
     }
 
+    // Resposta LIMPA pelo transcrito da CLI (JSONL em disco — sem lixo de
+    // TUI/ANSI, sem status bar, sem caracteres duplicados de redraw). A
+    // raspagem de tela crua vazava tudo isso para o composer do outro agente
+    // (quebras de linha soltas disparavam submits parciais e ate o editor
+    // externo do Claude Code). Fallback: captura sanitizada.
+    const replyText = (await this.transcriptReply(workspaceId, target.nodeId).catch(() => null)) ?? sanitizeComposerText(reply.text);
+
     if (origin?.sessionId && origin.sessionAlive) {
       // A resposta ja e SUBMETIDA (texto e Enter separados, como o dispatch) —
       // antes ficava pendurada no composer do agente de origem e o usuario
       // tinha que apagar na mao (ou reenviava sem querer).
-      const injection = `[resposta de ${target.title}] ${reply.text}\n`;
+      const injection = `[resposta de ${target.title}] ${replyText}\n`;
       ptySessionManager.writeWithSubmit(origin.sessionId, injection);
     }
 
     // Voz de volta: o no alvo pode ler a resposta em voz alta (toggle por
     // terminal; TTS pt-BR via sidecar — ver /api/agent-room/voice/speak).
     const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
-    broadcast?.({ type: 'agentReply', workspaceId, to: target.nodeId, from: origin?.title ?? null, text: reply.text });
+    broadcast?.({ type: 'agentReply', workspaceId, to: target.nodeId, from: origin?.title ?? null, text: replyText });
 
-    return { to: target.title, reply: reply.text, timedOut: reply.timedOut };
+    return { to: target.title, reply: replyText, timedOut: reply.timedOut };
+  }
+
+  /** Ultima resposta do agente pelo transcrito da CLI (null = indisponivel). */
+  private async transcriptReply(workspaceId: string, nodeId: string): Promise<string | null> {
+    const node = await workspaceRepository.getNode(nodeId);
+    const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
+    if (!node || !payload.provider || !payload.agentSessionId) return null;
+    const workspace = await workspaceRepository.getWorkspace(workspaceId);
+    let cwd = workspace?.workingDir ?? '.';
+    if (node.floorId) {
+      const floor = await floorService.get(node.floorId).catch(() => null);
+      if (floor?.path) cwd = floor.path;
+    }
+    return lastReplyText(payload.provider, cwd, payload.agentSessionId);
   }
 
   /** Avisa o canvas (via broadcast WS) que uma edge esta conversando. */
@@ -673,8 +696,10 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       signal?.addEventListener('abort', onAbort, { once: true });
 
       // Texto e Enter em writes separados: TUIs (Codex) tratam o \r colado
-      // ao texto como quebra de linha no composer em vez de submit.
-      ptySessionManager.write(sessionId, message);
+      // ao texto como quebra de linha no composer em vez de submit. E o texto
+      // vai sanitizado: \n solto seria submit parcial no Claude; bytes de
+      // controle disparam atalhos do TUI (editor externo etc).
+      ptySessionManager.write(sessionId, sanitizeComposerText(message));
       setTimeout(() => {
         if (done) return;
         try {

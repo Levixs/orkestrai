@@ -164,6 +164,12 @@ export const DOCS_ES: DocsCatalog = {
       tags: ['Flujos', 'encadenamiento', 'fan-out'],
     },
     {
+      id: 'design-figma',
+      title: 'De Figma al código con el diseñador',
+      body: 'Crea un agente Diseñador, pega el print del mockup en un nodo Imagen (Ctrl+V) conectado a él y pide la UI. Para fidelidad total, instala el Figma MCP (página Skills → pestaña MCPs → busca Figma, con tu token de acceso personal): el agente lee frames, componentes, variables y estilos directo del archivo — y genera código fiel al design system, sin adivinar píxeles.',
+      tags: ['Figma', 'diseñador', 'nodo Imagen'],
+    },
+    {
       id: 'mcp-tools',
       title: 'Agentes con tools externas vía MCP',
       body: 'Agrega servidores MCP en el editor del workspace (ej.: filesystem, web, base de datos) — los agentes ganan las tools nativamente, y el propio Orkestrai aparece como servidor MCP con las acciones del canvas (orkestrai mcp). Los presets pueden cargar los MCPs junto con el equipo.',
@@ -193,6 +199,11 @@ export const DOCS_ES: DocsCatalog = {
         '"Hazlo por mí" aparece al instante en el canvas: nodos y conexiones creados por tour, CLI o API disparan live refresh — sin salir y volver al workspace.',
         'Fix: el onboarding no abría en inglés/español — el cambio de idioma remontaba la página después de limpiar la URL y el wizard moría; la intención ahora sobrevive al remount (test de regresión incluido).',
         'Fix: el tour de investigación ya no se traba en el último paso — los pasos ahora ejecutan varias acciones en secuencia (las dos conexiones se hacen) y el tour concluye solo cuando pasa el último check.',
+        'Fix: la búsqueda de MCPs rompía la lista cuando el registry devolvía duplicados (ahora deduplica) — buscar "Figma" funciona y la curaduría aparece primero.',
+        'Caso de uso + tour nuevo "De Figma al código": agente Diseñador, nodo Imagen con el mockup y Figma MCP para leer el archivo directo (13 tours).',
+        'Fix serio: las respuestas entre agentes vienen del transcript limpio de la CLI (sin basura de TUI, barra de estado o caracteres duplicados) — fin del composer abriendo editor externo con texto corrupto.',
+        'Fix: el servidor MCP de Orkestrai hablaba el framing equivocado (LSP) y Kimi daba timeout de 30s — ahora es NDJSON, el estándar oficial de MCP (Claude, Kimi y cia conectan).',
+        'Toda inyección de texto en composer es sanitizada: sin bytes de control y sin Enter suelto (submit parcial) en ningún provider.',
       ],
     },
     {

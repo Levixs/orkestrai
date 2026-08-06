@@ -386,7 +386,7 @@
         </div>
       {:else if mcpResults.length}
         <ul class="item-list">
-          {#each mcpResults as entry (entry.key + entry.title)}
+          {#each mcpResults as entry, index (`${entry.key}|${entry.title}|${index}`)}
             <li class="item-row result-row">
               <div class="item-info">
                 <div class="item-title">
