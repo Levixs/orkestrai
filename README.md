@@ -19,7 +19,9 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
   isolados (worktrees) e o líder integra com preview de conflitos.
 - **Ponte `orkestrai` (CLI)**: os agentes conversam entre si e com o canvas
   (`ask`, `note`, `task`, `portal`, `floor`, `notify`...) — nasce instalada e
-  autenticada em todo workspace, sem configurar nada.
+  autenticada em todo workspace, sem configurar nada. No Codex, as mesmas
+  ações entram como tools MCP nativas; o app provisiona um runtime absoluto e
+  autossuficiente, inclusive no Windows, sem depender de Node.js no `PATH`.
 - **Multi-workspace**: vários projetos abertos ao mesmo tempo, com indicador
   de atividade e notificações nativas quando algo termina ou precisa de você.
 - **Ditado e voz de volta em pt-BR, 100% locais**: fale com o ditado por voz

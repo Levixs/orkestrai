@@ -15,6 +15,8 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Estados de gravação/transcrição, painel de portas, confirmações e erros estão traduzidos em pt-BR, English e Español.
 
 **Correções**
+- O MCP do Orkestrai no Codex agora usa caminhos absolutos para o runtime e para a CLI, com o próprio executável Electron em modo Node. Isso elimina no Windows a dependência de `PATH`, `PATHEXT`, `orkestrai.cmd` e de um `node.exe` externo; configurações antigas com `command = "orkestrai"` são reparadas ao abrir o workspace.
+- O servidor `orkestrai mcp` passou a resolver token e URL somente quando uma tool acessa a ponte. Como a configuração do Codex é global, o handshake agora sobe normalmente até fora de um workspace Orkestrai, sem exibir `MCP startup interrupted`.
 - A retomada de terminais Claude agora ignora transcripts `agent-*` de subagentes e arquivos de startup vazios ou contendo apenas snapshots. Um novo ID só substitui o anterior depois da primeira entrada conversacional retomável, impedindo a perda da referência válida do líder.
 - Depois de apagar os modelos locais de voz nas Configurações, tanto o microfone do terminal quanto o atalho global do líder voltam a pedir confirmação antes do download. O estado real dos arquivos agora prevalece sobre a confirmação antiga, e falhas de exclusão deixam de ser ocultadas pela interface.
 

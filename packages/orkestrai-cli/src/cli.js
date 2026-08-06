@@ -199,6 +199,21 @@ export async function run(argv, options = {}) {
     return 0;
   }
 
+  // O MCP e global no Codex e pode subir fora de um workspace Orkestrai.
+  // Resolve token/URL apenas quando uma tool realmente tocar a bridge; assim
+  // o handshake nunca morre por falta de .orkestrai/workspace.json.
+  if (command === 'mcp') {
+    const { runMcpServer } = await import('./mcp.js');
+    await runMcpServer({
+      input: options.input ?? process.stdin,
+      write: options.write ?? ((chunk) => process.stdout.write(chunk)),
+      bridge: (method, path, body) => bridge(resolveConfig(env, cwd), method, path, body),
+      findFreePort,
+      selfAgent: selfAgent ?? null,
+    });
+    return 0;
+  }
+
   const config = resolveConfig(env, cwd);
 
   switch (command) {
@@ -577,19 +592,6 @@ export async function run(argv, options = {}) {
         }
       }
       throw new Error('Nao consegui ler a area de transferencia (sem pbpaste/xclip/xsel/powershell).');
-    }
-    case 'mcp': {
-      // Servidor MCP em stdio: agentes que falam MCP ganham as acoes do
-      // canvas como tools nativas. NUNCA logar em stdout (corrompe o protocolo).
-      const { runMcpServer } = await import('./mcp.js');
-      await runMcpServer({
-        input: process.stdin,
-        write: (chunk) => process.stdout.write(chunk),
-        bridge: (method, path, body) => bridge(config, method, path, body),
-        findFreePort,
-        selfAgent: selfAgent ?? null,
-      });
-      return 0;
     }
     default:
       out(USAGE);

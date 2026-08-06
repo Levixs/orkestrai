@@ -197,6 +197,8 @@ export const DOCS_PT: DocsCatalog = {
       date: '06 ago 2026',
       items: [
         'Novo painel Portas logo depois de Usage: lista listeners vinculados aos Portais locais do workspace, com processo, PID e estado em uso/livre.',
+        'MCP do Codex reparado no Windows: o config.toml agora usa o runtime e a CLI por caminhos absolutos, sem depender de PATH, PATHEXT, .cmd ou Node.js externo.',
+        'O handshake global do orkestrai mcp agora inicia mesmo fora de um workspace; token e URL só são exigidos quando uma tool realmente acessa a ponte.',
         'Encerramento seguro de porta com confirmação, revalidação do PID e proteção do processo do Orkestrai; portas arbitrárias da máquina nunca aparecem.',
         'Nova bolinha de ditado no topo direito: aciona exatamente o microfone do líder e escreve a transcrição direto no terminal dele, mesmo em outro andar; sem líder, mostra um toast claro.',
         'Correção na retomada do Claude: transcripts de subagentes e arquivos de startup sem uma mensagem retomável não substituem mais o ID válido da conversa do líder.',

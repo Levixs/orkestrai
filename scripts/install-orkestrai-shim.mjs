@@ -13,15 +13,25 @@ export function installOrkestraiShim() {
   try {
     const cliEntry = resolve('packages/orkestrai-cli/bin/orkestrai.js');
     if (!existsSync(cliEntry)) return null;
+    const runtime = process.execPath;
+    const electronRuntime = Boolean(process.versions.electron);
     const shimDir = process.env.ORKESTRAI_DATA_DIR
       ? resolve(process.env.ORKESTRAI_DATA_DIR, 'bin')
       : resolve('storage', 'bin');
     mkdirSync(shimDir, { recursive: true });
     const posixShim = resolve(shimDir, 'orkestrai');
-    writeFileSync(posixShim, `#!/bin/sh\nexec node "${cliEntry}" "$@"\n`);
+    const shellQuote = (value) => `'${value.replace(/'/g, `'"'"'`)}'`;
+    const electronEnv = electronRuntime ? 'ELECTRON_RUN_AS_NODE=1 ' : '';
+    writeFileSync(posixShim, `#!/bin/sh\n${electronEnv}exec ${shellQuote(runtime)} ${shellQuote(cliEntry)} "$@"\n`);
     chmodSync(posixShim, 0o755);
-    writeFileSync(resolve(shimDir, 'orkestrai.cmd'), `@echo off\r\nnode "${cliEntry}" %*\r\n`);
+    writeFileSync(
+      resolve(shimDir, 'orkestrai.cmd'),
+      `@echo off\r\n${electronRuntime ? 'set "ELECTRON_RUN_AS_NODE=1"\r\n' : ''}"${runtime}" "${cliEntry}" %*\r\n`
+    );
     process.env.ORKESTRAI_SHIM_DIR = shimDir;
+    process.env.ORKESTRAI_CLI = cliEntry;
+    process.env.ORKESTRAI_CLI_RUNTIME = runtime;
+    process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON = electronRuntime ? '1' : '0';
     return shimDir;
   } catch (error) {
     console.warn('[orkestrai] falha ao instalar o shim da CLI:', error?.message ?? error);

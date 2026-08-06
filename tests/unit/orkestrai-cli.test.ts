@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer } from 'node:http';
 import { createServer as createNetServer } from 'node:net';
+import { PassThrough } from 'node:stream';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -105,6 +106,28 @@ describe('orkestrai CLI', () => {
   it('sem token retorna erro claro', async () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'orkestrai-cli-empty-'));
     await expect(run(['list'], { cwd: emptyDir, out: () => {}, env: {} })).rejects.toThrow('Token');
+  });
+
+  it('MCP completa o handshake mesmo fora de um workspace Orkestrai', async () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), 'orkestrai-mcp-empty-'));
+    const input = new PassThrough();
+    const chunks: string[] = [];
+    const done = run(['mcp'], {
+      cwd: emptyDir,
+      env: { ORKESTRAI_RUNTIME_FILE: '' },
+      input,
+      write: (chunk: string) => chunks.push(chunk),
+    });
+    input.end(`${JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2024-11-05', capabilities: {} },
+    })}\n`);
+    await done;
+
+    const response = chunks.join('').split('\n').filter(Boolean).map((line) => JSON.parse(line))[0];
+    expect(response.result.serverInfo.name).toBe('orkestrai');
   });
 
   it('env ORKESTRAI_TOKEN tem precedencia sobre arquivo', async () => {

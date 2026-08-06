@@ -10,6 +10,7 @@ import { lastReplyText } from '../../infrastructure/transcript/AgentTranscript.j
 import { floorService } from './FloorService.js';
 import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
+import { upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
 
 export type BridgeAgent = {
   nodeId: string;
@@ -673,12 +674,20 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
 
   /** Codex le MCP de ~/.codex/config.toml ([mcp_servers.*]) — nao le .mcp.json. */
   private provisionCodexMcp(): void {
+    if (process.env.VITEST) return;
     const dir = resolve(homedir(), '.codex');
     if (!existsSync(dir)) return; // codex nao instalado — nao polui o HOME
     const path = resolve(dir, 'config.toml');
     const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
-    if (current.includes('[mcp_servers.orkestrai]')) return;
-    writeFileSync(path, `${current.replace(/\s*$/, '\n\n')}[mcp_servers.orkestrai]\ncommand = "orkestrai"\nargs = ["mcp"]\n`);
+    const cliEntry = process.env.ORKESTRAI_CLI ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
+    const next = upsertCodexMcpConfig(current, {
+      command: runtime,
+      args: [cliEntry, 'mcp'],
+      electronRuntime:
+        process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron),
+    });
+    if (next !== current) writeFileSync(path, next);
   }
 
   /** OpenCode le MCP do opencode.json do projeto (secao "mcp", type local). */
