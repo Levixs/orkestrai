@@ -259,7 +259,14 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="palette-overlay" onclick={() => (paletteOpen = false)} onkeydown={handlePaletteKeydown}>
       <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-      <div class="palette-card" onclick={(event) => event.stopPropagation()} role="dialog" aria-label={m['docs.palette_aria']()}>
+      <div
+        class="palette-card"
+        onclick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={m['docs.palette_aria']()}
+        tabindex="-1"
+      >
         <label class="palette-input-row">
           <Search size={15} aria-hidden="true" />
           <input
@@ -311,7 +318,7 @@
     scroll-behavior: smooth;
   }
 
-  .docs-page > * {
+  .docs-page > :not(.palette-overlay) {
     width: min(1200px, 100%);
   }
 
@@ -652,22 +659,28 @@
   .palette-overlay {
     position: fixed;
     inset: 0;
+    width: 100vw;
+    min-height: 100dvh;
+    box-sizing: border-box;
     z-index: 70;
     background: rgba(8, 7, 24, 0.6);
     backdrop-filter: blur(3px);
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    padding-top: 12vh;
+    padding: 20px;
   }
 
   .palette-card {
     width: min(560px, calc(100vw - 40px));
+    max-height: calc(100dvh - 40px);
     background: #1a1742;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 14px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .palette-input-row {
@@ -693,6 +706,7 @@
     list-style: none;
     margin: 0;
     padding: 6px;
+    min-height: 0;
     max-height: 46vh;
     overflow-y: auto;
     display: flex;

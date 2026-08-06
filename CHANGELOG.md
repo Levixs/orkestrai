@@ -4,6 +4,13 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 
 ## 2026-08-06
 
+**Voz multilíngue mais natural e rápida**
+- O TTS local trocou Kokoro por **Supertonic 3 INT8**, com saída em 44,1 kHz e três presets: português do Brasil, inglês dos Estados Unidos e espanhol latino-americano. O Parakeet/STT não foi alterado.
+- Configurações ganhou **Ouvir prévia** e um controle persistente de velocidade entre 0,75× e 1,50×. Vozes antigas migram para o preset pt-BR; no sidecar externo, a voz TTS agora tem campo próprio e não se mistura com os presets locais.
+- Respostas longas são divididas por frases: o próximo trecho é sintetizado enquanto o atual toca. O subprocesso também deixou de serializar áudio como milhares de números JSON e passou a usar PCM binário pelo IPC.
+- O download total caiu para cerca de 670 MB. Os arquivos Parakeet e Supertonic são conferidos por SHA-256; o Kokoro antigo só é removido depois que o substituto termina de instalar.
+- Novo caso de uso e tour guiado nos três idiomas explicam como escolher, testar e ativar a fala multilíngue (16 tours no total).
+
 **Painel de portas gerenciadas**
 - Novo item **Portas** imediatamente depois de Usage na toolbar do canvas. O painel lista cada porta ligada a um nó Portal local do workspace, mostra estado em uso/livre, processo e PID e atualiza automaticamente.
 - Um listener pode ser encerrado pelo painel após confirmação. Antes do sinal, o backend valida novamente a associação Portal/workspace e o conjunto de PIDs para não matar um processo que mudou no intervalo.
@@ -15,13 +22,14 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Estados de gravação/transcrição, painel de portas, confirmações e erros estão traduzidos em pt-BR, English e Español.
 
 **Correções**
+- A busca global de documentação aberta por Cmd/Ctrl+K agora cobre o viewport inteiro em monitores largos e mantém o diálogo centralizado, com rolagem interna quando a altura é limitada.
 - O MCP do Orkestrai no Codex agora usa caminhos absolutos para o runtime e para a CLI, com o próprio executável Electron em modo Node. Isso elimina no Windows a dependência de `PATH`, `PATHEXT`, `orkestrai.cmd` e de um `node.exe` externo; configurações antigas com `command = "orkestrai"` são reparadas ao abrir o workspace.
 - O servidor `orkestrai mcp` passou a resolver token e URL somente quando uma tool acessa a ponte. Como a configuração do Codex é global, o handshake agora sobe normalmente até fora de um workspace Orkestrai, sem exibir `MCP startup interrupted`.
 - A retomada de terminais Claude agora ignora transcripts `agent-*` de subagentes e arquivos de startup vazios ou contendo apenas snapshots. Um novo ID só substitui o anterior depois da primeira entrada conversacional retomável, impedindo a perda da referência válida do líder.
 - Depois de apagar os modelos locais de voz nas Configurações, tanto o microfone do terminal quanto o atalho global do líder voltam a pedir confirmação antes do download. O estado real dos arquivos agora prevalece sobre a confirmação antiga, e falhas de exclusão deixam de ser ocultadas pela interface.
 
 **Documentação e cobertura**
-- Dois casos de uso e dois tours guiados novos (15 tours no total) documentam gerenciamento de portas e ditado para o líder nos três idiomas.
+- Três casos de uso e três tours guiados novos (16 tours no total) documentam gerenciamento de portas, ditado para o líder e fala multilíngue nos três idiomas.
 - Testes cobrem parsers de listeners, escopo por Portal/workspace, revalidação de PID e integridade dos catálogos i18n.
 
 ## 2026-08-05

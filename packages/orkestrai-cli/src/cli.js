@@ -63,7 +63,7 @@ Uso:
   orkestrai floor remove <floorId> [--delete-branch]
   orkestrai port [--check <porta>]  — devolve uma porta livre (ou testa uma)
   orkestrai fs read <path> | fs write <path> <conteudo> | fs search <termo> [--content]
-  orkestrai say <texto>  — fala pt-BR no desktop
+  orkestrai say <texto>  — fala no desktop com a voz configurada
   orkestrai run <taskId>  — re-despacha a tarefa para o responsavel
   orkestrai notes | portals  — listagens rapidas
   orkestrai clip  — le a area de transferencia local

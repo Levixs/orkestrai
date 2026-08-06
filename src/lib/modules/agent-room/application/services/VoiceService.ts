@@ -1,12 +1,18 @@
 import { settingsService } from './SettingsService.js';
-import { embeddedModelsReady, speakPcm, transcribePcm, wavToPcm16, pcmToWav } from '../../infrastructure/voice/EmbeddedVoice.js';
+import {
+  DEFAULT_EMBEDDED_TTS_SPEED,
+  DEFAULT_EMBEDDED_TTS_VOICE,
+  normalizeEmbeddedTtsSpeed,
+  normalizeEmbeddedTtsVoice,
+} from '../../domain/voice.js';
+import { embeddedModelsReady, speakWav, transcribePcm, wavToPcm16 } from '../../infrastructure/voice/EmbeddedVoice.js';
 
 const DEFAULT_VOICE_STACK_URL = 'http://localhost:8000';
 const DEFAULT_STT_MODEL = 'whisper-large-v3-turbo';
-const DEFAULT_TTS_VOICE = 'pf_dora';
+const DEFAULT_SIDECAR_TTS_VOICE = 'pf_dora';
 /** STT: primeiro uso baixa o modelo (~1,5 GB) — timeout generoso. */
 const STT_TIMEOUT_MS = 600_000;
-/** TTS: modelo menor (Kokoro ~300 MB no 1o uso). */
+/** TTS local ou remoto: inclui cold start do modelo no primeiro uso. */
 const TTS_TIMEOUT_MS = 300_000;
 
 export type VoiceHealth = { ok: boolean; url: string; detail?: string };
@@ -34,8 +40,16 @@ export class VoiceService {
     return (await this.settings.get('voiceSttModel')) || DEFAULT_STT_MODEL;
   }
 
-  private async ttsVoice(): Promise<string> {
-    return (await this.settings.get('voiceTtsVoice')) || DEFAULT_TTS_VOICE;
+  private async embeddedTtsVoice(): Promise<string> {
+    return normalizeEmbeddedTtsVoice((await this.settings.get('voiceTtsVoice')) || DEFAULT_EMBEDDED_TTS_VOICE);
+  }
+
+  private async sidecarTtsVoice(): Promise<string> {
+    return (await this.settings.get('voiceSidecarTtsVoice')) || DEFAULT_SIDECAR_TTS_VOICE;
+  }
+
+  private async embeddedTtsSpeed(): Promise<number> {
+    return normalizeEmbeddedTtsSpeed((await this.settings.get('voiceTtsSpeed')) || DEFAULT_EMBEDDED_TTS_SPEED);
   }
 
   async health(): Promise<VoiceHealth> {
@@ -44,7 +58,7 @@ export class VoiceService {
       return {
         ok: true,
         url: 'embedded',
-        detail: this.embeddedReady() ? 'motor local ativo' : 'motor local — baixa ~790 MB na 1a vez',
+        detail: this.embeddedReady() ? 'motor local ativo' : 'motor local — baixa ~670 MB na 1a vez',
       };
     }
     const url = await this.baseUrl();
@@ -91,12 +105,15 @@ export class VoiceService {
   }
 
   /** Sintetiza texto em audio (wav) com a voz configurada. */
-  async speak(text: string, voice?: string): Promise<Buffer> {
+  async speak(text: string, voice?: string, speed?: number): Promise<Buffer> {
     const backend = await this.backend();
     if (backend === 'embedded') {
       if (!this.embeddedReady()) throw new Error(VOICE_MODELS_MISSING_ERROR);
-      const { samples, sampleRate } = await speakPcm(text, voice ?? (await this.ttsVoice()));
-      return pcmToWav(samples, sampleRate);
+      return speakWav(
+        text,
+        normalizeEmbeddedTtsVoice(voice ?? (await this.embeddedTtsVoice())),
+        normalizeEmbeddedTtsSpeed(speed ?? (await this.embeddedTtsSpeed()))
+      );
     }
     const url = await this.baseUrl();
     let response: Response;
@@ -104,7 +121,7 @@ export class VoiceService {
       response = await this.fetchFn(`${url}/v1/audio/speech`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: 'kokoro', voice: voice ?? (await this.ttsVoice()), input: text.slice(0, 2_000) }),
+        body: JSON.stringify({ model: 'kokoro', voice: voice ?? (await this.sidecarTtsVoice()), input: text.slice(0, 2_000) }),
         signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
       });
     } catch (error) {

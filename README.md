@@ -24,10 +24,12 @@ terminais vivos, notas compartilhadas, kanban, portais de browser e andares
   autossuficiente, inclusive no Windows, sem depender de Node.js no `PATH`.
 - **Multi-workspace**: vários projetos abertos ao mesmo tempo, com indicador
   de atividade e notificações nativas quando algo termina ou precisa de você.
-- **Ditado e voz de volta em pt-BR, 100% locais**: fale com o ditado por voz
+- **Ditado e voz de volta em três idiomas, 100% locais**: fale com o ditado por voz
   (atalho configurável ou pela bolinha no topo direito, que dita direto para
-  o líder) e ouça as respostas dos agentes em voz alta. Na
-  primeira vez o app baixa ~790 MB uma única vez (pede confirmação antes).
+  o líder) e ouça as respostas dos agentes em pt-BR, en-US ou espanhol latino.
+  O Parakeet cuida do ditado e o Supertonic 3 fala as respostas em 44,1 kHz,
+  com velocidade ajustável entre 0,75× e 1,50×.
+  Na primeira vez o app baixa ~670 MB uma única vez (pede confirmação antes).
   Se preferir, use um serviço de voz externo seu em Configurações.
 - **Marketplace de skills**: busque e instale skills do skills.sh direto no
   workspace.
@@ -55,8 +57,8 @@ npm install
 npm run dev            # web (SvelteKit) em http://localhost:5173
 npm run electron:dev   # app desktop (build + Electron)
 
-# Voz (ditado + agentes falando em pt-BR): funciona out-of-the-box.
-# Na 1a vez o app baixa ~790 MB uma unica vez (pergunta antes) e depois
+# Voz (ditado + respostas em pt-BR, en-US ou es-MX): funciona out-of-the-box.
+# Na 1a vez o app baixa ~670 MB uma unica vez (pergunta antes) e depois
 # tudo roda local. Para usar um servico de voz externo (Docker), veja
 # Configuracoes > Voz e o voice-stack em AGENTS.md (doc de desenvolvedor).
 ```

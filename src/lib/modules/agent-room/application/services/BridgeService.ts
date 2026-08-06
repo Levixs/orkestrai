@@ -171,7 +171,7 @@ export class BridgeService {
     // o texto digitado colidia com o que o usuario estava escrevendo naquele
     // terminal (mensagem emendada/corrompida).
     // Voz de volta: o no alvo pode ler a resposta em voz alta (toggle por
-    // terminal; TTS pt-BR via sidecar — ver /api/agent-room/voice/speak).
+    // terminal; TTS na voz/idioma configurados — ver /api/agent-room/voice/speak).
     const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
     broadcast?.({ type: 'agentReply', workspaceId, to: target.nodeId, from: origin?.title ?? null, text: replyText });
 
@@ -552,7 +552,7 @@ Se as tools \`orkestrai\` (list/ask/note_*/task_*/portal_*/floor_*/notify/port/r
 - \`orkestrai port\` — devolve uma porta LIVRE para subir servidores; \`orkestrai port --check <porta>\` testa se uma porta esta livre.
 - \`orkestrai fs read <path>\` / \`fs write <path> <conteudo>\` / \`fs search <termo> [--content]\` — arquivos do workspace via ponte.
 - \`orkestrai run <taskId>\` — re-despacha a tarefa para o responsavel (re-tentar/re-briefar).
-- \`orkestrai say "<texto>"\` — fala em voz alta no desktop do usuario (pt-BR).
+- \`orkestrai say "<texto>"\` — fala em voz alta no desktop do usuario, na voz configurada.
 - \`orkestrai notes\` / \`orkestrai portals\` — listagens rapidas das suas notas/portais.
 - \`orkestrai clip\` — le a area de transferencia local.
 

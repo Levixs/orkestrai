@@ -191,6 +191,12 @@ export const DOCS_PT: DocsCatalog = {
       body: 'Clique na bolinha de voz no topo direito do canvas para iniciar o mesmo ditado do microfone da janela do líder. Clique novamente para parar: a transcrição entra diretamente no terminal desse líder, inclusive se ele estiver em outro andar. Sem líder no workspace, o app avisa por toast.',
       tags: ['Líder/Maestro', 'ditado', 'voz local'],
     },
+    {
+      id: 'multilingual-spoken-replies',
+      title: 'Ouvir respostas no seu idioma',
+      body: 'Em Configurações → Voz, escolha uma das três vozes locais: português do Brasil, inglês dos Estados Unidos ou espanhol latino-americano. Ajuste a velocidade entre 0,75× e 1,50× e use Ouvir prévia para comparar antes de ativar o alto-falante no cabeçalho do agente. O Parakeet continua cuidando apenas do ditado; as respostas usam o Supertonic 3 offline e começam a tocar por frases para reduzir a espera.',
+      tags: ['TTS', 'Supertonic 3', 'pt-BR · en-US · es-MX'],
+    },
   ],
   changelog: [
     {
@@ -203,7 +209,12 @@ export const DOCS_PT: DocsCatalog = {
         'Nova bolinha de ditado no topo direito: aciona exatamente o microfone do líder e escreve a transcrição direto no terminal dele, mesmo em outro andar; sem líder, mostra um toast claro.',
         'Correção na retomada do Claude: transcripts de subagentes e arquivos de startup sem uma mensagem retomável não substituem mais o ID válido da conversa do líder.',
         'Após apagar os modelos locais de voz, o microfone do terminal e a bolinha do líder voltam a pedir confirmação antes do download; a interface também informa se a exclusão falhar.',
-        'Interface, documentação, casos de uso e dois tours novos traduzidos em pt-BR, English e Español (15 tours no onboarding).',
+        'Supertonic 3 substitui o Kokoro nas respostas faladas, com áudio local em 44,1 kHz; o Parakeet e todo o fluxo de STT permanecem inalterados.',
+        'Três presets de fala — pt-BR, en-US e espanhol latino — com prévia, velocidade ajustável de 0,75× a 1,50× e migração automática das vozes antigas.',
+        'Respostas longas são sintetizadas por frases, com prefetch do próximo trecho e PCM binário no IPC para começar a tocar mais cedo sem sobrepor falas.',
+        'O novo modelo INT8 tem download menor, é verificado por SHA-256 e só remove o Kokoro antigo depois de instalado com sucesso.',
+        'A busca global de documentação por Cmd/Ctrl+K agora cobre monitores largos por inteiro e mantém o diálogo centralizado.',
+        'Interface, documentação, casos de uso e três tours novos traduzidos em pt-BR, English e Español (16 tours no onboarding).',
       ],
     },
     {

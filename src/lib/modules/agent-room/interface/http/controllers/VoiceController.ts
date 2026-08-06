@@ -15,6 +15,7 @@ import { z } from 'zod';
 const speakSchema = z.object({
   text: z.string().trim().min(1, 'Informe o texto.'),
   voice: z.string().trim().nullish(),
+  speed: z.coerce.number().min(0.75).max(1.5).optional(),
 });
 
 /** Proxy do sidecar de voz (evita CORS e centraliza a URL configuravel). */
@@ -66,7 +67,7 @@ export class VoiceController extends Controller {
   async speak(event: any) {
     try {
       const input = speakSchema.parse(await event.request.json());
-      const audio = await voiceService.speak(input.text, input.voice ?? undefined);
+      const audio = await voiceService.speak(input.text, input.voice ?? undefined, input.speed);
       return new Response(new Uint8Array(audio), {
         headers: { 'content-type': 'audio/wav', 'cache-control': 'no-store' },
       });

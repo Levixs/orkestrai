@@ -73,7 +73,7 @@
   let exited = $state<number | null>(null);
   let waiting = $state(false);
 
-  // -- Ditado por voz (sidecar voice-stack: faster-whisper/Kokoro) ----------
+  // -- Ditado por voz (Parakeet local ou sidecar configurado) ----------------
   let dictating = $state(false);
   let transcribing = $state(false);
   let dictateLang = $state<'auto' | 'pt' | 'en'>('pt');
@@ -139,18 +139,7 @@
       if (text === lastSpoken) return; // ja falou exatamente isso — nao repete
       lastSpoken = text;
       try {
-        const response = await fetch('/api/agent-room/voice/speak', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-        if (!response.ok) return;
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.onended = () => URL.revokeObjectURL(url);
-        // Se o play falhar, revoga aqui — senao o blob vaza na memoria do renderer.
-        await audio.play().catch(() => URL.revokeObjectURL(url));
+        await speakText(text);
       } catch {
         // voz indisponivel — segue em texto
       }

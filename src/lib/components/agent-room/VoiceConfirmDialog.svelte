@@ -22,9 +22,18 @@
   let requiredBytes = $state(0);
   const insufficient = $derived(freeBytes !== null && requiredBytes > 0 && freeBytes < requiredBytes);
   let poller: ReturnType<typeof setInterval> | null = null;
+  let wasOpen = false;
 
   function formatGb(bytes: number): string {
     return `${(bytes / 1024 ** 3).toFixed(1).replace('.', ',')} GB`;
+  }
+
+  function stageLabel(value: string): string {
+    if (value === 'stt') return m['voice.stage_stt']();
+    if (value === 'tts') return m['voice.stage_tts']();
+    if (value === 'runtime') return m['voice.stage_runtime']();
+    if (value === 'extracting') return m['voice.stage_extracting']();
+    return '';
   }
 
   // Ao abrir na fase de confirmacao, ja consulta o espaco livre em disco.
@@ -43,6 +52,21 @@
     if (poller) clearInterval(poller);
     poller = null;
   }
+
+  function resetDialog() {
+    phase = 'confirm';
+    percent = 0;
+    stage = '';
+    errorMessage = '';
+    freeBytes = null;
+    requiredBytes = 0;
+  }
+
+  $effect(() => {
+    if (open && !wasOpen) resetDialog();
+    if (!open && wasOpen) stopPolling();
+    wasOpen = open;
+  });
 
   function csrfHeaders(extra: Record<string, string> = {}): HeadersInit {
     const token = getCsrfToken();
@@ -145,7 +169,7 @@
         <span class="download-percent">{percent}%</span>
       </div>
       {#if stage}
-        <p class="download-stage">{stage}</p>
+        <p class="download-stage">{stageLabel(stage)}</p>
       {/if}
     {:else if phase === 'error'}
       <p class="download-error">{errorMessage}</p>

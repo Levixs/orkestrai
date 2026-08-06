@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { pcmToWav, voiceDiskSpace, voiceNodeArchive, wavToPcm16, KOKORO_PT_VOICES, VOICE_REQUIRED_BYTES } from '$lib/modules/agent-room/infrastructure/voice/EmbeddedVoice.js';
+import { pcm16ToWav, pcmToWav, voiceDiskSpace, voiceNodeArchive, wavToPcm16, VOICE_REQUIRED_BYTES } from '$lib/modules/agent-room/infrastructure/voice/EmbeddedVoice.js';
+import {
+  EMBEDDED_TTS_VOICES,
+  embeddedTtsVoice,
+  normalizeEmbeddedTtsSpeed,
+  normalizeEmbeddedTtsVoice,
+} from '$lib/modules/agent-room/domain/voice.js';
 
 function makeWav(samples: number[], rate = 16_000, channels = 1): Buffer {
   const buffer = Buffer.alloc(44 + samples.length * 2 * channels);
@@ -48,17 +54,33 @@ describe('wavToPcm16 / pcmToWav', () => {
     expect(samples[3]).toBeCloseTo(1, 2);
   });
 
-  it('vozes pt-BR mapeadas para os sids oficiais do voices.bin (0-52)', () => {
-    // Ordem oficial do kokoro-multi-lang-v1_0: 42->pf_dora, 43->pm_alex, 44->pm_santa.
-    // (sid 41 e jm_kumo — voz japonesa; errar por 1 muda idioma e genero da voz)
-    expect(KOKORO_PT_VOICES.pf_dora).toBe(42);
-    expect(KOKORO_PT_VOICES.pm_alex).toBe(43);
-    expect(KOKORO_PT_VOICES.pm_santa).toBe(44);
-    for (const [voice, sid] of Object.entries(KOKORO_PT_VOICES)) {
-      expect(voice).toMatch(/^p[fm]_/);
-      expect(sid).toBeGreaterThanOrEqual(0);
-      expect(sid).toBeLessThanOrEqual(52);
-    }
+  it('encapsula PCM16 binario sem alterar as amostras', () => {
+    const pcm = Buffer.from([0, 0, 255, 127, 0, 128]);
+    const wav = pcm16ToWav(pcm, 24_000);
+    expect(wav.readUInt32LE(24)).toBe(24_000);
+    expect(wav.subarray(44)).toEqual(pcm);
+  });
+});
+
+describe('vozes Supertonic', () => {
+  it('oferece um preset para cada locale suportado pelo app', () => {
+    expect(EMBEDDED_TTS_VOICES.map((voice) => voice.locale)).toEqual(['pt-BR', 'en-US', 'es-MX']);
+    expect(EMBEDDED_TTS_VOICES.map((voice) => voice.language)).toEqual(['pt', 'en', 'es']);
+    expect(new Set(EMBEDDED_TTS_VOICES.map((voice) => voice.sid)).size).toBe(3);
+  });
+
+  it('migra vozes legadas do Kokoro e rejeita ids desconhecidos', () => {
+    expect(normalizeEmbeddedTtsVoice('pf_dora')).toBe('pt-BR-f1');
+    expect(normalizeEmbeddedTtsVoice('en-US-m2')).toBe('en-US-m2');
+    expect(normalizeEmbeddedTtsVoice('qualquer')).toBe('pt-BR-f1');
+    expect(embeddedTtsVoice('es-MX-f3')).toMatchObject({ language: 'es', sid: 2 });
+  });
+
+  it('normaliza a velocidade em passos de 0,05 e respeita a faixa segura', () => {
+    expect(normalizeEmbeddedTtsSpeed()).toBe(1);
+    expect(normalizeEmbeddedTtsSpeed('1.24')).toBe(1.25);
+    expect(normalizeEmbeddedTtsSpeed(0.2)).toBe(0.75);
+    expect(normalizeEmbeddedTtsSpeed(9)).toBe(1.5);
   });
 });
 

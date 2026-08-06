@@ -1,14 +1,21 @@
 import { execFile, execFileSync, fork, type ChildProcess } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  embeddedTtsVoice,
+  DEFAULT_EMBEDDED_TTS_SPEED,
+  DEFAULT_EMBEDDED_TTS_VOICE,
+  normalizeEmbeddedTtsSpeed,
+} from '../../domain/voice.js';
 
 /** tar assincrono — execFileSync congelava o servidor (e o progresso) na extracao. */
 const execFileAsync = promisify(execFile);
 
 /**
- * Voz EMBARCADA (sem Docker, sem Python): STT Parakeet-TDT v3 e TTS Kokoro
- * multi-lang (pt-BR) rodando in-process via sherpa-onnx (binario nativo npm).
+ * Voz EMBARCADA (sem Docker, sem Python): STT Parakeet-TDT v3 e TTS
+ * Supertonic 3 multi-lang rodando via sherpa-onnx (binario nativo npm).
  * Os modelos sao baixados UMA vez do GitHub/HF para o diretorio de dados do app
  * e ficam em cache — o padrao do app. O sidecar Docker vira opcao avancada.
  */
@@ -18,14 +25,18 @@ const PARAKEET = {
   url: 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2',
   dir: 'sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8',
   sizeMb: 487,
+  sha256: '5793d0fd397c5778d2cf2126994d58e9d56b1be7c04d13c7a15bb1b4eafb16bf',
 };
 
-const KOKORO = {
-  id: 'kokoro-multi-lang-v1_0',
-  url: 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2',
-  dir: 'kokoro-multi-lang-v1_0',
-  sizeMb: 250,
+const SUPERTONIC = {
+  id: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11',
+  url: 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2',
+  dir: 'sherpa-onnx-supertonic-3-tts-int8-2026-05-11',
+  sizeMb: 129,
+  sha256: '82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427',
 };
+
+const LEGACY_KOKORO_DIR = 'kokoro-multi-lang-v1_0';
 
 /**
  * Runtime Node standalone (~50 MB) baixado junto com os modelos: o V8 sandbox
@@ -59,13 +70,6 @@ function bundledVoiceNode(): string | null {
   return existsSync(bin) ? bin : null;
 }
 
-/** Vozes pt-BR do Kokoro multi-lang v1.0 (ordem oficial do voices.bin, 53 speakers, sid 0-52). */
-export const KOKORO_PT_VOICES: Record<string, number> = {
-  pf_dora: 42,
-  pm_alex: 43,
-  pm_santa: 44,
-};
-
 type ModelDef = typeof PARAKEET;
 
 /** Diretorio de modelos (userData no empacotado; storage/voice em dev). */
@@ -76,12 +80,18 @@ export function voiceModelsDir(): string {
   return dir;
 }
 
-async function downloadFile(url: string, dest: string, onProgress?: (percent: number) => void): Promise<void> {
+async function downloadFile(
+  url: string,
+  dest: string,
+  onProgress?: (percent: number) => void,
+  expectedSha256?: string
+): Promise<void> {
   const response = await fetch(url, { redirect: 'follow' });
   if (!response.ok || !response.body) throw new Error(`Falha ao baixar ${url} (HTTP ${response.status}).`);
   const total = Number(response.headers.get('content-length') ?? 0);
   const tmp = `${dest}.part`;
   const out = createWriteStream(tmp);
+  const hash = expectedSha256 ? createHash('sha256') : null;
   let received = 0;
   try {
     const reader = response.body.getReader();
@@ -89,6 +99,7 @@ async function downloadFile(url: string, dest: string, onProgress?: (percent: nu
       const { done, value } = await reader.read();
       if (done) break;
       received += value.byteLength;
+      hash?.update(value);
       if (total > 0) onProgress?.(Math.round((received / total) * 100));
       if (!out.write(value)) {
         await new Promise<void>((resolvePromise) => out.once('drain', resolvePromise));
@@ -96,6 +107,11 @@ async function downloadFile(url: string, dest: string, onProgress?: (percent: nu
     }
   } finally {
     await new Promise<void>((resolvePromise) => out.end(resolvePromise));
+  }
+  const actualSha256 = hash?.digest('hex');
+  if (expectedSha256 && actualSha256 !== expectedSha256) {
+    rmSync(tmp, { force: true });
+    throw new Error(`O download de ${url} falhou na verificacao de integridade.`);
   }
   renameSync(tmp, dest);
 }
@@ -109,12 +125,12 @@ async function ensureModel(def: ModelDef, onProgress?: (percent: number) => void
   const archive = join(root, `${def.id}.tar.bz2`);
   if (!existsSync(archive)) {
     onProgress?.(0);
-    await downloadFile(def.url, archive, onProgress);
+    await downloadFile(def.url, archive, onProgress, def.sha256);
   }
   // Extrai com o tar do sistema (bsdtar no mac, GNU no linux, tar.exe no Win10+).
   // ASYNC: a versao sync congelava o servidor e a modal de progresso parava.
   mkdirSync(target, { recursive: true });
-  downloadState.stage = 'Extraindo os arquivos... (pode levar um minuto)';
+  downloadState.stage = 'extracting';
   try {
     await execFileAsync('tar', ['xjf', archive, '-C', root], { timeout: 300_000 });
   } catch (error) {
@@ -139,7 +155,7 @@ async function ensureVoiceNode(onProgress?: (percent: number) => void): Promise<
   await downloadFile(def.url, archive, onProgress);
   try {
     // bsdtar/GNU tar auto-detectam gz/xz/zip ao extrair. Async — nao congela o servidor.
-    downloadState.stage = 'Preparando o motor de voz...';
+    downloadState.stage = 'runtime';
     await execFileAsync('tar', ['xf', archive, '-C', root], { timeout: 120_000 });
   } finally {
     rmSync(archive, { force: true });
@@ -156,7 +172,7 @@ type DownloadState = {
   error: string | null;
   /** Etapa atual para a UI ("Baixando...", "Extraindo...") — a extracao nao
       tem progresso numerico, entao o texto evita a sensacao de travamento. */
-  stage?: string;
+  stage?: 'stt' | 'tts' | 'runtime' | 'extracting';
 };
 
 let downloadState: DownloadState = { downloading: false, percent: 0, error: null };
@@ -195,27 +211,29 @@ export function ensureEmbeddedModels(): Promise<void> {
   downloadPromise = (async () => {
     try {
       const runtimeMb = process.versions.electron ? VOICE_NODE.sizeMb : 0;
-      const totalMb = PARAKEET.sizeMb + KOKORO.sizeMb + runtimeMb;
+      const totalMb = PARAKEET.sizeMb + SUPERTONIC.sizeMb + runtimeMb;
       const weighted = (doneMb: number, currentMb: number, percent: number) =>
         Math.min(100, Math.round(((doneMb + (percent / 100) * currentMb) / totalMb) * 100));
       await ensureModel(PARAKEET, (percent) => {
-        downloadState.stage = 'Baixando o modelo de ditado...';
+        downloadState.stage = 'stt';
         downloadState.percent = weighted(0, PARAKEET.sizeMb, percent);
       });
-      await ensureModel(KOKORO, (percent) => {
-        downloadState.stage = 'Baixando o modelo de fala...';
-        downloadState.percent = weighted(PARAKEET.sizeMb, KOKORO.sizeMb, percent);
+      await ensureModel(SUPERTONIC, (percent) => {
+        downloadState.stage = 'tts';
+        downloadState.percent = weighted(PARAKEET.sizeMb, SUPERTONIC.sizeMb, percent);
       });
       if (runtimeMb > 0) {
         try {
           await ensureVoiceNode((percent) => {
-            downloadState.stage = 'Preparando o motor de voz...';
-            downloadState.percent = weighted(PARAKEET.sizeMb + KOKORO.sizeMb, VOICE_NODE.sizeMb, percent);
+            downloadState.stage = 'runtime';
+            downloadState.percent = weighted(PARAKEET.sizeMb + SUPERTONIC.sizeMb, VOICE_NODE.sizeMb, percent);
           });
         } catch {
-          // Sem runtime embarcado: speakPcm cai no Node do sistema (se houver).
+          // Sem runtime embarcado: speakWav cai no Node do sistema (se houver).
         }
       }
+      // O modelo antigo so e removido depois que o substituto esta completo.
+      rmSync(join(voiceModelsDir(), LEGACY_KOKORO_DIR), { recursive: true, force: true });
       downloadState = { downloading: false, percent: 100, error: null };
     } catch (error) {
       downloadState = {
@@ -328,10 +346,10 @@ function voiceWorker(): ChildProcess {
     env: {
       ...process.env,
       VOICE_PARAKEET_DIR: join(voiceModelsDir(), PARAKEET.dir),
-      VOICE_KOKORO_DIR: join(voiceModelsDir(), KOKORO.dir),
-      VOICE_PT_VOICES: JSON.stringify(KOKORO_PT_VOICES),
+      VOICE_SUPERTONIC_DIR: join(voiceModelsDir(), SUPERTONIC.dir),
     },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    serialization: 'advanced',
   });
   child.on('message', (message: { id: number; ok: boolean; error?: string } & Record<string, unknown>) => {
     const job = pending.get(message.id);
@@ -384,20 +402,28 @@ function dispatch<T>(kind: string, payload: unknown): Promise<T> {
 
 /** Transcreve PCM16 mono 16 kHz para texto (Parakeet-TDT v3, CPU). */
 export async function transcribePcm(samples: Float32Array): Promise<string> {
-  const result = await dispatch<{ text: string }>('transcribe', { samples: Array.from(samples) });
+  const bytes = Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength);
+  const result = await dispatch<{ text: string }>('transcribe', { samples: bytes });
   return result.text;
 }
 
-/** Sintetiza texto em amostras Float32 com uma voz pt-BR do Kokoro. */
-export async function speakPcm(
+/** Sintetiza texto em WAV PCM16 com uma das vozes locais do Supertonic 3. */
+export async function speakWav(
   text: string,
-  voice = 'pf_dora'
-): Promise<{ samples: Float32Array; sampleRate: number }> {
+  voice = DEFAULT_EMBEDDED_TTS_VOICE,
+  speed = DEFAULT_EMBEDDED_TTS_SPEED
+): Promise<Buffer> {
   if (process.versions.electron && !resolveVoiceNode()) {
     throw new Error('A voz falada precisa do Node.js instalado neste computador.');
   }
-  const result = await dispatch<{ samples: number[]; sampleRate: number }>('speak', { text, voice });
-  return { samples: Float32Array.from(result.samples), sampleRate: result.sampleRate };
+  const selected = embeddedTtsVoice(voice);
+  const result = await dispatch<{ pcm16: Uint8Array; sampleRate: number }>('speak', {
+    text,
+    sid: selected.sid,
+    language: selected.language,
+    speed: normalizeEmbeddedTtsSpeed(speed),
+  });
+  return pcm16ToWav(Buffer.from(result.pcm16), result.sampleRate);
 }
 
 /** WAV PCM16 mono -> Float32Array (+resample linear se nao for 16 kHz). */
@@ -424,9 +450,18 @@ export function wavToPcm16(wav: Buffer): { samples: Float32Array; sampleRate: nu
 
 /** Float32Array -> WAV PCM16 mono. */
 export function pcmToWav(samples: Float32Array, sampleRate: number): Buffer {
-  const buffer = Buffer.alloc(44 + samples.length * 2);
+  const pcm16 = Buffer.alloc(samples.length * 2);
+  for (let i = 0; i < samples.length; i += 1) {
+    pcm16.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(samples[i] * 32767))), i * 2);
+  }
+  return pcm16ToWav(pcm16, sampleRate);
+}
+
+/** PCM16 mono sem cabecalho -> WAV. */
+export function pcm16ToWav(pcm16: Buffer, sampleRate: number): Buffer {
+  const buffer = Buffer.alloc(44 + pcm16.length);
   buffer.write('RIFF', 0, 'ascii');
-  buffer.writeUInt32LE(36 + samples.length * 2, 4);
+  buffer.writeUInt32LE(36 + pcm16.length, 4);
   buffer.write('WAVEfmt ', 8, 'ascii');
   buffer.writeUInt32LE(16, 16);
   buffer.writeUInt16LE(1, 20); // PCM
@@ -436,17 +471,15 @@ export function pcmToWav(samples: Float32Array, sampleRate: number): Buffer {
   buffer.writeUInt16LE(2, 32);
   buffer.writeUInt16LE(16, 34);
   buffer.write('data', 36, 'ascii');
-  buffer.writeUInt32LE(samples.length * 2, 40);
-  for (let i = 0; i < samples.length; i += 1) {
-    buffer.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(samples[i] * 32767))), 44 + i * 2);
-  }
+  buffer.writeUInt32LE(pcm16.length, 40);
+  pcm16.copy(buffer, 44);
   return buffer;
 }
 
 /** Modelos presentes no cache (para o app saber se precisa confirmar download). */
 export function embeddedModelsReady(): boolean {
   const root = voiceModelsDir();
-  return existsSync(join(root, PARAKEET.dir, '.complete')) && existsSync(join(root, KOKORO.dir, '.complete'));
+  return existsSync(join(root, PARAKEET.dir, '.complete')) && existsSync(join(root, SUPERTONIC.dir, '.complete'));
 }
 
 /** Tamanho atual dos modelos em disco (bytes; 0 se nao baixados). */
@@ -477,4 +510,4 @@ export function deleteEmbeddedModels(): void {
   rmSync(voiceModelsDir(), { recursive: true, force: true });
 }
 
-export const EMBEDDED_MODELS_SIZE_MB = PARAKEET.sizeMb + KOKORO.sizeMb + VOICE_NODE.sizeMb;
+export const EMBEDDED_MODELS_SIZE_MB = PARAKEET.sizeMb + SUPERTONIC.sizeMb + VOICE_NODE.sizeMb;

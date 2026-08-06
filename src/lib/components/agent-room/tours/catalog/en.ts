@@ -487,4 +487,27 @@ export const TOURS_EN: Tour[] = [
       },
     ],
   },
+  {
+    id: 'multilingual-spoken-replies',
+    icon: 'Languages',
+    title: 'Spoken replies in three languages',
+    tagline: 'Choose, test and use a local voice suited to the language.',
+    steps: [
+      {
+        id: 'choose',
+        title: 'Choose the voice in Settings',
+        body: 'Open Settings → Voice and select Portuguese (Brazil), English (United States) or Spanish (Latin America). Each option sets both the speaker and synthesis language.',
+      },
+      {
+        id: 'preview',
+        title: 'Listen before using it',
+        body: 'Adjust speed from 0.75× to 1.50× and click Play preview. On first use, confirm the local download; after that all three voices work offline on macOS, Linux and Windows.',
+      },
+      {
+        id: 'enable',
+        title: 'Enable it on the agent',
+        body: 'Return to the canvas and click the speaker in the terminal. The next reply is spoken with the selected voice, sentence by sentence, while dictation continues using the same Parakeet as before.',
+      },
+    ],
+  },
 ];

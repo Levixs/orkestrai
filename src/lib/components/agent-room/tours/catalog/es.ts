@@ -487,4 +487,27 @@ export const TOURS_ES: Tour[] = [
       },
     ],
   },
+  {
+    id: 'multilingual-spoken-replies',
+    icon: 'Languages',
+    title: 'Respuestas habladas en tres idiomas',
+    tagline: 'Elige, prueba y usa una voz local adecuada al idioma.',
+    steps: [
+      {
+        id: 'choose',
+        title: 'Elige la voz en Configuración',
+        body: 'Abre Configuración → Voz y selecciona Portugués (Brasil), English (United States) o Español (Latinoamérica). Cada opción define el speaker y el idioma de síntesis.',
+      },
+      {
+        id: 'preview',
+        title: 'Escucha antes de usar',
+        body: 'Ajusta la velocidad entre 0,75× y 1,50× y haz clic en Escuchar vista previa. En el primer uso, confirma la descarga local; después las tres voces funcionan offline en macOS, Linux y Windows.',
+      },
+      {
+        id: 'enable',
+        title: 'Actívala en el agente',
+        body: 'Vuelve al canvas y haz clic en el altavoz de la terminal. La próxima respuesta se hablará con la voz elegida, por frases, mientras el dictado continúa usando el mismo Parakeet de antes.',
+      },
+    ],
+  },
 ];

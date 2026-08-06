@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ArrowLeft, Check, Keyboard, Languages, Layers, Mic, Pencil, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
+  import { ArrowLeft, Check, Keyboard, Languages, Layers, Mic, Pencil, Play, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
+  import { Slider } from '$lib/components/ui/slider';
   import * as Select from '$lib/components/ui/select';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { getCsrfToken } from '@beeblock/svelar/http';
@@ -12,6 +13,14 @@
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
   import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
+  import VoiceConfirmDialog from '$lib/components/agent-room/VoiceConfirmDialog.svelte';
+  import {
+    DEFAULT_EMBEDDED_TTS_SPEED,
+    MAX_EMBEDDED_TTS_SPEED,
+    MIN_EMBEDDED_TTS_SPEED,
+    normalizeEmbeddedTtsSpeed,
+    normalizeEmbeddedTtsVoice,
+  } from '$lib/modules/agent-room/domain/voice.js';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
 
   let settings = $state<Record<string, string>>({});
@@ -20,6 +29,7 @@
   let capturingHotkey = $state(false);
 
   const hotkeyLabel = $derived(comboLabel(settings.dictationHotkey || DEFAULT_DICTATION_HOTKEY));
+  const ttsSpeed = $derived(normalizeEmbeddedTtsSpeed(settings.voiceTtsSpeed));
 
   function captureHotkey(event: KeyboardEvent) {
     if (!capturingHotkey) return;
@@ -40,6 +50,7 @@
     const response = await fetch('/api/agent-room/settings');
     const payload = await response.json();
     settings = payload.data ?? {};
+    settings = { ...settings, voiceTtsVoice: normalizeEmbeddedTtsVoice(settings.voiceTtsVoice) };
     loaded = true;
     await refreshModelStatus();
     await loadPresets();
@@ -72,6 +83,72 @@
   let modelBytes = $state<number | null>(null);
   let confirmDeleteModels = $state(false);
   let deletingModels = $state(false);
+  let previewingVoice = $state(false);
+  let confirmVoiceDownload = $state(false);
+
+  function ttsVoiceLabel(voice: string): string {
+    if (voice === 'en-US-m2') return m['settings.tts_voice_en_us']();
+    if (voice === 'es-MX-f3') return m['settings.tts_voice_es_mx']();
+    return m['settings.tts_voice_pt_br']();
+  }
+
+  function ttsPreviewText(voice: string): string {
+    if (voice === 'en-US-m2') return m['settings.tts_preview_text_en']();
+    if (voice === 'es-MX-f3') return m['settings.tts_preview_text_es']();
+    return m['settings.tts_preview_text_pt']();
+  }
+
+  function setTtsSpeed(value: number) {
+    settings = { ...settings, voiceTtsSpeed: normalizeEmbeddedTtsSpeed(value).toFixed(2) };
+  }
+
+  function ttsSpeedLabel(value: number): string {
+    const locale = settings.uiLanguage === 'en' ? 'en-US' : settings.uiLanguage === 'es' ? 'es' : 'pt-BR';
+    return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}×`;
+  }
+
+  async function playVoicePreview() {
+    previewingVoice = true;
+    const embedded = (settings.voiceBackend ?? 'embedded') === 'embedded';
+    const voice = embedded
+      ? normalizeEmbeddedTtsVoice(settings.voiceTtsVoice)
+      : (settings.voiceSidecarTtsVoice || 'pf_dora');
+    try {
+      const response = await fetch('/api/agent-room/voice/speak', {
+        method: 'POST',
+        headers: csrfHeaders({ 'content-type': 'application/json' }),
+        body: JSON.stringify({
+          text: embedded ? ttsPreviewText(voice) : m['settings.tts_preview_text_sidecar'](),
+          voice,
+          speed: embedded ? ttsSpeed : undefined,
+        }),
+      });
+      if (!response.ok) throw new Error('preview_failed');
+      const url = URL.createObjectURL(await response.blob());
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const audio = new Audio(url);
+          audio.onended = () => resolve();
+          audio.onerror = () => reject(new Error('play_failed'));
+          audio.play().catch(reject);
+        });
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      toast.error(m['settings.tts_preview_failed']());
+    } finally {
+      previewingVoice = false;
+    }
+  }
+
+  async function previewVoice() {
+    if ((settings.voiceBackend ?? 'embedded') === 'embedded' && !(modelBytes && modelBytes > 0)) {
+      confirmVoiceDownload = true;
+      return;
+    }
+    await playVoicePreview();
+  }
 
   function csrfHeaders(extra: Record<string, string> = {}): HeadersInit {
     const token = getCsrfToken();
@@ -399,19 +476,52 @@
           </Select.Content>
         </Select.Root>
       </div>
+      {#if (settings.voiceBackend ?? 'embedded') === 'embedded'}
       <div class="field">
         <span class="field-label">{m['settings.tts_voice']()}</span>
-        <Select.Root type="single" value={settings.voiceTtsVoice} onValueChange={(value: string) => (settings = { ...settings, voiceTtsVoice: value })}>
+        <Select.Root type="single" value={normalizeEmbeddedTtsVoice(settings.voiceTtsVoice)} onValueChange={(value: string) => (settings = { ...settings, voiceTtsVoice: value })}>
           <Select.Trigger data-slot="select-trigger">
-            {settings.voiceTtsVoice ?? 'pf_dora'}
+            {ttsVoiceLabel(normalizeEmbeddedTtsVoice(settings.voiceTtsVoice))}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="pf_dora">pf_dora ({m['settings.tts_voice_female']()})</Select.Item>
-            <Select.Item value="pm_alex">pm_alex ({m['settings.tts_voice_male']()})</Select.Item>
-            <Select.Item value="pm_santa">pm_santa ({m['settings.tts_voice_male']()})</Select.Item>
+            <Select.Item value="pt-BR-f1">{m['settings.tts_voice_pt_br']()}</Select.Item>
+            <Select.Item value="en-US-m2">{m['settings.tts_voice_en_us']()}</Select.Item>
+            <Select.Item value="es-MX-f3">{m['settings.tts_voice_es_mx']()}</Select.Item>
           </Select.Content>
         </Select.Root>
       </div>
+      <div class="field span-all">
+        <div class="speed-head">
+          <span class="field-label">{m['settings.tts_speed']()}</span>
+          <div class="speed-value-row">
+            <output class="speed-value" aria-live="polite">{ttsSpeedLabel(ttsSpeed)}</output>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              title={m['settings.tts_speed_reset']()}
+              aria-label={m['settings.tts_speed_reset']()}
+              disabled={ttsSpeed === DEFAULT_EMBEDDED_TTS_SPEED}
+              onclick={() => setTtsSpeed(DEFAULT_EMBEDDED_TTS_SPEED)}
+            >
+              <RefreshCw size={12} aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+        <div class="speed-control">
+          <span>{ttsSpeedLabel(MIN_EMBEDDED_TTS_SPEED)}</span>
+          <Slider
+            type="single"
+            value={ttsSpeed}
+            min={MIN_EMBEDDED_TTS_SPEED}
+            max={MAX_EMBEDDED_TTS_SPEED}
+            step={0.05}
+            aria-label={m['settings.tts_speed']()}
+            onValueChange={setTtsSpeed}
+          />
+          <span>{ttsSpeedLabel(MAX_EMBEDDED_TTS_SPEED)}</span>
+        </div>
+      </div>
+      {/if}
     </div>
 
     {#if (settings.voiceBackend ?? 'embedded') === 'sidecar'}
@@ -424,12 +534,20 @@
           <span class="field-label">{m['settings.sidecar_model']()}</span>
           <Input bind:value={settings.voiceSttModel} placeholder="whisper-large-v3-turbo" />
         </div>
+        <div class="field">
+          <span class="field-label">{m['settings.sidecar_tts_voice']()}</span>
+          <Input bind:value={settings.voiceSidecarTtsVoice} placeholder="pf_dora" />
+        </div>
       </div>
     {/if}
 
     <div class="hotkey-row">
       <Button variant="outline" size="sm" disabled={checkingVoice} onclick={checkVoiceStack}>
         {checkingVoice ? m['settings.testing']() : m['settings.test_connection']()}
+      </Button>
+      <Button variant="outline" size="sm" disabled={previewingVoice} onclick={previewVoice}>
+        <Play size={14} aria-hidden="true" />
+        {previewingVoice ? m['settings.tts_previewing']() : m['settings.tts_preview']()}
       </Button>
       {#if voiceHealth}
         <span class="status-pill" class:ok={voiceHealth.ok}>
@@ -472,6 +590,15 @@
       </AlertDialog.Footer>
     </AlertDialog.Content>
   </AlertDialog.Root>
+
+  <VoiceConfirmDialog
+    bind:open={confirmVoiceDownload}
+    onConfirm={() => {
+      void refreshModelStatus();
+      void playVoicePreview();
+    }}
+    onCancel={() => (confirmVoiceDownload = false)}
+  />
 
   <section class="settings-section">
     <header class="section-head">
@@ -789,6 +916,10 @@
     grid-column: span 2;
   }
 
+  .span-all {
+    grid-column: 1 / -1;
+  }
+
   @media (max-width: 560px) {
     .span-2 {
       grid-column: span 1;
@@ -806,6 +937,46 @@
     font-size: 12px;
     font-weight: 500;
     color: #a9aab3;
+  }
+
+  .speed-head,
+  .speed-value-row,
+  .speed-control {
+    display: flex;
+    align-items: center;
+  }
+
+  .speed-head {
+    justify-content: space-between;
+    min-height: 24px;
+  }
+
+  .speed-value-row {
+    gap: 4px;
+  }
+
+  .speed-value {
+    min-width: 42px;
+    text-align: right;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: #d7d7de;
+  }
+
+  .speed-control {
+    gap: 10px;
+  }
+
+  .speed-control > span {
+    width: 40px;
+    flex: 0 0 40px;
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    color: #6d6d78;
+  }
+
+  .speed-control > span:last-child {
+    text-align: right;
   }
 
   .field-hint {

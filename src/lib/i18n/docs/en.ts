@@ -187,6 +187,12 @@ export const DOCS_EN: DocsCatalog = {
       body: 'Click the voice orb at the top right of the canvas to start the same dictation as the microphone in the leader window. Click again to stop: the transcript goes directly into that leader\'s terminal, even when it is on another floor. If the workspace has no leader, the app shows a toast.',
       tags: ['Leader/Maestro', 'dictation', 'local voice'],
     },
+    {
+      id: 'multilingual-spoken-replies',
+      title: 'Hear replies in your language',
+      body: 'In Settings → Voice, choose one of the three local voices: Brazilian Portuguese, US English or Latin American Spanish. Adjust speed from 0.75× to 1.50× and use Play preview to compare before enabling the speaker in the agent header. Parakeet still handles dictation only; replies use offline Supertonic 3 and start playing sentence by sentence to reduce waiting.',
+      tags: ['TTS', 'Supertonic 3', 'pt-BR · en-US · es-MX'],
+    },
   ],
   changelog: [
     {
@@ -199,7 +205,12 @@ export const DOCS_EN: DocsCatalog = {
         'New dictation orb at the top right: triggers the leader\'s exact microphone flow and writes the transcript straight into that terminal, even on another floor; without a leader, it shows a clear toast.',
         'Fixed Claude resume tracking: subagent transcripts and startup files without a resumable message no longer replace the leader conversation\'s valid ID.',
         'After deleting local voice models, both the terminal microphone and leader orb ask for confirmation before downloading again; the UI also reports deletion failures.',
-        'Interface, documentation, use cases and two new tours translated into pt-BR, English and Español (15 onboarding tours).',
+        'Supertonic 3 replaces Kokoro for spoken replies, with local 44.1 kHz audio; Parakeet and the entire STT flow remain unchanged.',
+        'Three speech presets — pt-BR, en-US and Latin American Spanish — with preview, adjustable speed from 0.75× to 1.50× and automatic migration from old voices.',
+        'Long replies are synthesized sentence by sentence, with prefetch for the next segment and binary PCM over IPC so playback starts sooner without overlapping speech.',
+        'The new INT8 model has a smaller download, is verified with SHA-256 and removes the old Kokoro only after successful installation.',
+        'Global documentation search with Cmd/Ctrl+K now covers wide monitors completely and keeps the dialog centered.',
+        'Interface, documentation, use cases and three new tours translated into pt-BR, English and Español (16 onboarding tours).',
       ],
     },
     {

@@ -1,4 +1,5 @@
 import { AgentSetting } from '../../domain/models/AgentSetting.js';
+import { DEFAULT_EMBEDDED_TTS_SPEED, DEFAULT_EMBEDDED_TTS_VOICE } from '../../domain/voice.js';
 
 const DEFAULTS: Record<string, string> = {
   terminalTheme: 'dark',
@@ -15,7 +16,9 @@ const DEFAULTS: Record<string, string> = {
   voiceBackend: 'embedded',
   voiceStackUrl: 'http://localhost:8000',
   voiceSttModel: 'whisper-large-v3-turbo',
-  voiceTtsVoice: 'pf_dora',
+  voiceTtsVoice: DEFAULT_EMBEDDED_TTS_VOICE,
+  voiceTtsSpeed: String(DEFAULT_EMBEDDED_TTS_SPEED),
+  voiceSidecarTtsVoice: 'pf_dora',
 };
 
 /** Configuracoes globais do app (chave/valor, com defaults). */
