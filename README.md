@@ -99,6 +99,11 @@ write**. Assinatura/notarização do macOS é opcional e usa `MAC_CSC_LINK`,
 `APPLE_TEAM_ID`. Sem certificado Apple, o app oferece download manual no Mac;
 Windows NSIS e Linux AppImage continuam com auto-update.
 
+Importante: as versões `0.0.1` e `0.1.0` foram empacotadas sem o módulo
+`electron-updater`. Elas exigem uma instalação manual única da versão `0.1.1`;
+as atualizações seguintes voltam a usar o fluxo normal nas plataformas
+compatíveis.
+
 Procedimento completo e recuperação de falhas: `docs/releases.md`.
 
 ## Testes

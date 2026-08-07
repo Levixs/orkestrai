@@ -42,6 +42,31 @@ for catalog in src/lib/i18n/docs/pt-BR.ts src/lib/i18n/docs/en.ts src/lib/i18n/d
   grep -Fq "Orkestrai $VERSION" "$catalog" || fail "$catalog does not mention Orkestrai $VERSION"
 done
 
+COMPANION_ROOT="$(dirname "$ROOT")"
+SITE_REPO="$COMPANION_ROOT/orkestra-site"
+PUBLIC_REPO="$COMPANION_ROOT/orkestrai-releases"
+
+verify_companion_repo() {
+  local repo="$1"
+  local expected_remote="$2"
+  [[ -d "$repo/.git" ]] || fail "missing companion repository: $repo"
+  [[ "$(git -C "$repo" branch --show-current)" == "main" ]] || fail "$repo must be on main"
+  [[ -z "$(git -C "$repo" status --porcelain)" ]] || fail "$repo has uncommitted changes"
+  [[ "$(git -C "$repo" remote get-url origin)" == *"$expected_remote"* ]] || fail "$repo origin is not $expected_remote"
+  git -C "$repo" fetch origin main --quiet
+  [[ "$(git -C "$repo" rev-parse HEAD)" == "$(git -C "$repo" rev-parse origin/main)" ]] || fail "$repo is not synchronized with origin/main"
+}
+
+verify_companion_repo "$SITE_REPO" "beeblock/orkestrai-site"
+verify_companion_repo "$PUBLIC_REPO" "beeblock/orkestrai-releases"
+
+for catalog in src/lib/content/site/pt-BR.ts src/lib/content/site/en.ts src/lib/content/site/es.ts; do
+  grep -Fq "$VERSION" "$SITE_REPO/$catalog" || fail "$SITE_REPO/$catalog does not mention $VERSION"
+done
+for changelog in CHANGELOG.md CHANGELOG.en.md CHANGELOG.es.md; do
+  grep -Fq "## $VERSION" "$PUBLIC_REPO/$changelog" || fail "$PUBLIC_REPO/$changelog does not mention $VERSION"
+done
+
 gh auth status >/dev/null 2>&1 || fail 'GitHub CLI is not authenticated'
 gh repo view "$SOURCE_REPO" >/dev/null 2>&1 || fail 'cannot access source repository'
 gh repo view "$RELEASE_REPO" >/dev/null 2>&1 || fail 'cannot access public releases repository'

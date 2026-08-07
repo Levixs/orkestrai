@@ -31,6 +31,7 @@ export class TaskBoardController extends Controller {
           data: await taskBoardService.create(event.params.id, {
             title: input.title,
             description: input.description ?? null,
+            images: input.images ?? [],
             assigneeNodeId: input.assigneeNodeId ?? null,
             noteId: input.noteId ?? null,
             createdBy: input.createdBy ?? 'user',

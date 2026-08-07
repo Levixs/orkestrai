@@ -4,6 +4,14 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 
 ## 2026-08-07
 
+**Orkestrai 0.1.1 — auto-update empacotado e briefings completos no kanban**
+- `electron-updater` passou de dependência de desenvolvimento para dependência de produção, garantindo que o módulo seja incluído nos aplicativos instalados. Se o módulo faltar em um pacote, Configurações agora informa erro de checagem em vez de afirmar incorretamente que o app não está instalado.
+- Instalações `0.0.1` e `0.1.0` não carregam esse módulo e, portanto, precisam baixar e instalar `0.1.1` manualmente uma única vez. A partir de `0.1.1`, Windows e Linux voltam a receber atualizações automáticas; no macOS sem assinatura Apple permanece o download manual seguro já documentado.
+- Tarefas criadas pelo usuário no kanban agora são persistidas com título, descrição markdown e todas as imagens antes de o líder ser avisado. O briefing enviado ao PTY do líder, e depois ao agente atribuído, contém sempre os três campos completos.
+- Testes de regressão conferem o conteúdo recebido pelos terminais e impedem que o updater volte para `devDependencies`; cada job de release também verifica o módulo dentro do aplicativo efetivamente empacotado antes do upload.
+
+## 2026-08-07
+
 **Releases públicas e atualização automática confiável**
 - A versão do app passa a ser **0.1.0**, primeira release pública preparada para atualizar as instalações `0.0.1`.
 - Novo workflow por tag gera artefatos nativos para macOS Apple Silicon/Intel, Windows x64 e Linux x64 sem publicar o código-fonte privado. Os instaladores são enviados para o repositório público `beeblock/orkestrai-releases`.

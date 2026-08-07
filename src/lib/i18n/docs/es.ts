@@ -196,6 +196,15 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '07 ago 2026 · 0.1.1',
+      items: [
+        'Orkestrai 0.1.1 incluye electron-updater en la aplicación instalada; Configuración ya no confunde un módulo ausente con la ejecución fuera de la app de escritorio.',
+        'Las instalaciones 0.0.1 y 0.1.0 necesitan una actualización manual única a 0.1.1. Después, Windows y Linux vuelven a las actualizaciones automáticas; macOS sin firma mantiene la descarga manual segura.',
+        'Las tareas creadas por el usuario llegan al líder solo después de persistir el título, la descripción markdown y todas las imágenes adjuntas.',
+        'El briefing enviado al líder y al agente asignado siempre contiene título, descripción y la lista completa de imágenes de referencia.',
+      ],
+    },
+    {
       date: '07 ago 2026',
       items: [
         'Orkestrai 0.1.0: primera release pública preparada para actualizar las instalaciones 0.0.1.',

@@ -92,3 +92,11 @@ describe('release notes', () => {
     expect(latestChangelogSection(changelog)).toBe('## 2026-08-07\n\n**Title**\n- First\n- Second');
   });
 });
+
+describe('packaged updater', () => {
+  it('ships electron-updater as a production dependency', () => {
+    const packageJson = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
+    expect(packageJson.dependencies?.['electron-updater']).toBeTruthy();
+    expect(packageJson.devDependencies?.['electron-updater']).toBeUndefined();
+  });
+});

@@ -104,6 +104,11 @@ jobs:
           fi
           npx electron-builder --mac --arm64 --x64 --publish never
 
+      - name: Verify updater is packaged
+        run: |
+          test -f release/mac-arm64/Orkestrai.app/Contents/Resources/app/node_modules/electron-updater/package.json
+          test -f release/mac/Orkestrai.app/Contents/Resources/app/node_modules/electron-updater/package.json
+
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -158,6 +163,13 @@ jobs:
         shell: pwsh
         run: npx electron-builder --win nsis --x64 --publish never "-c.npmRebuild=false"
 
+      - name: Verify updater is packaged
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "release/win-unpacked/resources/app/node_modules/electron-updater/package.json")) {
+            throw "electron-updater is missing from the packaged Windows application"
+          }
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -204,6 +216,9 @@ jobs:
 
       - name: Package Linux AppImage
         run: npx electron-builder --linux AppImage --x64 --publish never
+
+      - name: Verify updater is packaged
+        run: test -f release/linux-unpacked/resources/app/node_modules/electron-updater/package.json
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v7

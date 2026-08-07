@@ -77,3 +77,13 @@ recusa a modificar uma release que já esteja pública.
 
 Nunca publique manualmente uma release incompleta: o `electron-updater` depende
 do manifest e do instalador correspondente estarem disponíveis ao mesmo tempo.
+
+## Bootstrap do auto-update na 0.1.1
+
+`electron-updater` precisa permanecer em `dependencies`, nunca em
+`devDependencies`: o electron-builder remove dependências de desenvolvimento do
+aplicativo final. As versões `0.0.1` e `0.1.0` foram distribuídas sem esse
+módulo e não conseguem buscar a própria correção. Esses usuários fazem uma
+instalação manual única da `0.1.1`; a pasta de dados fica fora do bundle e é
+preservada. O teste `packaged updater` em `release-artifacts.test.ts` protege
+essa regra nas próximas releases.

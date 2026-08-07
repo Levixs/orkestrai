@@ -256,8 +256,9 @@ let autoUpdater = null;
 if (app.isPackaged) {
   try {
     autoUpdater = require('electron-updater').autoUpdater;
-  } catch {
-    autoUpdater = null; // pacote sem o modulo — segue sem updater
+  } catch (error) {
+    autoUpdater = null;
+    console.error('[orkestrai] updater indisponivel no pacote:', error?.message ?? error);
   }
 }
 
@@ -276,7 +277,11 @@ function updateErrorPayload(error) {
 }
 
 async function checkForUpdates() {
-  if (!autoUpdater) return { status: 'unsupported' };
+  if (!autoUpdater) {
+    return app.isPackaged
+      ? { status: 'check-error', message: 'O modulo de atualizacao nao esta disponivel neste pacote.' }
+      : { status: 'unsupported' };
+  }
   if (updateCheckPromise) return updateCheckPromise;
 
   updateCheckPromise = (async () => {

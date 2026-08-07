@@ -139,14 +139,19 @@
     const title = draft.trim();
     if (!title) return;
     const description = draftDescription.trim();
+    let images: string[] = [];
+    try {
+      for (const file of stagedImages) images = [...images, await writeImageFile(file)];
+    } catch (error) {
+      imageError = error instanceof Error ? error.message : m['tasks.err_image_attach']();
+      return;
+    }
     const task = await api<BoardTask>(`/api/agent-room/workspaces/${data.workspaceId}/tasks`, {
       method: 'POST',
-      body: JSON.stringify({ title, description: description || undefined }),
+      body: JSON.stringify({ title, description: description || undefined, images }),
     });
-    // Imagens anexadas ANTES de criar: sobem logo apos o cartao nascer.
-    if (task && stagedImages.length) {
-      for (const file of stagedImages) await uploadImage(file, task.id);
-    }
+    if (!task) return;
+    imageError = '';
     draft = '';
     draftDescription = '';
     clearStaged();
@@ -268,17 +273,22 @@
   }
 
   /** base64 em chunks — o spread direto estoura a pilha em imagens >100 KB. */
+  async function writeImageFile(file: File): Promise<string> {
+    const base64 = arrayBufferToBase64(await file.arrayBuffer());
+    const ext = file.type.split('/').at(-1) ?? 'png';
+    const path = `.orkestrai/images/${crypto.randomUUID()}.${ext}`;
+    const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/fs/write-binary`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ path, base64 }),
+    });
+    if (!response.ok) throw new Error(m['tasks.err_image_http']({ status: response.status }));
+    return path;
+  }
+
   async function uploadImage(file: File, taskId: string) {
     try {
-      const base64 = arrayBufferToBase64(await file.arrayBuffer());
-      const ext = file.type.split('/').at(-1) ?? 'png';
-      const path = `.orkestrai/images/${crypto.randomUUID()}.${ext}`;
-      const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/fs/write-binary`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ path, base64 }),
-      });
-      if (!response.ok) throw new Error(m['tasks.err_image_http']({ status: response.status }));
+      const path = await writeImageFile(file);
       await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${taskId}/images`, {
         method: 'POST',
         body: JSON.stringify({ path }),

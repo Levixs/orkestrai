@@ -59,12 +59,19 @@ describe('TaskBoardService', () => {
     const { workspace, terminal, session } = await createWorkspaceWithTerminal();
 
     // /bin/cat ecoa tudo que recebe — o prompt despachado aparece no scrollback
-    const task = await taskBoardService.create(workspace.id, { title: 'Implementar login', assigneeNodeId: terminal.id });
+    const task = await taskBoardService.create(workspace.id, {
+      title: 'Implementar login',
+      description: 'Usar OAuth e cobrir o fluxo de erro.',
+      images: ['.orkestrai/images/login.png'],
+      assigneeNodeId: terminal.id,
+    });
     expect(task.status).toBe('doing');
     await new Promise((resolve) => setTimeout(resolve, 400));
     const { scrollback, detach } = ptySessionManager.attach(session.id, () => {});
     detach();
     expect(scrollback).toContain('Implementar login');
+    expect(scrollback).toContain('Usar OAuth e cobrir o fluxo de erro.');
+    expect(scrollback).toContain('.orkestrai/images/login.png');
     expect(scrollback).toContain('orkestrai task done');
     ptySessionManager.kill(session.id);
   });
@@ -196,10 +203,19 @@ describe('TaskBoardService', () => {
   it('task nova avisa o lider no terminal dele; task da ponte nao ecoa', async () => {
     const { workspace, leaderSession } = await createWorkspaceWithLeader();
 
-    await taskBoardService.create(workspace.id, { title: 'Refinar hero', createdBy: 'user' });
+    await taskBoardService.create(workspace.id, {
+      title: 'Refinar hero',
+      description: 'Seguir a hierarquia descrita no briefing.',
+      images: ['.orkestrai/images/hero-a.png', '.orkestrai/images/hero-b.png'],
+      createdBy: 'user',
+    });
     await new Promise((resolve) => setTimeout(resolve, 400));
     let attached = ptySessionManager.attach(leaderSession.id, () => {});
     expect(attached.scrollback).toContain('nova tarefa no quadro');
+    expect(attached.scrollback).toContain('Refinar hero');
+    expect(attached.scrollback).toContain('Seguir a hierarquia descrita no briefing.');
+    expect(attached.scrollback).toContain('.orkestrai/images/hero-a.png');
+    expect(attached.scrollback).toContain('.orkestrai/images/hero-b.png');
     expect(attached.scrollback).toContain('task assign');
     attached.detach();
 

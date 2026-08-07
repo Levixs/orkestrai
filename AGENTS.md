@@ -68,6 +68,7 @@
 ## Docs & Changelog (obrigatório a cada mudança)
 
 - Toda mudança de funcionalidade, correção visível ou UX **exige** atualizar, no MESMO commit: `CHANGELOG.md` (raiz, em pt-BR), o changelog in-app (array `changelog` nos 3 catálogos de `src/lib/i18n/docs/`) e, quando aplicável, as seções/casos de uso da página "Como usar" e o `README.md`. Nunca empacotar/instalar com docs ou changelog desatualizados.
+- Releases seguem SemVer estrito: correção compatível = patch, funcionalidade compatível = minor, quebra de compatibilidade = major. A mesma versão e as mesmas mudanças devem aparecer, antes da tag, no changelog do app, nos três catálogos do site irmão `../orkestra-site` e nas notas/README do repositório público `../orkestrai-releases`; nunca publicar superfícies dessincronizadas.
 - **Toda feature nova exige caso de uso documentado E tour guiado no onboarding**: adicione o caso de uso nos 3 catálogos de docs (`src/lib/i18n/docs/`, mesma posição nos 3) e um tour em `src/lib/components/agent-room/tours/catalog/{pt-BR,en,es}.ts` (mesmo id/ordem nos 3). Os testes de integridade (`tests/unit/docs-catalog.test.ts` e `tests/unit/tours-catalog.test.ts`) garantem a paridade — rode-os antes de commitar.
 
 ## i18n (pt-BR / en / es)

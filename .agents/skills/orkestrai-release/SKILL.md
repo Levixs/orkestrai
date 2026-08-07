@@ -41,6 +41,12 @@ In the same commit:
 - Add every new UI string to all three Paraglide catalogs.
 - Keep installer names compatible with `scripts/validate-release-artifacts.mjs` and the `latest-*.yml` URLs.
 
+Synchronize the companion repositories before tagging:
+
+- add the same version and changes to the three localized changelog catalogs in sibling `../orkestra-site`;
+- add/update the three localized changelogs and README guidance in sibling `../orkestrai-releases`;
+- commit and push both companion repositories, then let preflight verify that all three repositories are clean and synchronized with `origin/main`.
+
 Do not create the tag yet.
 
 ## 3. Verify Locally

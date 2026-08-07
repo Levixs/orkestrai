@@ -39,6 +39,21 @@ function imagesOf(model: AgentBoardTask): string[] {
   return legacy ? [legacy] : [];
 }
 
+function normalizeImages(images: string[] | undefined): string[] {
+  return [...new Set((images ?? []).map((image) => image.trim()).filter(Boolean))].slice(0, 6);
+}
+
+function taskBrief(task: AgentBoardTask): string {
+  const description = String(task.getAttribute('description') ?? '').trim();
+  const images = imagesOf(task);
+  const imageList = images.length ? images.map((image) => `- ${image}`).join('\n') : '(nenhuma imagem anexada)';
+  return [
+    `Titulo: ${task.getAttribute('title')}`,
+    `Descricao:\n${description || '(sem descricao)'}`,
+    `Imagens de referencia:\n${imageList}`,
+  ].join('\n');
+}
+
 function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null, noteTitle: string | null = null): BoardTask {
   const images = imagesOf(model);
   return {
@@ -182,18 +197,28 @@ export class TaskBoardService {
 
   async create(
     workspaceId: string,
-    input: { title: string; description?: string | null; assigneeNodeId?: string | null; createdBy?: string; noteId?: string | null }
+    input: {
+      title: string;
+      description?: string | null;
+      images?: string[];
+      assigneeNodeId?: string | null;
+      createdBy?: string;
+      noteId?: string | null;
+    }
   ): Promise<BoardTask> {
     const title = input.title.trim();
     if (!title) throw new Error('Informe o titulo da tarefa.');
     if (input.noteId) await this.requireNote(workspaceId, input.noteId);
     const now = new Date().toISOString();
     const id = uuidv7();
+    const images = normalizeImages(input.images);
     await AgentBoardTask.query().insert({
       id,
       workspace_id: workspaceId,
       title,
       description: input.description?.trim() || null,
+      image_path: images[0] ?? null,
+      images_json: images.length ? JSON.stringify(images) : null,
       status: input.assigneeNodeId ? 'doing' : 'todo',
       assignee_node_id: input.assigneeNodeId ?? null,
       note_node_id: input.noteId ?? null,
@@ -311,11 +336,13 @@ export class TaskBoardService {
     const session = sessionId ? ptySessionManager.get(sessionId) : null;
     if (!session || session.exited) return;
     const task = await this.requireTask(workspaceId, taskId);
-    const title = task.getAttribute('title');
     const hint = assigned
       ? `O usuario atribuiu direto para um agente — acompanhe com: orkestrai task list`
       : `SEM responsavel. Distribua: orkestrai task assign ${taskId} "<Agente>" (ou coordene como achar melhor)`;
-    ptySessionManager.writeWithSubmit(session.id, `[nova tarefa no quadro #${taskId.slice(0, 8)}] "${title}". ${hint}`);
+    ptySessionManager.writeWithSubmit(
+      session.id,
+      `[nova tarefa no quadro #${taskId.slice(0, 8)}]\n${taskBrief(task)}\n${hint}`,
+    );
   }
 
   /**
@@ -342,10 +369,8 @@ export class TaskBoardService {
     const sessionId = (node.payload as { sessionId?: string }).sessionId;
     const session = sessionId ? ptySessionManager.get(sessionId) : null;
     if (!session || session.exited) return;
-    const images = imagesOf(task);
-    const imagesNote = images.length ? `\nImagens de referencia: ${images.join(', ')}` : '';
     // Texto e Enter separados — ver writeWithSubmit (composer do Codex).
-    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}] ${task.getAttribute('title')}${imagesNote}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
+    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}]\n${taskBrief(task)}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
     ptySessionManager.writeWithSubmit(session.id, prompt);
   }
 }
