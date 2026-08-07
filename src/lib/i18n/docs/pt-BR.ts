@@ -204,7 +204,7 @@ export const DOCS_PT: DocsCatalog = {
       items: [
         'Orkestrai 0.1.0: primeira release pública preparada para atualizar as instalações 0.0.1.',
         'Pipeline por tag gera macOS Apple Silicon/Intel, Windows x64 e Linux x64 e publica somente os binários no repositório público de releases.',
-        'A release só fica pública depois de validar instaladores, blockmaps, manifests latest-*.yml, tamanhos e SHA-512; macOS exige ZIPs de update para as duas arquiteturas.',
+        'A release só fica pública depois de validar instaladores, blockmaps, manifests latest-*.yml, tamanhos e SHA-512; macOS exige ZIPs de update para as duas arquiteturas e o instalador Windows usa exatamente o nome referenciado por latest.yml.',
         '“Verificar agora” devolve o estado real e não fica mais preso em “Verificando”; eventos do boot também não se perdem quando a tela monta depois.',
         'Falha temporária ao consultar o GitHub não abre mais o modal manual. O fallback aparece apenas quando uma atualização encontrada falha no download ou instalação.',
         'Windows NSIS e Linux AppImage atualizam sem assinatura; no macOS sem certificado Apple, o app mantém o download manual seguro.',

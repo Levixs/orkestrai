@@ -141,6 +141,7 @@
       "target": [
         "nsis"
       ],
+      "artifactName": "${productName}-Setup-${version}.${ext}",
       "icon": "electron/resources/icon.ico"
     },
     "nsis": {

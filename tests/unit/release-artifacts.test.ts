@@ -17,10 +17,9 @@ const requiredAssets = [
   `Orkestrai-${VERSION}.dmg.blockmap`,
   `Orkestrai-${VERSION}-mac.zip`,
   `Orkestrai-${VERSION}-mac.zip.blockmap`,
-  `Orkestrai Setup ${VERSION}.exe`,
-  `Orkestrai Setup ${VERSION}.exe.blockmap`,
+  `Orkestrai-Setup-${VERSION}.exe`,
+  `Orkestrai-Setup-${VERSION}.exe.blockmap`,
   `Orkestrai-${VERSION}.AppImage`,
-  `Orkestrai-${VERSION}.AppImage.blockmap`,
 ];
 
 const temporaryDirectories: string[] = [];
@@ -55,7 +54,7 @@ function fixture() {
   );
   writeFileSync(
     path.join(directory, 'latest.yml'),
-    stringify({ version: VERSION, files: [manifestEntry(directory, `Orkestrai Setup ${VERSION}.exe`)] }),
+    stringify({ version: VERSION, files: [manifestEntry(directory, `Orkestrai-Setup-${VERSION}.exe`)] }),
   );
   writeFileSync(
     path.join(directory, 'latest-linux.yml'),

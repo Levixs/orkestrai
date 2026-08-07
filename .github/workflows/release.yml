@@ -213,7 +213,6 @@ jobs:
           if-no-files-found: error
           path: |
             release/*.AppImage
-            release/*.AppImage.blockmap
             release/latest-linux.yml
 
   publish:

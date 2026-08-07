@@ -97,10 +97,9 @@ export function validateReleaseArtifacts(directory, version) {
     [new RegExp(`^Orkestrai-${v}\\.dmg\\.blockmap$`), 'Intel macOS DMG blockmap'],
     [new RegExp(`^Orkestrai-${v}-mac\\.zip$`), 'Intel macOS update ZIP'],
     [new RegExp(`^Orkestrai-${v}-mac\\.zip\\.blockmap$`), 'Intel macOS ZIP blockmap'],
-    [new RegExp(`^Orkestrai Setup ${v}\\.exe$`), 'Windows NSIS installer'],
-    [new RegExp(`^Orkestrai Setup ${v}\\.exe\\.blockmap$`), 'Windows NSIS blockmap'],
+    [new RegExp(`^Orkestrai-Setup-${v}\\.exe$`), 'Windows NSIS installer'],
+    [new RegExp(`^Orkestrai-Setup-${v}\\.exe\\.blockmap$`), 'Windows NSIS blockmap'],
     [new RegExp(`^Orkestrai-${v}\\.AppImage$`), 'Linux AppImage'],
-    [new RegExp(`^Orkestrai-${v}\\.AppImage\\.blockmap$`), 'Linux AppImage blockmap'],
   ];
   for (const [pattern, description] of required) requireFile(files, pattern, description);
 

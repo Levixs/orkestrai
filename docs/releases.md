@@ -38,7 +38,7 @@ O workflow `Release Desktop` compila:
 - macOS Apple Silicon: DMG, ZIP e blockmaps;
 - macOS Intel: DMG, ZIP e blockmaps;
 - Windows x64: instalador NSIS e blockmap;
-- Linux x64: AppImage e blockmap.
+- Linux x64: AppImage e manifest `latest-linux.yml` (o electron-builder não gera blockmap separado para AppImage).
 
 Depois dos builds, `scripts/validate-release-artifacts.mjs` confere versão,
 arquivos referenciados, tamanho e SHA-512 dos manifests `latest-mac.yml`,

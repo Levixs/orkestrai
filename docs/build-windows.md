@@ -33,7 +33,7 @@ npx electron-builder --win zip --x64 --publish never "-c.npmRebuild=false"
 
 Artefatos em `release/`:
 
-- `Orkestrai Setup <versão>.exe` — instalador NSIS (unsigned: o SmartScreen vai
+- `Orkestrai-Setup-<versão>.exe` — instalador NSIS (unsigned: o SmartScreen vai
   avisar; "Mais informações" → "Executar assim mesmo")
 - `Orkestrai-<versão>-win.zip` — versão portátil (descompactar e rodar `Orkestrai.exe`)
 
