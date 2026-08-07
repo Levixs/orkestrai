@@ -4,6 +4,11 @@ O código-fonte fica no repositório privado `beeblock/pantheon`. Somente
 instaladores, blockmaps e manifests de atualização são publicados no repositório
 público `beeblock/orkestrai-releases`.
 
+Agentes responsáveis por uma release devem usar a skill
+`.agents/skills/orkestrai-release` (espelhada para Claude em
+`.claude/skills/orkestrai-release`). Ela cobre preflight, publicação, recuperação
+de falhas e auditoria do feed público.
+
 ## Credencial obrigatória
 
 Crie um fine-grained personal access token no GitHub com:
@@ -62,10 +67,13 @@ habilitar assinatura no workflow, cadastre:
 
 ## Recuperação
 
-Se um build ou upload falhar, a release permanece como draft e não é vista pelo
-updater. Corrija o problema e execute novamente o workflow informando a mesma
-tag em **Run workflow**. O job aceita completar um draft e substitui assets com
-o mesmo nome, mas se recusa a modificar uma release que já esteja pública.
+Se um build ou upload falhar, a release permanece ausente ou como draft e não é
+vista pelo updater. Para falha transitória sem mudança no código, execute o
+workflow novamente informando a mesma tag em **Run workflow**. Se a correção
+alterar a fonte, confirme que a release pública ainda não existe (ou é draft),
+faça commit/push e mova a tag para o novo commit antes de disparar o workflow.
+O job aceita completar um draft e substitui assets com o mesmo nome, mas se
+recusa a modificar uma release que já esteja pública.
 
 Nunca publique manualmente uma release incompleta: o `electron-updater` depende
 do manifest e do instalador correspondente estarem disponíveis ao mesmo tempo.

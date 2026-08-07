@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orkestrai Release"
+  short_description: "Prepare, publish, and verify Orkestrai releases"
+  default_prompt: "Use $orkestrai-release to prepare, publish, monitor, and verify a new Orkestrai desktop release."
