@@ -2,6 +2,16 @@
 
 Todas as mudanças notáveis do projeto, em português, da mais recente para a mais antiga.
 
+## 2026-08-07
+
+**Releases públicas e atualização automática confiável**
+- A versão do app passa a ser **0.1.0**, primeira release pública preparada para atualizar as instalações `0.0.1`.
+- Novo workflow por tag gera artefatos nativos para macOS Apple Silicon/Intel, Windows x64 e Linux x64 sem publicar o código-fonte privado. Os instaladores são enviados para o repositório público `beeblock/orkestrai-releases`.
+- A publicação é atômica: a release permanece em draft até validar todos os instaladores, blockmaps, manifests `latest-*.yml`, versões, tamanhos e SHA-512. No macOS, o pipeline exige os ZIPs de update para as duas arquiteturas, além dos DMGs de instalação.
+- “Verificar agora” não fica mais preso em “Verificando”: o processo principal devolve `versão mais recente`, `nova versão` ou erro diretamente. O renderer recupera o último estado mesmo quando monta depois da checagem do boot.
+- Falha de rede ou indisponibilidade do GitHub durante uma simples consulta não abre mais o modal de instalação manual. Esse fallback fica reservado a uma atualização que foi encontrada e falhou durante download/instalação.
+- Windows NSIS e Linux AppImage usam o auto-update sem assinatura. No macOS, builds sem certificado Apple continuam oferecendo download manual seguro; assinatura e notarização podem ser habilitadas pelos secrets documentados.
+
 ## 2026-08-06
 
 **Voz multilíngue mais natural e rápida**

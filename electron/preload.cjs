@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('orkestraiDesktop', {
   appVersion: () => ipcRenderer.invoke('orkestrai:app-version'),
   /** Checagem manual de atualizacao (a automatica roda no boot + a cada 6h). */
   checkForUpdates: () => ipcRenderer.invoke('orkestrai:update-check'),
+  /** Ultimo estado conhecido, inclusive se o renderer montou depois do check do boot. */
+  updateState: () => ipcRenderer.invoke('orkestrai:update-state'),
   /** Reinicia e instala a versao ja baixada. */
   installUpdate: () => ipcRenderer.invoke('orkestrai:update-install'),
   /** Abre URL https no navegador do sistema (fallback de download manual). */

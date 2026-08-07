@@ -196,6 +196,17 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '07 ago 2026',
+      items: [
+        'Orkestrai 0.1.0: primera release pública preparada para actualizar las instalaciones 0.0.1.',
+        'El pipeline por tag genera macOS Apple Silicon/Intel, Windows x64 y Linux x64 y publica solo los binarios en el repositorio público de releases.',
+        'La release solo se hace pública después de validar instaladores, blockmaps, manifests latest-*.yml, tamaños y SHA-512; macOS exige ZIPs de update para ambas arquitecturas.',
+        '“Verificar ahora” devuelve el estado real y ya no queda trabado en “Verificando”; los eventos del inicio tampoco se pierden si la pantalla monta después.',
+        'Un fallo temporal al consultar GitHub ya no abre el diálogo manual. El fallback aparece solo si una actualización encontrada falla al descargar o instalar.',
+        'Windows NSIS y Linux AppImage actualizan sin firma; en macOS sin certificado Apple, la app mantiene la descarga manual segura.',
+      ],
+    },
+    {
       date: '06 ago 2026',
       items: [
         'Nuevo panel Puertos justo después de Uso: lista listeners vinculados a los Portales locales del workspace, con proceso, PID y estado en uso/libre.',

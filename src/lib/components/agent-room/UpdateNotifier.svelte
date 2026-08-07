@@ -13,14 +13,18 @@
   const RELEASES_URL = 'https://github.com/beeblock/orkestrai-releases/releases/latest';
 
   type UpdatePayload =
+    | { status: 'idle' }
+    | { status: 'checking' }
     | { status: 'available'; version: string }
     | { status: 'downloading'; percent: number }
     | { status: 'downloaded'; version: string }
     | { status: 'none' }
+    | { status: 'check-error'; message: string }
     | { status: 'error'; message: string };
 
   type DesktopBridge = {
     onUpdate?: (callback: (payload: UpdatePayload) => void) => () => void;
+    updateState?: () => Promise<UpdatePayload>;
     installUpdate?: () => Promise<void>;
     openExternal?: (url: string) => Promise<void>;
   };
@@ -34,7 +38,8 @@
   onMount(() => {
     const desktop = (window as unknown as { orkestraiDesktop?: DesktopBridge }).orkestraiDesktop;
     if (!desktop?.onUpdate) return;
-    return desktop.onUpdate((payload) => {
+    let active = true;
+    const apply = (payload: UpdatePayload) => {
       status = payload.status;
       if (payload.status === 'available') version = payload.version;
       if (payload.status === 'downloading') percent = payload.percent;
@@ -48,7 +53,15 @@
         failed = true;
         dialogOpen = true;
       }
+    };
+    const unsubscribe = desktop.onUpdate(apply);
+    void desktop.updateState?.().then((payload) => {
+      if (active) apply(payload);
     });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   });
 
   function install() {

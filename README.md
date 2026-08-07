@@ -6,6 +6,8 @@ agentes — Claude Code, Codex e Kimi — e os vê trabalhar em tempo real:
 terminais vivos, notas compartilhadas, kanban, portais de browser e andares
 (git worktrees) — tudo num canvas só.
 
+Downloads oficiais: [github.com/beeblock/orkestrai-releases/releases/latest](https://github.com/beeblock/orkestrai-releases/releases/latest).
+
 ## O que ele faz
 
 - **Canvas multi-agente** (Svelte Flow): arraste terminais PTY reais (shell,
@@ -67,13 +69,37 @@ npm run electron:dev   # app desktop (build + Electron)
 
 | Plataforma | Comando | Artefato |
 |---|---|---|
-| macOS (Apple Silicon) | `npx electron-builder --mac dmg` | `release/Orkestrai-*-arm64.dmg` |
-| macOS (Intel) | `npx electron-builder --mac dmg --x64` | `release/Orkestrai-*.dmg` |
+| macOS (Apple Silicon) | `npx electron-builder --mac --arm64 --publish never` | DMG + ZIP de update |
+| macOS (Intel) | `npx electron-builder --mac --x64 --publish never` | DMG + ZIP de update |
 | Windows | `scripts/package-cross.sh windows` (Docker) ou build nativo — ver `docs/build-windows.md` | NSIS / zip |
 | Linux | `scripts/package-cross.sh linux` (Docker) | AppImage |
 
 Detalhes e decisões de empacotamento (Electron pinado, `asar` off, ícones,
 assinatura): `docs/build-windows.md` e `AGENTS.md`.
+
+## Publicar uma release
+
+O workflow `.github/workflows/release.yml` roda somente para uma tag `vX.Y.Z` cuja
+versão seja idêntica à de `package.json`. Ele compila nas três plataformas,
+valida os manifests do `electron-updater` e só então publica a release no
+repositório público `beeblock/orkestrai-releases`.
+
+```bash
+npm version 0.1.1 --no-git-tag-version
+# atualize CHANGELOG.md e o changelog in-app nos 3 idiomas
+git commit -am "chore: release Orkestrai 0.1.1"
+git tag v0.1.1
+git push origin main v0.1.1
+```
+
+O repositório privado precisa do secret `RELEASES_TOKEN`: fine-grained PAT com
+acesso somente ao `beeblock/orkestrai-releases` e permissão **Contents: Read and
+write**. Assinatura/notarização do macOS é opcional e usa `MAC_CSC_LINK`,
+`MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` e
+`APPLE_TEAM_ID`. Sem certificado Apple, o app oferece download manual no Mac;
+Windows NSIS e Linux AppImage continuam com auto-update.
+
+Procedimento completo e recuperação de falhas: `docs/releases.md`.
 
 ## Testes
 
@@ -92,4 +118,5 @@ Superforms/Zod.
 
 - `AGENTS.md` — convenções do projeto (arquitetura, bridge, canvas, Electron)
 - `docs/build-windows.md` — build nativo no Windows
+- `docs/releases.md` — publicação e validação do auto-update
 - `docs/plano-maestro.md` — plano mestre do produto

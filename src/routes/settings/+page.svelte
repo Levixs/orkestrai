@@ -55,13 +55,6 @@
     await refreshModelStatus();
     await loadPresets();
     if (desktop?.appVersion) appVersion = await desktop.appVersion().catch(() => '');
-    // Feedback da checagem manual: "ja esta na versao mais recente".
-    desktop?.onUpdate?.((payload) => {
-      if (payload.status === 'none' && manualCheckInFlight) {
-        manualCheckInFlight = false;
-        updateMessage = m['settings.update_latest']();
-      }
-    });
   });
 
   async function save() {
@@ -196,8 +189,7 @@
   }
   type DesktopBridge = {
     appVersion?: () => Promise<string>;
-    checkForUpdates?: () => Promise<{ status: string; message?: string }>;
-    onUpdate?: (callback: (payload: { status: string }) => void) => () => void;
+    checkForUpdates?: () => Promise<{ status: string; message?: string; version?: string }>;
   };
   const desktop =
     typeof window !== 'undefined'
@@ -206,20 +198,17 @@
   let appVersion = $state('');
   let checkingUpdate = $state(false);
   let updateMessage = $state('');
-  let manualCheckInFlight = $state(false);
 
   async function checkUpdates() {
     if (!desktop?.checkForUpdates) return;
     checkingUpdate = true;
-    updateMessage = '';
+    updateMessage = m['settings.update_checking']();
     try {
       const result = await desktop.checkForUpdates();
       if (result.status === 'unsupported') updateMessage = m['settings.update_unsupported']();
-      else if (result.status === 'error') updateMessage = m['settings.update_error']();
-      else {
-        manualCheckInFlight = true;
-        updateMessage = m['settings.update_checking']();
-      }
+      else if (result.status === 'error' || result.status === 'check-error') updateMessage = m['settings.update_error']();
+      else if (result.status === 'available') updateMessage = m['settings.update_available']({ version: result.version ?? '' });
+      else if (result.status === 'none') updateMessage = m['settings.update_latest']();
     } finally {
       checkingUpdate = false;
     }

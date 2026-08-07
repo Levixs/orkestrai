@@ -33,9 +33,9 @@ npx electron-builder --win zip --x64 --publish never "-c.npmRebuild=false"
 
 Artefatos em `release/`:
 
-- `Orkestrai Setup 0.0.1.exe` — instalador NSIS (unsigned: o SmartScreen vai
+- `Orkestrai Setup <versão>.exe` — instalador NSIS (unsigned: o SmartScreen vai
   avisar; "Mais informações" → "Executar assim mesmo")
-- `Orkestrai-0.0.1-win.zip` — versão portátil (descompactar e rodar `Orkestrai.exe`)
+- `Orkestrai-<versão>-win.zip` — versão portátil (descompactar e rodar `Orkestrai.exe`)
 
 ## Decisões de empacotamento (não mude sem ler)
 
@@ -89,6 +89,7 @@ npx playwright test   # e2e contra build de producao (PORT=5199)
 
 ## Build das outras plataformas
 
-- **macOS**: `npx electron-builder --mac dmg` (arm64 e/ou `--x64` para Intel)
+- **macOS**: `npx electron-builder --mac --arm64` (e/ou `--x64` para Intel). O
+  alvo do `package.json` gera DMG e ZIP; o ZIP é obrigatório para o auto-update.
 - **Linux/Windows a partir do Mac**: `scripts/package-cross.sh linux|windows|windows-zip|clean`
   (Docker; ver comentários no script)

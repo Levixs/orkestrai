@@ -261,32 +261,64 @@ if (app.isPackaged) {
   }
 }
 
+let latestUpdateState = { status: 'idle' };
+let updateCheckPromise = null;
+
 function sendUpdate(payload) {
+  latestUpdateState = payload;
   mainWindow?.webContents.send('orkestrai:update', payload);
+}
+
+function updateErrorPayload(error) {
+  const message = String(error?.message ?? error).slice(0, 300);
+  const updateInProgress = latestUpdateState.status === 'available' || latestUpdateState.status === 'downloading';
+  return { status: updateInProgress ? 'error' : 'check-error', message };
+}
+
+async function checkForUpdates() {
+  if (!autoUpdater) return { status: 'unsupported' };
+  if (updateCheckPromise) return updateCheckPromise;
+
+  updateCheckPromise = (async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      if (result?.isUpdateAvailable) {
+        return { status: 'available', version: result.updateInfo.version };
+      }
+      return { status: 'none' };
+    } catch (error) {
+      const payload = updateErrorPayload(error);
+      if (latestUpdateState.status !== payload.status) sendUpdate(payload);
+      return payload;
+    } finally {
+      updateCheckPromise = null;
+    }
+  })();
+
+  return updateCheckPromise;
 }
 
 function setupAutoUpdater() {
   if (!autoUpdater) return;
   autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.on('checking-for-update', () => sendUpdate({ status: 'checking' }));
   autoUpdater.on('update-available', (info) => sendUpdate({ status: 'available', version: info.version }));
   autoUpdater.on('update-not-available', () => sendUpdate({ status: 'none' }));
   autoUpdater.on('download-progress', (progress) => sendUpdate({ status: 'downloading', percent: Math.round(progress.percent) }));
   autoUpdater.on('update-downloaded', (info) => sendUpdate({ status: 'downloaded', version: info.version }));
-  autoUpdater.on('error', (error) => sendUpdate({ status: 'error', message: String(error?.message ?? error).slice(0, 300) }));
-  autoUpdater.checkForUpdates().catch(() => {});
+  autoUpdater.on('error', (error) => sendUpdate(updateErrorPayload(error)));
+  void checkForUpdates();
   // Re-checa a cada 6h com o app aberto.
-  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 6 * 60 * 60 * 1000).unref();
+  setInterval(() => void checkForUpdates(), 6 * 60 * 60 * 1000).unref();
 }
 
 ipcMain.handle('orkestrai:update-check', async () => {
-  if (!autoUpdater) return { status: 'unsupported' };
-  try {
-    await autoUpdater.checkForUpdates();
-    return { status: 'ok' };
-  } catch (error) {
-    return { status: 'error', message: String(error?.message ?? error).slice(0, 300) };
-  }
+  return checkForUpdates();
 });
+
+ipcMain.handle('orkestrai:update-state', () => latestUpdateState);
 
 ipcMain.handle('orkestrai:update-install', () => {
   autoUpdater?.quitAndInstall();

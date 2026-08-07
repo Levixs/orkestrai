@@ -72,6 +72,7 @@
   "settings.update_unsupported": "La actualización automática solo existe en la app instalada.",
   "settings.update_error": "No pude verificar ahora — intenta más tarde.",
   "settings.update_checking": "Verificando... si hay una versión nueva, la descarga empieza sola.",
+  "settings.update_available": "La versión {version} fue encontrada y se está descargando.",
   "settings.update_latest": "Ya tienes la versión más reciente.",
   "settings.language": "Idioma",
   "settings.language_desc": "Interfaz en portugués, inglés o español.",
