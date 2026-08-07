@@ -207,6 +207,7 @@
       const result = await desktop.checkForUpdates();
       if (result.status === 'unsupported') updateMessage = m['settings.update_unsupported']();
       else if (result.status === 'error' || result.status === 'check-error') updateMessage = m['settings.update_error']();
+      else if (result.status === 'manual') updateMessage = m['settings.update_manual_available']({ version: result.version ?? '' });
       else if (result.status === 'available') updateMessage = m['settings.update_available']({ version: result.version ?? '' });
       else if (result.status === 'none') updateMessage = m['settings.update_latest']();
     } finally {

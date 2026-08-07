@@ -97,17 +97,18 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [[ -z "${CSC_LINK:-}" ]]; then
-            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
-          fi
-          npx electron-builder --mac --arm64 --x64 --publish never
+        run: scripts/package-macos.sh --arm64 --x64
 
-      - name: Verify updater is packaged
+      - name: Verify macOS packages
         run: |
           test -f release/mac-arm64/Orkestrai.app/Contents/Resources/app/node_modules/electron-updater/package.json
           test -f release/mac/Orkestrai.app/Contents/Resources/app/node_modules/electron-updater/package.json
+          codesign --verify --deep --strict --verbose=4 release/mac-arm64/Orkestrai.app
+          codesign --verify --deep --strict --verbose=4 release/mac/Orkestrai.app
+          hdiutil verify release/Orkestrai-${{ needs.validate.outputs.version }}-arm64.dmg
+          hdiutil verify release/Orkestrai-${{ needs.validate.outputs.version }}.dmg
+          unzip -tq release/Orkestrai-${{ needs.validate.outputs.version }}-arm64-mac.zip
+          unzip -tq release/Orkestrai-${{ needs.validate.outputs.version }}-mac.zip
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v7

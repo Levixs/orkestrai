@@ -4,8 +4,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
+import { createRequire } from 'node:module';
 import { latestChangelogSection } from '../../scripts/release-notes.mjs';
+import { disableMacAutomaticRollout } from '../../scripts/set-mac-update-policy.mjs';
 import { validateReleaseArtifacts } from '../../scripts/validate-release-artifacts.mjs';
+
+const require = createRequire(import.meta.url);
+const { canInstallUpdatesAutomatically, isNewerVersion, macBundlePath } = require('../../electron/update-policy.cjs');
 
 const VERSION = '1.2.3';
 const requiredAssets = [
@@ -98,5 +103,38 @@ describe('packaged updater', () => {
     const packageJson = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
     expect(packageJson.dependencies?.['electron-updater']).toBeTruthy();
     expect(packageJson.devDependencies?.['electron-updater']).toBeUndefined();
+  });
+
+  it('ad-hoc signs macOS packages and verifies their complete bundle signatures', () => {
+    const packageScript = readFileSync(path.resolve('scripts/package-macos.sh'), 'utf8');
+    const workflow = readFileSync(path.resolve('.github/workflows/release.yml'), 'utf8');
+    expect(packageScript).toContain('-c.mac.identity=-');
+    expect(packageScript).toContain('-c.mac.hardenedRuntime=false');
+    expect(workflow).toContain('scripts/package-macos.sh --arm64 --x64');
+    expect(workflow).toContain('codesign --verify --deep --strict');
+    expect(workflow).toContain('hdiutil verify');
+    expect(workflow).toContain('unzip -tq');
+  });
+
+  it('disables macOS rollout in manifests produced without Apple signing', () => {
+    const directory = fixture();
+    const manifestPath = path.join(directory, 'latest-mac.yml');
+    disableMacAutomaticRollout(manifestPath);
+    expect(readFileSync(manifestPath, 'utf8')).toContain('stagingPercentage: 0');
+  });
+
+  it('allows automatic replacement only for a trusted macOS bundle', () => {
+    const execPath = '/Applications/Orkestrai.app/Contents/MacOS/Orkestrai';
+    expect(macBundlePath(execPath)).toBe('/Applications/Orkestrai.app');
+    expect(canInstallUpdatesAutomatically({ platform: 'win32', execPath, assess: () => ({ status: 1 }) })).toBe(true);
+    expect(canInstallUpdatesAutomatically({ platform: 'darwin', execPath, assess: () => ({ status: 1 }) })).toBe(false);
+    expect(canInstallUpdatesAutomatically({ platform: 'darwin', execPath, assess: () => ({ status: 0 }) })).toBe(true);
+  });
+
+  it('compares strict release versions for the manual macOS check', () => {
+    expect(isNewerVersion('v0.1.3', '0.1.2')).toBe(true);
+    expect(isNewerVersion('0.2.0', '0.1.9')).toBe(true);
+    expect(isNewerVersion('0.1.3', '0.1.3')).toBe(false);
+    expect(isNewerVersion('invalid', '0.1.3')).toBe(false);
   });
 });

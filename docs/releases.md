@@ -56,8 +56,12 @@ Windows NSIS e Linux AppImage atualizam mesmo sem assinatura. Windows mostra o
 aviso esperado do SmartScreen até existir um certificado.
 
 No macOS, a troca automática exige Developer ID Application e notarização. Sem
-isso, o Orkestrai detecta a versão, mas oferece o download manual seguro. Para
-habilitar assinatura no workflow, cadastre:
+isso, `scripts/package-macos.sh` assina o bundle inteiro de forma ad-hoc para
+evitar a mensagem falsa de aplicativo danificado e grava `stagingPercentage: 0`
+no feed para bloquear updaters antigos. O app novo consulta a release pública
+diretamente e oferece o download manual seguro sem tocar na instalação atual.
+No primeiro uso, clique com Control/botão direito no app e escolha
+**Abrir**. Para eliminar esse passo e habilitar a troca automática, cadastre:
 
 - `MAC_CSC_LINK`: certificado `.p12` em base64;
 - `MAC_CSC_KEY_PASSWORD`: senha do `.p12`;
@@ -77,6 +81,12 @@ recusa a modificar uma release que já esteja pública.
 
 Nunca publique manualmente uma release incompleta: o `electron-updater` depende
 do manifest e do instalador correspondente estarem disponíveis ao mesmo tempo.
+
+O job macOS precisa passar `codesign --verify --deep --strict` nos bundles das
+duas arquiteturas, `hdiutil verify` nos DMGs e `unzip -t` nos ZIPs antes do
+upload. Um checksum correto não substitui essa verificação: a `0.1.2` tinha
+arquivos íntegros, mas uma assinatura ad-hoc parcial que o Gatekeeper reportava
+como aplicativo danificado.
 
 ## Bootstrap do auto-update na 0.1.1
 

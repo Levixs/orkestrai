@@ -69,8 +69,8 @@ npm run electron:dev   # app desktop (build + Electron)
 
 | Plataforma | Comando | Artefato |
 |---|---|---|
-| macOS (Apple Silicon) | `npx electron-builder --mac --arm64 --publish never` | DMG + ZIP de update |
-| macOS (Intel) | `npx electron-builder --mac --x64 --publish never` | DMG + ZIP de update |
+| macOS (Apple Silicon) | `npm run package:mac -- --arm64` | DMG + ZIP de update |
+| macOS (Intel) | `npm run package:mac -- --x64` | DMG + ZIP de update |
 | Windows | `scripts/package-cross.sh windows` (Docker) ou build nativo — ver `docs/build-windows.md` | NSIS / zip |
 | Linux | `scripts/package-cross.sh linux` (Docker) | AppImage |
 
@@ -96,8 +96,10 @@ O repositório privado precisa do secret `RELEASES_TOKEN`: fine-grained PAT com
 acesso somente ao `beeblock/orkestrai-releases` e permissão **Contents: Read and
 write**. Assinatura/notarização do macOS é opcional e usa `MAC_CSC_LINK`,
 `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` e
-`APPLE_TEAM_ID`. Sem certificado Apple, o app oferece download manual no Mac;
-Windows NSIS e Linux AppImage continuam com auto-update.
+`APPLE_TEAM_ID`. Sem certificado Apple, o script aplica uma assinatura ad-hoc
+completa para manter o bundle íntegro, mas o primeiro uso ainda exige clicar com
+Control/botão direito no app e escolher **Abrir**. Nesse modo, o update no Mac é
+manual; Windows NSIS e Linux AppImage continuam com auto-update.
 
 Importante: as versões `0.0.1` e `0.1.0` foram empacotadas sem o módulo
 `electron-updater`. Elas exigem uma instalação manual única da versão `0.1.1`;

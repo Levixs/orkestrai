@@ -16,6 +16,7 @@
     | { status: 'idle' }
     | { status: 'checking' }
     | { status: 'available'; version: string }
+    | { status: 'manual'; version: string }
     | { status: 'downloading'; percent: number }
     | { status: 'downloaded'; version: string }
     | { status: 'none' }
@@ -34,6 +35,7 @@
   let percent = $state(0);
   let dialogOpen = $state(false);
   let failed = $state(false);
+  let plannedManualUpdate = $state(false);
 
   onMount(() => {
     const desktop = (window as unknown as { orkestraiDesktop?: DesktopBridge }).orkestraiDesktop;
@@ -46,11 +48,19 @@
       if (payload.status === 'downloaded') {
         version = payload.version;
         failed = false;
+        plannedManualUpdate = false;
+        dialogOpen = true;
+      }
+      if (payload.status === 'manual') {
+        version = payload.version;
+        failed = false;
+        plannedManualUpdate = true;
         dialogOpen = true;
       }
       if (payload.status === 'error') {
         // Falha na troca automatica: oferece download manual em vez de insistir.
         failed = true;
+        plannedManualUpdate = false;
         dialogOpen = true;
       }
     };
@@ -87,9 +97,11 @@
 <AlertDialog.Root bind:open={dialogOpen}>
   <AlertDialog.Content>
     <AlertDialog.Header>
-      <AlertDialog.Title>{failed ? m['update.manual_title']() : m['update.ready_title']()}</AlertDialog.Title>
+      <AlertDialog.Title>{failed || plannedManualUpdate ? m['update.manual_title']() : m['update.ready_title']()}</AlertDialog.Title>
       <AlertDialog.Description>
-        {#if failed}
+        {#if plannedManualUpdate}
+          {m['update.manual_unsigned_desc']({ version })}
+        {:else if failed}
           {m['update.manual_desc']()}
         {:else}
           {m['update.ready_desc']({ version })}
@@ -98,7 +110,7 @@
     </AlertDialog.Header>
     <AlertDialog.Footer>
       <AlertDialog.Cancel>{m['update.later']()}</AlertDialog.Cancel>
-      {#if failed}
+      {#if failed || plannedManualUpdate}
         <Button size="sm" onclick={downloadManually}>{m['update.download_site']()}</Button>
       {:else}
         <Button size="sm" onclick={install}>{m['update.restart']()}</Button>

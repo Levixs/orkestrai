@@ -13,6 +13,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
+const { canInstallUpdatesAutomatically, isNewerVersion } = require('./update-policy.cjs');
 
 const isDev = !app.isPackaged;
 const appRoot = path.resolve(__dirname, '..');
@@ -264,6 +265,8 @@ if (app.isPackaged) {
 
 let latestUpdateState = { status: 'idle' };
 let updateCheckPromise = null;
+let automaticUpdateInstallSupported = process.platform !== 'darwin';
+const MAC_LATEST_RELEASE_API = 'https://api.github.com/repos/beeblock/orkestrai-releases/releases/latest';
 
 function sendUpdate(payload) {
   latestUpdateState = payload;
@@ -276,6 +279,17 @@ function updateErrorPayload(error) {
   return { status: updateInProgress ? 'error' : 'check-error', message };
 }
 
+async function checkManualMacUpdate() {
+  const response = await fetch(MAC_LATEST_RELEASE_API, {
+    headers: { accept: 'application/vnd.github+json', 'user-agent': 'Orkestrai updater' },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`GitHub releases respondeu HTTP ${response.status}.`);
+  const release = await response.json();
+  const version = String(release?.tag_name ?? '').replace(/^v/, '');
+  return isNewerVersion(version, app.getVersion()) ? { status: 'manual', version } : { status: 'none' };
+}
+
 async function checkForUpdates() {
   if (!autoUpdater) {
     return app.isPackaged
@@ -286,9 +300,18 @@ async function checkForUpdates() {
 
   updateCheckPromise = (async () => {
     try {
+      if (process.platform === 'darwin' && !automaticUpdateInstallSupported) {
+        sendUpdate({ status: 'checking' });
+        const payload = await checkManualMacUpdate();
+        sendUpdate(payload);
+        return payload;
+      }
       const result = await autoUpdater.checkForUpdates();
       if (result?.isUpdateAvailable) {
-        return { status: 'available', version: result.updateInfo.version };
+        return {
+          status: automaticUpdateInstallSupported ? 'available' : 'manual',
+          version: result.updateInfo.version,
+        };
       }
       return { status: 'none' };
     } catch (error) {
@@ -305,11 +328,19 @@ async function checkForUpdates() {
 
 function setupAutoUpdater() {
   if (!autoUpdater) return;
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  automaticUpdateInstallSupported = canInstallUpdatesAutomatically();
+  autoUpdater.autoDownload = automaticUpdateInstallSupported;
+  autoUpdater.autoInstallOnAppQuit = automaticUpdateInstallSupported;
   autoUpdater.allowPrerelease = false;
+  if (!automaticUpdateInstallSupported) {
+    void checkForUpdates();
+    setInterval(() => void checkForUpdates(), 6 * 60 * 60 * 1000).unref();
+    return;
+  }
   autoUpdater.on('checking-for-update', () => sendUpdate({ status: 'checking' }));
-  autoUpdater.on('update-available', (info) => sendUpdate({ status: 'available', version: info.version }));
+  autoUpdater.on('update-available', (info) =>
+    sendUpdate({ status: automaticUpdateInstallSupported ? 'available' : 'manual', version: info.version })
+  );
   autoUpdater.on('update-not-available', () => sendUpdate({ status: 'none' }));
   autoUpdater.on('download-progress', (progress) => sendUpdate({ status: 'downloading', percent: Math.round(progress.percent) }));
   autoUpdater.on('update-downloaded', (info) => sendUpdate({ status: 'downloaded', version: info.version }));
@@ -326,7 +357,7 @@ ipcMain.handle('orkestrai:update-check', async () => {
 ipcMain.handle('orkestrai:update-state', () => latestUpdateState);
 
 ipcMain.handle('orkestrai:update-install', () => {
-  autoUpdater?.quitAndInstall();
+  if (automaticUpdateInstallSupported) autoUpdater?.quitAndInstall();
 });
 
 ipcMain.handle('orkestrai:app-version', () => app.getVersion());

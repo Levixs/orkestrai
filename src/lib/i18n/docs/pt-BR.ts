@@ -200,6 +200,15 @@ export const DOCS_PT: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '07 ago 2026 · 0.1.3',
+      items: [
+        'Orkestrai 0.1.3 corrige o pacote macOS da 0.1.2: os arquivos estavam íntegros, mas a assinatura ad-hoc parcial fazia o Gatekeeper informar que o app estava danificado.',
+        'Bundles macOS sem certificado agora recebem assinatura ad-hoc completa; o CI valida assinatura profunda, DMGs e ZIPs nas arquiteturas Apple Silicon e Intel antes da publicação.',
+        'Updaters antigos ficam bloqueados no Mac para não remover a instalação atual; o app novo detecta releases pela API pública e direciona para instalação manual segura.',
+        'No primeiro uso sem Developer ID, abra com Control/clique direito → Abrir. Windows não foi afetado.',
+      ],
+    },
+    {
       date: '07 ago 2026 · 0.1.2',
       items: [
         'Orkestrai 0.1.2: o painel Usage agora atualiza Claude, Codex e Kimi automaticamente a cada 5 minutos, em vez de a cada 60 segundos, reduzindo chamadas desnecessárias e o risco de HTTP 429.',
