@@ -233,7 +233,9 @@ jobs:
           cache: npm
 
       - name: Install release validator dependencies
-        run: npm ci --no-audit --no-fund --ignore-scripts
+        run: |
+          npm install --global npm@$NPM_VERSION
+          npm ci --no-audit --no-fund --ignore-scripts
 
       - name: Download packaged artifacts
         uses: actions/download-artifact@v8
