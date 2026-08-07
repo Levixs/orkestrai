@@ -196,6 +196,14 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '07 ago 2026 · 0.1.2',
+      items: [
+        'El panel Uso ahora actualiza Claude, Codex y Kimi automáticamente cada 5 minutos en lugar de cada 60 segundos, reduciendo llamadas innecesarias y el riesgo de respuestas HTTP 429.',
+        'La caché del servidor usa el mismo intervalo y evita consultas duplicadas al reabrir el panel o volver a la aplicación.',
+        'El botón de actualización manual sigue obteniendo datos nuevos de inmediato y omite la caché solo cuando se utiliza explícitamente.',
+      ],
+    },
+    {
       date: '07 ago 2026 · 0.1.1',
       items: [
         'Orkestrai 0.1.1 incluye electron-updater en la aplicación instalada; Configuración ya no confunde un módulo ausente con la ejecución fuera de la app de escritorio.',

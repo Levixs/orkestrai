@@ -3,9 +3,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
 
 const FETCH_TIMEOUT_MS = 10_000;
-const CACHE_TTL_MS = 60_000;
 /** OAuth do kimi-code (client publico da CLI). */
 const KIMI_OAUTH_TOKEN_URL = 'https://auth.kimi.com/api/oauth/token';
 const KIMI_OAUTH_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098';
@@ -47,7 +47,7 @@ function kindFromSeconds(seconds: number): UsageWindowKind {
 /**
  * Uso/cota dos providers (Claude, Codex, Kimi) lido DIRETO das APIs de cada
  * um, com as credenciais locais da propria CLI — nada para o usuario
- * configurar. Cache de 60s por provider.
+ * configurar. Cache alinhado ao intervalo automatico do painel.
  */
 export class UsageService {
   private cache = new Map<string, { at: number; usage: ProviderUsage }>();
@@ -58,13 +58,13 @@ export class UsageService {
     private readonly keychainReader: (service: string) => Promise<string | null> = readMacOsKeychain
   ) {}
 
-  async getAll(): Promise<ProviderUsage[]> {
-    return Promise.all(['claude', 'codex', 'kimi'].map((provider) => this.getUsage(provider)));
+  async getAll(forceRefresh = false): Promise<ProviderUsage[]> {
+    return Promise.all(['claude', 'codex', 'kimi'].map((provider) => this.getUsage(provider, forceRefresh)));
   }
 
-  async getUsage(provider: string): Promise<ProviderUsage> {
+  async getUsage(provider: string, forceRefresh = false): Promise<ProviderUsage> {
     const cached = this.cache.get(provider);
-    if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.usage;
+    if (!forceRefresh && cached && Date.now() - cached.at < USAGE_REFRESH_INTERVAL_MS) return cached.usage;
 
     let usage: ProviderUsage;
     try {

@@ -645,7 +645,7 @@
   "usage.just_now": "justo ahora",
   "usage.seconds_ago": "hace {seconds}s",
   "usage.updated": "Actualizado {when}",
-  "usage.refresh_interval": "cada 60s",
+  "usage.refresh_interval": "cada 5 min",
   "usage.window_5h": "5 horas",
   "usage.window_weekly": "Semanal",
   "usage.window_monthly": "Mensual",

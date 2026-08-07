@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { UsageService } from '$lib/modules/agent-room/application/services/UsageService.js';
+import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
 
 function fakeFetch(routes: Record<string, unknown>) {
   return (async (url: string) => {
@@ -137,16 +138,32 @@ describe('UsageService', () => {
     expect(usage.error).toContain('expirada');
   });
 
-  it('cache: segunda chamada nao refaz o fetch', async () => {
+  it('cache: protege os providers por 5 minutos e permite refresh manual', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-07T12:00:00Z'));
     let calls = 0;
     const counting = (async (url: string) => {
       calls += 1;
       return { ok: true, status: 200, json: async () => CODEX_USAGE } as Response;
     }) as typeof fetch;
     const home = homeWith({ '.codex/auth.json': JSON.stringify({ tokens: { access_token: 'tok' } }) });
-    const service = new UsageService(counting, home);
-    await service.getUsage('codex');
-    await service.getUsage('codex');
-    expect(calls).toBe(1);
+    try {
+      const service = new UsageService(counting, home);
+      expect(USAGE_REFRESH_INTERVAL_MS).toBe(300_000);
+
+      await service.getUsage('codex');
+      vi.advanceTimersByTime(USAGE_REFRESH_INTERVAL_MS - 1);
+      await service.getUsage('codex');
+      expect(calls).toBe(1);
+
+      await service.getUsage('codex', true);
+      expect(calls).toBe(2);
+
+      vi.advanceTimersByTime(USAGE_REFRESH_INTERVAL_MS);
+      await service.getUsage('codex');
+      expect(calls).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

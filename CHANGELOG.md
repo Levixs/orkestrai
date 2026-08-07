@@ -4,6 +4,13 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 
 ## 2026-08-07
 
+**Orkestrai 0.1.2 — Usage com atualização responsável**
+- O painel Usage deixou de consultar Claude, Codex e Kimi a cada 60 segundos e agora atualiza automaticamente a cada 5 minutos, reduzindo chamadas desnecessárias e o risco de respostas HTTP 429 durante sessões longas.
+- O cache do servidor usa o mesmo intervalo de 5 minutos, evitando consultas duplicadas quando o painel é reaberto, o app volta ao primeiro plano ou mais de uma tela solicita os dados.
+- O botão de atualização manual continua buscando dados novos imediatamente e ignora o cache somente nessa ação explícita.
+
+## 2026-08-07
+
 **Orkestrai 0.1.1 — auto-update empacotado e briefings completos no kanban**
 - `electron-updater` passou de dependência de desenvolvimento para dependência de produção, garantindo que o módulo seja incluído nos aplicativos instalados. Se o módulo faltar em um pacote, Configurações agora informa erro de checagem em vez de afirmar incorretamente que o app não está instalado.
 - Instalações `0.0.1` e `0.1.0` não carregam esse módulo e, portanto, precisam baixar e instalar `0.1.1` manualmente uma única vez. A partir de `0.1.1`, Windows e Linux voltam a receber atualizações automáticas; no macOS sem assinatura Apple permanece o download manual seguro já documentado.

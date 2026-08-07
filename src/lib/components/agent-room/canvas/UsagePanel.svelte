@@ -4,6 +4,7 @@
   import HeaderIconButton from './HeaderIconButton.svelte';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import * as m from '$lib/paraglide/messages.js';
+  import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
   import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
 
   type Props = {
@@ -18,21 +19,19 @@
     kimi: { name: 'Kimi', icon: '/images/kimi.svg' },
   };
 
-  const REFRESH_MS = 60_000;
-
   let usages = $state<ProviderUsage[]>([]);
   let loading = $state(true);
   let lastFetchAt = $state<Date | null>(null);
   let timer: ReturnType<typeof setInterval> | null = null;
 
-  async function refresh() {
+  async function refresh(force = false) {
     try {
-      const response = await fetch('/api/agent-room/usage');
+      const response = await fetch(force ? '/api/agent-room/usage?refresh=1' : '/api/agent-room/usage');
       const payload = await response.json();
       usages = payload.data ?? [];
       lastFetchAt = new Date();
     } catch {
-      // mantem o ultimo estado; proxima tentativa em REFRESH_MS
+      // mantem o ultimo estado; proxima tentativa no intervalo automatico
     } finally {
       loading = false;
     }
@@ -80,7 +79,7 @@
 
   onMount(() => {
     refresh();
-    timer = setInterval(refresh, REFRESH_MS);
+    timer = setInterval(() => void refresh(), USAGE_REFRESH_INTERVAL_MS);
     const ticker = setInterval(() => (clock += 1), 5_000);
     const onVisible = () => {
       if (document.visibilityState === 'visible') refresh();
@@ -98,7 +97,7 @@
   <header class="panel-header">
     <h3>{m['usage.title']()}</h3>
     <div class="panel-actions">
-      <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={refresh}>
+      <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={() => void refresh(true)}>
         <RefreshCw size={13} />
       </HeaderIconButton>
       <HeaderIconButton label={m['usage.close']()} class="node-action-btn" side="left" onclick={onClose}>
