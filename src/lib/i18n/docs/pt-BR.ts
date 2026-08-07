@@ -202,7 +202,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: '07 ago 2026 · 0.1.2',
       items: [
-        'O painel Usage agora atualiza Claude, Codex e Kimi automaticamente a cada 5 minutos, em vez de a cada 60 segundos, reduzindo chamadas desnecessárias e o risco de HTTP 429.',
+        'Orkestrai 0.1.2: o painel Usage agora atualiza Claude, Codex e Kimi automaticamente a cada 5 minutos, em vez de a cada 60 segundos, reduzindo chamadas desnecessárias e o risco de HTTP 429.',
         'O cache do servidor segue o mesmo intervalo e evita consultas duplicadas ao reabrir o painel ou voltar ao app.',
         'O botão de atualização manual continua buscando dados novos imediatamente e ignora o cache apenas quando acionado.',
       ],
