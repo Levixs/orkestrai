@@ -4,12 +4,18 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-/** @param {string} changelog */
-export function latestChangelogSection(changelog) {
-  const headings = [...changelog.matchAll(/^## \d{4}-\d{2}-\d{2}$/gm)];
-  if (headings.length === 0) throw new Error('CHANGELOG.md does not contain a dated release section');
-  const start = headings[0].index;
-  const end = headings[1]?.index ?? changelog.length;
+/** @param {string} changelog @param {string} version */
+export function versionChangelogSection(changelog, version) {
+  const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const heading = new RegExp(`^## ${escapedVersion}\\b.*$`, 'm').exec(changelog);
+  if (!heading || heading.index == null) {
+    throw new Error(`CHANGELOG.md does not contain an English section for ${version}`);
+  }
+
+  const start = heading.index;
+  const remainder = changelog.slice(start + heading[0].length);
+  const nextHeading = /^## /m.exec(remainder);
+  const end = nextHeading?.index == null ? changelog.length : start + heading[0].length + nextHeading.index;
   return changelog.slice(start, end).trim();
 }
 
@@ -22,7 +28,7 @@ export function writeReleaseNotes(version, changelogPath, outputPath) {
   if (!/^\d+\.\d+\.\d+$/.test(version ?? '')) throw new Error(`Invalid release version: ${version ?? ''}`);
   if (!changelogPath || !outputPath) throw new Error('Usage: release-notes.mjs <version> <changelog> <output>');
 
-  const section = latestChangelogSection(readFileSync(changelogPath, 'utf8'));
+  const section = versionChangelogSection(readFileSync(changelogPath, 'utf8'), version);
   const notes = `${section}\n\nDownloads for macOS, Windows and Linux are attached below.\n`;
   writeFileSync(outputPath, notes);
   console.log(`Prepared release notes for Orkestrai ${version}.`);

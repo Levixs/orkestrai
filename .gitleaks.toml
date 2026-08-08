@@ -1,0 +1,16 @@
+title = "Orkestrai secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Kimi Code uses this public OAuth client identifier."
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''17e5f671-d194-4dfb-9706-5516cb48c098''']
+
+[[allowlists]]
+description = "Historical documentation used an explicit placeholder API key."
+targetRules = ["curl-auth-header"]
+regexTarget = "line"
+regexes = ['''sk_your_key_here''']

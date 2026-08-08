@@ -266,7 +266,7 @@ if (app.isPackaged) {
 let latestUpdateState = { status: 'idle' };
 let updateCheckPromise = null;
 let automaticUpdateInstallSupported = process.platform !== 'darwin';
-const MAC_LATEST_RELEASE_API = 'https://api.github.com/repos/beeblock/orkestrai-releases/releases/latest';
+const MAC_LATEST_RELEASE_API = 'https://api.github.com/repos/beeblock/orkestrai/releases/latest';
 
 function sendUpdate(payload) {
   latestUpdateState = payload;

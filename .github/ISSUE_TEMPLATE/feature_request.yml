@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a focused improvement to Orkestrai
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow
+      description: Describe the user problem before describing a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain the expected interaction and outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Primary area
+      options:
+        - Canvas and workspaces
+        - Agent providers and PTY
+        - Tasks and orchestration
+        - Git floors
+        - Voice
+        - Skills and MCP
+        - Packaging and updates
+        - Documentation
+        - Other
+    validations:
+      required: true

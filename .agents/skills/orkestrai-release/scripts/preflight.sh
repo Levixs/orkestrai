@@ -4,8 +4,10 @@ set -euo pipefail
 
 VERSION="${1:-}"
 MODE="${2:-new}"
-SOURCE_REPO="beeblock/pantheon"
-RELEASE_REPO="beeblock/orkestrai-releases"
+SOURCE_REPO="beeblock/orkestrai"
+RELEASE_REPO="$SOURCE_REPO"
+LEGACY_REPO="beeblock/orkestrai-releases"
+LEGACY_TRANSITION_VERSION="0.1.4"
 
 fail() {
   printf 'ERROR: %s\n' "$1" >&2
@@ -34,17 +36,17 @@ fi
 
 git fetch origin main --quiet
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || fail 'local main is not synchronized with origin/main'
-[[ "$(git remote get-url origin)" == *"beeblock/pantheon"* ]] || fail 'origin is not beeblock/pantheon'
+[[ "$(git remote get-url origin)" == *"beeblock/orkestrai"* ]] || fail 'origin is not beeblock/orkestrai'
 
 TODAY="$(date +%F)"
-grep -q "^## $TODAY$" CHANGELOG.md || fail "CHANGELOG.md has no $TODAY section"
+grep -Eq "^## $VERSION - $TODAY$" CHANGELOG.md || fail "CHANGELOG.md has no English $VERSION section dated $TODAY"
 for catalog in src/lib/i18n/docs/pt-BR.ts src/lib/i18n/docs/en.ts src/lib/i18n/docs/es.ts; do
   grep -Fq "Orkestrai $VERSION" "$catalog" || fail "$catalog does not mention Orkestrai $VERSION"
 done
 
 COMPANION_ROOT="$(dirname "$ROOT")"
 SITE_REPO="$COMPANION_ROOT/orkestra-site"
-PUBLIC_REPO="$COMPANION_ROOT/orkestrai-releases"
+LEGACY_REPO_ROOT="$COMPANION_ROOT/orkestrai-releases"
 
 verify_companion_repo() {
   local repo="$1"
@@ -58,30 +60,44 @@ verify_companion_repo() {
 }
 
 verify_companion_repo "$SITE_REPO" "beeblock/orkestrai-site"
-verify_companion_repo "$PUBLIC_REPO" "beeblock/orkestrai-releases"
 
 for catalog in src/lib/content/site/pt-BR.ts src/lib/content/site/en.ts src/lib/content/site/es.ts; do
   grep -Fq "$VERSION" "$SITE_REPO/$catalog" || fail "$SITE_REPO/$catalog does not mention $VERSION"
 done
-for changelog in CHANGELOG.md CHANGELOG.en.md CHANGELOG.es.md; do
-  grep -Fq "## $VERSION" "$PUBLIC_REPO/$changelog" || fail "$PUBLIC_REPO/$changelog does not mention $VERSION"
-done
+
+if [[ "$VERSION" == "$LEGACY_TRANSITION_VERSION" ]]; then
+  verify_companion_repo "$LEGACY_REPO_ROOT" "$LEGACY_REPO"
+  for changelog in CHANGELOG.md CHANGELOG.en.md CHANGELOG.es.md; do
+    grep -Fq "## $VERSION" "$LEGACY_REPO_ROOT/$changelog" || fail "$LEGACY_REPO_ROOT/$changelog does not mention $VERSION"
+  done
+fi
 
 gh auth status >/dev/null 2>&1 || fail 'GitHub CLI is not authenticated'
 gh repo view "$SOURCE_REPO" >/dev/null 2>&1 || fail 'cannot access source repository'
-gh repo view "$RELEASE_REPO" >/dev/null 2>&1 || fail 'cannot access public releases repository'
-gh secret list --repo "$SOURCE_REPO" | awk '{print $1}' | grep -qx RELEASES_TOKEN || fail 'RELEASES_TOKEN is not configured'
+if [[ "$VERSION" == "$LEGACY_TRANSITION_VERSION" ]]; then
+  gh repo view "$LEGACY_REPO" >/dev/null 2>&1 || fail 'cannot access legacy releases repository'
+  gh secret list --repo "$SOURCE_REPO" | awk '{print $1}' | grep -qx RELEASES_TOKEN || fail 'RELEASES_TOKEN is not configured for the transition release'
+fi
 
 TAG="v$VERSION"
 RELEASE_JSON="$(gh release view "$TAG" --repo "$RELEASE_REPO" --json isDraft,url 2>/dev/null || true)"
+LEGACY_RELEASE_JSON=""
+if [[ "$VERSION" == "$LEGACY_TRANSITION_VERSION" ]]; then
+  LEGACY_RELEASE_JSON="$(gh release view "$TAG" --repo "$LEGACY_REPO" --json isDraft,url 2>/dev/null || true)"
+fi
 
 if [[ "$MODE" == "new" ]]; then
-  [[ -z "$RELEASE_JSON" ]] || fail "$TAG already exists in the public releases repository"
+  [[ -z "$RELEASE_JSON" ]] || fail "$TAG already exists as a release in $RELEASE_REPO"
+  [[ -z "$LEGACY_RELEASE_JSON" ]] || fail "$TAG already exists as a release in $LEGACY_REPO"
   ! git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null || fail "local tag $TAG already exists"
   [[ -z "$(git ls-remote --tags origin "refs/tags/$TAG")" ]] || fail "remote tag $TAG already exists"
-elif [[ -n "$RELEASE_JSON" ]]; then
-  IS_DRAFT="$(node -e 'const data=JSON.parse(process.argv[1]); process.stdout.write(String(data.isDraft))' "$RELEASE_JSON")"
-  [[ "$IS_DRAFT" == "true" ]] || fail "$TAG is public and immutable; prepare a new patch version"
+else
+  for release_json in "$RELEASE_JSON" "$LEGACY_RELEASE_JSON"; do
+    if [[ -n "$release_json" ]]; then
+      IS_DRAFT="$(node -e 'const data=JSON.parse(process.argv[1]); process.stdout.write(String(data.isDraft))' "$release_json")"
+      [[ "$IS_DRAFT" == "true" ]] || fail "$TAG is public and immutable; prepare a new patch version"
+    fi
+  done
 fi
 
 printf 'Release preflight passed for Orkestrai %s (%s mode).\n' "$VERSION" "$MODE"

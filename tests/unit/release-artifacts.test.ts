@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { createRequire } from 'node:module';
-import { latestChangelogSection } from '../../scripts/release-notes.mjs';
+import { versionChangelogSection } from '../../scripts/release-notes.mjs';
 import { disableMacAutomaticRollout } from '../../scripts/set-mac-update-policy.mjs';
 import { validateReleaseArtifacts } from '../../scripts/validate-release-artifacts.mjs';
 
@@ -92,9 +92,9 @@ describe('release artifact validation', () => {
 });
 
 describe('release notes', () => {
-  it('extracts the complete newest dated changelog section', () => {
-    const changelog = '# Changelog\n\n## 2026-08-07\n\n**Title**\n- First\n- Second\n\n## 2026-08-06\n\n- Old\n';
-    expect(latestChangelogSection(changelog)).toBe('## 2026-08-07\n\n**Title**\n- First\n- Second');
+  it('extracts the complete English section for the requested version', () => {
+    const changelog = '# Changelog\n\n## 0.1.4 - 2026-08-08\n\n- Transition\n\n## 0.1.3 - 2026-08-07\n\n- Previous\n';
+    expect(versionChangelogSection(changelog, '0.1.4')).toBe('## 0.1.4 - 2026-08-08\n\n- Transition');
   });
 });
 

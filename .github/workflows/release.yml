@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: desktop-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -84,7 +84,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install --global npm@$NPM_VERSION
+          npm install --global "npm@$NPM_VERSION"
           npm ci --no-audit --no-fund
 
       - name: Build application
@@ -209,7 +209,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install --global npm@$NPM_VERSION
+          npm install --global "npm@$NPM_VERSION"
           npm ci --no-audit --no-fund
 
       - name: Build application
@@ -249,7 +249,7 @@ jobs:
 
       - name: Install release validator dependencies
         run: |
-          npm install --global npm@$NPM_VERSION
+          npm install --global "npm@$NPM_VERSION"
           npm ci --no-audit --no-fund --ignore-scripts
 
       - name: Download packaged artifacts
@@ -265,41 +265,77 @@ jobs:
       - name: Prepare release notes
         run: node scripts/release-notes.mjs "${{ needs.validate.outputs.version }}" CHANGELOG.md "$RUNNER_TEMP/release-notes.md"
 
-      - name: Publish to public releases repository
+      - name: Publish verified release
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          MAIN_TOKEN: ${{ github.token }}
+          LEGACY_TOKEN: ${{ secrets.RELEASES_TOKEN }}
           TAG: ${{ needs.validate.outputs.tag }}
           VERSION: ${{ needs.validate.outputs.version }}
           NOTES_FILE: ${{ runner.temp }}/release-notes.md
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "$GH_TOKEN" ]]; then
-            echo "::error::Missing RELEASES_TOKEN secret"
-            exit 1
-          fi
+          LOCAL_COUNT="$(find release -maxdepth 1 -type f | wc -l | tr -d ' ')"
+          MAIN_REPOSITORY="beeblock/orkestrai"
+          LEGACY_REPOSITORY="beeblock/orkestrai-releases"
+          LEGACY_TRANSITION_VERSION="0.1.4"
 
-          REPOSITORY="beeblock/orkestrai-releases"
-          if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
-            IS_DRAFT="$(gh release view "$TAG" --repo "$REPOSITORY" --json isDraft --jq .isDraft)"
-            if [[ "$IS_DRAFT" != "true" ]]; then
-              echo "::error::Release $TAG is already public and will not be mutated"
+          prepare_release() {
+            local repository="$1"
+            local token="$2"
+            local target_mode="$3"
+            export GH_TOKEN="$token"
+
+            if gh release view "$TAG" --repo "$repository" >/dev/null 2>&1; then
+              local is_draft
+              is_draft="$(gh release view "$TAG" --repo "$repository" --json isDraft --jq .isDraft)"
+              if [[ "$is_draft" != "true" ]]; then
+                local published_count
+                published_count="$(gh release view "$TAG" --repo "$repository" --json assets --jq '.assets | length')"
+                if [[ "$LOCAL_COUNT" != "$published_count" ]]; then
+                  echo "::error::Published release $repository@$TAG is immutable and has an unexpected asset count"
+                  exit 1
+                fi
+                return
+              fi
+              gh release edit "$TAG" --repo "$repository" --title "Orkestrai $VERSION" --notes-file "$NOTES_FILE"
+            elif [[ "$target_mode" == "existing-tag" ]]; then
+              gh release create "$TAG" --repo "$repository" --verify-tag --draft \
+                --title "Orkestrai $VERSION" --notes-file "$NOTES_FILE"
+            else
+              gh release create "$TAG" --repo "$repository" --target main --draft \
+                --title "Orkestrai $VERSION" --notes-file "$NOTES_FILE"
+            fi
+
+            gh release upload "$TAG" release/* --repo "$repository" --clobber
+
+            local remote_count
+            remote_count="$(gh release view "$TAG" --repo "$repository" --json assets --jq '.assets | length')"
+            if [[ "$LOCAL_COUNT" != "$remote_count" ]]; then
+              echo "::error::Release asset count mismatch for $repository: local=$LOCAL_COUNT remote=$remote_count"
               exit 1
             fi
-            gh release edit "$TAG" --repo "$REPOSITORY" --title "Orkestrai $VERSION" --notes-file "$NOTES_FILE"
-          else
-            gh release create "$TAG" --repo "$REPOSITORY" --target main --draft \
-              --title "Orkestrai $VERSION" --notes-file "$NOTES_FILE"
+          }
+
+          publish_release() {
+            local repository="$1"
+            local token="$2"
+            export GH_TOKEN="$token"
+            if [[ "$(gh release view "$TAG" --repo "$repository" --json isDraft --jq .isDraft)" == "true" ]]; then
+              gh release edit "$TAG" --repo "$repository" --draft=false --latest
+            fi
+            gh release view "$TAG" --repo "$repository" --json url --jq .url
+          }
+
+          prepare_release "$MAIN_REPOSITORY" "$MAIN_TOKEN" existing-tag
+
+          if [[ "$VERSION" == "$LEGACY_TRANSITION_VERSION" ]]; then
+            if [[ -z "$LEGACY_TOKEN" ]]; then
+              echo "::error::Missing RELEASES_TOKEN secret required for the $LEGACY_TRANSITION_VERSION transition"
+              exit 1
+            fi
+            prepare_release "$LEGACY_REPOSITORY" "$LEGACY_TOKEN" legacy-tag
+            publish_release "$LEGACY_REPOSITORY" "$LEGACY_TOKEN"
           fi
 
-          gh release upload "$TAG" release/* --repo "$REPOSITORY" --clobber
-
-          LOCAL_COUNT="$(find release -maxdepth 1 -type f | wc -l | tr -d ' ')"
-          REMOTE_COUNT="$(gh release view "$TAG" --repo "$REPOSITORY" --json assets --jq '.assets | length')"
-          if [[ "$LOCAL_COUNT" != "$REMOTE_COUNT" ]]; then
-            echo "::error::Release asset count mismatch: local=$LOCAL_COUNT remote=$REMOTE_COUNT"
-            exit 1
-          fi
-
-          gh release edit "$TAG" --repo "$REPOSITORY" --draft=false --latest
-          gh release view "$TAG" --repo "$REPOSITORY" --json url --jq .url
+          publish_release "$MAIN_REPOSITORY" "$MAIN_TOKEN"

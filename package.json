@@ -1,7 +1,21 @@
 {
   "name": "orkestrai",
   "version": "0.1.3",
+  "description": "A visual canvas for orchestrating teams of AI coding agents.",
   "private": true,
+  "license": "Apache-2.0",
+  "homepage": "https://orkestrai.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beeblock/orkestrai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/beeblock/orkestrai/issues"
+  },
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -116,6 +130,8 @@
       "src/lib/modules/agent-room/infrastructure/voice/**",
       "src/lib/modules/agent-room/infrastructure/agent-path.ts",
       "packages/orkestrai-cli/**",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
       "package.json",
       "!node_modules/@tabler/**/*",
       "!node_modules/@xterm/**/*",
@@ -182,7 +198,7 @@
       {
         "provider": "github",
         "owner": "beeblock",
-        "repo": "orkestrai-releases"
+        "repo": "orkestrai"
       }
     ]
   }

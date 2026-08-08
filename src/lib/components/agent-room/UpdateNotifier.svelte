@@ -10,7 +10,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as m from '$lib/paraglide/messages.js';
 
-  const RELEASES_URL = 'https://github.com/beeblock/orkestrai-releases/releases/latest';
+  const RELEASES_URL = 'https://github.com/beeblock/orkestrai/releases/latest';
 
   type UpdatePayload =
     | { status: 'idle' }

@@ -2,10 +2,11 @@
 
 ## Repositories And Credential
 
-- Private source and workflow: `beeblock/pantheon`
-- Public update feed and installers: `beeblock/orkestrai-releases`
-- Required source-repository secret: `RELEASES_TOKEN`
-- Token access: only `beeblock/orkestrai-releases`, Contents read/write
+- Source and workflow: `beeblock/orkestrai`
+- Primary update feed and installers: `beeblock/orkestrai`
+- Primary credential: automatic workflow `GITHUB_TOKEN`, Contents write
+- One-time transition: version `0.1.4` is also published to `beeblock/orkestrai-releases`
+- Transition secret: `RELEASES_TOKEN`, restricted to `beeblock/orkestrai-releases` with Contents read/write
 - Workflow: `.github/workflows/release.yml` (`Release Desktop`)
 
 ## Required Public Assets
@@ -22,7 +23,7 @@ The Windows filename must exactly match the URL in `latest.yml`. The macOS manif
 
 ## Publication Contract
 
-The workflow builds each OS natively, downloads the artifacts into the publisher, runs `scripts/validate-release-artifacts.mjs`, creates or updates a draft in the public repository, uploads all assets, compares local and remote asset counts, and only then publishes it as latest.
+The workflow builds each OS natively, downloads the artifacts into the publisher, runs `scripts/validate-release-artifacts.mjs`, creates or updates a draft in the primary repository, uploads all assets, compares local and remote asset counts, and only then publishes it as latest. For `0.1.4`, it prepares and validates the same assets in the legacy repository before publishing both destinations.
 
 The publisher refuses to alter an already-public release. Failed upload retries may clobber assets only while the release is draft.
 
@@ -40,7 +41,7 @@ The publisher refuses to alter an already-public release. Failed upload retries 
 - The packaged app checks on boot and every six hours.
 - The renderer receives persisted updater state through Electron IPC.
 - Windows NSIS and Linux AppImage support unsigned replacement.
-- Ad-hoc macOS builds do not download or replace applications in place; their feed rollout is 0% to stop legacy updaters, while the current app checks the public GitHub release API and offers manual installation. In-place macOS update requires Apple signing and notarization secrets.
+- Ad-hoc macOS builds do not download or replace applications in place; their feed rollout is 0% to stop legacy updaters, while the current app checks the primary GitHub release API and offers manual installation. In-place macOS update requires Apple signing and notarization secrets.
 - User data, workspaces, settings, and voice models live outside the application bundle.
 
 ## Failure Triage
@@ -50,4 +51,5 @@ The publisher refuses to alter an already-public release. Failed upload retries 
 - macOS `not a file` with no certificate: confirm empty signing variables are unset.
 - Missing Linux blockmap: do not require a separate AppImage blockmap.
 - Manifest references a missing Windows asset: confirm the hyphenated `artifactName` in `package.json`.
-- Publication authorization failure: verify the `RELEASES_TOKEN` secret exists and its fine-grained repository/Contents permissions; never expose its value.
+- Primary publication authorization failure: verify workflow `contents: write` permission.
+- `0.1.4` legacy publication authorization failure: verify the `RELEASES_TOKEN` secret exists and its fine-grained repository/Contents permissions; never expose its value.

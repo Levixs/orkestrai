@@ -1,24 +1,33 @@
 # Releases e auto-update do Orkestrai
 
-O código-fonte fica no repositório privado `beeblock/pantheon`. Somente
-instaladores, blockmaps e manifests de atualização são publicados no repositório
-público `beeblock/orkestrai-releases`.
+O código-fonte, o workflow, os instaladores, os blockmaps e os manifests de
+atualização ficam em `beeblock/orkestrai`. O repositório público legado
+`beeblock/orkestrai-releases` é preservado somente como ponte para instalações
+que ainda consultam o feed antigo.
 
 Agentes responsáveis por uma release devem usar a skill
 `.agents/skills/orkestrai-release` (espelhada para Claude em
 `.claude/skills/orkestrai-release`). Ela cobre preflight, publicação, recuperação
 de falhas e auditoria do feed público.
 
-## Credencial obrigatória
+## Credenciais
 
-Crie um fine-grained personal access token no GitHub com:
+O workflow usa o `GITHUB_TOKEN` automático do próprio repositório, com
+`contents: write`, para criar releases em `beeblock/orkestrai`. Nenhum PAT é
+necessário para as versões normais.
+
+A versão `0.1.4` é a release única de transição. Ela precisa ser publicada com
+os mesmos artefatos no repositório principal e no legado, para que as versões
+até `0.1.3` recebam um aplicativo configurado para o novo feed. Para essa versão,
+mantenha também um fine-grained personal access token com:
 
 - acesso somente ao repositório `beeblock/orkestrai-releases`;
 - permissão **Contents: Read and write**;
-- sem permissões para o repositório privado do código-fonte.
+- sem permissões adicionais.
 
-Cadastre o valor em `beeblock/pantheon` como secret de Actions chamado
-`RELEASES_TOKEN`.
+Cadastre o token em `beeblock/orkestrai` como secret de Actions chamado
+`RELEASES_TOKEN`. Não remova o repositório legado nem a release `0.1.4`: uma
+instalação antiga pode permanecer offline por meses antes de fazer a migração.
 
 ## Criar uma versão
 
@@ -28,8 +37,9 @@ Cadastre o valor em `beeblock/pantheon` como secret de Actions chamado
    npm version 0.1.1 --no-git-tag-version
    ```
 
-2. Atualize no mesmo commit o `CHANGELOG.md` e os três catálogos em
-   `src/lib/i18n/docs/`.
+2. Atualize no mesmo commit o `CHANGELOG.md` em inglês e os três catálogos
+   traduzidos em `src/lib/i18n/docs/`. O workflow usa o `CHANGELOG.md` como
+   fonte exclusiva das notas públicas da release.
 3. Rode os testes e faça o commit.
 4. Crie uma tag anotada ou leve exatamente igual à versão:
 
@@ -48,7 +58,9 @@ O workflow `Release Desktop` compila:
 Depois dos builds, `scripts/validate-release-artifacts.mjs` confere versão,
 arquivos referenciados, tamanho e SHA-512 dos manifests `latest-mac.yml`,
 `latest.yml` e `latest-linux.yml`. A release fica em draft durante o upload e só
-é publicada quando todas as validações passam.
+é publicada quando todas as validações passam. Na `0.1.4`, os dois destinos são
+preparados e validados antes da publicação; a partir da `0.1.5`, somente o
+repositório principal recebe releases novas.
 
 ## Assinatura
 
@@ -58,7 +70,7 @@ aviso esperado do SmartScreen até existir um certificado.
 No macOS, a troca automática exige Developer ID Application e notarização. Sem
 isso, `scripts/package-macos.sh` assina o bundle inteiro de forma ad-hoc para
 evitar a mensagem falsa de aplicativo danificado e grava `stagingPercentage: 0`
-no feed para bloquear updaters antigos. O app novo consulta a release pública
+no feed para bloquear updaters antigos. O app novo consulta a release principal
 diretamente e oferece o download manual seguro sem tocar na instalação atual.
 No primeiro uso, tente abrir o app e feche o aviso. Depois abra **Ajustes do
 Sistema → Privacidade e Segurança**, desça até **Segurança**, clique em **Abrir
@@ -77,10 +89,10 @@ cadastre:
 Se um build ou upload falhar, a release permanece ausente ou como draft e não é
 vista pelo updater. Para falha transitória sem mudança no código, execute o
 workflow novamente informando a mesma tag em **Run workflow**. Se a correção
-alterar a fonte, confirme que a release pública ainda não existe (ou é draft),
-faça commit/push e mova a tag para o novo commit antes de disparar o workflow.
-O job aceita completar um draft e substitui assets com o mesmo nome, mas se
-recusa a modificar uma release que já esteja pública.
+alterar a fonte, confirme em todos os destinos aplicáveis que a release ainda
+não existe (ou é draft), faça commit/push e mova a tag para o novo commit antes
+de disparar o workflow. O job aceita completar um draft e substitui assets com
+o mesmo nome, mas se recusa a modificar uma release que já esteja pública.
 
 Nunca publique manualmente uma release incompleta: o `electron-updater` depende
 do manifest e do instalador correspondente estarem disponíveis ao mesmo tempo.
