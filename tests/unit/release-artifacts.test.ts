@@ -105,15 +105,35 @@ describe('packaged updater', () => {
     expect(packageJson.devDependencies?.['electron-updater']).toBeUndefined();
   });
 
-  it('ad-hoc signs macOS packages and verifies their complete bundle signatures', () => {
+  it('requires trusted signing for releases while preserving the local ad-hoc fallback', () => {
+    const packageJson = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
     const packageScript = readFileSync(path.resolve('scripts/package-macos.sh'), 'utf8');
     const workflow = readFileSync(path.resolve('.github/workflows/release.yml'), 'utf8');
+    const preflight = readFileSync(path.resolve('.agents/skills/orkestrai-release/scripts/preflight.sh'), 'utf8');
+    expect(packageJson.build?.mac?.notarize).toBe(true);
     expect(packageScript).toContain('-c.mac.identity=-');
     expect(packageScript).toContain('-c.mac.hardenedRuntime=false');
+    expect(packageScript).toContain('-c.mac.notarize=false');
+    expect(packageScript).toContain('ORKESTRAI_REQUIRE_MAC_SIGNING');
+    expect(workflow).toContain("ORKESTRAI_REQUIRE_MAC_SIGNING: 'true'");
     expect(workflow).toContain('scripts/package-macos.sh --arm64 --x64');
     expect(workflow).toContain('codesign --verify --deep --strict');
+    expect(workflow).toContain('Authority=Developer ID Application:');
+    expect(workflow).toContain('TeamIdentifier=$APPLE_TEAM_ID');
+    expect(workflow).toContain("flags=.*\\(runtime\\)");
+    expect(workflow).toContain('spctl --assess --type execute');
+    expect(workflow).toContain('xcrun stapler validate');
     expect(workflow).toContain('hdiutil verify');
     expect(workflow).toContain('unzip -tq');
+    for (const secret of [
+      'MAC_CSC_LINK',
+      'MAC_CSC_KEY_PASSWORD',
+      'APPLE_ID',
+      'APPLE_APP_SPECIFIC_PASSWORD',
+      'APPLE_TEAM_ID',
+    ]) {
+      expect(preflight).toContain(secret);
+    }
   });
 
   it('disables macOS rollout in manifests produced without Apple signing', () => {

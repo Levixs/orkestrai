@@ -200,6 +200,14 @@ export const DOCS_PT: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '08 ago 2026 · Próxima versão',
+      items: [
+        'As releases oficiais para macOS agora exigem assinatura Developer ID Application e notarização da Apple; a assinatura ad-hoc fica restrita a builds locais.',
+        'O pipeline interrompe a release se qualquer uma das cinco credenciais Apple estiver ausente, evitando publicar novamente um pacote sem assinatura confiável.',
+        'O CI valida autoridade, Team ID, Hardened Runtime, aceitação pelo Gatekeeper e ticket de notarização nas versões Apple Silicon e Intel antes da publicação.',
+      ],
+    },
+    {
       date: '07 ago 2026 · 0.1.3',
       items: [
         'Orkestrai 0.1.3 corrige o pacote macOS da 0.1.2: os arquivos estavam íntegros, mas a assinatura ad-hoc parcial fazia o Gatekeeper informar que o app estava danificado.',

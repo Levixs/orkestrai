@@ -74,9 +74,16 @@ fi
 
 gh auth status >/dev/null 2>&1 || fail 'GitHub CLI is not authenticated'
 gh repo view "$SOURCE_REPO" >/dev/null 2>&1 || fail 'cannot access source repository'
+[[ "$(gh repo view "$SOURCE_REPO" --json isPrivate --jq .isPrivate)" == "false" ]] || fail 'source repository must be public before creating a release'
+
+CONFIGURED_SECRETS="$(gh secret list --repo "$SOURCE_REPO" --json name --jq '.[].name')"
+for secret in MAC_CSC_LINK MAC_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+  printf '%s\n' "$CONFIGURED_SECRETS" | grep -qx "$secret" || fail "$secret is not configured for signed macOS releases"
+done
+
 if [[ "$VERSION" == "$LEGACY_TRANSITION_VERSION" ]]; then
   gh repo view "$LEGACY_REPO" >/dev/null 2>&1 || fail 'cannot access legacy releases repository'
-  gh secret list --repo "$SOURCE_REPO" | awk '{print $1}' | grep -qx RELEASES_TOKEN || fail 'RELEASES_TOKEN is not configured for the transition release'
+  printf '%s\n' "$CONFIGURED_SECRETS" | grep -qx RELEASES_TOKEN || fail 'RELEASES_TOKEN is not configured for the transition release'
 fi
 
 TAG="v$VERSION"

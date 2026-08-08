@@ -15,6 +15,7 @@ Run the complete release from the `beeblock/orkestrai` repository and do not sto
 - Treat a public release as immutable. Never force-move its tag or replace its assets. Prepare a new patch version instead.
 - A failed, unpublished tag may be moved only after confirming that the public release is absent or still draft.
 - Keep the release draft until every platform and manifest passes validation.
+- Never tag a release until preflight confirms the repository is public and all five Apple signing/notarization secrets exist.
 - Run builds and tests sequentially. Follow the disk cleanup rules in `AGENTS.md`.
 
 Read `.agents/skills/orkestrai-release/references/release-contract.md` when checking artifacts, signing behavior, or failure recovery.
@@ -88,7 +89,7 @@ gh run list --repo beeblock/orkestrai --workflow "Release Desktop" --limit 3
 gh run watch <run-id> --repo beeblock/orkestrai --exit-status
 ```
 
-Confirm all five jobs: tag validation, macOS, Windows, Linux, and verified publication. For `0.1.4`, confirm both repositories expose identical assets. Do not report completion while the run is queued or in progress.
+Confirm all five jobs: tag validation, signed/notarized macOS, Windows, Linux, and verified publication. The macOS verification must prove Developer ID authority, Team ID, Hardened Runtime, Gatekeeper acceptance, and a stapled notarization ticket. For `0.1.4`, confirm both repositories expose identical assets. Do not report completion while the run is queued or in progress.
 
 ## 5. Recover A Failed Unpublished Release
 

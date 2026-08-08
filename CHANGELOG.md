@@ -5,6 +5,24 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Changed
+
+- Required every official macOS release to use Developer ID Application signing
+  and Apple notarization; the ad-hoc fallback remains available only for local
+  packaging.
+- Added a release preflight gate for repository visibility and all five Apple
+  signing/notarization secrets.
+
+### Fixed
+
+- Prevented the release workflow from silently publishing an unsigned macOS
+  package when a signing credential is missing.
+- Added CI verification for the signing authority, Team ID, Hardened Runtime,
+  Gatekeeper acceptance, and stapled notarization ticket on Apple Silicon and
+  Intel app bundles.
+
 ## 0.1.3 - 2026-08-07
 
 ### Fixed

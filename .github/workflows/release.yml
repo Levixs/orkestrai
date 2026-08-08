@@ -97,14 +97,30 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ORKESTRAI_REQUIRE_MAC_SIGNING: 'true'
         run: scripts/package-macos.sh --arm64 --x64
 
       - name: Verify macOS packages
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          verify_trusted_app() {
+            local app="$1"
+            local signature
+
+            codesign --verify --deep --strict --verbose=4 "$app"
+            signature="$(codesign -dv --verbose=4 "$app" 2>&1)"
+            grep -Fq 'Authority=Developer ID Application:' <<<"$signature"
+            grep -Fq "TeamIdentifier=$APPLE_TEAM_ID" <<<"$signature"
+            grep -Eq 'flags=.*\(runtime\)' <<<"$signature"
+            spctl --assess --type execute --verbose=4 "$app"
+            xcrun stapler validate "$app"
+          }
+
           test -f release/mac-arm64/Orkestrai.app/Contents/Resources/app/node_modules/electron-updater/package.json
           test -f release/mac/Orkestrai.app/Contents/Resources/app/node_modules/electron-updater/package.json
-          codesign --verify --deep --strict --verbose=4 release/mac-arm64/Orkestrai.app
-          codesign --verify --deep --strict --verbose=4 release/mac/Orkestrai.app
+          verify_trusted_app release/mac-arm64/Orkestrai.app
+          verify_trusted_app release/mac/Orkestrai.app
           hdiutil verify release/Orkestrai-${{ needs.validate.outputs.version }}-arm64.dmg
           hdiutil verify release/Orkestrai-${{ needs.validate.outputs.version }}.dmg
           unzip -tq release/Orkestrai-${{ needs.validate.outputs.version }}-arm64-mac.zip

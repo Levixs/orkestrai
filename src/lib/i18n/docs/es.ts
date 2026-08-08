@@ -196,6 +196,14 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '08 ago 2026 · Próxima versión',
+      items: [
+        'Las releases oficiales para macOS ahora exigen firma Developer ID Application y notarización de Apple; la firma ad-hoc queda restringida a builds locales.',
+        'El pipeline detiene la release si falta cualquiera de las cinco credenciales Apple, evitando publicar de nuevo un paquete sin firma confiable.',
+        'El CI valida autoridad, Team ID, Hardened Runtime, aceptación de Gatekeeper y el ticket de notarización en las versiones Apple Silicon e Intel antes de publicar.',
+      ],
+    },
+    {
       date: '07 ago 2026 · 0.1.3',
       items: [
         'Orkestrai 0.1.3 corrige el paquete macOS de la 0.1.2: los archivos estaban íntegros, pero una firma ad-hoc parcial hacía que Gatekeeper informara que la app estaba dañada.',

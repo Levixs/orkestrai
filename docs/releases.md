@@ -84,6 +84,17 @@ cadastre:
 - `APPLE_APP_SPECIFIC_PASSWORD`;
 - `APPLE_TEAM_ID`.
 
+O fallback ad-hoc existe somente para builds locais. O workflow oficial define
+`ORKESTRAI_REQUIRE_MAC_SIGNING=true` e falha imediatamente se qualquer um dos
+cinco secrets estiver ausente. Com as credenciais presentes, o electron-builder
+assina com Developer ID Application, habilita Hardened Runtime, envia o app ao
+serviço de notarização da Apple e anexa o ticket ao bundle.
+
+Antes do upload, o CI valida nas duas arquiteturas: assinatura profunda,
+autoridade Developer ID, Team ID, flag de Hardened Runtime, aceitação pelo
+Gatekeeper e ticket com `stapler`. DMG e ZIP também continuam passando por
+verificação de integridade.
+
 ## Recuperação
 
 Se um build ou upload falhar, a release permanece ausente ou como draft e não é

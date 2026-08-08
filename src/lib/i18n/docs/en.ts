@@ -196,6 +196,14 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
+      date: 'Aug 08, 2026 · Next release',
+      items: [
+        'Official macOS releases now require Developer ID Application signing and Apple notarization; ad-hoc signing is restricted to local builds.',
+        'The pipeline stops the release when any of the five Apple credentials is missing, preventing another package without a trusted signature from being published.',
+        'CI verifies authority, Team ID, Hardened Runtime, Gatekeeper acceptance, and the notarization ticket on Apple Silicon and Intel builds before publication.',
+      ],
+    },
+    {
       date: 'Aug 07, 2026 · 0.1.3',
       items: [
         'Orkestrai 0.1.3 fixes the 0.1.2 macOS package: the files were intact, but a partial ad-hoc signature made Gatekeeper report that the app was damaged.',

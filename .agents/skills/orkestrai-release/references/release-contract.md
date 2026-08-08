@@ -31,8 +31,9 @@ The publisher refuses to alter an already-public release. Failed upload retries 
 
 - Use Node 24 and npm `11.6.2` in every job, including the publisher.
 - Keep `NODE_OPTIONS=--max-old-space-size=6144`; the adapter-node build exceeds Node's default heap on macOS runners.
-- When Apple signing secrets are absent, use `scripts/package-macos.sh`: it unsets signing variables, applies a complete ad-hoc signature with hardened runtime disabled, and sets the macOS manifest rollout to 0%.
-- Every macOS build must pass strict deep code-sign verification for both app bundles, DMG verification, and ZIP integrity checks before upload.
+- Official releases require all five Apple secrets and `mac.notarize: true`; the preflight and macOS job must fail instead of publishing an unsigned build when any credential is absent.
+- `scripts/package-macos.sh` retains ad-hoc signing with hardened runtime disabled and 0% manifest rollout only for explicit local builds without Apple credentials.
+- Every release macOS build must pass strict deep code-sign verification, Developer ID authority and Team ID checks, Hardened Runtime inspection, Gatekeeper assessment, and stapler validation for both app bundles, plus DMG and ZIP integrity checks before upload.
 - Electron stays pinned according to `AGENTS.md`; changing it can break native dependency prebuilds.
 - `asar` remains disabled according to the production server constraint in `AGENTS.md`.
 
@@ -48,7 +49,9 @@ The publisher refuses to alter an already-public release. Failed upload retries 
 
 - Build OOM near the adapter-node phase: confirm the workflow heap setting.
 - `npm ci` lock mismatch only in publisher: confirm the pinned npm install runs there too.
-- macOS `not a file` with no certificate: confirm empty signing variables are unset.
+- Missing macOS credential: confirm all five Apple secrets exist; official releases intentionally refuse the unsigned fallback.
+- Notarization authentication failure: regenerate the app-specific password and verify `APPLE_ID` and `APPLE_TEAM_ID`.
+- Gatekeeper or stapler failure after packaging: inspect the Apple notary log before retrying the unpublished release.
 - Missing Linux blockmap: do not require a separate AppImage blockmap.
 - Manifest references a missing Windows asset: confirm the hyphenated `artifactName` in `package.json`.
 - Primary publication authorization failure: verify workflow `contents: write` permission.
