@@ -5,7 +5,7 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
-## Unreleased
+## 0.1.4 - 2026-08-08
 
 ### Changed
 
@@ -14,6 +14,9 @@ pt-BR, English, and Spanish translations.
   packaging.
 - Added a release preflight gate for repository visibility and all five Apple
   signing/notarization secrets.
+- Added the one-time dual-feed transition: `0.1.4` is published to both the
+  main repository and the legacy public update repository, while future builds
+  use the main repository feed.
 
 ### Fixed
 
@@ -22,6 +25,12 @@ pt-BR, English, and Spanish translations.
 - Added CI verification for the signing authority, Team ID, Hardened Runtime,
   Gatekeeper acceptance, and stapled notarization ticket on Apple Silicon and
   Intel app bundles.
+
+### Notes
+
+- macOS users on an unsigned or ad-hoc-signed build need one manual installation
+  of `0.1.4`. This signed and notarized build opens normally and enables trusted
+  in-place updates for subsequent releases.
 
 ## 0.1.3 - 2026-08-07
 

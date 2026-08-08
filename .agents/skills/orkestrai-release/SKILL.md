@@ -15,7 +15,7 @@ Run the complete release from the `beeblock/orkestrai` repository and do not sto
 - Treat a public release as immutable. Never force-move its tag or replace its assets. Prepare a new patch version instead.
 - A failed, unpublished tag may be moved only after confirming that the public release is absent or still draft.
 - Keep the release draft until every platform and manifest passes validation.
-- Never tag a release until preflight confirms the repository is public and all five Apple signing/notarization secrets exist.
+- Never tag a release until preflight confirms all five Apple signing/notarization secrets exist. The source repository must be public, except for the one-time `0.1.4` transition while its identical user-facing release is published to the public legacy feed.
 - Run builds and tests sequentially. Follow the disk cleanup rules in `AGENTS.md`.
 
 Read `.agents/skills/orkestrai-release/references/release-contract.md` when checking artifacts, signing behavior, or failure recovery.

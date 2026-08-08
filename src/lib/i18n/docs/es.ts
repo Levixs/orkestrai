@@ -196,11 +196,12 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
-      date: '08 ago 2026 · Próxima versión',
+      date: '08 ago 2026 · 0.1.4',
       items: [
-        'Las releases oficiales para macOS ahora exigen firma Developer ID Application y notarización de Apple; la firma ad-hoc queda restringida a builds locales.',
+        'Orkestrai 0.1.4 es la primera release para macOS firmada con Developer ID Application y notarizada por Apple; la firma ad-hoc queda restringida a builds locales.',
         'El pipeline detiene la release si falta cualquiera de las cinco credenciales Apple, evitando publicar de nuevo un paquete sin firma confiable.',
         'El CI valida autoridad, Team ID, Hardened Runtime, aceptación de Gatekeeper y el ticket de notarización en las versiones Apple Silicon e Intel antes de publicar.',
+        'Esta versión también se publica en el feed legado para alcanzar instalaciones existentes y migra la app al repositorio principal para futuras actualizaciones.',
       ],
     },
     {
