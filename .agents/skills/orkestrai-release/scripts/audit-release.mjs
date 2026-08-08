@@ -41,6 +41,7 @@ const requiredAssets = [
 ];
 
 async function auditRepository(repository) {
+  const useAuthenticatedAssets = repository === primaryRepository && version === legacyTransitionVersion;
   const release = JSON.parse(
     gh(['release', 'view', tag, '--repo', repository, '--json', 'tagName,name,isDraft,isPrerelease,url,assets']),
   );
@@ -59,16 +60,27 @@ async function auditRepository(repository) {
 
   const manifests = ['latest-mac.yml', 'latest.yml', 'latest-linux.yml'];
   for (const manifestName of manifests) {
-    const manifestUrl = `https://github.com/${repository}/releases/latest/download/${manifestName}`;
-    const response = await fetch(manifestUrl, { redirect: 'follow' });
-    requireCondition(response.ok, `${repository}: ${manifestName} returned HTTP ${response.status}`);
-    const manifest = parse(await response.text());
+    const manifestAsset = assets.get(manifestName);
+    let manifestText;
+
+    if (useAuthenticatedAssets) {
+      const endpoint = new URL(manifestAsset.apiUrl).pathname.replace(/^\//, '');
+      manifestText = gh(['api', endpoint, '-H', 'Accept: application/octet-stream']);
+    } else {
+      const manifestUrl = `https://github.com/${repository}/releases/latest/download/${manifestName}`;
+      const response = await fetch(manifestUrl, { redirect: 'follow' });
+      requireCondition(response.ok, `${repository}: ${manifestName} returned HTTP ${response.status}`);
+      manifestText = await response.text();
+    }
+
+    const manifest = parse(manifestText);
     requireCondition(String(manifest.version) === version, `${repository}: ${manifestName} has version ${manifest.version}`);
     requireCondition(Array.isArray(manifest.files) && manifest.files.length > 0, `${repository}: ${manifestName} has no files`);
 
     for (const entry of manifest.files) {
       const asset = assets.get(String(entry.url));
       requireCondition(asset, `${repository}: ${manifestName} references missing public asset ${entry.url}`);
+      requireCondition(asset.state === 'uploaded', `${repository}: ${entry.url} is not fully uploaded`);
       if (entry.size != null) {
         requireCondition(
           Number(entry.size) === Number(asset.size),
@@ -80,15 +92,36 @@ async function auditRepository(repository) {
         `${repository}: ${manifestName} lacks SHA-512 for ${entry.url}`,
       );
 
-      const assetUrl = `https://github.com/${repository}/releases/download/${tag}/${encodeURIComponent(String(entry.url))}`;
-      const head = await fetch(assetUrl, { method: 'HEAD', redirect: 'follow' });
-      requireCondition(head.ok, `${repository}: ${entry.url} returned HTTP ${head.status}`);
+      if (!useAuthenticatedAssets) {
+        const assetUrl = `https://github.com/${repository}/releases/download/${tag}/${encodeURIComponent(String(entry.url))}`;
+        const head = await fetch(assetUrl, { method: 'HEAD', redirect: 'follow' });
+        requireCondition(head.ok, `${repository}: ${entry.url} returned HTTP ${head.status}`);
+      }
     }
   }
 
   console.log(`Audited ${repository} at Orkestrai ${version}: ${release.assets.length} public assets.`);
   console.log(release.url);
+  return release;
 }
 
-await auditRepository(primaryRepository);
-if (version === legacyTransitionVersion) await auditRepository(legacyRepository);
+const primaryRelease = await auditRepository(primaryRepository);
+if (version === legacyTransitionVersion) {
+  const legacyRelease = await auditRepository(legacyRepository);
+  const primaryAssets = new Map(primaryRelease.assets.map((asset) => [asset.name, asset]));
+
+  for (const legacyAsset of legacyRelease.assets) {
+    const primaryAsset = primaryAssets.get(legacyAsset.name);
+    requireCondition(primaryAsset, `${primaryRepository}: missing transition asset ${legacyAsset.name}`);
+    requireCondition(
+      Number(primaryAsset.size) === Number(legacyAsset.size),
+      `Transition asset size mismatch for ${legacyAsset.name}`,
+    );
+    requireCondition(
+      primaryAsset.digest === legacyAsset.digest,
+      `Transition asset digest mismatch for ${legacyAsset.name}`,
+    );
+  }
+
+  console.log(`Verified identical ${tag} assets across the primary and legacy feeds.`);
+}
