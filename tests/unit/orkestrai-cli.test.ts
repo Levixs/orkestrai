@@ -105,7 +105,11 @@ describe('orkestrai CLI', () => {
 
   it('sem token retorna erro claro', async () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'orkestrai-cli-empty-'));
-    await expect(run(['list'], { cwd: emptyDir, out: () => {}, env: {} })).rejects.toThrow('Token');
+    await expect(run(['list'], {
+      cwd: emptyDir,
+      out: () => {},
+      env: { ORKESTRAI_TOKEN: '', ORKESTRAI_RUNTIME_FILE: '' },
+    })).rejects.toThrow('Token');
   });
 
   it('MCP completa o handshake mesmo fora de um workspace Orkestrai', async () => {

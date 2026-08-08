@@ -55,7 +55,8 @@ export class UsageService {
   constructor(
     private readonly fetchFn: typeof fetch = fetch,
     private readonly home: string = homedir(),
-    private readonly keychainReader: (service: string) => Promise<string | null> = readMacOsKeychain
+    private readonly keychainReader: (service: string) => Promise<string | null> = readMacOsKeychain,
+    private readonly platform: NodeJS.Platform = process.platform,
   ) {}
 
   async getAll(forceRefresh = false): Promise<ProviderUsage[]> {
@@ -92,7 +93,7 @@ export class UsageService {
       const token = parsed?.claudeAiOauth?.accessToken;
       if (token) return token as string;
     }
-    if (process.platform === 'darwin') {
+    if (this.platform === 'darwin') {
       const raw = await this.keychainReader('Claude Code-credentials');
       if (raw) {
         const token = JSON.parse(raw)?.claudeAiOauth?.accessToken;

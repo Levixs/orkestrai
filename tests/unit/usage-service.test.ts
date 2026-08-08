@@ -58,8 +58,11 @@ describe('UsageService', () => {
 
   it('claude: cai no Keychain quando o arquivo nao existe', async () => {
     const home = homeWith({});
-    const service = new UsageService(fakeFetch({ 'https://api.anthropic.com/api/oauth/usage': CLAUDE_USAGE }), home, async () =>
-      JSON.stringify({ claudeAiOauth: { accessToken: 'tok-keychain' } })
+    const service = new UsageService(
+      fakeFetch({ 'https://api.anthropic.com/api/oauth/usage': CLAUDE_USAGE }),
+      home,
+      async () => JSON.stringify({ claudeAiOauth: { accessToken: 'tok-keychain' } }),
+      'darwin',
     );
     const usage = await service.getUsage('claude');
     expect(usage.error).toBeNull();
