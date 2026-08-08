@@ -60,8 +60,11 @@ isso, `scripts/package-macos.sh` assina o bundle inteiro de forma ad-hoc para
 evitar a mensagem falsa de aplicativo danificado e grava `stagingPercentage: 0`
 no feed para bloquear updaters antigos. O app novo consulta a release pública
 diretamente e oferece o download manual seguro sem tocar na instalação atual.
-No primeiro uso, clique com Control/botão direito no app e escolha
-**Abrir**. Para eliminar esse passo e habilitar a troca automática, cadastre:
+No primeiro uso, tente abrir o app e feche o aviso. Depois abra **Ajustes do
+Sistema → Privacidade e Segurança**, desça até **Segurança**, clique em **Abrir
+Mesmo Assim**, autentique e confirme **Abrir**. O botão aparece por cerca de uma
+hora após a tentativa. Para eliminar esse passo e habilitar a troca automática,
+cadastre:
 
 - `MAC_CSC_LINK`: certificado `.p12` em base64;
 - `MAC_CSC_KEY_PASSWORD`: senha do `.p12`;

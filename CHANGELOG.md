@@ -8,7 +8,7 @@ Todas as mudanças notáveis do projeto, em português, da mais recente para a m
 - Corrige o empacotamento macOS da `0.1.2`: DMG e ZIP tinham checksums e arquivos válidos, mas o bundle carregava apenas uma assinatura ad-hoc parcial. Sob quarentena do navegador, o Gatekeeper reportava incorretamente que o Orkestrai estava danificado.
 - Builds sem certificado Apple agora recebem assinatura ad-hoc completa, com todos os recursos selados. O pipeline valida as duas arquiteturas com `codesign --verify --deep --strict`, verifica os DMGs com `hdiutil` e testa os ZIPs antes de publicar.
 - O feed macOS ad-hoc usa rollout de 0% para impedir que os updaters antigos baixem ou removam a instalação atual. A partir da `0.1.3`, o app consulta a release pública diretamente e oferece download manual sem tentar substituição in-place.
-- No primeiro lançamento de um build ad-hoc, use Control/clique direito → Abrir. A experiência sem aviso e a troca automática no macOS continuam dependendo de Developer ID e notarização Apple. Windows não foi afetado.
+- No primeiro lançamento de um build ad-hoc, tente abrir o app, feche o aviso e use Ajustes do Sistema → Privacidade e Segurança → Segurança → Abrir Mesmo Assim; autentique e confirme Abrir. A experiência sem aviso e a troca automática no macOS continuam dependendo de Developer ID e notarização Apple. Windows não foi afetado.
 
 ## 2026-08-07
 

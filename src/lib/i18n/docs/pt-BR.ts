@@ -205,7 +205,7 @@ export const DOCS_PT: DocsCatalog = {
         'Orkestrai 0.1.3 corrige o pacote macOS da 0.1.2: os arquivos estavam íntegros, mas a assinatura ad-hoc parcial fazia o Gatekeeper informar que o app estava danificado.',
         'Bundles macOS sem certificado agora recebem assinatura ad-hoc completa; o CI valida assinatura profunda, DMGs e ZIPs nas arquiteturas Apple Silicon e Intel antes da publicação.',
         'Updaters antigos ficam bloqueados no Mac para não remover a instalação atual; o app novo detecta releases pela API pública e direciona para instalação manual segura.',
-        'No primeiro uso sem Developer ID, abra com Control/clique direito → Abrir. Windows não foi afetado.',
+        'No primeiro uso sem Developer ID, tente abrir o app, feche o aviso e use Ajustes do Sistema → Privacidade e Segurança → Segurança → Abrir Mesmo Assim; autentique e confirme Abrir. Windows não foi afetado.',
       ],
     },
     {

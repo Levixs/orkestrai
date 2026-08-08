@@ -97,9 +97,10 @@ acesso somente ao `beeblock/orkestrai-releases` e permissão **Contents: Read an
 write**. Assinatura/notarização do macOS é opcional e usa `MAC_CSC_LINK`,
 `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` e
 `APPLE_TEAM_ID`. Sem certificado Apple, o script aplica uma assinatura ad-hoc
-completa para manter o bundle íntegro, mas o primeiro uso ainda exige clicar com
-Control/botão direito no app e escolher **Abrir**. Nesse modo, o update no Mac é
-manual; Windows NSIS e Linux AppImage continuam com auto-update.
+completa para manter o bundle íntegro. No primeiro uso, tente abrir o app e
+feche o aviso; em **Ajustes do Sistema → Privacidade e Segurança → Segurança**,
+clique em **Abrir Mesmo Assim**, autentique e confirme **Abrir**. Nesse modo, o
+update no Mac é manual; Windows NSIS e Linux AppImage continuam com auto-update.
 
 Importante: as versões `0.0.1` e `0.1.0` foram empacotadas sem o módulo
 `electron-updater`. Elas exigem uma instalação manual única da versão `0.1.1`;
