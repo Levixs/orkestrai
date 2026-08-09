@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { resolve } from 'node:path';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
+import { builtinRoleCatalog } from '../catalogs/BuiltinRoleCatalog.js';
 
 export type AgentRole = {
   slug: string;
@@ -30,6 +31,16 @@ function slugify(text: string): string {
  * role e injetado como primeira mensagem ao agente (funciona em qualquer TUI).
  */
 export class RoleService {
+  catalog(locale: unknown) {
+    return builtinRoleCatalog(locale);
+  }
+
+  async installBuiltin(workspaceId: string, roleId: string, locale: unknown): Promise<AgentRole> {
+    const template = builtinRoleCatalog(locale).find((role) => role.id === roleId);
+    if (!template) throw new Error('Responsabilidade pronta não encontrada.');
+    return this.save(workspaceId, template);
+  }
+
   private async rolesDir(workspaceId: string): Promise<string> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     if (!workspace) throw new Error('Workspace não encontrado.');

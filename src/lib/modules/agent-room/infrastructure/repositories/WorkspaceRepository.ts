@@ -105,6 +105,8 @@ export class WorkspaceRepository {
     workingDir: string;
     icon?: string | null;
     instructions?: string | null;
+    syncAgentInstructionFiles?: boolean;
+    hooks?: WorkspaceHooks;
   }): Promise<Workspace> {
     const name = input.name.trim();
     const workingDir = input.workingDir.trim();
@@ -117,6 +119,8 @@ export class WorkspaceRepository {
       working_dir: workingDir,
       icon: input.icon ?? null,
       instructions: input.instructions ?? null,
+      sync_agent_instruction_files: input.syncAgentInstructionFiles ?? false,
+      hooks_json: JSON.stringify(input.hooks ?? {}),
     });
     return mapWorkspace(model);
   }

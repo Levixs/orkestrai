@@ -26,6 +26,12 @@ Descarga los instaladores más recientes desde
 - **Modo Maestro:** asigna un líder que puede proponer un equipo, reclutar
   agentes, delegar briefings completos, coordinar el trabajo y retirar agentes
   cuando ya no sean necesarios.
+- **Equipos listos:** inicia o amplía un workspace con presets completos de
+  Producto, React, Next.js, SvelteKit, Svelar y Laravel, incluidos agentes,
+  roles, skills, contexto de tareas y topología de colaboración.
+- **Vistas operativas del equipo:** instala funciones especializadas desde un
+  catálogo de 12 roles y consulta agentes activos, tareas asignadas y el estado
+  Git de cada piso.
 - **Puente nativo para agentes:** la CLI `orkestrai` y el servidor MCP incluidos
   exponen comandos tipados para mensajes, tareas, notas, portales, pisos, roles y
   notificaciones de escritorio.

@@ -7,10 +7,11 @@
   import { Textarea } from '$lib/components/ui/textarea';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Button } from '$lib/components/ui/button';
-  import { Plane, Play, Trash2, X, Zap } from '@lucide/svelte';
+  import { CheckCircle2, CircleDot, GitBranch, ListChecks, Plane, Play, Trash2, Users, X, Zap } from '@lucide/svelte';
   import { createFloorSchema } from '$lib/modules/agent-room/contracts/schemas/floorSchemas.js';
   import type { Floor, Workspace, WorkspaceHooks } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
+  import { localeState } from '$lib/i18n/locale.svelte.js';
 
   type Props = {
     workspace: Workspace;
@@ -22,10 +23,20 @@
 
   let { workspace, visibleFloorId, onSelectFloor, onClose, api }: Props = $props();
 
+  type FloorOverview = {
+    floor: Floor | null;
+    floorId: string | null;
+    agents: Array<{ id: string; title: string; provider: string | null; role: string | null; active: boolean; idle: boolean }>;
+    tasks: Array<{ id: string; title: string; status: 'todo' | 'doing' | 'done'; assigneeTitle: string | null }>;
+    git: { branch: string; dirty: boolean; changedFiles: number; ahead: number; behind: number; lastCommitAt: string | null; lastCommitTitle: string | null; available: boolean };
+  };
+  type WorkspaceFloorOverview = { ground: FloorOverview; floors: FloorOverview[] };
+
   // Cast por causa do zod aninhado do superforms (4.x) vs zod 3.25 do app.
   const schema = createFloorSchema as unknown as Parameters<typeof zod>[0];
 
-  let floors = $state<Floor[]>([]);
+  let overview = $state<WorkspaceFloorOverview | null>(null);
+  const floors = $derived(overview?.floors ?? []);
   let errorMessage = $state('');
   let landingPreview = $state<{ floor: Floor; from: string; to: string; stat: string; conflicts: string[]; targetDirty: boolean } | null>(null);
   let hooks = $state<WorkspaceHooks>({});
@@ -61,7 +72,7 @@
   const { form: formData, enhance } = form;
 
   async function refresh() {
-    floors = await api<Floor[]>(`/api/agent-room/workspaces/${workspace.id}/floors`);
+    overview = await api<WorkspaceFloorOverview>(`/api/agent-room/workspaces/${workspace.id}/floors/overview`);
   }
 
   async function loadHooks() {
@@ -141,6 +152,17 @@
     refresh();
     loadHooks();
   });
+
+  function taskStatus(status: 'todo' | 'doing' | 'done'): string {
+    if (status === 'doing') return m['floor.task_doing']();
+    if (status === 'done') return m['floor.task_done']();
+    return m['floor.task_todo']();
+  }
+
+  function activityLabel(value: string | null): string {
+    if (!value) return m['floor.no_commits']();
+    return new Intl.DateTimeFormat(localeState.current, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  }
 </script>
 
 <aside class="side-panel">
@@ -152,24 +174,84 @@
     </div>
   </header>
 
-  <button class="floor-item" class:active={visibleFloorId === null} onclick={() => onSelectFloor(null)}>
-    {m['floor.ground']()}
-  </button>
-
-  {#each floors as floor (floor.id)}
-    <div class="floor-item" class:active={visibleFloorId === floor.id}>
-      <button class="floor-open" onclick={() => onSelectFloor(floor.id)}>
-        <strong>{floor.name}</strong>
-        <small>{floor.branch}</small>
+  {#if overview}
+    <article class="rounded-md border border-white/10 bg-white/[0.035] p-3 {visibleFloorId === null ? 'border-cyan-300/40' : ''}" data-tour="floor-overview">
+      <button class="flex w-full items-center justify-between gap-2 border-0 bg-transparent p-0 text-left text-zinc-100" onclick={() => onSelectFloor(null)}>
+        <span class="text-xs font-semibold">{m['floor.ground']()}</span>
+        {#if overview.ground.git.available}
+          <span class="flex items-center gap-1 text-[9px] text-zinc-500"><GitBranch size={10} />{overview.ground.git.branch}</span>
+        {/if}
       </button>
-      <div class="floor-actions">
-        <IconAction label={m['floor.preview_landing']()} onclick={() => previewLanding(floor)}><Plane size={13} /></IconAction>
-        <IconAction label={m['floor.run_hooks']()} onclick={() => runHooksNow(floor, 'run')}><Play size={13} /></IconAction>
-        <IconAction label={m['floor.delete_keep_branch']()} onclick={() => removeFloor(floor, false)}><X size={13} /></IconAction>
-        <IconAction label={m['floor.delete_branch']()} danger onclick={() => removeFloor(floor, true)}><Trash2 size={13} /></IconAction>
+      <div class="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+        <div class="rounded border border-white/[0.07] bg-black/10 p-2">
+          <span class="mb-1 flex items-center gap-1 text-zinc-500"><Users size={11} />{m['floor.agents']({ count: overview.ground.agents.length })}</span>
+          <div class="flex flex-wrap gap-1">
+            {#each overview.ground.agents.slice(0, 4) as agent (agent.id)}
+              <span class="max-w-full truncate rounded bg-white/[0.06] px-1.5 py-0.5 text-zinc-300"><CircleDot size={8} class={agent.active ? 'text-emerald-400' : 'text-zinc-600'} /> {agent.title}</span>
+            {:else}<span class="text-zinc-600">{m['floor.no_agents']()}</span>{/each}
+          </div>
+        </div>
+        <div class="rounded border border-white/[0.07] bg-black/10 p-2">
+          <span class="mb-1 flex items-center gap-1 text-zinc-500"><ListChecks size={11} />{m['floor.tasks']({ count: overview.ground.tasks.length })}</span>
+          <span class="text-zinc-300">{overview.ground.tasks.filter((task) => task.status === 'doing').length} {m['floor.in_progress']()}</span>
+        </div>
       </div>
-    </div>
-  {/each}
+      {#if overview.ground.git.available}
+        <p class="mt-2 mb-0 truncate text-[9px] text-zinc-600" title={overview.ground.git.lastCommitTitle ?? ''}>
+          {overview.ground.git.dirty ? m['floor.changed_files']({ count: overview.ground.git.changedFiles }) : m['floor.clean_worktree']()} · {activityLabel(overview.ground.git.lastCommitAt)}
+        </p>
+      {/if}
+    </article>
+
+    {#each floors as item (item.floorId)}
+      {@const floor = item.floor!}
+      <article class="rounded-md border border-white/10 bg-white/[0.035] p-3 {visibleFloorId === floor.id ? 'border-cyan-300/40' : ''}">
+        <div class="flex items-start justify-between gap-2">
+          <button class="min-w-0 flex-1 border-0 bg-transparent p-0 text-left text-zinc-100" onclick={() => onSelectFloor(floor.id)}>
+            <strong class="block truncate text-xs">{floor.name}</strong>
+            <small class="mt-0.5 flex items-center gap-1 truncate text-[9px] text-zinc-500"><GitBranch size={10} />{floor.branch}</small>
+          </button>
+          <div class="floor-actions">
+            <IconAction label={m['floor.preview_landing']()} onclick={() => previewLanding(floor)}><Plane size={13} /></IconAction>
+            <IconAction label={m['floor.run_hooks']()} onclick={() => runHooksNow(floor, 'run')}><Play size={13} /></IconAction>
+            <IconAction label={m['floor.delete_keep_branch']()} onclick={() => removeFloor(floor, false)}><X size={13} /></IconAction>
+            <IconAction label={m['floor.delete_branch']()} danger onclick={() => removeFloor(floor, true)}><Trash2 size={13} /></IconAction>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-1">
+          {#each item.agents as agent (agent.id)}
+            <span class="inline-flex max-w-full items-center gap-1 truncate rounded bg-white/[0.06] px-1.5 py-0.5 text-[9px] text-zinc-300" title={agent.role ?? agent.provider ?? ''}>
+              <CircleDot size={8} class={agent.active ? 'text-emerald-400' : 'text-zinc-600'} />{agent.title}
+            </span>
+          {:else}
+            <span class="text-[9px] text-zinc-600">{m['floor.no_agents']()}</span>
+          {/each}
+        </div>
+
+        {#if item.tasks.length}
+          <div class="mt-2 grid gap-1">
+            {#each item.tasks.slice(0, 3) as task (task.id)}
+              <div class="flex items-center gap-1.5 text-[9px] text-zinc-400">
+                {#if task.status === 'done'}<CheckCircle2 size={10} class="text-emerald-400" />{:else}<CircleDot size={10} class={task.status === 'doing' ? 'text-cyan-300' : 'text-zinc-600'} />{/if}
+                <span class="min-w-0 flex-1 truncate">{task.title}</span>
+                <span class="shrink-0 text-zinc-600">{taskStatus(task.status)}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        <div class="mt-2 flex items-center justify-between gap-2 border-t border-white/[0.07] pt-2 text-[9px]">
+          <span class={item.git.dirty ? 'text-amber-300' : 'text-emerald-400'}>
+            {item.git.available ? (item.git.dirty ? m['floor.changed_files']({ count: item.git.changedFiles }) : m['floor.ready_to_land']()) : m['floor.git_unavailable']()}
+          </span>
+          {#if item.git.ahead || item.git.behind}
+            <span class="text-zinc-600">↑{item.git.ahead} ↓{item.git.behind}</span>
+          {/if}
+        </div>
+      </article>
+    {/each}
+  {/if}
 
   <form method="POST" use:enhance class="floor-form">
     <Form.Field {form} name="name">
@@ -278,41 +360,6 @@
   .panel-header-actions {
     display: flex;
     gap: 2px;
-  }
-
-  .floor-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    width: 100%;
-    padding: 7px 8px;
-    border: none;
-    border-radius: 8px;
-    background: transparent;
-    color: #e6e6eb;
-    font-size: 12px;
-  }
-
-  .floor-item.active {
-    background: rgba(255, 255, 255, 0.07);
-  }
-
-  .floor-open {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    border: none;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    text-align: left;
-    padding: 0;
-  }
-
-  .floor-open small {
-    color: #6d6d78;
   }
 
   .floor-actions {

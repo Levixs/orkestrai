@@ -3,6 +3,7 @@ import type {
   CanvasNodePayload,
   CanvasNodeType,
   Workspace,
+  WorkspaceHooks,
 } from '../../domain/types.js';
 import type {
   CreateCanvasEdgeInput,
@@ -18,7 +19,9 @@ export class CreateWorkspaceDto {
     public readonly name: string,
     public readonly workingDir: string,
     public readonly icon: string | null,
-    public readonly instructions: string | null
+    public readonly instructions: string | null,
+    public readonly syncAgentInstructionFiles = false,
+    public readonly hooks: WorkspaceHooks = {}
   ) {}
 
   static from(input: CreateWorkspaceInput): CreateWorkspaceDto {

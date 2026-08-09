@@ -26,6 +26,11 @@ Download the latest installers from
 - **Maestro mode:** assign a leader that can propose a team, recruit agents,
   delegate complete task briefings, coordinate work, and dismiss agents when the
   work is done.
+- **Ready-made teams:** start or expand a workspace with complete Product,
+  React, Next.js, SvelteKit, Svelar, and Laravel presets, including agents,
+  roles, skills, task context, and collaboration topology.
+- **Operational team views:** install specialized roles from a 12-role catalog
+  and inspect active agents, assigned tasks, and Git state across every floor.
 - **Native agent bridge:** the bundled `orkestrai` CLI and MCP server expose
   typed commands for messages, tasks, notes, portals, floors, roles, and desktop
   notifications.

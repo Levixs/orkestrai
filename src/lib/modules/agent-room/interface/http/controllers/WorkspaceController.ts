@@ -205,6 +205,20 @@ export class WorkspaceController extends Controller {
     }
   }
 
+  async listRoleCatalog(event: any) {
+    const url = new URL(event.request.url);
+    return this.json({ data: roleService.catalog(url.searchParams.get('locale')) });
+  }
+
+  async installRoleCatalogItem(event: any) {
+    try {
+      const body = await event.request.json().catch(() => ({}));
+      return this.json({ data: await roleService.installBuiltin(event.params.id, event.params.roleId, body.locale) }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao instalar responsabilidade.');
+    }
+  }
+
   async saveRole(event: any) {
     try {
       const body = await event.request.json();

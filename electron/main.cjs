@@ -27,6 +27,105 @@ let splashWindow = null;
 let serverPort = null;
 let tray = null;
 let pendingNotifications = 0;
+let menuLocale = 'en';
+
+const MENU_COPY = {
+  'pt-BR': {
+    workspace: 'Workspace', canvas: 'Canvas', newWorkspace: 'Novo workspace', presets: 'Biblioteca de presets', floors: 'Andares', roles: 'Responsabilidades', usage: 'Uso', ports: 'Portas',
+    settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', notifications: (count) => `${count} notificações`,
+  },
+  en: {
+    workspace: 'Workspace', canvas: 'Canvas', newWorkspace: 'New workspace', presets: 'Preset library', floors: 'Floors', roles: 'Roles', usage: 'Usage', ports: 'Ports',
+    settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', notifications: (count) => `${count} notifications`,
+  },
+  es: {
+    workspace: 'Workspace', canvas: 'Canvas', newWorkspace: 'Nuevo workspace', presets: 'Biblioteca de presets', floors: 'Pisos', roles: 'Roles', usage: 'Uso', ports: 'Puertos',
+    settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', notifications: (count) => `${count} notificaciones`,
+  },
+};
+
+function normalizeMenuLocale(value) {
+  if (value === 'pt-BR' || value === 'es') return value;
+  return 'en';
+}
+
+function sendMenuAction(action) {
+  if (!mainWindow) {
+    createWindow().then(() => mainWindow?.webContents.send('orkestrai:menu-action', action)).catch((error) => console.error(error));
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  mainWindow.webContents.send('orkestrai:menu-action', action);
+}
+
+function buildApplicationMenu() {
+  const copy = MENU_COPY[menuLocale];
+  const workspaceMenu = {
+    label: copy.workspace,
+    submenu: [
+      { label: copy.canvas, accelerator: 'CmdOrCtrl+1', click: () => sendMenuAction('canvas') },
+      { label: copy.newWorkspace, accelerator: 'CmdOrCtrl+N', click: () => sendMenuAction('new-workspace') },
+      { label: copy.presets, accelerator: 'CmdOrCtrl+Shift+P', click: () => sendMenuAction('presets') },
+      { type: 'separator' },
+      { label: copy.floors, accelerator: 'CmdOrCtrl+Alt+F', click: () => sendMenuAction('floors') },
+      { label: copy.roles, accelerator: 'CmdOrCtrl+Alt+R', click: () => sendMenuAction('roles') },
+      { label: copy.usage, accelerator: 'CmdOrCtrl+Alt+U', click: () => sendMenuAction('usage') },
+      { label: copy.ports, accelerator: 'CmdOrCtrl+Alt+O', click: () => sendMenuAction('ports') },
+      ...(process.platform === 'darwin' ? [] : [
+        { type: 'separator' },
+        { label: copy.settings, accelerator: 'CmdOrCtrl+,', click: () => sendMenuAction('settings') },
+        { label: copy.checkUpdates, click: () => void checkForUpdates() },
+        { type: 'separator' },
+        { label: copy.quit, role: 'quit' },
+      ]),
+    ],
+  };
+  const template = [
+    ...(process.platform === 'darwin' ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { label: copy.settings, accelerator: 'CmdOrCtrl+,', click: () => sendMenuAction('settings') },
+        { label: copy.checkUpdates, click: () => void checkForUpdates() },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' },
+        { type: 'separator' },
+        { label: copy.quit, role: 'quit' },
+      ],
+    }] : []),
+    workspaceMenu,
+    { label: copy.edit, submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+    {
+      label: copy.view,
+      submenu: [
+        { label: copy.commandPalette, accelerator: 'CmdOrCtrl+P', click: () => sendMenuAction('command-palette') },
+        { type: 'separator' },
+        { label: copy.reload, role: 'reload' },
+        { label: copy.forceReload, role: 'forceReload' },
+        ...(isDev ? [{ role: 'toggleDevTools' }] : []),
+        { type: 'separator' },
+        { label: copy.fullscreen, role: 'togglefullscreen' },
+      ],
+    },
+    { label: copy.window, submenu: [{ label: copy.minimize, role: 'minimize' }, { label: copy.close, role: 'close' }] },
+    {
+      label: copy.help,
+      role: 'help',
+      submenu: [
+        { label: copy.docs, click: () => sendMenuAction('docs') },
+        { label: copy.changelog, click: () => sendMenuAction('changelog') },
+        { type: 'separator' },
+        { label: copy.reportIssue, click: () => shell.openExternal('https://github.com/beeblock/orkestrai/issues/new') },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
 
 /** Splash animada com o logo enquanto o servidor sobe. */
 function createSplash() {
@@ -235,7 +334,7 @@ async function createWindow() {
 ipcMain.handle('orkestrai:pick-directory', async () => {
   if (!mainWindow) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Escolher pasta do workspace',
+    title: MENU_COPY[menuLocale].pickDirectory,
     properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
   });
   return result.canceled ? null : (result.filePaths[0] ?? null);
@@ -360,6 +459,13 @@ ipcMain.handle('orkestrai:open-external', (_event, url) => {
   if (typeof url === 'string' && url.startsWith('https://')) shell.openExternal(url);
 });
 
+ipcMain.handle('orkestrai:menu-locale', (_event, locale) => {
+  menuLocale = normalizeMenuLocale(locale);
+  buildApplicationMenu();
+  rebuildTrayMenu();
+  return menuLocale;
+});
+
 function showNativeNotification(title, body) {
   if (!Notification.isSupported()) return;
   pendingNotifications += 1;
@@ -384,7 +490,28 @@ function showNativeNotification(title, body) {
 
 function updateTrayTitle() {
   if (!tray) return;
-  tray.setToolTip(pendingNotifications > 0 ? `Orkestrai — ${pendingNotifications} notificação(oes)` : 'Orkestrai');
+  tray.setToolTip(pendingNotifications > 0 ? `Orkestrai — ${MENU_COPY[menuLocale].notifications(pendingNotifications)}` : 'Orkestrai');
+}
+
+function rebuildTrayMenu() {
+  if (!tray) return;
+  const copy = MENU_COPY[menuLocale];
+  tray.setContextMenu(Menu.buildFromTemplate([
+    {
+      label: copy.open,
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        } else {
+          createWindow().catch((error) => console.error(error));
+        }
+      },
+    },
+    { type: 'separator' },
+    { label: copy.quit, click: () => app.quit() },
+  ]));
+  updateTrayTitle();
 }
 
 function createTray() {
@@ -396,22 +523,7 @@ function createTray() {
   if (process.platform === 'darwin') image.setTemplateImage(true);
   tray = new Tray(image);
   tray.setToolTip('Orkestrai');
-  const menu = Menu.buildFromTemplate([
-    {
-      label: 'Abrir Orkestrai',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show();
-          mainWindow.focus();
-        } else {
-          createWindow().catch((error) => console.error(error));
-        }
-      },
-    },
-    { type: 'separator' },
-    { label: 'Sair', click: () => app.quit() },
-  ]);
-  tray.setContextMenu(menu);
+  rebuildTrayMenu();
   tray.on('click', () => {
     if (mainWindow) {
       mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
@@ -433,6 +545,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    menuLocale = normalizeMenuLocale(app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : app.getLocale().toLowerCase().startsWith('es') ? 'es' : 'en');
     // Ícone do dock em dev (empacotado vem do electron-builder).
     if (process.platform === 'darwin' && !app.isPackaged) {
       app.dock.setIcon(path.join(appRoot, 'electron', 'resources', 'icon.png'));
@@ -444,6 +557,7 @@ if (!gotLock) {
       callback(own && permission === 'media');
     });
     createSplash();
+    buildApplicationMenu();
     createTray();
     await createWindow();
     setupAutoUpdater();

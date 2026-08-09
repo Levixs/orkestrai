@@ -72,6 +72,8 @@ export class WorkspaceService {
       workingDir,
       icon: dto.icon,
       instructions: dto.instructions,
+      syncAgentInstructionFiles: dto.syncAgentInstructionFiles,
+      hooks: dto.hooks,
     });
     this.writeInstructionFiles(workspace);
     // Provisiona a ponte (token + skill) ja no nascimento do workspace:

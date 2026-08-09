@@ -7,6 +7,19 @@
   import UpdateNotifier from '$lib/components/agent-room/UpdateNotifier.svelte';
   import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
 
+  type DesktopMenuBridge = {
+    setMenuLocale?: (locale: string) => Promise<string>;
+    onMenuAction?: (callback: (action: string) => void) => () => void;
+  };
+
+  const desktopMenu = typeof window !== 'undefined'
+    ? (window as unknown as { orkestraiDesktop?: DesktopMenuBridge }).orkestraiDesktop
+    : undefined;
+
+  $effect(() => {
+    void desktopMenu?.setMenuLocale?.(localeState.current);
+  });
+
   // Wire apiFetch error handling to the toast UI
   registerToast((variant: string, title: string, opts?: any) => {
     const fn = (toast as any)[variant] ?? toast;
@@ -25,6 +38,22 @@
       location.assign('/docs?search=1');
     };
     window.addEventListener('keydown', docsSearchShortcut);
+
+    const canvasActions = new Set(['new-workspace', 'presets', 'floors', 'roles', 'usage', 'ports', 'command-palette']);
+    const unsubscribeMenu = desktopMenu?.onMenuAction?.((action) => {
+      if (action === 'canvas') location.assign('/canvas');
+      else if (action === 'settings') location.assign('/settings');
+      else if (action === 'docs') location.assign('/docs');
+      else if (action === 'changelog') location.assign('/docs#changelog');
+      else if (canvasActions.has(action)) {
+        if (location.pathname !== '/canvas') {
+          sessionStorage.setItem('orkestrai.menu-action', action);
+          location.assign('/canvas');
+        } else {
+          window.dispatchEvent(new CustomEvent('orkestrai:menu-action', { detail: action }));
+        }
+      }
+    });
 
     const syncCsrfToken = (event: SubmitEvent) => {
       const form = event.target;
@@ -47,6 +76,7 @@
     document.addEventListener('submit', syncCsrfToken, true);
     return () => {
       window.removeEventListener('keydown', docsSearchShortcut);
+      unsubscribeMenu?.();
       document.removeEventListener('submit', syncCsrfToken, true);
     };
   });

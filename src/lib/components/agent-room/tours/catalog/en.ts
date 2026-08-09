@@ -510,4 +510,27 @@ export const TOURS_EN: Tour[] = [
       },
     ],
   },
+  {
+    id: 'team-template-library',
+    icon: 'LayoutTemplate',
+    title: 'Start with a ready-made team',
+    tagline: 'Choose the stack and get agents, roles, skills, and a board already organized.',
+    steps: [
+      {
+        id: 'preset-library',
+        title: 'Open the preset library',
+        body: 'Use the template icon in the sidebar or Presets in the bottom toolbar. Filter by Product, Frontend, or Backend and compare the composition before applying.',
+      },
+      {
+        id: 'create-or-merge',
+        title: 'Create from scratch or add to the current team',
+        body: 'New workspace prepares the selected project with layout, tasks, roles, and skills. The + button adds the same team to the current canvas without removing your nodes.',
+      },
+      {
+        id: 'operate',
+        title: 'Complete the team and track floors',
+        body: 'In Roles → Catalog, install specialist functions. In Floors, track active agents, tasks, and Git state for each worktree before reviewing and landing.',
+      },
+    ],
+  },
 ];

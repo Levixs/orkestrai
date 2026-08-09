@@ -43,6 +43,7 @@
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
   import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
+  import PresetLibraryPanel from '$lib/components/agent-room/canvas/PresetLibraryPanel.svelte';
   import CommandPalette, { type PaletteAction } from '$lib/components/agent-room/canvas/CommandPalette.svelte';
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
   import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
@@ -53,7 +54,7 @@
     type LeaderDictationStatus,
   } from '$lib/components/agent-room/leader-dictation.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, Mic, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, Square, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutTemplate, Mic, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, Square, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -111,6 +112,7 @@
 
   // Formulario de novo workspace
   let showWorkspaceForm = $state(false);
+  let initialPresetId = $state('');
   let showOnboarding = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
@@ -293,12 +295,56 @@
   let showRolesPanel = $state(false);
   let showUsagePanel = $state(false);
   let showPortsPanel = $state(false);
+  let showPresetPanel = $state(false);
   let leaderDictationState = $state<LeaderDictationStatus>('idle');
   let leaderDictationNodeId = $state<string | null>(null);
   let sidebarCollapsed = $state(false);
   let importInput: HTMLInputElement;
   let visibleFloorId = $state<string | null>(null);
   let floors = $state<Floor[]>([]);
+
+  type SidePanelName = 'presets' | 'floors' | 'routines' | 'roles' | 'usage' | 'ports';
+
+  function toggleSidePanel(panel: SidePanelName) {
+    const next = panel === 'presets' ? !showPresetPanel
+      : panel === 'floors' ? !showFloorPanel
+      : panel === 'routines' ? !showRoutinePanel
+      : panel === 'roles' ? !showRolesPanel
+      : panel === 'usage' ? !showUsagePanel
+      : !showPortsPanel;
+    showPresetPanel = panel === 'presets' && next;
+    showFloorPanel = panel === 'floors' && next;
+    showRoutinePanel = panel === 'routines' && next;
+    showRolesPanel = panel === 'roles' && next;
+    showUsagePanel = panel === 'usage' && next;
+    showPortsPanel = panel === 'ports' && next;
+  }
+
+  function createWorkspaceFromPreset(presetId: string) {
+    initialPresetId = presetId;
+    showPresetPanel = false;
+    showWorkspaceForm = true;
+  }
+
+  function handleDesktopMenuAction(action: string) {
+    if (action === 'new-workspace') {
+      initialPresetId = '';
+      showWorkspaceForm = true;
+      return;
+    }
+    if (action === 'presets') toggleSidePanel('presets');
+    else if (action === 'floors' && activeWorkspace) toggleSidePanel('floors');
+    else if (action === 'roles' && activeWorkspace) toggleSidePanel('roles');
+    else if (action === 'usage') toggleSidePanel('usage');
+    else if (action === 'ports' && activeWorkspace) toggleSidePanel('ports');
+    else if (action === 'command-palette') showPalette = true;
+  }
+
+  async function refreshAfterPresetApply() {
+    if (!activeWorkspace) return;
+    await selectWorkspace(activeWorkspace.id, { force: true });
+    toast.success(m['preset.applied']());
+  }
 
   function leaderDictationLabel(): string {
     if (leaderDictationState === 'recording') return m['leader_dictation.stop']();
@@ -352,6 +398,17 @@
     };
     window.addEventListener(LEADER_DICTATION_STATE, handleDictationState);
     return () => window.removeEventListener(LEADER_DICTATION_STATE, handleDictationState);
+  });
+
+  onMount(() => {
+    const listener = (event: Event) => handleDesktopMenuAction(String((event as CustomEvent).detail ?? ''));
+    window.addEventListener('orkestrai:menu-action', listener);
+    const pending = sessionStorage.getItem('orkestrai.menu-action');
+    if (pending) {
+      sessionStorage.removeItem('orkestrai.menu-action');
+      requestAnimationFrame(() => handleDesktopMenuAction(pending));
+    }
+    return () => window.removeEventListener('orkestrai:menu-action', listener);
   });
 
   function floorPath(floorId: string | null | undefined): string | null {
@@ -1354,7 +1411,10 @@
               <Power size={14} />
             </HeaderIconButton>
           {/if}
-          <HeaderIconButton label={m['canvas.new_ws']()} onclick={() => (showWorkspaceForm = !showWorkspaceForm)}>
+          <HeaderIconButton label={m['tool.presets']()} onclick={() => toggleSidePanel('presets')}>
+            <LayoutTemplate size={14} />
+          </HeaderIconButton>
+          <HeaderIconButton label={m['canvas.new_ws']()} onclick={() => { initialPresetId = ''; showWorkspaceForm = !showWorkspaceForm; }}>
             <Plus size={15} />
           </HeaderIconButton>
         {/if}
@@ -1384,8 +1444,9 @@
 
     <WorkspaceCreateDialog
       open={showWorkspaceForm}
+      {initialPresetId}
       onCreated={handleWorkspaceCreated}
-      onClose={() => (showWorkspaceForm = false)}
+      onClose={() => { showWorkspaceForm = false; initialPresetId = ''; }}
     />
 
     {#if sidebarCollapsed}
@@ -1565,19 +1626,22 @@
               <Shapes size={15} class="tool-icon-svg" /> {m['canvas.label_shape']()}
             </ToolbarButton>
             <span class="toolbar-sep"></span>
-            <ToolbarButton label={m['tool.floors']()} active={showFloorPanel} onclick={() => { showFloorPanel = !showFloorPanel; showRoutinePanel = false; showRolesPanel = false; showUsagePanel = false; showPortsPanel = false; }}>
+            <ToolbarButton label={m['tool.presets']()} active={showPresetPanel} onclick={() => toggleSidePanel('presets')}>
+              <LayoutTemplate size={15} class="tool-icon-svg" /> {m['canvas.label_presets']()}
+            </ToolbarButton>
+            <ToolbarButton label={m['tool.floors']()} active={showFloorPanel} onclick={() => toggleSidePanel('floors')}>
               <Layers size={15} class="tool-icon-svg" /> {m['canvas.label_floors']()}{floors.length ? ` (${floors.length})` : ''}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.routines']()} active={showRoutinePanel} onclick={() => { showRoutinePanel = !showRoutinePanel; showFloorPanel = false; showRolesPanel = false; showUsagePanel = false; showPortsPanel = false; }}>
+            <ToolbarButton label={m['tool.routines']()} active={showRoutinePanel} onclick={() => toggleSidePanel('routines')}>
               <CalendarClock size={15} class="tool-icon-svg" /> {m['canvas.label_routines']()}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.roles']()} active={showRolesPanel} onclick={() => { showRolesPanel = !showRolesPanel; showFloorPanel = false; showRoutinePanel = false; showUsagePanel = false; showPortsPanel = false; }}>
+            <ToolbarButton label={m['tool.roles']()} active={showRolesPanel} onclick={() => toggleSidePanel('roles')}>
               <BadgeCheck size={15} class="tool-icon-svg" /> {m['canvas.label_roles']()}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.usage']()} active={showUsagePanel} onclick={() => { showUsagePanel = !showUsagePanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; showPortsPanel = false; }}>
+            <ToolbarButton label={m['tool.usage']()} active={showUsagePanel} onclick={() => toggleSidePanel('usage')}>
               <Gauge size={15} class="tool-icon-svg" /> {m['canvas.label_usage']()}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.ports']()} active={showPortsPanel} onclick={() => { showPortsPanel = !showPortsPanel; showFloorPanel = false; showRoutinePanel = false; showRolesPanel = false; showUsagePanel = false; }}>
+            <ToolbarButton label={m['tool.ports']()} active={showPortsPanel} onclick={() => toggleSidePanel('ports')}>
               <RadioTower size={15} class="tool-icon-svg" /> {m['canvas.label_ports']()}
             </ToolbarButton>
             </div>
@@ -1597,6 +1661,15 @@
     {/if}
     {#if showPalette}
       <CommandPalette {nodes} actions={paletteActions} onJumpToNode={jumpToNode} onClose={() => (showPalette = false)} />
+    {/if}
+    {#if showPresetPanel}
+      <PresetLibraryPanel
+        workspaceId={activeWorkspace?.id ?? null}
+        onCreateWorkspace={createWorkspaceFromPreset}
+        onApplied={refreshAfterPresetApply}
+        onClose={() => (showPresetPanel = false)}
+        {api}
+      />
     {/if}
     {#if showFloorPanel && activeWorkspace}
       <FloorPanel

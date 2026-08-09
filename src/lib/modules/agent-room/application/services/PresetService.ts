@@ -1,4 +1,6 @@
 import { uuidv7 } from '@beeblock/svelar/support';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AgentPreset } from '../../domain/models/AgentPreset.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { workspaceService } from './WorkspaceService.js';
@@ -6,6 +8,8 @@ import { roleService } from './RoleService.js';
 import { routineService } from './RoutineService.js';
 import { taskBoardService } from './TaskBoardService.js';
 import { mcpService } from './McpService.js';
+import { builtinPresetCatalog, normalizePresetLocale, type PresetLocale } from '../catalogs/BuiltinPresetCatalog.js';
+import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
 
 export type PresetSummary = {
   id: string;
@@ -14,11 +18,13 @@ export type PresetSummary = {
   description: string | null;
   agents: number;
   createdAt: string;
+  builtin: boolean;
+  category: 'product' | 'frontend' | 'backend' | 'custom';
 };
 
 export type PresetData = {
   format: 'orkestrai-preset';
-  version: 1;
+  version: 1 | 2;
   createdAt: string;
   workspace: {
     name: string;
@@ -41,9 +47,18 @@ export type PresetData = {
   roles: Array<{ name: string; color?: string; prompt: string }>;
   routines: Array<{ targetTitle: string; prompt: string; intervalMinutes?: number | null }>;
   /** Tarefas-template do quadro (nascem como todo/doing ao aplicar). */
-  tasks: Array<{ title: string; assigneeTitle?: string | null; noteTitle?: string | null }>;
+  tasks: Array<{
+    title: string;
+    description?: string | null;
+    status?: 'todo' | 'doing' | 'done';
+    assigneeTitle?: string | null;
+    noteTitle?: string | null;
+    images?: string[];
+  }>;
   /** Servidores MCP extras (a entrada 'orkestrai' da ponte NAO entra — e automatica). */
   mcpServers: Array<{ name: string; command: string; args: string[] }>;
+  /** Arquivos SKILL.md portaveis, sempre relativos ao projeto de destino. */
+  skills?: Array<{ relativePath: string; content: string }>;
 };
 
 /** Campos de runtime que NUNCA viajam num preset. */
@@ -70,7 +85,53 @@ function mapSummary(model: AgentPreset): PresetSummary {
     description: model.getAttribute('description'),
     agents,
     createdAt: String(model.getAttribute('created_at')),
+    builtin: false,
+    category: 'custom',
   };
+}
+
+function builtinSummary(locale: PresetLocale): PresetSummary[] {
+  return builtinPresetCatalog(locale).map((preset) => ({
+    id: preset.id,
+    name: preset.name,
+    icon: preset.icon,
+    description: preset.description,
+    agents: preset.data.nodes.filter((node) => node.type === 'terminal').length,
+    createdAt: preset.data.createdAt,
+    builtin: true,
+    category: preset.category,
+  }));
+}
+
+const SKILL_ROOTS = ['.agents/skills', '.claude/skills', '.codex/skills'];
+const MAX_SKILL_BYTES = 64 * 1024;
+const MAX_SKILLS = 40;
+
+function snapshotSkills(workingDir: string): NonNullable<PresetData['skills']> {
+  const files: NonNullable<PresetData['skills']> = [];
+  if (!workingDir) return files;
+  for (const root of SKILL_ROOTS) {
+    const rootPath = resolve(workingDir, root);
+    if (!existsSync(rootPath)) continue;
+    for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === 'orkestrai' || files.length >= MAX_SKILLS) continue;
+      const file = resolve(rootPath, entry.name, 'SKILL.md');
+      if (!existsSync(file)) continue;
+      const content = readFileSync(file, 'utf8');
+      if (Buffer.byteLength(content) > MAX_SKILL_BYTES) continue;
+      files.push({ relativePath: relative(workingDir, file).split(sep).join('/'), content });
+    }
+  }
+  return files;
+}
+
+function safeSkillTarget(workingDir: string, relativePath: string): string | null {
+  if (!relativePath || isAbsolute(relativePath) || !relativePath.endsWith('/SKILL.md')) return null;
+  const normalized = relativePath.replaceAll('\\', '/');
+  if (!SKILL_ROOTS.some((root) => normalized.startsWith(`${root}/`))) return null;
+  const target = resolve(workingDir, normalized);
+  const root = resolve(workingDir);
+  return target.startsWith(`${root}${sep}`) ? target : null;
 }
 
 /**
@@ -79,12 +140,20 @@ function mapSummary(model: AgentPreset): PresetSummary {
  * runtime (sessoes PTY, session-ids) NUNCA entra no preset.
  */
 export class PresetService {
-  async list(): Promise<PresetSummary[]> {
+  async list(options: { includeBuiltin?: boolean; locale?: PresetLocale } = {}): Promise<PresetSummary[]> {
     const rows = await AgentPreset.query().orderBy('created_at', 'desc').get();
-    return rows.map(mapSummary);
+    const userPresets = rows.map(mapSummary);
+    return options.includeBuiltin
+      ? [...builtinSummary(options.locale ?? 'pt-BR'), ...userPresets]
+      : userPresets;
   }
 
-  async data(id: string): Promise<PresetData> {
+  async data(id: string, locale: PresetLocale = 'pt-BR'): Promise<PresetData> {
+    if (id.startsWith('builtin:')) {
+      const preset = builtinPresetCatalog(locale).find((item) => item.id === id);
+      if (!preset) throw new Error('Preset embutido nao encontrado.');
+      return preset.data as PresetData;
+    }
     const model = await AgentPreset.find(id);
     if (!model) throw new Error('Preset nao encontrado.');
     return JSON.parse(model.getAttribute('data')) as PresetData;
@@ -99,6 +168,7 @@ export class PresetService {
       nodes: PresetData['nodes'];
       edges: PresetData['edges'];
     };
+    const sourceWorkingDir = exported.workspace.workingDir ?? '';
     // Preset nao leva a pasta do projeto original (quem aplica escolhe a dele).
     delete exported.workspace.workingDir;
     const nodes = exported.nodes.map((node) => ({ ...node, payload: sanitizePayload(node.payload) }));
@@ -117,8 +187,11 @@ export class PresetService {
     const titleOf = (id: string | null) => (id ? (sourceNodes.find((node) => node.id === id)?.title ?? null) : null);
     const tasks = (await taskBoardService.list(workspaceId)).map((task) => ({
       title: task.title,
+      description: task.description,
+      status: task.status,
       assigneeTitle: task.assigneeTitle ?? titleOf(task.assigneeNodeId),
       noteTitle: task.noteTitle ?? titleOf(task.noteId),
+      images: task.images,
     }));
     // MCPs extras (sem a entrada 'orkestrai' — provisionada sozinha).
     const mcpServers = (await mcpService.list(workspaceId).catch(() => []))
@@ -126,7 +199,7 @@ export class PresetService {
       .map(({ name, command, args }) => ({ name, command, args }));
     const data: PresetData = {
       format: 'orkestrai-preset',
-      version: 1,
+      version: 2,
       createdAt: new Date().toISOString(),
       workspace: exported.workspace,
       nodes,
@@ -135,6 +208,7 @@ export class PresetService {
       routines,
       tasks,
       mcpServers,
+      skills: snapshotSkills(sourceWorkingDir),
     };
     const now = new Date().toISOString();
     const id = uuidv7();
@@ -152,6 +226,7 @@ export class PresetService {
   }
 
   async remove(id: string): Promise<boolean> {
+    if (id.startsWith('builtin:')) throw new Error('Presets embutidos nao podem ser excluidos.');
     return (await AgentPreset.query().where('id', id).delete()) > 0;
   }
 
@@ -161,9 +236,9 @@ export class PresetService {
    */
   async apply(
     presetId: string,
-    target: { workspaceId: string } | { name: string; workingDir: string; icon?: string | null }
-  ): Promise<{ workspaceId: string; nodes: number; edges: number; roles: number; routines: number }> {
-    const preset = await this.data(presetId);
+    target: ({ workspaceId: string } | { name: string; workingDir: string; icon?: string | null }) & { locale?: PresetLocale }
+  ): Promise<{ workspaceId: string; nodes: number; edges: number; roles: number; routines: number; tasks: number; mcps: number; skills: number }> {
+    const preset = await this.data(presetId, target.locale ?? 'pt-BR');
     let workspaceId: string;
     let offsetX = 0;
     let offsetY = 0;
@@ -177,19 +252,15 @@ export class PresetService {
       }
     } else {
       const name = target.name.trim() || preset.workspace.name;
-      const workspace = await workspaceRepository.createWorkspace({
+      const workspace = await workspaceService.create(new CreateWorkspaceDto(
         name,
-        workingDir: target.workingDir,
-        icon: target.icon ?? preset.workspace.icon ?? null,
-        instructions: preset.workspace.instructions ?? null,
-      });
+        target.workingDir,
+        target.icon ?? preset.workspace.icon ?? null,
+        preset.workspace.instructions ?? null,
+        preset.workspace.syncAgentInstructionFiles ?? false,
+        (preset.workspace.hooks ?? {}) as never
+      ));
       workspaceId = workspace.id;
-      if (preset.workspace.syncAgentInstructionFiles || preset.workspace.hooks) {
-        await workspaceRepository.updateWorkspace(workspaceId, {
-          syncAgentInstructionFiles: preset.workspace.syncAgentInstructionFiles,
-          hooks: (preset.workspace.hooks as never) ?? {},
-        });
-      }
     }
 
     // Nos + arestas (por indice, como o import de workspace).
@@ -241,12 +312,17 @@ export class PresetService {
     const nodeIdByTitle = new Map(preset.nodes.map((node, index) => [node.title ?? '', nodeIds[index]]));
     let tasksApplied = 0;
     for (const task of preset.tasks ?? []) {
-      await taskBoardService.create(workspaceId, {
+      const created = await taskBoardService.create(workspaceId, {
         title: task.title,
+        description: task.description,
+        images: task.images,
         assigneeNodeId: task.assigneeTitle ? (nodeIdByTitle.get(task.assigneeTitle) ?? null) : null,
         noteId: task.noteTitle ? (nodeIdByTitle.get(task.noteTitle) ?? null) : null,
         createdBy: 'preset',
       });
+      if (task.status && task.status !== created.status) {
+        await taskBoardService.update(workspaceId, created.id, { status: task.status });
+      }
       tasksApplied += 1;
     }
 
@@ -257,11 +333,24 @@ export class PresetService {
       mcpsApplied += 1;
     }
 
-    return { workspaceId, nodes: nodeIds.length, edges: preset.edges.length, roles: rolesApplied, routines: routinesApplied, tasks: tasksApplied, mcps: mcpsApplied };
+    const workspace = await workspaceRepository.getWorkspace(workspaceId);
+    let skillsApplied = 0;
+    if (workspace) {
+      for (const skill of preset.skills ?? []) {
+        const targetPath = safeSkillTarget(workspace.workingDir, skill.relativePath);
+        if (!targetPath || existsSync(targetPath)) continue;
+        mkdirSync(dirname(targetPath), { recursive: true });
+        writeFileSync(targetPath, skill.content, { flag: 'wx' });
+        skillsApplied += 1;
+      }
+    }
+
+    return { workspaceId, nodes: nodeIds.length, edges: preset.edges.length, roles: rolesApplied, routines: routinesApplied, tasks: tasksApplied, mcps: mcpsApplied, skills: skillsApplied };
   }
 
   /** Edita metadados do preset (nome/icone/descricao — o conteudo e por snapshot). */
   async updateMeta(id: string, input: { name?: string; icon?: string | null; description?: string | null }): Promise<PresetSummary> {
+    if (id.startsWith('builtin:')) throw new Error('Presets embutidos nao podem ser editados.');
     const model = await AgentPreset.find(id);
     if (!model) throw new Error('Preset nao encontrado.');
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };

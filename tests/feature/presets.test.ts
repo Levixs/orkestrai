@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useSvelarTest } from '@beeblock/svelar/testing';
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { presetService } from '$lib/modules/agent-room/application/services/PresetService.js';
@@ -39,9 +39,11 @@ describe('PresetService', () => {
     await workspaceRepository.createEdge({ workspaceId: source.id, sourceNodeId: leader.id, targetNodeId: dev.id });
     await workspaceRepository.createEdge({ workspaceId: source.id, sourceNodeId: note.id, targetNodeId: leader.id });
     await roleService.save(source.id, { name: 'Revisor', color: '#123456', prompt: 'so revisa' });
+    mkdirSync(join(sourceDir, '.agents', 'skills', 'svelar'), { recursive: true });
+    writeFileSync(join(sourceDir, '.agents', 'skills', 'svelar', 'SKILL.md'), '# Svelar\n\nSiga as convencoes do framework.\n');
     await routineService.create({ workspaceId: source.id, targetNodeId: leader.id, prompt: 'verifique o quadro', intervalMinutes: 5 });
     // Tarefa-template vinculada ao lider + nota, e MCP extra no projeto.
-    await taskBoardService.create(source.id, { title: 'Montar a base', assigneeNodeId: leader.id, noteId: note.id, createdBy: 'user' });
+    await taskBoardService.create(source.id, { title: 'Montar a base', description: 'Leia a spec completa antes de implementar.', assigneeNodeId: leader.id, noteId: note.id, createdBy: 'user' });
     await mcpService.add(source.id, { name: 'web', command: 'uvx', args: ['mcp-web'] });
 
     const preset = await presetService.createFromWorkspace(source.id, { name: 'Time Svelar', description: 'framework proprio' });
@@ -82,16 +84,20 @@ describe('PresetService', () => {
     const tasks = await taskBoardService.list(applied.workspaceId);
     expect(tasks).toHaveLength(1);
     expect(tasks[0].title).toBe('Montar a base');
+    expect(tasks[0].description).toBe('Leia a spec completa antes de implementar.');
+    expect(tasks[0].status).toBe('doing');
     expect(tasks[0].assigneeNodeId).toBe(newLeader!.id);
     const newNote = nodes.find((node) => node.title === 'Bootstrap');
     expect(tasks[0].noteId).toBe(newNote!.id);
     const mcps = await mcpService.list(applied.workspaceId);
     expect(mcps.some((server) => server.name === 'web')).toBe(true);
+    expect(existsSync(join(dir, '.agents', 'skills', 'svelar', 'SKILL.md'))).toBe(true);
 
     // Workspace destino com nome/pasta do usuario (nao do preset).
     const workspace = await workspaceRepository.getWorkspace(applied.workspaceId);
     expect(workspace!.name).toBe('Projeto Novo');
     expect(workspace!.workingDir).toBe(dir);
+    expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
   });
 
   it('aplicar em workspace existente soma o time sem apagar o que existe', async () => {
@@ -123,5 +129,26 @@ describe('PresetService', () => {
     const preset = await presetService.createFromWorkspace(source.id, { name: 'Descartavel' });
     expect(await presetService.remove(preset.id)).toBe(true);
     expect(await presetService.list()).toHaveLength(0);
+  });
+
+  it('lists and applies localized builtin presets without persisting them', async () => {
+    const presets = await presetService.list({ includeBuiltin: true, locale: 'en' });
+    expect(presets.filter((preset) => preset.builtin)).toHaveLength(6);
+    const svelar = presets.find((preset) => preset.id === 'builtin:svelar-team');
+    expect(svelar?.name).toBe('Svelar team');
+
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-builtin-'));
+    const applied = await presetService.apply('builtin:svelar-team', { name: 'Svelar App', workingDir: dir, locale: 'en' });
+    expect(applied.nodes).toBe(6);
+    expect(applied.roles).toBe(4);
+    expect(applied.tasks).toBe(1);
+    expect(applied.skills).toBe(2);
+    expect(existsSync(join(dir, '.agents', 'skills', 'svelar', 'SKILL.md'))).toBe(true);
+    const workspace = await workspaceRepository.getWorkspace(applied.workspaceId);
+    expect(workspace?.instructions).toContain('Team prepared to deliver Svelar');
+    expect(workspace?.syncAgentInstructionFiles).toBe(true);
+    expect(existsSync(join(dir, 'AGENTS.md'))).toBe(true);
+    expect(existsSync(join(dir, 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
   });
 });

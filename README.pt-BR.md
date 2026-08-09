@@ -26,6 +26,12 @@ Baixe os instaladores mais recentes em
 - **Modo Maestro:** defina um líder que pode propor um time, recrutar agentes,
   delegar briefings completos, coordenar o trabalho e dispensar agentes quando
   não forem mais necessários.
+- **Times prontos:** inicie ou amplie um workspace com presets completos de
+  Produto, React, Next.js, SvelteKit, Svelar e Laravel, incluindo agentes,
+  roles, skills, contexto das tarefas e topologia de colaboração.
+- **Visões operacionais do time:** instale funções especializadas por um
+  catálogo com 12 roles e acompanhe agentes ativos, tarefas atribuídas e o
+  estado Git de cada andar.
 - **Ponte nativa para agentes:** a CLI `orkestrai` e o servidor MCP incluídos no
   app expõem comandos tipados para mensagens, tarefas, notas, portais, andares,
   roles e notificações desktop.

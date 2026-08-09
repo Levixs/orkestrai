@@ -14,6 +14,7 @@ import {
 import { floorService } from '$lib/modules/agent-room/application/services/FloorService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { routineService } from '$lib/modules/agent-room/application/services/RoutineService.js';
+import { floorOverviewService } from '$lib/modules/agent-room/application/services/FloorOverviewService.js';
 
 
 
@@ -38,6 +39,14 @@ function requestOf(schema: z.ZodTypeAny) {
 export class FloorController extends Controller {
   async listFloors(event: any) {
     return this.json({ data: await floorService.list(event.params.id) });
+  }
+
+  async floorOverview(event: any) {
+    try {
+      return this.json({ data: await floorOverviewService.get(event.params.id) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao carregar a visão dos andares.');
+    }
   }
 
   async createFloor(event: any) {

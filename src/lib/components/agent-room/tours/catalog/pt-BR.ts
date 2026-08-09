@@ -514,4 +514,27 @@ export const TOURS_PT: Tour[] = [
       },
     ],
   },
+  {
+    id: 'team-template-library',
+    icon: 'LayoutTemplate',
+    title: 'Começar com um time pronto',
+    tagline: 'Escolha a stack e receba agentes, roles, skills e quadro já organizados.',
+    steps: [
+      {
+        id: 'preset-library',
+        title: 'Abra a biblioteca de presets',
+        body: 'Use o ícone de template na barra lateral ou o botão Presets na barra inferior. Filtre por Produto, Frontend ou Backend e compare a composição antes de aplicar.',
+      },
+      {
+        id: 'create-or-merge',
+        title: 'Crie do zero ou some ao time atual',
+        body: 'Novo workspace prepara o projeto escolhido com layout, tarefas, roles e skills. O botão + adiciona o mesmo time ao canvas atual sem remover seus nodes.',
+      },
+      {
+        id: 'operate',
+        title: 'Complete o time e acompanhe os andares',
+        body: 'Em Roles → Catálogo, instale funções especializadas. Em Andares, acompanhe agentes ativos, tarefas e estado Git de cada worktree antes de revisar e aterrissar.',
+      },
+    ],
+  },
 ];

@@ -13,28 +13,40 @@
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages.js';
+  import { localeState } from '$lib/i18n/locale.svelte.js';
+  import { getCsrfToken } from '@beeblock/svelar/http';
 
   type PresetSummary = { id: string; name: string; icon: string | null; description: string | null; agents: number };
 
   type Props = {
     open: boolean;
+    initialPresetId?: string;
     onCreated: (workspace: Workspace) => void;
     onClose: () => void;
   };
 
-  let { open, onCreated, onClose }: Props = $props();
+  let { open, initialPresetId = '', onCreated, onClose }: Props = $props();
 
   let submitError = $state('');
   let presets = $state<PresetSummary[]>([]);
   let presetId = $state('');
 
+  function csrfHeaders(extra: Record<string, string> = {}): HeadersInit {
+    const token = getCsrfToken();
+    return token ? { ...extra, 'X-CSRF-Token': token } : extra;
+  }
+
   onMount(async () => {
     try {
-      const response = await fetch('/api/agent-room/presets');
+      const response = await fetch(`/api/agent-room/presets?scope=all&locale=${encodeURIComponent(localeState.current)}`);
       presets = (await response.json()).data ?? [];
     } catch {
       presets = [];
     }
+  });
+
+  $effect(() => {
+    if (open && initialPresetId) presetId = initialPresetId;
   });
 
   const desktop = typeof window !== 'undefined'
@@ -51,23 +63,28 @@ const form = superForm(defaults(zod(schema)), {
       if (!f.valid) return;
       submitError = '';
       try {
-        const response = await fetch('/api/agent-room/workspaces', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(f.data),
-        });
-        const payload = await response.json();
-        if (!response.ok || payload.error) throw new Error(payload.error || m['dlg.ws_create_error']());
-        const workspace = payload.data as Workspace;
-        // Com preset selecionado: instancia o time no workspace recem-criado.
+        let workspace: Workspace;
         if (presetId) {
           const applyResponse = await fetch(`/api/agent-room/presets/${presetId}/apply`, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ workspaceId: workspace.id }),
+            headers: csrfHeaders({ 'content-type': 'application/json' }),
+            body: JSON.stringify({ ...f.data, locale: localeState.current }),
           });
           const applyPayload = await applyResponse.json();
           if (!applyResponse.ok || applyPayload.error) throw new Error(applyPayload.error || m['dlg.preset_apply_error']());
+          const workspaceResponse = await fetch(`/api/agent-room/workspaces/${applyPayload.data.workspaceId}`);
+          const workspacePayload = await workspaceResponse.json();
+          if (!workspaceResponse.ok || workspacePayload.error) throw new Error(workspacePayload.error || m['dlg.ws_create_error']());
+          workspace = workspacePayload.data as Workspace;
+        } else {
+          const response = await fetch('/api/agent-room/workspaces', {
+            method: 'POST',
+            headers: csrfHeaders({ 'content-type': 'application/json' }),
+            body: JSON.stringify(f.data),
+          });
+          const payload = await response.json();
+          if (!response.ok || payload.error) throw new Error(payload.error || m['dlg.ws_create_error']());
+          workspace = payload.data as Workspace;
         }
         onCreated(workspace);
         onClose();

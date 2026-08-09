@@ -17,6 +17,14 @@ contextBridge.exposeInMainWorld('orkestraiDesktop', {
   installUpdate: () => ipcRenderer.invoke('orkestrai:update-install'),
   /** Abre URL https no navegador do sistema (fallback de download manual). */
   openExternal: (url) => ipcRenderer.invoke('orkestrai:open-external', url),
+  /** Mantém o menu nativo no mesmo idioma selecionado dentro do app. */
+  setMenuLocale: (locale) => ipcRenderer.invoke('orkestrai:menu-locale', locale),
+  /** Ações do menu nativo são executadas pelo renderer para reutilizar os fluxos do canvas. */
+  onMenuAction: (callback) => {
+    const listener = (_event, action) => callback(action);
+    ipcRenderer.on('orkestrai:menu-action', listener);
+    return () => ipcRenderer.removeListener('orkestrai:menu-action', listener);
+  },
   /** Eventos do updater: available/manual/downloading/downloaded/none/error. Retorna unsubscribe. */
   onUpdate: (callback) => {
     const listener = (_event, payload) => callback(payload);

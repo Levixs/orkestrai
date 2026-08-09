@@ -9,10 +9,22 @@
   import { Input } from '$lib/components/ui/input';
   import { Textarea } from '$lib/components/ui/textarea';
   import { Button } from '$lib/components/ui/button';
-  import { Pencil, ScanSearch, Trash2, X } from '@lucide/svelte';
+  import * as Tabs from '$lib/components/ui/tabs';
+  import * as Select from '$lib/components/ui/select';
+  import { BookOpen, Check, Pencil, Plus, ScanSearch, Search, Trash2, X } from '@lucide/svelte';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import * as m from '$lib/paraglide/messages.js';
+  import { localeState } from '$lib/i18n/locale.svelte.js';
+
+  type BuiltinRole = {
+    id: string;
+    name: string;
+    description: string;
+    category: 'leadership' | 'engineering' | 'quality' | 'operations';
+    color: string;
+    prompt: string;
+  };
 
   type Props = {
     workspace: Workspace;
@@ -25,8 +37,27 @@
   let roles = $state<AgentRole[]>([]);
   let errorMessage = $state('');
   let infoMessage = $state('');
+  let catalog = $state<BuiltinRole[]>([]);
+  let activeTab = $state<'workspace' | 'catalog'>('workspace');
+  let catalogQuery = $state('');
+  let catalogCategory = $state<'all' | BuiltinRole['category']>('all');
+  let installingRoleId = $state<string | null>(null);
   /** Slug da role em edicao (null = criando nova). */
   let editingSlug = $state<string | null>(null);
+
+  const filteredCatalog = $derived(catalog.filter((role) => {
+    const needle = catalogQuery.trim().toLocaleLowerCase(localeState.current);
+    return (catalogCategory === 'all' || role.category === catalogCategory)
+      && (!needle || `${role.name} ${role.description}`.toLocaleLowerCase(localeState.current).includes(needle));
+  }));
+
+  function categoryLabel(category: 'all' | BuiltinRole['category']): string {
+    if (category === 'leadership') return m['roles.category_leadership']();
+    if (category === 'engineering') return m['roles.category_engineering']();
+    if (category === 'quality') return m['roles.category_quality']();
+    if (category === 'operations') return m['roles.category_operations']();
+    return m['roles.category_all']();
+  }
 
   const roleFormSchema = z.object({
     name: z.string().trim().min(1, m['roles.error_name_required']()),
@@ -87,6 +118,27 @@
     roles = await api<AgentRole[]>(`/api/agent-room/workspaces/${workspace.id}/roles`);
   }
 
+  async function refreshCatalog() {
+    catalog = await api<BuiltinRole[]>(`/api/agent-room/workspaces/${workspace.id}/roles/catalog?locale=${encodeURIComponent(localeState.current)}`);
+  }
+
+  async function installRole(role: BuiltinRole) {
+    installingRoleId = role.id;
+    errorMessage = '';
+    try {
+      await api(`/api/agent-room/workspaces/${workspace.id}/roles/catalog/${role.id}`, {
+        method: 'POST',
+        body: JSON.stringify({ locale: localeState.current }),
+      });
+      infoMessage = m['roles.catalog_installed']({ name: role.name });
+      await refresh();
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : m['roles.catalog_error']();
+    } finally {
+      installingRoleId = null;
+    }
+  }
+
   async function discover() {
     errorMessage = '';
     infoMessage = '';
@@ -110,7 +162,8 @@
   }
 
   $effect(() => {
-    refresh();
+    localeState.current;
+    void Promise.all([refresh(), refreshCatalog()]);
   });
 </script>
 
@@ -128,6 +181,58 @@
     <code>.orkestrai/roles/</code> {m['roles.hint_2']()}
     <strong>markdown</strong> {m['roles.hint_3']()}
   </p>
+
+  <Tabs.Root bind:value={activeTab} class="w-full">
+    <Tabs.List class="grid w-full grid-cols-2 bg-white/[0.06]">
+      <Tabs.Trigger value="workspace">{m['roles.tab_workspace']()}</Tabs.Trigger>
+      <Tabs.Trigger value="catalog"><BookOpen size={13} />{m['roles.tab_catalog']()}</Tabs.Trigger>
+    </Tabs.List>
+  </Tabs.Root>
+
+  {#if activeTab === 'catalog'}
+    <div class="grid gap-2" data-tour="role-catalog">
+      <label class="relative">
+        <Search class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+        <Input bind:value={catalogQuery} aria-label={m['roles.catalog_search_aria']()} placeholder={m['roles.catalog_search']()} class="border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-zinc-600" />
+      </label>
+      <Select.Root type="single" value={catalogCategory} onValueChange={(value: string) => (catalogCategory = value as typeof catalogCategory)}>
+        <Select.Trigger class="w-full border-white/10 bg-white/[0.04] text-zinc-200">{categoryLabel(catalogCategory)}</Select.Trigger>
+        <Select.Content>
+          <Select.Item value="all">{m['roles.category_all']()}</Select.Item>
+          <Select.Item value="leadership">{m['roles.category_leadership']()}</Select.Item>
+          <Select.Item value="engineering">{m['roles.category_engineering']()}</Select.Item>
+          <Select.Item value="quality">{m['roles.category_quality']()}</Select.Item>
+          <Select.Item value="operations">{m['roles.category_operations']()}</Select.Item>
+        </Select.Content>
+      </Select.Root>
+    </div>
+    <div class="grid gap-2">
+      {#each filteredCatalog as role (role.id)}
+        {@const installed = roles.some((current) => current.name === role.name)}
+        <article class="rounded-md border border-white/10 bg-white/[0.035] p-3 transition-colors hover:border-cyan-300/30">
+          <div class="flex items-start gap-2">
+            <span class="mt-1 size-2.5 shrink-0 rounded-full" style:background={role.color}></span>
+            <div class="min-w-0 flex-1">
+              <h4 class="m-0 text-xs font-semibold text-white">{role.name}</h4>
+              <p class="mt-1 text-[10px] leading-4 text-zinc-400">{role.description}</p>
+              <p class="mt-2 text-[9px] font-medium uppercase tracking-normal text-zinc-600">{categoryLabel(role.category)}</p>
+            </div>
+            <Button
+              variant={installed ? 'secondary' : 'outline'}
+              size="icon-sm"
+              disabled={installed || installingRoleId === role.id}
+              aria-label={installed ? m['roles.catalog_already_installed']({ name: role.name }) : m['roles.catalog_add_named']({ name: role.name })}
+              onclick={() => installRole(role)}
+            >
+              {#if installed}<Check size={13} />{:else}<Plus size={13} />{/if}
+            </Button>
+          </div>
+        </article>
+      {:else}
+        <p class="py-8 text-center text-xs text-zinc-500">{m['roles.catalog_empty']()}</p>
+      {/each}
+    </div>
+  {:else}
 
   {#each roles as role (role.slug)}
     <div class="role-item" class:editing={editingSlug === role.slug}>
@@ -193,11 +298,12 @@
 
     <Button type="submit" size="sm">{editingSlug ? m['settings.save']() : m['roles.save']()}</Button>
   </form>
+  {/if}
 </aside>
 
 <style>
   .side-panel {
-    width: 300px;
+    width: 360px;
     flex-shrink: 0;
     border-left: 1px solid rgba(255, 255, 255, 0.07);
     background: #151238;

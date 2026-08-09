@@ -23,7 +23,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (team roles)',
-      body: `Roles are sets of instructions ("you are the reviewer: only point out problems, don't edit code") saved in .orkestrai/roles/<slug>/role.json — they travel with the repository. Manage them in the Roles panel (bottom bar). Assign via the badge in the terminal header: the role is injected as the agent's first message. The leader can also reassign team roles via CLI (orkestrai reassign).`,
+      body: `Roles are instruction sets saved in .orkestrai/roles/<slug>/role.json, so they travel with the repository. In the Roles panel, Catalog offers complete functions for leadership, product, architecture, frontend, backend, Svelar, QA, security, accessibility, documentation, release, and performance; install with + and customize under Workspace. Assign from the terminal-header badge: the role is injected as the agent's first message. The leader can also reassign roles with orkestrai reassign.`,
     },
     {
       id: 'times',
@@ -48,7 +48,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'presets',
       title: 'Team presets',
-      body: `A preset is a workspace template: team (agents with provider/leader/roles), canvas layout, notes with content and routines. Save the current workspace as a preset in the edit pencil (sidebar) → "Save as preset". When creating a new workspace, pick the preset under "Start from a preset" — the whole team is born instantiated in your project, with no runtime state (sessions are left out). Applying to an existing workspace ADDS the team to the canvas without deleting anything. Typical case: your default framework — build it once, save it, and every new project starts with the team ready.`,
+      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. It includes ready-made Product, React, Next.js, SvelteKit, Svelar, and Laravel teams with a leader, specialists, roles, skills, board, initial task, note, and layout. Use New workspace for another folder or + to ADD the team to the current canvas without deleting anything. Custom snapshots remain available through the edit pencil → "Save as preset". Format v2 preserves task descriptions/status and portable SKILL.md files, never PTY sessions, and does not overwrite customized destination skills.`,
     },
     {
       id: 'fluxos',
@@ -68,7 +68,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'andares',
       title: 'Floors (worktrees)',
-      body: `A floor is a git worktree of the workspace repo with its own branch — two work fronts on the same project without stepping on each other: floor agents run with cwd on the floor checkout. Create it in the Floors panel (bottom bar, which also lists floors and switches the visible canvas layer) or agents create it via CLI: orkestrai floor create/list/preview/land/remove. Landing = merging the branch back, with a diff and conflicts preview beforehand. Conflicts are not resolved automatically: the error lists the files and the resolution becomes a task for an agent (or you in the editor) — then repeat the land. Setup/run/teardown hooks with $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME, $ORKESTRAI_ROOT_PATH variables.`,
+      body: `A floor is a git worktree of the workspace repository with its own branch. The Floors panel shows, for ground and every worktree, active agents, assigned tasks, changed files, branch synchronization, and the latest commit, so you know what each stream is doing before opening its layer. Create it from the panel or CLI with orkestrai floor create/list/preview/land/remove. Landing merges the branch back after a diff and conflict preview. Conflicts are never hidden: the error lists files and resolution becomes an explicit task. Setup/run/teardown hooks use $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME, and $ORKESTRAI_ROOT_PATH.`,
     },
     {
       id: 'rotinas',
@@ -93,7 +93,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'atalhos',
       title: 'Shortcuts',
-      body: `⌘P palette · ⌘K (or Ctrl+K) search the documentation from any screen · ⌘⇧A next attention · ⌘⇧T tidy up · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation (configurable in Settings) · ⌘F search in terminal · ⌘Z undo · Backspace delete. Full list in Settings.`,
+      body: `⌘P palette · ⌘K (or Ctrl+K) search documentation from any screen · ⌘⇧A next attention · ⌘⇧T tidy · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation · ⌘F search terminal · ⌘Z undo · Backspace delete. On desktop, the native Workspace menu opens Canvas, new workspace, Presets, Floors, Roles, Usage, and Ports; Edit, View, Window, and Help preserve platform actions on macOS, Windows, and Linux.`,
     },
   ],
   useCases: [
@@ -148,8 +148,8 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'framework-preset',
       title: 'Preset for your framework (new project in 30s)',
-      body: 'Build your framework\'s default team once (leader + devs + roles + bootstrap note with the conventions), save it as a preset in the workspace editor, and every new project is born with the full team: agents, spec notes, template tasks on the board and configured MCPs.',
-      tags: ['Presets', 'bootstrap', 'template tasks'],
+      body: 'Open the Preset library and choose React, Next.js, SvelteKit, Svelar, or Laravel. The project starts with connected lead, implementation, architecture, and QA agents, complete roles, Claude/Codex skills, a board, and an initial task. Save the workspace as a preset to duplicate and customize the recipe.',
+      tags: ['Preset library', 'roles/skills', 'bootstrap'],
     },
     {
       id: 'approval-pipeline',
@@ -195,6 +195,16 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 09, 2026 · 0.2.0',
+      items: [
+        'The preset library is now available on the canvas with search, filters, and ready-made Product, React, Next.js, SvelteKit, Svelar, and Laravel teams; use one in a new workspace or merge it into the current team.',
+        'Preset v2 preserves complete task descriptions and statuses plus portable skills, without copying PTY sessions or overwriting customized skills in the destination project.',
+        'Roles now includes a localized catalog of 12 complete leadership, engineering, quality, and operations functions.',
+        'Floors now shows active agents, assigned tasks, and Git state for every worktree and the ground floor.',
+        'The desktop app gained localized native menus, while Settings and Documentation now share the website visual foundation.',
+      ],
+    },
     {
       date: 'Aug 09, 2026 · 0.1.5',
       items: [

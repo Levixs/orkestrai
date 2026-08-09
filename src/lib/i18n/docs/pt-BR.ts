@@ -27,7 +27,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (papéis do time)',
-      body: `Roles são conjuntos de instruções (“você é o revisor: só aponte problemas, não edite código”) salvos em .orkestrai/roles/<slug>/role.json — viajam com o repositório. Gerencie no painel Roles (barra inferior). Atribua pelo selo no cabeçalho do terminal: a role é injetada como primeira mensagem do agente. O líder também pode reatribuir roles do time via CLI (orkestrai reassign).`,
+      body: `Roles são conjuntos de instruções salvos em .orkestrai/roles/<slug>/role.json — viajam com o repositório. No painel Roles, a aba Catálogo oferece funções completas de liderança, produto, arquitetura, frontend, backend, Svelar, QA, segurança, acessibilidade, documentação, release e performance; instale com + e personalize na aba No workspace. Atribua pelo selo no cabeçalho do terminal: a role é injetada como primeira mensagem do agente. O líder também pode reatribuir roles via orkestrai reassign.`,
     },
     {
       id: 'times',
@@ -52,7 +52,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'presets',
       title: 'Presets de equipe',
-      body: `Um preset é um template de workspace: time (agentes com provider/líder/roles), layout do canvas, notas com conteúdo e rotinas. Salve o workspace atual como preset no lápis de editar (barra lateral) → "Salvar como preset". Ao criar um workspace novo, escolha o preset em "Começar de um preset" — o time inteiro nasce instanciado no seu projeto, sem nada de runtime (sessões ficam de fora). Aplicar num workspace existente SOMA o time ao canvas sem apagar nada. Caso típico: seu framework padrão — monte uma vez, salve, e todo projeto novo já começa com o time pronto.`,
+      body: `A Biblioteca de presets fica no ícone de template da barra lateral e no botão Presets da barra inferior. Ela traz times prontos de Produto, React, Next.js, SvelteKit, Svelar e Laravel, com líder, especialistas, roles, skills, quadro, tarefa inicial, nota e layout. Use Novo workspace para preparar outra pasta ou + para SOMAR o time ao canvas atual sem apagar nada. Snapshots personalizados continuam disponíveis no lápis → "Salvar como preset". O formato v2 preserva descrições/status das tarefas e arquivos SKILL.md portáveis, nunca sessões PTY, e não sobrescreve skills já personalizadas no destino.`,
     },
     {
       id: 'fluxos',
@@ -72,7 +72,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'andares',
       title: 'Andares (worktrees)',
-      body: `Um andar é um git worktree do repo do workspace com branch própria — duas frentes de trabalho no mesmo projeto sem se atropelar: agentes do andar rodam com cwd no checkout do andar. Crie no painel Andares (barra inferior, que também lista os andares e troca a camada visível do canvas) ou os agentes criam pela CLI: orkestrai floor create/list/preview/land/remove. Aterrissar = merge da branch de volta, com prévia de diff e conflitos antes. Conflitos não são resolvidos automaticamente: o erro lista os arquivos e a resolução vira tarefa para um agente (ou você no editor) — depois repita o land. Hooks de setup/run/teardown com variáveis $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME, $ORKESTRAI_ROOT_PATH.`,
+      body: `Um andar é um git worktree do repo do workspace com branch própria. O painel Andares mostra, para o térreo e cada worktree, agentes ativos, tarefas atribuídas, arquivos alterados, sincronização da branch e último commit; assim você sabe no que cada frente trabalha antes de abrir a camada. Crie pelo painel ou pela CLI: orkestrai floor create/list/preview/land/remove. Aterrissar faz merge da branch depois da prévia de diff e conflitos. Conflitos nunca são escondidos: o erro lista os arquivos e a resolução vira tarefa explícita. Hooks de setup/run/teardown usam $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME e $ORKESTRAI_ROOT_PATH.`,
     },
     {
       id: 'rotinas',
@@ -97,7 +97,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'atalhos',
       title: 'Atalhos',
-      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz (configurável em Configurações) · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. Lista completa em Configurações.`,
+      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. No desktop, o menu nativo Workspace abre Canvas, novo workspace, Presets, Andares, Roles, Uso e Portas; Editar, Visualizar, Janela e Ajuda mantêm ações do sistema em macOS, Windows e Linux.`,
     },
   ],
   useCases: [
@@ -152,8 +152,8 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'framework-preset',
       title: 'Preset do seu framework (projeto novo em 30s)',
-      body: 'Monte uma vez o time padrão do seu framework (líder + devs + roles + nota de bootstrap com as convenções), salve como preset no editor do workspace, e todo projeto novo nasce com o time completo: agentes, notas de spec, tarefas-template no quadro e MCPs configurados.',
-      tags: ['Presets', 'bootstrap', 'tarefas-template'],
+      body: 'Abra a Biblioteca de presets e escolha React, Next.js, SvelteKit, Svelar ou Laravel. O projeto nasce com líder, implementação, arquitetura e QA conectados, roles completas, skills para Claude/Codex, quadro e tarefa inicial. Salve o workspace como preset quando quiser duplicar e personalizar a receita.',
+      tags: ['Biblioteca de presets', 'roles/skills', 'bootstrap'],
     },
     {
       id: 'approval-pipeline',
@@ -199,6 +199,16 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '09 ago 2026 · 0.2.0',
+      items: [
+        'A Biblioteca de presets chegou ao canvas com busca, filtros e times prontos de Produto, React, Next.js, SvelteKit, Svelar e Laravel; use em um workspace novo ou some ao time atual.',
+        'Presets v2 agora preservam descrição e status completos das tarefas e skills portáveis, sem copiar sessões PTY nem sobrescrever skills personalizadas no projeto de destino.',
+        'Roles ganhou um catálogo traduzido com 12 funções completas de liderança, engenharia, qualidade e operação.',
+        'Andares agora mostra agentes ativos, tarefas atribuídas e estado Git de cada worktree e do térreo.',
+        'O app desktop ganhou menus nativos traduzidos, e Configurações e Documentação passaram a usar a mesma base visual do site.',
+      ],
+    },
     {
       date: '09 ago 2026 · 0.1.5',
       items: [

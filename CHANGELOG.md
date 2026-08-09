@@ -5,6 +5,33 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.2.0 - 2026-08-09
+
+### Added
+
+- Added a first-class preset library to the canvas with search, category
+  filters, create-new and merge-into-current flows, plus ready-made Product,
+  React, Next.js, SvelteKit, Svelar, and Laravel teams.
+- Added preset format v2 with portable `SKILL.md` files and complete task
+  descriptions/status, while preserving compatibility with existing presets
+  and never carrying PTY runtime state.
+- Added a localized catalog of 12 installable roles covering leadership,
+  product, architecture, frontend, backend, Svelar, QA, security,
+  accessibility, documentation, release, and performance.
+- Added an operational Floors overview that combines active agents, assigned
+  tasks, changed files, branch synchronization, and latest commit information
+  for ground and every Git worktree.
+- Added localized native Electron menus for workspace, editing, view, window,
+  documentation, changelog, updates, and issue reporting on macOS, Windows, and
+  Linux.
+
+### Changed
+
+- Aligned Settings and Documentation with the website's neutral dark surfaces,
+  brand action colors, compact radii, and operational typography.
+- Made presets discoverable from the sidebar even before a workspace exists,
+  from the bottom canvas toolbar, and from the native desktop menu.
+
 ## 0.1.5 - 2026-08-09
 
 ### Changed
