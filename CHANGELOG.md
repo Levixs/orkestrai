@@ -5,6 +5,27 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.3.0 - 2026-08-09
+
+### Added
+
+- Added up to ten customizable task-board stages with names, colors, ordering,
+  safe deletion, and automatic awareness through the Orkestrai CLI and MCP
+  bridge.
+- Added Campaign and launch, Brand and design, and Content and SEO teams with
+  localized briefs, specialist roles, portable skills, notes, tasks, and canvas
+  layouts for marketers, designers, creators, and multidisciplinary teams.
+- Added the Orkestrai Contributing preset with a Claude lead, independent Codex
+  and Kimi oracles, Svelar, desktop, and QA/release specialists, a six-stage
+  board, and a consensus Flow that requires both oracle approvals before task
+  creation.
+
+### Changed
+
+- Expanded the product language and documentation beyond software engineering
+  so non-programmers can start from familiar goals, briefs, stages, and
+  approvals while technical agent controls stay automatic.
+
 ## 0.2.0 - 2026-08-09
 
 ### Added

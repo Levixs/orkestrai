@@ -35,6 +35,7 @@ export class TaskBoardController extends Controller {
             assigneeNodeId: input.assigneeNodeId ?? null,
             noteId: input.noteId ?? null,
             createdBy: input.createdBy ?? 'user',
+            status: input.status,
           }),
         },
         201

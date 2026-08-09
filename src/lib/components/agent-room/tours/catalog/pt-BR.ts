@@ -523,7 +523,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'preset-library',
         title: 'Abra a biblioteca de presets',
-        body: 'Use o ícone de template na barra lateral ou o botão Presets na barra inferior. Filtre por Produto, Frontend ou Backend e compare a composição antes de aplicar.',
+        body: 'Use o ícone de template na barra lateral ou Presets na barra inferior. Filtre por Produto, Desenvolvimento, Design e criação, Marketing e conteúdo ou Orkestrai.',
       },
       {
         id: 'create-or-merge',
@@ -534,6 +534,77 @@ export const TOURS_PT: Tour[] = [
         id: 'operate',
         title: 'Complete o time e acompanhe os andares',
         body: 'Em Roles → Catálogo, instale funções especializadas. Em Andares, acompanhe agentes ativos, tarefas e estado Git de cada worktree antes de revisar e aterrissar.',
+      },
+    ],
+  },
+  {
+    id: 'custom-board-stages',
+    icon: 'Workflow',
+    title: 'Adaptar o quadro ao seu processo',
+    tagline: 'Troque o kanban genérico pelas etapas que sua equipe realmente usa.',
+    steps: [
+      {
+        id: 'board',
+        title: 'Crie o quadro de trabalho',
+        body: 'Crio um nó Tarefas. Ele começa simples e pode representar uma campanha, produção de conteúdo, projeto de design ou desenvolvimento.',
+        action: { kind: 'createTasksBoard' },
+        check: { kind: 'nodeExists', nodeType: 'tasks', titleIncludes: 'Tarefas' },
+      },
+      {
+        id: 'stages',
+        title: 'Defina suas etapas',
+        body: 'No cabeçalho do quadro, clique no ícone de colunas. Renomeie, mude cores, reordene e adicione etapas como Ideias, Aprovação e Publicado.',
+      },
+      {
+        id: 'team-awareness',
+        title: 'O time acompanha o mesmo fluxo',
+        body: 'O líder e os especialistas recebem as etapas automaticamente. Eles criam e movem entregas no quadro enquanto você acompanha tudo visualmente.',
+      },
+    ],
+  },
+  {
+    id: 'campaign-ready-team',
+    icon: 'Palette',
+    title: 'Lançar uma campanha com um time pronto',
+    tagline: 'Estratégia, pesquisa, copy e métricas já chegam organizadas.',
+    steps: [
+      {
+        id: 'library',
+        title: 'Abra a Biblioteca de presets',
+        body: 'Escolha Marketing e conteúdo → Campanha e lançamento. Para outras frentes, há também Brand e design e Conteúdo e SEO.',
+      },
+      {
+        id: 'apply',
+        title: 'Comece novo ou some ao workspace',
+        body: 'Novo workspace cria o time em outra pasta. O botão + adiciona líder e especialistas ao canvas atual sem remover nada.',
+      },
+      {
+        id: 'brief',
+        title: 'Complete o briefing e dê o objetivo',
+        body: 'Preencha objetivo, público, oferta, canais, prazo e métrica na nota criada. Depois fale com o líder: ele coordena pesquisa, copy, distribuição e aprovação.',
+      },
+    ],
+  },
+  {
+    id: 'orkestrai-consensus-team',
+    icon: 'LayoutTemplate',
+    title: 'Contribuir no Orkestrai com consenso',
+    tagline: 'Claude, Codex e Kimi concordam com o plano antes da execução.',
+    steps: [
+      {
+        id: 'apply',
+        title: 'Aplique Orkestrai Contributing',
+        body: 'Na categoria Orkestrai da Biblioteca, crie o time completo com líder, dois oráculos e especialistas Svelar, desktop e QA/release.',
+      },
+      {
+        id: 'consensus',
+        title: 'Rode o Flow de consenso',
+        body: 'Codex propõe ou audita a arquitetura, Kimi revisa produto, UX e riscos, e Claude sintetiza. Os dois oráculos precisam responder APROVADO.',
+      },
+      {
+        id: 'delivery',
+        title: 'Só então distribua as tarefas',
+        body: 'Com o plano aprovado, o líder registra a decisão, cria briefings completos e acompanha Revisão e Validação até testes, build, documentação e changelog passarem.',
       },
     ],
   },

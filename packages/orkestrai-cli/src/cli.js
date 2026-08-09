@@ -51,8 +51,10 @@ Uso:
   orkestrai dismiss <agente> --from <maestro>
   orkestrai connect <de> <para> --from <maestro>
   orkestrai task list [--json]
-  orkestrai task add <titulo> [--description <md>] [--assign <agente>] [--note <nota>] [--from <agente>]
+  orkestrai task columns [--json]
+  orkestrai task add <titulo> [--description <md>] [--assign <agente>] [--note <nota>] [--column <coluna>] [--from <agente>]
   orkestrai task done <taskId>
+  orkestrai task move <taskId> <coluna>
   orkestrai task assign <taskId> <agente>
   orkestrai task link <taskId> <nota> | unlink <taskId>
   orkestrai task archive <taskId> | archive-done | history [--json]
@@ -406,8 +408,23 @@ export async function run(argv, options = {}) {
           assignee: flags.assign,
           note: flags.note,
           from: flags.from,
+          status: flags.column,
         });
         out(`Tarefa criada: [${data.status}] ${data.title} (${data.id})`);
+        return 0;
+      }
+      if (action === 'columns') {
+        const data = await bridge(config, 'GET', '/api/agent-room/bridge/task-columns');
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else for (const column of data) out(`- ${column.name ?? column.key} [${column.key}]`);
+        return 0;
+      }
+      if (action === 'move') {
+        const [taskId, ...columnParts] = values;
+        const status = columnParts.join(' ');
+        if (!taskId || !status) throw new Error('Uso: orkestrai task move <taskId> <coluna>');
+        const data = await bridge(config, 'PATCH', `/api/agent-room/bridge/tasks/${taskId}`, { status });
+        out(`Tarefa movida para [${data.status}].`);
         return 0;
       }
       if (action === 'done') {
@@ -466,7 +483,7 @@ export async function run(argv, options = {}) {
         }
         return 0;
       }
-      throw new Error('Uso: orkestrai task <list|add|done|assign|link|unlink|archive|archive-done|history> ...');
+      throw new Error('Uso: orkestrai task <list|columns|add|move|done|assign|link|unlink|archive|archive-done|history> ...');
     }
     case 'floor': {
       const [action, ...values] = rest;

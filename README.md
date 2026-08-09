@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Orchestrate teams of AI coding agents on a visual canvas.</strong>
+  <strong>Orchestrate AI teams for building, designing, marketing, and shipping on a visual canvas.</strong>
 </p>
 
 <p align="center">
@@ -12,8 +12,8 @@
 
 Orkestrai is a local-first desktop application for macOS, Windows, and Linux. It
 brings Claude Code, Codex CLI, Kimi Code, OpenCode, shells, tasks, notes,
-browsers, and Git worktrees into one persistent canvas where people can direct
-and observe an AI engineering team in real time.
+browsers, and Git worktrees into one persistent canvas where developers, vibe
+coders, designers, marketers, and creators can direct an AI team in real time.
 
 Download the latest installers from
 [beeblock/orkestrai](https://github.com/beeblock/orkestrai/releases/latest).
@@ -27,8 +27,10 @@ Download the latest installers from
   delegate complete task briefings, coordinate work, and dismiss agents when the
   work is done.
 - **Ready-made teams:** start or expand a workspace with complete Product,
-  React, Next.js, SvelteKit, Svelar, and Laravel presets, including agents,
-  roles, skills, task context, and collaboration topology.
+  Campaign and launch, Brand and design, Content and SEO, React, Next.js,
+  SvelteKit, Svelar, Laravel, and Orkestrai Contributing presets.
+- **Workflows that fit the work:** name, color, and reorder up to ten board
+  stages. Leads and agents discover and update the same stages automatically.
 - **Operational team views:** install specialized roles from a 12-role catalog
   and inspect active agents, assigned tasks, and Git state across every floor.
 - **Native agent bridge:** the bundled `orkestrai` CLI and MCP server expose

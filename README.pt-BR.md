@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Orquestre times de agentes de IA para programação em um canvas visual.</strong>
+  <strong>Orquestre times de IA para criar, projetar, divulgar e entregar em um canvas visual.</strong>
 </p>
 
 <p align="center">
@@ -12,8 +12,8 @@
 
 Orkestrai é um aplicativo desktop local-first para macOS, Windows e Linux. Ele
 reúne Claude Code, Codex CLI, Kimi Code, OpenCode, shells, tarefas, notas,
-navegadores e worktrees Git em um canvas persistente onde pessoas podem dirigir
-e acompanhar um time de engenharia com IA em tempo real.
+navegadores e worktrees Git em um canvas persistente onde devs, vibe coders,
+designers, marketers e creators podem dirigir um time de IA em tempo real.
 
 Baixe os instaladores mais recentes em
 [beeblock/orkestrai](https://github.com/beeblock/orkestrai/releases/latest).
@@ -26,9 +26,11 @@ Baixe os instaladores mais recentes em
 - **Modo Maestro:** defina um líder que pode propor um time, recrutar agentes,
   delegar briefings completos, coordenar o trabalho e dispensar agentes quando
   não forem mais necessários.
-- **Times prontos:** inicie ou amplie um workspace com presets completos de
-  Produto, React, Next.js, SvelteKit, Svelar e Laravel, incluindo agentes,
-  roles, skills, contexto das tarefas e topologia de colaboração.
+- **Times prontos:** inicie ou amplie um workspace com presets de Produto,
+  Campanha e lançamento, Brand e design, Conteúdo e SEO, React, Next.js,
+  SvelteKit, Svelar, Laravel e Orkestrai Contributing.
+- **Fluxos que combinam com o trabalho:** nomeie, dê cores e ordene até dez etapas
+  do quadro. Líder e agentes descobrem e atualizam o mesmo processo sozinhos.
 - **Visões operacionais do time:** instale funções especializadas por um
   catálogo com 12 roles e acompanhe agentes ativos, tarefas atribuídas e o
   estado Git de cada andar.

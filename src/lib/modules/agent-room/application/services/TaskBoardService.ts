@@ -2,6 +2,7 @@ import { uuidv7 } from '@beeblock/svelar/support';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
+import { boardColumnService } from './BoardColumnService.js';
 
 export type BoardTask = {
   id: string;
@@ -9,7 +10,7 @@ export type BoardTask = {
   title: string;
   /** Corpo do cartao em markdown (descrição estilo Trello). */
   description: string | null;
-  status: 'todo' | 'doing' | 'done';
+  status: string;
   assigneeNodeId: string | null;
   assigneeTitle: string | null;
   imagePath: string | null;
@@ -74,8 +75,6 @@ function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null, not
     noteTitle,
   };
 }
-
-const VALID_STATUS = new Set(['todo', 'doing', 'done']);
 
 /**
  * Quadro de tarefas do workspace (kanban): o usuário ou o líder (via bridge)
@@ -204,6 +203,7 @@ export class TaskBoardService {
       assigneeNodeId?: string | null;
       createdBy?: string;
       noteId?: string | null;
+      status?: string;
     }
   ): Promise<BoardTask> {
     const title = input.title.trim();
@@ -212,6 +212,9 @@ export class TaskBoardService {
     const now = new Date().toISOString();
     const id = uuidv7();
     const images = normalizeImages(input.images);
+    const status = input.status
+      ? await boardColumnService.resolveKey(workspaceId, input.status)
+      : input.assigneeNodeId ? 'doing' : 'todo';
     await AgentBoardTask.query().insert({
       id,
       workspace_id: workspaceId,
@@ -219,7 +222,7 @@ export class TaskBoardService {
       description: input.description?.trim() || null,
       image_path: images[0] ?? null,
       images_json: images.length ? JSON.stringify(images) : null,
-      status: input.assigneeNodeId ? 'doing' : 'todo',
+      status,
       assignee_node_id: input.assigneeNodeId ?? null,
       note_node_id: input.noteId ?? null,
       created_by: input.createdBy ?? 'user',
@@ -256,8 +259,7 @@ export class TaskBoardService {
       patch.description = input.description?.trim() || null;
     }
     if (input.status !== undefined) {
-      if (!VALID_STATUS.has(input.status)) throw new Error('Status inválido (todo/doing/done).');
-      patch.status = input.status;
+      patch.status = await boardColumnService.resolveKey(workspaceId, input.status);
     }
     if (input.imagePath !== undefined) {
       patch.image_path = input.imagePath;

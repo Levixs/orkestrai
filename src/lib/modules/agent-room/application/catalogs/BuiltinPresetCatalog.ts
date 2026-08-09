@@ -1,3 +1,5 @@
+import { specializedPresetCatalog } from './SpecializedPresetCatalog.js';
+
 export type PresetLocale = 'pt-BR' | 'en' | 'es';
 
 export type BuiltinPresetRecipe = {
@@ -6,7 +8,7 @@ export type BuiltinPresetRecipe = {
   name: string;
   icon: string;
   description: string;
-  category: 'product' | 'frontend' | 'backend';
+  category: 'product' | 'frontend' | 'backend' | 'creative' | 'growth' | 'orkestrai';
   data: {
     format: 'orkestrai-preset';
     version: 2;
@@ -30,16 +32,17 @@ export type BuiltinPresetRecipe = {
     }>;
     edges: Array<{ sourceIndex: number; targetIndex: number; style: 'cord' }>;
     roles: Array<{ name: string; color: string; prompt: string }>;
-    routines: Array<{ targetTitle: string; prompt: string; intervalMinutes: null }>;
+    routines: Array<{ targetTitle: string; prompt: string; intervalMinutes: number | null }>;
     tasks: Array<{
       title: string;
       description: string;
-      status: 'todo';
-      assigneeTitle: null;
-      noteTitle: null;
+      status: string;
+      assigneeTitle: string | null;
+      noteTitle: string | null;
       images: [];
     }>;
     mcpServers: [];
+    taskColumns: Array<{ key: string; name: string | null; color: string; position: number }>;
     skills: Array<{ relativePath: string; content: string }>;
   };
 };
@@ -208,7 +211,7 @@ export function normalizePresetLocale(value: unknown): PresetLocale {
 
 export function builtinPresetCatalog(locale: PresetLocale): BuiltinPresetRecipe[] {
   const copy = COPY[locale];
-  return DEFINITIONS.map((definition) => {
+  const frameworkPresets: BuiltinPresetRecipe[] = DEFINITIONS.map((definition) => {
     const stack = definition.stackLabels[locale];
     const roles = [
       { name: copy.lead, color: '#7DE5FF', prompt: copy.prompts.lead(stack) },
@@ -261,8 +264,10 @@ export function builtinPresetCatalog(locale: PresetLocale): BuiltinPresetRecipe[
           images: [],
         }],
         mcpServers: [],
+        taskColumns: [],
         skills: skillFiles(definition.stack, copy.skill(stack, definition.guidance[locale])),
       },
     };
   });
+  return [...frameworkPresets, ...specializedPresetCatalog(locale)];
 }

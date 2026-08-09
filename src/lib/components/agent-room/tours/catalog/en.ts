@@ -519,7 +519,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'preset-library',
         title: 'Open the preset library',
-        body: 'Use the template icon in the sidebar or Presets in the bottom toolbar. Filter by Product, Frontend, or Backend and compare the composition before applying.',
+        body: 'Use the template icon in the sidebar or Presets in the bottom toolbar. Filter by Product, Development, Design and creative, Marketing and content, or Orkestrai.',
       },
       {
         id: 'create-or-merge',
@@ -530,6 +530,77 @@ export const TOURS_EN: Tour[] = [
         id: 'operate',
         title: 'Complete the team and track floors',
         body: 'In Roles → Catalog, install specialist functions. In Floors, track active agents, tasks, and Git state for each worktree before reviewing and landing.',
+      },
+    ],
+  },
+  {
+    id: 'custom-board-stages',
+    icon: 'Workflow',
+    title: 'Adapt the board to your process',
+    tagline: 'Replace a generic kanban with the stages your team actually uses.',
+    steps: [
+      {
+        id: 'board',
+        title: 'Create the work board',
+        body: 'I create a Tasks node. It starts simple and can represent a campaign, content production, design project, or software delivery.',
+        action: { kind: 'createTasksBoard' },
+        check: { kind: 'nodeExists', nodeType: 'tasks', titleIncludes: 'Tasks' },
+      },
+      {
+        id: 'stages',
+        title: 'Define your stages',
+        body: 'Click the columns icon in the board header. Rename, recolor, reorder, and add stages such as Ideas, Approval, and Published.',
+      },
+      {
+        id: 'team-awareness',
+        title: 'The team follows the same workflow',
+        body: 'The lead and specialists receive the stages automatically. They create and move deliveries while you track everything visually.',
+      },
+    ],
+  },
+  {
+    id: 'campaign-ready-team',
+    icon: 'Palette',
+    title: 'Launch a campaign with a ready team',
+    tagline: 'Strategy, research, copy, and measurement arrive already organized.',
+    steps: [
+      {
+        id: 'library',
+        title: 'Open the Preset library',
+        body: 'Choose Marketing and content → Campaign and launch. Brand and design and Content and SEO are ready for other kinds of work.',
+      },
+      {
+        id: 'apply',
+        title: 'Start new or add to this workspace',
+        body: 'New workspace creates the team in another folder. The + button adds its lead and specialists to the current canvas without removing anything.',
+      },
+      {
+        id: 'brief',
+        title: 'Complete the brief and set the objective',
+        body: 'Fill in objective, audience, offer, channels, deadline, and measurement in the created note. Then talk to the lead, which coordinates research, copy, distribution, and approval.',
+      },
+    ],
+  },
+  {
+    id: 'orkestrai-consensus-team',
+    icon: 'LayoutTemplate',
+    title: 'Contribute to Orkestrai through consensus',
+    tagline: 'Claude, Codex, and Kimi agree on the plan before execution.',
+    steps: [
+      {
+        id: 'apply',
+        title: 'Apply Orkestrai Contributing',
+        body: 'In the Library’s Orkestrai category, create the complete team with a lead, two oracles, and Svelar, desktop, and QA/release specialists.',
+      },
+      {
+        id: 'consensus',
+        title: 'Run the consensus Flow',
+        body: 'Codex proposes or audits architecture, Kimi reviews product, UX, and risks, and Claude synthesizes. Both oracles must answer APPROVED.',
+      },
+      {
+        id: 'delivery',
+        title: 'Only then distribute tasks',
+        body: 'After approval, the lead records the decision, creates complete briefs, and tracks Review and Validation until tests, build, documentation, and changelog pass.',
       },
     ],
   },

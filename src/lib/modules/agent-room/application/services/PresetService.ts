@@ -10,6 +10,7 @@ import { taskBoardService } from './TaskBoardService.js';
 import { mcpService } from './McpService.js';
 import { builtinPresetCatalog, normalizePresetLocale, type PresetLocale } from '../catalogs/BuiltinPresetCatalog.js';
 import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
+import { boardColumnService, type BoardColumnRecipe } from './BoardColumnService.js';
 
 export type PresetSummary = {
   id: string;
@@ -19,7 +20,7 @@ export type PresetSummary = {
   agents: number;
   createdAt: string;
   builtin: boolean;
-  category: 'product' | 'frontend' | 'backend' | 'custom';
+  category: 'product' | 'frontend' | 'backend' | 'creative' | 'growth' | 'orkestrai' | 'custom';
 };
 
 export type PresetData = {
@@ -50,13 +51,14 @@ export type PresetData = {
   tasks: Array<{
     title: string;
     description?: string | null;
-    status?: 'todo' | 'doing' | 'done';
+    status?: string;
     assigneeTitle?: string | null;
     noteTitle?: string | null;
     images?: string[];
   }>;
   /** Servidores MCP extras (a entrada 'orkestrai' da ponte NAO entra — e automatica). */
   mcpServers: Array<{ name: string; command: string; args: string[] }>;
+  taskColumns?: BoardColumnRecipe[];
   /** Arquivos SKILL.md portaveis, sempre relativos ao projeto de destino. */
   skills?: Array<{ relativePath: string; content: string }>;
 };
@@ -208,6 +210,7 @@ export class PresetService {
       routines,
       tasks,
       mcpServers,
+      taskColumns: (await boardColumnService.list(workspaceId)).map(({ key, name, color, position }) => ({ key, name, color, position })),
       skills: snapshotSkills(sourceWorkingDir),
     };
     const now = new Date().toISOString();
@@ -237,11 +240,12 @@ export class PresetService {
   async apply(
     presetId: string,
     target: ({ workspaceId: string } | { name: string; workingDir: string; icon?: string | null }) & { locale?: PresetLocale }
-  ): Promise<{ workspaceId: string; nodes: number; edges: number; roles: number; routines: number; tasks: number; mcps: number; skills: number }> {
+  ): Promise<{ workspaceId: string; nodes: number; edges: number; roles: number; routines: number; tasks: number; columns: number; mcps: number; skills: number }> {
     const preset = await this.data(presetId, target.locale ?? 'pt-BR');
     let workspaceId: string;
     let offsetX = 0;
     let offsetY = 0;
+    const creatingWorkspace = !('workspaceId' in target);
 
     if ('workspaceId' in target) {
       workspaceId = target.workspaceId;
@@ -262,6 +266,8 @@ export class PresetService {
       ));
       workspaceId = workspace.id;
     }
+
+    const columnsApplied = await boardColumnService.install(workspaceId, preset.taskColumns ?? [], creatingWorkspace);
 
     // Nos + arestas (por indice, como o import de workspace).
     const nodeIds: string[] = [];
@@ -312,17 +318,15 @@ export class PresetService {
     const nodeIdByTitle = new Map(preset.nodes.map((node, index) => [node.title ?? '', nodeIds[index]]));
     let tasksApplied = 0;
     for (const task of preset.tasks ?? []) {
-      const created = await taskBoardService.create(workspaceId, {
+      await taskBoardService.create(workspaceId, {
         title: task.title,
         description: task.description,
         images: task.images,
         assigneeNodeId: task.assigneeTitle ? (nodeIdByTitle.get(task.assigneeTitle) ?? null) : null,
         noteId: task.noteTitle ? (nodeIdByTitle.get(task.noteTitle) ?? null) : null,
         createdBy: 'preset',
+        status: task.status,
       });
-      if (task.status && task.status !== created.status) {
-        await taskBoardService.update(workspaceId, created.id, { status: task.status });
-      }
       tasksApplied += 1;
     }
 
@@ -345,7 +349,7 @@ export class PresetService {
       }
     }
 
-    return { workspaceId, nodes: nodeIds.length, edges: preset.edges.length, roles: rolesApplied, routines: routinesApplied, tasks: tasksApplied, mcps: mcpsApplied, skills: skillsApplied };
+    return { workspaceId, nodes: nodeIds.length, edges: preset.edges.length, roles: rolesApplied, routines: routinesApplied, tasks: tasksApplied, columns: columnsApplied, mcps: mcpsApplied, skills: skillsApplied };
   }
 
   /** Edita metadados do preset (nome/icone/descricao — o conteudo e por snapshot). */

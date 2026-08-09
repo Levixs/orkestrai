@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useSvelarTest } from '@beeblock/svelar/testing';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
+import { boardColumnService } from '$lib/modules/agent-room/application/services/BoardColumnService.js';
 import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
@@ -53,6 +54,31 @@ describe('TaskBoardService', () => {
     await taskBoardService.remove(workspace.id, task.id);
     expect(await taskBoardService.list(workspace.id)).toHaveLength(0);
     ptySessionManager.kill(session.id);
+  });
+
+  it('personaliza etapas e mantém tarefas e agentes alinhados pelas chaves do quadro', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'workflow', workingDir: '/tmp' });
+    const parallelLists = await Promise.all([boardColumnService.list(workspace.id), boardColumnService.list(workspace.id)]);
+    expect(parallelLists[0].map((column) => column.key)).toEqual(['todo', 'doing', 'done']);
+    expect(parallelLists[1]).toHaveLength(3);
+
+    const review = await boardColumnService.create(workspace.id, { name: 'Revisão do cliente', color: '#9675ff' });
+    expect(review.key).toBe('revisao-do-cliente');
+    await expect(boardColumnService.create(workspace.id, { name: 'revisão do cliente' })).rejects.toThrow('Já existe');
+    const task = await taskBoardService.create(workspace.id, { title: 'Aprovar campanha', status: 'Revisão do cliente' });
+    expect(task.status).toBe(review.key);
+    await expect(taskBoardService.update(workspace.id, task.id, { status: 'Etapa inexistente' })).rejects.toThrow('Coluna desconhecida');
+    await expect(boardColumnService.remove(workspace.id, review.id)).rejects.toThrow('Mova as tarefas');
+
+    await boardColumnService.update(workspace.id, review.id, { name: 'Aprovação', position: 1, color: '#ff7a90' });
+    const columns = await boardColumnService.list(workspace.id);
+    expect(columns.map((column) => column.key)).toEqual(['todo', review.key, 'doing', 'done']);
+    expect(columns[1]).toMatchObject({ name: 'Aprovação', color: '#ff7a90' });
+
+    await taskBoardService.remove(workspace.id, task.id);
+    await boardColumnService.remove(workspace.id, review.id);
+    expect((await boardColumnService.list(workspace.id)).map((column) => column.key)).toEqual(['todo', 'doing', 'done']);
+    await expect(boardColumnService.remove(workspace.id, columns[0].id)).rejects.toThrow('padrão');
   });
 
   it('despacha o prompt no terminal ao atribuir (loop continuo)', async () => {

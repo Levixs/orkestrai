@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, History, ImagePlus, Link2, Plus, SquareKanban, StickyNote, Trash2, X } from '@lucide/svelte';
+  import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Columns3, History, ImagePlus, Link2, Plus, SquareKanban, StickyNote, Trash2, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
@@ -9,12 +9,13 @@
   import MarkdownView from '../MarkdownView.svelte';
   import { arrayBufferToBase64 } from '../base64.js';
   import * as m from '$lib/paraglide/messages.js';
+  import { getCsrfToken } from '@beeblock/svelar/http';
 
   type BoardTask = {
     id: string;
     title: string;
     description: string | null;
-    status: 'todo' | 'doing' | 'done';
+    status: string;
     assigneeNodeId: string | null;
     assigneeTitle: string | null;
     imagePath: string | null;
@@ -24,6 +25,15 @@
     archivedAt: string | null;
     noteId: string | null;
     noteTitle: string | null;
+  };
+
+  type BoardColumn = {
+    id: string;
+    key: string;
+    name: string | null;
+    color: string;
+    position: number;
+    builtin: boolean;
   };
 
   export type TasksNodeData = {
@@ -39,13 +49,27 @@
 
   let { id, data, selected } = $props<NodeProps & { data: TasksNodeData }>();
 
-  const COLUMNS: Array<{ status: BoardTask['status']; label: string; hint: string }> = $derived([
-    { status: 'todo', label: m['tasks.col_todo'](), hint: '#7DE5FF' },
-    { status: 'doing', label: m['tasks.col_doing'](), hint: '#FFC857' },
-    { status: 'done', label: m['tasks.col_done'](), hint: '#8ec98e' },
+  function defaultColumnLabel(key: string): string {
+    if (key === 'todo') return m['tasks.col_todo']();
+    if (key === 'doing') return m['tasks.col_doing']();
+    if (key === 'done') return m['tasks.col_done']();
+    return key;
+  }
+
+  const FALLBACK_COLUMNS: BoardColumn[] = $derived([
+    { id: 'todo', key: 'todo', name: null, color: '#7de5ff', position: 0, builtin: true },
+    { id: 'doing', key: 'doing', name: null, color: '#ffc857', position: 1, builtin: true },
+    { id: 'done', key: 'done', name: null, color: '#8ec98e', position: 2, builtin: true },
   ]);
+  const COLUMNS = $derived((taskColumns.length ? taskColumns : FALLBACK_COLUMNS).map((column) => ({
+    ...column,
+    status: column.key,
+    label: column.name ?? defaultColumnLabel(column.key),
+    hint: column.color,
+  })));
 
   let tasks = $state<BoardTask[]>([]);
+  let taskColumns = $state<BoardColumn[]>([]);
   let agents = $state<Array<{ id: string; title: string }>>([]);
   let draft = $state('');
   let dragTaskId = $state<string | null>(null);
@@ -54,6 +78,10 @@
   let editDraft = $state('');
   let fileInput: HTMLInputElement;
   let imageTargetId = $state<string | null>(null);
+  let columnsOpen = $state(false);
+  let columnError = $state('');
+  let newColumnName = $state('');
+  let newColumnColor = $state('#9675ff');
 
   // -- Historico / arquivamento ------------------------------------------------
   // Quadro mostra so tarefas vivas; concluidas podem ser arquivadas (saem do
@@ -106,7 +134,11 @@
     try {
       const response = await fetch(path, {
         ...init,
-        headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+        headers: {
+          'content-type': 'application/json',
+          ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
+          ...(init?.headers ?? {}),
+        },
       });
       const payload = await response.json();
       if (!response.ok || payload.error) return null;
@@ -117,15 +149,68 @@
   }
 
   async function refresh() {
-    const [taskList, nodeList] = await Promise.all([
+    const [taskList, nodeList, columnList] = await Promise.all([
       api<BoardTask[]>(`/api/agent-room/workspaces/${data.workspaceId}/tasks`),
       api<Array<{ id: string; type: string; title: string | null }>>(`/api/agent-room/workspaces/${data.workspaceId}/nodes`),
+      api<BoardColumn[]>(`/api/agent-room/workspaces/${data.workspaceId}/task-columns`),
     ]);
     if (taskList) tasks = taskList;
+    if (columnList) taskColumns = columnList;
     if (nodeList) {
       agents = nodeList.filter((node) => node.type === 'terminal').map((node) => ({ id: node.id, title: node.title ?? m['tasks.terminal_fallback']() }));
       notes = nodeList.filter((node) => node.type === 'note').map((node) => ({ id: node.id, title: node.title ?? m['tasks.note_fallback']() }));
     }
+  }
+
+  async function columnRequest<T>(path: string, init: RequestInit): Promise<T | null> {
+    columnError = '';
+    try {
+      const token = getCsrfToken();
+      const response = await fetch(path, {
+        ...init,
+        headers: {
+          'content-type': 'application/json',
+          ...(token ? { 'X-CSRF-Token': token } : {}),
+          ...(init.headers ?? {}),
+        },
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.error) {
+        columnError = m['tasks.column_error']();
+        return null;
+      }
+      return payload.data as T;
+    } catch {
+      columnError = m['tasks.column_error']();
+      return null;
+    }
+  }
+
+  async function addColumn() {
+    const name = newColumnName.trim();
+    if (!name) return;
+    const created = await columnRequest<BoardColumn>(`/api/agent-room/workspaces/${data.workspaceId}/task-columns`, {
+      method: 'POST',
+      body: JSON.stringify({ name, color: newColumnColor }),
+    });
+    if (!created) return;
+    newColumnName = '';
+    newColumnColor = '#9675ff';
+    await refresh();
+  }
+
+  async function updateColumn(column: BoardColumn, patch: Record<string, unknown>) {
+    const updated = await columnRequest<BoardColumn>(`/api/agent-room/workspaces/${data.workspaceId}/task-columns/${column.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+    if (updated) await refresh();
+  }
+
+  async function removeColumn(column: BoardColumn) {
+    const removed = await columnRequest(`/api/agent-room/workspaces/${data.workspaceId}/task-columns/${column.id}`, { method: 'DELETE' });
+    if (removed) await refresh();
+    else columnError = m['tasks.column_delete_blocked']();
   }
 
   onMount(() => {
@@ -279,7 +364,10 @@
     const path = `.orkestrai/images/${crypto.randomUUID()}.${ext}`;
     const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/fs/write-binary`, {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
+      },
       body: JSON.stringify({ path, base64 }),
     });
     if (!response.ok) throw new Error(m['tasks.err_image_http']({ status: response.status }));
@@ -368,6 +456,8 @@
   {#snippet title()}{data.title || m['tasks.title_default']()}{/snippet}
   {#snippet actions()}
     {#if view === 'board'}
+      <HeaderIconButton label={m['tasks.column_manager']()} class="node-action-btn" side="left" onclick={() => (columnsOpen = !columnsOpen)}>
+        <Columns3 size={13} /></HeaderIconButton>
       {#if doneCount > 0}
         <HeaderIconButton label={m['tasks.archive_done_label']({ count: doneCount })} class="node-action-btn" side="left" onclick={archiveAllDone}>
           <Archive size={13} /></HeaderIconButton>
@@ -420,6 +510,51 @@
       {/if}
     </div>
   {:else}
+  {#if columnsOpen}
+    <div class="nodrag border-b border-white/10 bg-black/20 px-2.5 py-2">
+      <div class="mb-2 flex justify-end text-[10px] tabular-nums text-muted-foreground">{COLUMNS.length}/10</div>
+      <div class="space-y-1.5">
+        {#each COLUMNS as column, index (column.id)}
+          <div class="grid grid-cols-[24px_minmax(0,1fr)_24px_24px_24px] items-center gap-1">
+            <input
+              type="color"
+              value={column.color}
+              aria-label={m['tasks.column_color']()}
+              class="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+              onchange={(event) => updateColumn(column, { color: (event.target as HTMLInputElement).value })}
+            />
+            <input
+              value={column.label}
+              aria-label={m['tasks.column_name']()}
+              class="h-7 min-w-0 rounded border border-white/10 bg-white/5 px-2 text-xs text-foreground outline-none focus:border-primary"
+              onchange={(event) => updateColumn(column, { name: (event.target as HTMLInputElement).value })}
+            />
+            <button class="inline-flex h-6 w-6 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30" aria-label={m['tasks.column_up']()} disabled={index === 0} onclick={() => updateColumn(column, { position: index - 1 })}><ChevronUp size={13} /></button>
+            <button class="inline-flex h-6 w-6 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30" aria-label={m['tasks.column_down']()} disabled={index === COLUMNS.length - 1} onclick={() => updateColumn(column, { position: index + 1 })}><ChevronDown size={13} /></button>
+            {#if column.builtin}
+              <span class="h-6 w-6"></span>
+            {:else}
+              <button class="inline-flex h-6 w-6 items-center justify-center text-muted-foreground hover:text-destructive" aria-label={m['tasks.column_delete']()} onclick={() => removeColumn(column)}><Trash2 size={12} /></button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+      <div class="mt-2 grid grid-cols-[24px_minmax(0,1fr)_28px] items-center gap-1">
+        <input type="color" bind:value={newColumnColor} aria-label={m['tasks.column_color']()} class="h-6 w-6 cursor-pointer border-0 bg-transparent p-0" />
+        <input
+          bind:value={newColumnName}
+          aria-label={m['tasks.column_name']()}
+          placeholder={m['tasks.column_name_placeholder']()}
+          class="h-7 min-w-0 rounded border border-white/10 bg-white/5 px-2 text-xs text-foreground outline-none focus:border-primary"
+          disabled={COLUMNS.length >= 10}
+          onkeydown={(event) => event.key === 'Enter' && addColumn()}
+        />
+        <button class="inline-flex h-7 w-7 items-center justify-center rounded bg-primary text-primary-foreground disabled:opacity-30" aria-label={m['tasks.column_add']()} disabled={!newColumnName.trim() || COLUMNS.length >= 10} onclick={addColumn}><Plus size={14} /></button>
+      </div>
+      {#if COLUMNS.length >= 10}<p class="mt-1.5 text-[10px] text-muted-foreground">{m['tasks.column_limit']()}</p>{/if}
+      {#if columnError}<p class="mt-1.5 text-[10px] text-destructive" role="alert">{columnError}</p>{/if}
+    </div>
+  {/if}
   <div class="tb-add nodrag">
     {#if composerOpen}
       <div class="tb-composer">
@@ -472,7 +607,7 @@
   </div>
 
   <div class="tb-board nodrag nowheel">
-    {#each COLUMNS as column (column.status)}
+    {#each COLUMNS as column (column.id)}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <section
         class="tb-column"
@@ -920,8 +1055,8 @@
   }
 
   .tb-column {
-    flex: 1;
-    min-width: 0;
+    flex: 1 0 120px;
+    min-width: 120px;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -956,7 +1091,7 @@
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: 0;
     color: #9a9aa5;
   }
 

@@ -1,7 +1,7 @@
 {
   "name": "orkestrai",
-  "version": "0.2.0",
-  "description": "A visual canvas for orchestrating teams of AI coding agents.",
+  "version": "0.3.0",
+  "description": "A visual canvas for orchestrating multidisciplinary teams of AI agents.",
   "private": true,
   "license": "Apache-2.0",
   "homepage": "https://orkestrai.app",

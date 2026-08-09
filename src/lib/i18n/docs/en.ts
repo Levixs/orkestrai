@@ -38,7 +38,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'tarefas',
       title: 'Tasks (kanban)',
-      body: `The Tasks node (+ Tasks in the bottom bar) is the workspace board: cards in To do/Doing/Done. The "Add task" button opens a full composer: title, markdown description (checklists, links, code — rendered on the card, double-click to edit) and reference images ATTACHED RIGHT AT CREATION (Ctrl+V or picker, with thumbnails). Assigning a card to an agent dispatches the task straight to its terminal (continuous loop) — it works and marks it done on its own. The leader operates the board via CLI: orkestrai task list/add/assign/done (task add accepts --description). Each task can have ONE linked spec note (the same note can serve several tasks): link it on the card (chain icon) or via CLI (task add --note / task link). Completed tasks stay in the Done column until you (or the leader) archive them: they leave the board together with the linked note, but NOTHING is deleted — the history icon (clock) opens the timeline, and the note chip there opens the content even when archived. Protection rules: a linked note cannot be deleted via the canvas X; deleting the task deletes the note along with it (when it's the last task using it). In the CLI: orkestrai task archive/archive-done/history/link/unlink.`,
+      body: `The Tasks node (+ Tasks in the bottom bar) is the workspace board. Use the columns icon in its header to name, color, reorder, and create up to ten stages that match your process — for example Ideas, Script, Design, Approval, and Published. The lead and team see those stages automatically and keep each delivery's real state current. "Add task" opens a complete composer with title, markdown description, and reference images at creation time. Assigning a card dispatches the full brief to the agent. Through the bridge, agents use task columns to inspect stages, task add --column to start in the right place, and task move to advance work. Each task can link one note; completed work can be archived without losing history. Default columns are protected, and a custom stage can only be removed when empty.`,
     },
     {
       id: 'imagens',
@@ -48,7 +48,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'presets',
       title: 'Team presets',
-      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. It includes ready-made Product, React, Next.js, SvelteKit, Svelar, and Laravel teams with a leader, specialists, roles, skills, board, initial task, note, and layout. Use New workspace for another folder or + to ADD the team to the current canvas without deleting anything. Custom snapshots remain available through the edit pencil → "Save as preset". Format v2 preserves task descriptions/status and portable SKILL.md files, never PTY sessions, and does not overwrite customized destination skills.`,
+      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, roles, skills, brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Use New workspace for another folder or + to add the team to the current canvas without deleting anything. Format v2 preserves context and portable skills, never PTY sessions.`,
     },
     {
       id: 'fluxos',
@@ -88,7 +88,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'cli',
       title: 'orkestrai CLI (the bridge)',
-      body: `Agents use the orkestrai CLI to act on the canvas: list --agent <id> (agents, their notes and portals), ask (ask another agent), note read/write/edit/create, task list/add/assign/done/archive/history (+ link/unlink of spec note), role show/write/edit, floor create/list/preview/land/remove, notify (native notification to you), recruit/dismiss/connect/reassign (Maestro Mode), portal (browser automation), port (free port for dev servers), fs read/write/search, run (re-dispatches a task), say (speaks on the desktop), clip (reads the clipboard), notes/portals (listings). MCP-speaking agents get all of this as native tools via orkestrai mcp — the .mcp.json is self-provisioned at the project root; manage extra MCP servers in the workspace editor. The token lives in .orkestrai/workspace.json in the workspace directory.`,
+      body: `Agents use the orkestrai CLI to act on the canvas: list, ask, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes, and portals. task columns returns the stages you defined; task add --column and task move let the lead and team follow any process, not only a software kanban. MCP-speaking agents receive the same actions as native tools through orkestrai mcp. Bridge provisioning is automatic and the token lives in .orkestrai/workspace.json.`,
     },
     {
       id: 'atalhos',
@@ -152,6 +152,24 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['Preset library', 'roles/skills', 'bootstrap'],
     },
     {
+      id: 'custom-workflow',
+      title: 'A board with the stages of your process',
+      body: 'Open Stages in the Tasks header and build the flow that fits your work: Ideas → Production → Review → Approval → Published. The lead and specialists automatically read and update those stages without requiring you to learn commands.',
+      tags: ['Custom stages', 'approval', 'any process'],
+    },
+    {
+      id: 'campaign-launch',
+      title: 'A complete campaign without assembling a team',
+      body: 'Choose Campaign and launch in the Library. The canvas starts with campaign lead, market research, copy, channels and measurement, plus a brief and first task. For visual or editorial work, use Brand and design or Content and SEO.',
+      tags: ['Marketing', 'design', 'content'],
+    },
+    {
+      id: 'orkestrai-contributing',
+      title: 'Contribute to Orkestrai with three perspectives',
+      body: 'Apply Orkestrai Contributing. Claude leads, Codex and Kimi act as independent oracles and both must approve the plan before any task is created; Svelar, desktop, and QA/release specialists execute the documented plan.',
+      tags: ['Claude + Codex + Kimi', 'consensus', 'open source'],
+    },
+    {
       id: 'approval-pipeline',
       title: 'Pipeline writes → reviews → approves',
       body: 'Flow with 3 steps: Dev writes the feature, Reviewer critiques it (one output becomes the other\'s {{input}}) and the Approval step pauses until you OK it on the node. Progress shows live and the latest runs stay in the flow history.',
@@ -195,6 +213,14 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 09, 2026 · 0.3.0',
+      items: [
+        'Boards now support up to ten custom stages with names, colors, and ordering; the lead and team automatically inspect and update the same workflow.',
+        'The Library gained Campaign and launch, Brand and design, and Content and SEO teams with briefs and roles designed for marketers, designers, and creators too.',
+        'Orkestrai Contributing combines a Claude lead, Codex and Kimi oracles, Svelar/desktop/QA specialists, and a Flow that requires consensus before task creation.',
+      ],
+    },
     {
       date: 'Aug 09, 2026 · 0.2.0',
       items: [

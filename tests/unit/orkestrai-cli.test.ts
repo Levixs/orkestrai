@@ -27,6 +27,8 @@ describe('orkestrai CLI', () => {
           res.end(JSON.stringify({ data: { workspace: { id: 'w1', name: 'Teste' }, agents: [{ nodeId: 'n1', title: 'Claude', provider: 'claude', sessionAlive: true }], notes: [] } }));
         } else if (req.url === '/api/agent-room/bridge/ask') {
           res.end(JSON.stringify({ data: { to: 'Claude', reply: 'resposta do claude', timedOut: false } }));
+        } else if (req.url === '/api/agent-room/bridge/task-columns') {
+          res.end(JSON.stringify({ data: [{ key: 'review', name: 'Revisão', color: '#9675ff' }] }));
         } else if (req.url === '/api/agent-room/bridge/notes/n9' && req.method === 'GET') {
           res.end(JSON.stringify({ data: { nodeId: 'n9', title: 'nota', content: 'conteudo da nota' } }));
         } else {
@@ -101,6 +103,20 @@ describe('orkestrai CLI', () => {
     await run(['task', 'add', 'Revisar PR', '--assign', 'Claude'], { env: {}, cwd, out });
     const request = requests.find((entry) => entry.url === '/api/agent-room/bridge/tasks' && entry.method === 'POST');
     expect(request.body.assignee).toBe('Claude');
+  });
+
+  it('task columns lista etapas e task add/move usam a etapa escolhida', async () => {
+    const { lines, out } = capture();
+    await run(['task', 'columns'], { env: {}, cwd, out });
+    expect(lines.join('\n')).toContain('Revisão [review]');
+
+    await run(['task', 'add', 'Revisar campanha', '--column', 'Revisão'], { env: {}, cwd, out });
+    let request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/tasks' && entry.method === 'POST').at(-1);
+    expect(request.body.status).toBe('Revisão');
+
+    await run(['task', 'move', 't1', 'Revisão'], { env: {}, cwd, out });
+    request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/tasks/t1' && entry.method === 'PATCH').at(-1);
+    expect(request.body).toEqual({ status: 'Revisão' });
   });
 
   it('sem token retorna erro claro', async () => {

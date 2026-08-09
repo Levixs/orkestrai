@@ -519,7 +519,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'preset-library',
         title: 'Abre la biblioteca de presets',
-        body: 'Usa el icono de plantilla en la barra lateral o Presets en la barra inferior. Filtra por Producto, Frontend o Backend y compara la composición antes de aplicar.',
+        body: 'Usa el icono de plantilla en la barra lateral o Presets en la barra inferior. Filtra por Producto, Desarrollo, Diseño y creación, Marketing y contenido u Orkestrai.',
       },
       {
         id: 'create-or-merge',
@@ -530,6 +530,77 @@ export const TOURS_ES: Tour[] = [
         id: 'operate',
         title: 'Completa el equipo y sigue los pisos',
         body: 'En Roles → Catálogo, instala funciones especializadas. En Pisos, sigue agentes activos, tareas y estado Git de cada worktree antes de revisar y aterrizar.',
+      },
+    ],
+  },
+  {
+    id: 'custom-board-stages',
+    icon: 'Workflow',
+    title: 'Adaptar el tablero a tu proceso',
+    tagline: 'Reemplaza un kanban genérico por las etapas que tu equipo realmente usa.',
+    steps: [
+      {
+        id: 'board',
+        title: 'Crea el tablero de trabajo',
+        body: 'Creo un nodo Tareas. Empieza simple y puede representar una campaña, producción de contenido, proyecto de diseño o desarrollo.',
+        action: { kind: 'createTasksBoard' },
+        check: { kind: 'nodeExists', nodeType: 'tasks', titleIncludes: 'Tareas' },
+      },
+      {
+        id: 'stages',
+        title: 'Define tus etapas',
+        body: 'Haz clic en el icono de columnas del encabezado. Renombra, cambia colores, ordena y agrega etapas como Ideas, Aprobación y Publicado.',
+      },
+      {
+        id: 'team-awareness',
+        title: 'El equipo sigue el mismo flujo',
+        body: 'El líder y los especialistas reciben las etapas automáticamente. Crean y mueven entregas mientras tú acompañas todo visualmente.',
+      },
+    ],
+  },
+  {
+    id: 'campaign-ready-team',
+    icon: 'Palette',
+    title: 'Lanzar una campaña con un equipo listo',
+    tagline: 'Estrategia, investigación, copy y métricas llegan ya organizadas.',
+    steps: [
+      {
+        id: 'library',
+        title: 'Abre la Biblioteca de presets',
+        body: 'Elige Marketing y contenido → Campaña y lanzamiento. Para otras frentes también están Brand y diseño y Contenido y SEO.',
+      },
+      {
+        id: 'apply',
+        title: 'Empieza nuevo o suma al workspace',
+        body: 'Nuevo workspace crea el equipo en otra carpeta. El botón + añade líder y especialistas al canvas actual sin eliminar nada.',
+      },
+      {
+        id: 'brief',
+        title: 'Completa el briefing y define el objetivo',
+        body: 'Registra objetivo, audiencia, oferta, canales, plazo y métrica en la nota creada. Luego habla con el líder: coordina investigación, copy, distribución y aprobación.',
+      },
+    ],
+  },
+  {
+    id: 'orkestrai-consensus-team',
+    icon: 'LayoutTemplate',
+    title: 'Contribuir a Orkestrai con consenso',
+    tagline: 'Claude, Codex y Kimi acuerdan el plan antes de la ejecución.',
+    steps: [
+      {
+        id: 'apply',
+        title: 'Aplica Orkestrai Contributing',
+        body: 'En la categoría Orkestrai de la Biblioteca, crea el equipo completo con líder, dos oráculos y especialistas Svelar, desktop y QA/release.',
+      },
+      {
+        id: 'consensus',
+        title: 'Ejecuta el Flow de consenso',
+        body: 'Codex propone o audita arquitectura, Kimi revisa producto, UX y riesgos, y Claude sintetiza. Ambos oráculos deben responder APROBADO.',
+      },
+      {
+        id: 'delivery',
+        title: 'Solo entonces distribuye las tareas',
+        body: 'Con el plan aprobado, el líder registra la decisión, crea briefings completos y acompaña Revisión y Validación hasta que pasen pruebas, build, documentación y changelog.',
       },
     ],
   },

@@ -52,7 +52,7 @@ describe('servidor MCP (orkestrai mcp)', () => {
     send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const list = await waitFor(2);
     const names = list.result.tools.map((tool) => tool.name);
-    for (const expected of ['ask', 'note_create', 'task_list', 'task_done', 'portal_dom', 'floor_land', 'notify', 'port', 'recruit']) {
+    for (const expected of ['ask', 'note_create', 'task_list', 'task_columns', 'task_move', 'task_done', 'portal_dom', 'floor_land', 'notify', 'port', 'recruit']) {
       expect(names).toContain(expected);
     }
     input.end();
@@ -74,6 +74,21 @@ describe('servidor MCP (orkestrai mcp)', () => {
     send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'port', arguments: {} } });
     const response = await waitFor(1);
     expect(JSON.parse(response.result.content[0].text).port).toBe(45678);
+    input.end();
+  });
+
+  it('moves tasks through custom board columns', async () => {
+    const { send, waitFor, input } = startMcp();
+    send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'task_columns', arguments: {} } });
+    const columns = JSON.parse((await waitFor(1)).result.content[0].text);
+    expect(columns.path).toBe('/api/agent-room/bridge/task-columns');
+    expect(columns.method).toBe('GET');
+
+    send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'task_move', arguments: { taskId: 't1', column: 'Review' } } });
+    const moved = JSON.parse((await waitFor(2)).result.content[0].text);
+    expect(moved.path).toBe('/api/agent-room/bridge/tasks/t1');
+    expect(moved.method).toBe('PATCH');
+    expect(moved.body).toEqual({ status: 'Review' });
     input.end();
   });
 

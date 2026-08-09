@@ -2,6 +2,7 @@ import { Controller } from '@beeblock/svelar/routing';
 import { bridgeService } from '$lib/modules/agent-room/application/services/BridgeService.js';
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
+import { boardColumnService } from '$lib/modules/agent-room/application/services/BoardColumnService.js';
 import { floorService } from '$lib/modules/agent-room/application/services/FloorService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { filesystemService } from '$lib/modules/agent-room/application/services/FilesystemService.js';
@@ -298,6 +299,15 @@ export class BridgeController extends Controller {
     }
   }
 
+  async taskColumns(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await boardColumnService.list(workspace.id) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar colunas.', 401);
+    }
+  }
+
   async taskCreate(event: any) {
     try {
       const input = bridgeBoardTaskSchema.parse(await event.request.json());
@@ -308,6 +318,7 @@ export class BridgeController extends Controller {
         assigneeNodeId: await this.assigneeNodeId(workspace.id, input.assignee),
         noteId: (await this.noteNodeId(workspace.id, input.note)) ?? null,
         createdBy: input.from ?? 'agente',
+        status: input.status,
       });
       // O quadro aparece no canvas junto com a primeira tarefa.
       await bridgeService.ensureTasksBoard(workspace.id).catch(() => {});

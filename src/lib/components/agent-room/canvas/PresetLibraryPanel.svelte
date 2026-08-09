@@ -16,7 +16,7 @@
     description: string | null;
     agents: number;
     builtin: boolean;
-    category: 'product' | 'frontend' | 'backend' | 'custom';
+    category: 'product' | 'frontend' | 'backend' | 'creative' | 'growth' | 'orkestrai' | 'custom';
   };
 
   type Props = {
@@ -48,6 +48,9 @@
     if (value === 'product') return m['preset.category_product']();
     if (value === 'frontend') return m['preset.category_frontend']();
     if (value === 'backend') return m['preset.category_backend']();
+    if (value === 'creative') return m['preset.category_creative']();
+    if (value === 'growth') return m['preset.category_growth']();
+    if (value === 'orkestrai') return m['preset.category_orkestrai']();
     if (value === 'custom') return m['preset.category_custom']();
     return m['preset.category_all']();
   }
@@ -114,6 +117,9 @@
         <Select.Item value="product">{m['preset.category_product']()}</Select.Item>
         <Select.Item value="frontend">{m['preset.category_frontend']()}</Select.Item>
         <Select.Item value="backend">{m['preset.category_backend']()}</Select.Item>
+        <Select.Item value="creative">{m['preset.category_creative']()}</Select.Item>
+        <Select.Item value="growth">{m['preset.category_growth']()}</Select.Item>
+        <Select.Item value="orkestrai">{m['preset.category_orkestrai']()}</Select.Item>
         <Select.Item value="custom">{m['preset.category_custom']()}</Select.Item>
       </Select.Content>
     </Select.Root>

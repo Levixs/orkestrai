@@ -7,6 +7,7 @@ import { presetService } from '$lib/modules/agent-room/application/services/Pres
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
 import { routineService } from '$lib/modules/agent-room/application/services/RoutineService.js';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
+import { boardColumnService } from '$lib/modules/agent-room/application/services/BoardColumnService.js';
 import { mcpService } from '$lib/modules/agent-room/application/services/McpService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
@@ -133,7 +134,7 @@ describe('PresetService', () => {
 
   it('lists and applies localized builtin presets without persisting them', async () => {
     const presets = await presetService.list({ includeBuiltin: true, locale: 'en' });
-    expect(presets.filter((preset) => preset.builtin)).toHaveLength(6);
+    expect(presets.filter((preset) => preset.builtin)).toHaveLength(10);
     const svelar = presets.find((preset) => preset.id === 'builtin:svelar-team');
     expect(svelar?.name).toBe('Svelar team');
 
@@ -150,5 +151,47 @@ describe('PresetService', () => {
     expect(existsSync(join(dir, 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(dir, 'CLAUDE.md'))).toBe(true);
     expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
+  });
+
+  it('installs the Orkestrai contributing consensus team and its complete workflow', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-contributing-'));
+    const applied = await presetService.apply('builtin:orkestrai-contributing', {
+      name: 'Contribuição Orkestrai',
+      workingDir: dir,
+      locale: 'pt-BR',
+    });
+
+    expect(applied.nodes).toBe(12);
+    expect(applied.roles).toBe(6);
+    expect(applied.tasks).toBe(1);
+    expect(applied.columns).toBe(3);
+    expect(applied.skills).toBe(6);
+
+    const nodes = await workspaceRepository.listNodes(applied.workspaceId);
+    expect(nodes.filter((node) => node.type === 'terminal')).toHaveLength(6);
+    const flow = nodes.find((node) => node.type === 'flow');
+    expect(flow).toBeTruthy();
+    expect((flow!.payload as { steps?: unknown[] }).steps).toHaveLength(7);
+    expect(nodes.find((node) => node.title === 'Oráculo Codex')).toBeTruthy();
+    expect(nodes.find((node) => node.title === 'Oráculo Kimi')).toBeTruthy();
+
+    const columns = await boardColumnService.list(applied.workspaceId);
+    expect(columns.map((column) => column.key)).toEqual(['todo', 'planned', 'doing', 'review', 'validation', 'done']);
+    expect(columns.map((column) => column.name)).toEqual(['Entrada', 'Planejado', 'Em andamento', 'Revisão', 'Validação', 'Feito']);
+    const tasks = await taskBoardService.list(applied.workspaceId);
+    expect(tasks[0].noteTitle).toBe('Protocolo de consenso');
+    expect(existsSync(join(dir, '.agents', 'skills', 'orkestrai-contributing', 'SKILL.md'))).toBe(true);
+  });
+
+  it('starts non-development teams with localized workflow stages', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-campaign-'));
+    const applied = await presetService.apply('builtin:campaign-launch', {
+      name: 'Campanha',
+      workingDir: dir,
+      locale: 'pt-BR',
+    });
+    const columns = await boardColumnService.list(applied.workspaceId);
+    expect(columns.map((column) => column.name)).toEqual(['Briefing', 'Planejado', 'Produção', 'Aprovação', 'Publicado']);
+    expect((await taskBoardService.list(applied.workspaceId))[0].status).toBe('todo');
   });
 });
