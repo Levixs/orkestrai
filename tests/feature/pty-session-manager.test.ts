@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { spawn } from 'node-pty';
 import { PtySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.js';
 
@@ -53,11 +53,12 @@ describe('PtySessionManager', () => {
     await new Promise<number>((resolve) => manager.attach(session.id, () => {}, resolve));
 
     expect(() => manager.resize(session.id, 100, 40)).not.toThrow();
-    expect(() => manager.write(session.id, 'x')).toThrowError(/ja finalizada/);
+    expect(() => manager.write(session.id, 'x')).toThrowError(/já finalizada/);
     manager.kill(session.id);
   });
 
-  it('marca sessao como aguardando atencao apos silencio e limpa ao escrever', async () => {
+  it('marca sessao como ociosa apos silencio e limpa ao escrever', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const manager = new PtySessionManager(spawn);
     const session = manager.create({ command: '/bin/cat', cwd: process.cwd() });
 
@@ -75,6 +76,8 @@ describe('PtySessionManager', () => {
     manager.kill(session.id);
     expect(attentionStates).toContain(true);
     expect(attentionStates.at(-1)).toBe(false);
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('[orkestrai:attention]'));
+    logSpy.mockRestore();
   });
 
   it('writeWithSubmit envia texto e Enter em writes separados (~200ms)', async () => {
@@ -92,11 +95,51 @@ describe('PtySessionManager', () => {
     const manager = new PtySessionManager((() => fakePty) as unknown as typeof spawn);
 
     const session = manager.create({ command: 'codex', cwd: process.cwd() });
-    manager.writeWithSubmit(session.id, 'faz a tarefa X');
+    await manager.writeWithSubmit(session.id, 'faz a tarefa X');
 
-    // Imediato: so o texto; o Enter chega depois do atraso.
-    expect(writes).toEqual(['faz a tarefa X']);
-    await new Promise((resolve) => setTimeout(resolve, 400));
     expect(writes).toEqual(['faz a tarefa X', '\r']);
+  });
+
+  it('aguarda o rascunho humano antes de entregar uma mensagem automatica', async () => {
+    const writes: string[] = [];
+    const fakePty = {
+      write: (data: string) => writes.push(data),
+      resize: () => {},
+      kill: () => {},
+      onData: () => ({ dispose: () => {} }),
+      onExit: () => ({ dispose: () => {} }),
+      pid: 1,
+    };
+    const manager = new PtySessionManager((() => fakePty) as unknown as typeof spawn);
+    const session = manager.create({ command: 'claude', cwd: process.cwd() });
+
+    manager.writeHumanInput(session.id, 'minha mensagem');
+    const delivery = manager.writeWithSubmit(session.id, 'mensagem do agente', 20);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(writes).toEqual(['minha mensagem']);
+
+    manager.writeHumanInput(session.id, '\r');
+    await delivery;
+    expect(writes).toEqual(['minha mensagem', '\r', 'mensagem do agente', '\r']);
+  });
+
+  it('preserva teclas humanas recebidas durante o intervalo do submit automatico', async () => {
+    const writes: string[] = [];
+    const fakePty = {
+      write: (data: string) => writes.push(data),
+      resize: () => {},
+      kill: () => {},
+      onData: () => ({ dispose: () => {} }),
+      onExit: () => ({ dispose: () => {} }),
+      pid: 1,
+    };
+    const manager = new PtySessionManager((() => fakePty) as unknown as typeof spawn);
+    const session = manager.create({ command: 'codex', cwd: process.cwd() });
+
+    const delivery = manager.writeWithSubmit(session.id, 'mensagem automatica', 40);
+    manager.writeHumanInput(session.id, 'rascunho humano');
+    expect(writes).toEqual(['mensagem automatica']);
+    await delivery;
+    expect(writes).toEqual(['mensagem automatica', '\r', 'rascunho humano']);
   });
 });

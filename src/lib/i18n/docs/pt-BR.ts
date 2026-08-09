@@ -200,6 +200,15 @@ export const DOCS_PT: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '09 ago 2026 · 0.1.5',
+      items: [
+        'Mensagens automáticas agora aguardam o usuário terminar o rascunho e são entregues em fila, sem misturar textos de outros agentes no terminal do líder.',
+        'Mensagens entre agentes não são mais cortadas silenciosamente em 4.000 caracteres.',
+        'O silêncio do terminal virou um estado neutro de ociosidade e não dispara mais notificações falsas de atenção no desktop.',
+        'Textos em português do Brasil receberam uma revisão de acentuação, acompanhada por um teste que evita regressões frequentes.',
+      ],
+    },
+    {
       date: '08 ago 2026 · 0.1.4',
       items: [
         'Orkestrai 0.1.4 é a primeira release para macOS com assinatura Developer ID Application e notarização da Apple; a assinatura ad-hoc fica restrita a builds locais.',

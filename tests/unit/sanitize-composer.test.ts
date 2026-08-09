@@ -17,7 +17,7 @@ describe('sanitizeComposerText', () => {
     expect(sanitizeComposerText('Oi! Tudo bem — 100%? çãõ 😀')).toBe('Oi! Tudo bem — 100%? çãõ 😀');
   });
 
-  it('limita o tamanho', () => {
-    expect(sanitizeComposerText('x'.repeat(9000))).toHaveLength(4000);
+  it('nao corta mensagens longas silenciosamente', () => {
+    expect(sanitizeComposerText('x'.repeat(9000))).toHaveLength(9000);
   });
 });

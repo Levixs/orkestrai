@@ -25,9 +25,6 @@ function stubAdapter(id: string): AgentAdapter {
     resumeArgs(agentSessionId?: string) {
       return agentSessionId ? ['resume', agentSessionId] : null;
     },
-    resumeArgs(agentSessionId?: string) {
-      return agentSessionId ? ['resume', agentSessionId] : null;
-    },
     parseOutput(stdout: string) {
       return { content: stdout };
     },

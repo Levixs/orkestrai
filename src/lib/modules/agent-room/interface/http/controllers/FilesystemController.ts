@@ -38,7 +38,7 @@ export class FilesystemController extends Controller {
       const path = event.url.searchParams.get('path');
       return this.json({ data: await filesystemService.list(event.params.id, path) });
     } catch (error) {
-      return this.errorResponse(error, 'Falha ao listar diretorio.');
+      return this.errorResponse(error, 'Falha ao listar diretório.');
     }
   }
 
@@ -80,7 +80,7 @@ export class FilesystemController extends Controller {
         headers: { 'content-type': file.contentType, 'cache-control': 'private, max-age=60' },
       });
     } catch (error) {
-      return this.json({ error: error instanceof Error ? error.message : 'Nao encontrado.' }, 404);
+      return this.json({ error: error instanceof Error ? error.message : 'Não encontrado.' }, 404);
     }
   }
 
@@ -106,7 +106,7 @@ export class FilesystemController extends Controller {
     try {
       return this.json({ data: await gitService.logGraph(event.params.id) });
     } catch (error) {
-      return this.errorResponse(error, 'Falha ao ler historico.');
+      return this.errorResponse(error, 'Falha ao ler histórico.');
     }
   }
 
@@ -203,11 +203,11 @@ export class FilesystemController extends Controller {
       const body = await event.request.json();
       const node = await workspaceRepository.getNode(event.params.nodeId);
       if (!node || node.workspaceId !== event.params.id || node.type !== 'terminal') {
-        throw new Error('Terminal nao encontrado neste workspace.');
+        throw new Error('Terminal não encontrado neste workspace.');
       }
       const sessionId = (node.payload as { sessionId?: string }).sessionId;
-      if (!sessionId) throw new Error('O terminal nao tem sessao PTY ativa.');
-      ptySessionManager.write(sessionId, String(body.data ?? ''));
+      if (!sessionId) throw new Error('O terminal não tem sessão PTY ativa.');
+      ptySessionManager.writeHumanInput(sessionId, String(body.data ?? ''));
       return this.json({ data: { written: true } });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao escrever no terminal.');
@@ -240,7 +240,7 @@ export class FilesystemController extends Controller {
   async openInIde(event: any) {
     try {
       const workspace = await workspaceRepository.getWorkspace(event.params.id);
-      if (!workspace) throw new Error('Workspace nao encontrado.');
+      if (!workspace) throw new Error('Workspace não encontrado.');
       const editors = ['code', 'cursor', 'zed', 'idea', 'subl'];
       const { execFile } = await import('node:child_process');
       for (const editor of editors) {
@@ -260,7 +260,7 @@ export class FilesystemController extends Controller {
       const input = await GitPathRequest.validate(event);
       return this.json({ data: await gitService.discard(event.params.id, input.path) });
     } catch (error) {
-      return this.errorResponse(error, 'Falha ao descartar alteracoes.');
+      return this.errorResponse(error, 'Falha ao descartar alterações.');
     }
   }
 

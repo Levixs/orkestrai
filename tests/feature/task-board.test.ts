@@ -78,7 +78,7 @@ describe('TaskBoardService', () => {
 
   it('criada com assignee ja nasce doing; titulo vazio falha', async () => {
     const { workspace, session } = await createWorkspaceWithTerminal();
-    await expect(taskBoardService.create(workspace.id, { title: '  ' })).rejects.toThrow('titulo');
+    await expect(taskBoardService.create(workspace.id, { title: '  ' })).rejects.toThrow('título');
     ptySessionManager.kill(session.id);
   });
 
@@ -90,7 +90,7 @@ describe('TaskBoardService', () => {
     const alive = await taskBoardService.create(workspace.id, { title: 'Viva 1' });
 
     // so da para arquivar tarefa concluida
-    await expect(taskBoardService.archive(workspace.id, alive.id)).rejects.toThrow('concluida');
+    await expect(taskBoardService.archive(workspace.id, alive.id)).rejects.toThrow('concluída');
 
     const archived = await taskBoardService.archive(workspace.id, done1.id);
     expect(archived.archivedAt).toBeTruthy();

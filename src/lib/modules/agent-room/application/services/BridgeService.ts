@@ -19,7 +19,7 @@ export type BridgeAgent = {
   command: string | null;
   sessionId: string | null;
   sessionAlive: boolean;
-  /** true quando o agente e o lider do time (Modo Maestro). */
+  /** true quando o agente e o líder do time (Modo Maestro). */
   maestro: boolean;
 };
 
@@ -30,7 +30,7 @@ function stripAnsi(text: string): string {
   return text.replace(ANSI_PATTERN, '').replace(/\r\n/g, '\n').trim();
 }
 
-/** Titulo curto de no: primeira linha, max 48 chars (titulos-frase quebram o header). */
+/** Título curto de no: primeira linha, max 48 chars (títulos-frase quebram o header). */
 function shortTitle(title: string, max = 48): string {
   const first = title.split('\n')[0].trim();
   return first.length > max ? `${first.slice(0, max - 1).trimEnd()}…` : first;
@@ -48,19 +48,19 @@ function defaultPortalUrl(url: string): string {
  * resposta), le/escreve notas e provisiona arquivos de skill/config.
  */
 export class BridgeService {
-  /** Resolve o workspace dono do token; lanca erro se invalido. */
+  /** Resolve o workspace dono do token; lanca erro se inválido. */
   async resolveWorkspaceByToken(token: string): Promise<Workspace> {
     const model = await AgentWorkspace.query().where('bridge_token', token).first();
-    if (!model) throw new Error('Token de bridge invalido.');
+    if (!model) throw new Error('Token de bridge inválido.');
     const workspace = await workspaceRepository.getWorkspace(model.getAttribute('id'));
-    if (!workspace) throw new Error('Workspace nao encontrado.');
+    if (!workspace) throw new Error('Workspace não encontrado.');
     return workspace;
   }
 
-  /** Token do workspace, gerando (e persistindo config) se ainda nao existir. */
+  /** Token do workspace, gerando (e persistindo config) se ainda não existir. */
   async getOrCreateToken(workspaceId: string, apiUrl?: string): Promise<string> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
-    if (!workspace) throw new Error('Workspace nao encontrado.');
+    if (!workspace) throw new Error('Workspace não encontrado.');
 
     const existing = await AgentWorkspace.query().where('id', workspaceId).first();
     const token = existing?.getAttribute('bridge_token') as string | null;
@@ -75,7 +75,7 @@ export class BridgeService {
     return generated;
   }
 
-  /** Lista os terminais (agentes) do workspace com estado da sessao PTY. */
+  /** Lista os terminais (agentes) do workspace com estado da sessão PTY. */
   async listAgents(workspaceId: string): Promise<BridgeAgent[]> {
     const nodes = await workspaceRepository.listNodes(workspaceId);
     return nodes
@@ -98,19 +98,19 @@ export class BridgeService {
 
   /**
    * Envia uma mensagem ao terminal de destino e aguarda a resposta:
-   * escreve no PTY, acumula a saida e resolve quando o alvo fica ocioso
-   * (deteccao de atencao) ou estoura o timeout. Se `from` for informado,
-   * a resposta tambem e injetada de volta no terminal de origem.
+   * escreve no PTY, acumula a saída e resolve quando o alvo fica ocioso
+   * (deteccao de atenção) ou estoura o timeout. Se `from` for informado,
+   * a resposta também e injetada de volta no terminal de origem.
    */
   /** Envia bytes brutos ao terminal (controlar TUIs/pagers interativos). */
   async askRaw(workspaceId: string, input: { to: string; message: string }): Promise<{ to: string; sent: boolean }> {
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.to);
     if (!target.sessionId || !target.sessionAlive) {
-      throw new Error(`O agente "${target.title}" nao tem uma sessao PTY ativa.`);
+      throw new Error(`O agente "${target.title}" não tem uma sessão PTY ativa.`);
     }
     ptySessionManager.write(target.sessionId, input.message);
-    // Pulso de "conversando" na edge (raw nao tem ciclo de resposta).
+    // Pulso de "conversando" na edge (raw não tem ciclo de resposta).
     this.broadcastTalking(workspaceId, null, target.nodeId, true);
     const pulse = setTimeout(() => this.broadcastTalking(workspaceId, null, target.nodeId, false), 6_000);
     pulse.unref?.();
@@ -124,13 +124,13 @@ export class BridgeService {
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.to);
     if (!target.sessionId || !target.sessionAlive) {
-      throw new Error(`O agente "${target.title}" nao tem uma sessao PTY ativa.`);
+      throw new Error(`O agente "${target.title}" não tem uma sessão PTY ativa.`);
     }
 
     const origin = input.from ? this.findAgent(agents, input.from) : null;
     if (origin) await this.ensureEdge(workspaceId, origin.nodeId, target.nodeId);
 
-    // Baseline ANTES de mandar: a resposta so vale quando o transcrito muda
+    // Baseline ANTES de mandar: a resposta só vale quando o transcrito muda
     // (assistente novo depois da nossa mensagem) — nunca o boot do TUI.
     const baseline = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
 
@@ -145,16 +145,16 @@ export class BridgeService {
     // Resposta LIMPA pelo transcrito da CLI (JSONL em disco — sem lixo de
     // TUI/ANSI, sem status bar, sem caracteres duplicados de redraw). A
     // raspagem de tela crua vazava tudo isso para o composer do outro agente
-    // (quebras de linha soltas disparavam submits parciais e ate o editor
-    // externo do Claude Code). Se o transcrito ainda nao mudou (silencio cedo
+    // (quebras de linha soltas disparavam submits parciais e até o editor
+    // externo do Claude Code). Se o transcrito ainda não mudou (silencio cedo
     // demais: boot, trust screen, composer ecoando), espera ele encher.
     let replyText = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
     if (replyText && replyText === baseline) replyText = null;
     if (!replyText) {
       const node = await workspaceRepository.getNode(target.nodeId);
       const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
-      // So espera quando a sessao da CLI ja foi identificada (transcrito
-      // localizavel) — sem isso nao ha o que pollar e o fallback e imediato.
+      // Só espera quando a sessão da CLI já foi identificada (transcrito
+      // localizavel) — sem isso não há o que pollar e o fallback e imediato.
       if (payload.provider && payload.agentSessionId) {
         const deadline = Date.now() + 90_000;
         while (!replyText && Date.now() < deadline) {
@@ -168,7 +168,7 @@ export class BridgeService {
 
     // A resposta chega ao agente de origem pelo RETORNO do comando (stdout da
     // CLI / resultado da tool MCP). NAO injetamos mais no composer de origem:
-    // o texto digitado colidia com o que o usuario estava escrevendo naquele
+    // o texto digitado colidia com o que o usuário estava escrevendo naquele
     // terminal (mensagem emendada/corrompida).
     // Voz de volta: o no alvo pode ler a resposta em voz alta (toggle por
     // terminal; TTS na voz/idioma configurados — ver /api/agent-room/voice/speak).
@@ -198,7 +198,7 @@ export class BridgeService {
     broadcast?.({ type: 'talking', workspaceId, from, to, talking });
   }
 
-  /** Avisa o canvas para recarregar o conteudo do workspace (nos/edges/andares). */
+  /** Avisa o canvas para recarregar o conteúdo do workspace (nos/edges/andares). */
   notifyWorkspaceChanged(workspaceId: string) {
     const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
     broadcast?.({ type: 'workspaceChanged', workspaceId });
@@ -209,7 +209,7 @@ export class BridgeService {
     return { nodeId: node.id, title: node.title ?? 'nota', content: String((node.payload as { content?: string }).content ?? '') };
   }
 
-  /** Cria uma nota no canvas (e opcionalmente ja conecta a um agente ou a todos). */
+  /** Cria uma nota no canvas (e opcionalmente já conecta a um agente ou a todos). */
   async createNote(
     workspaceId: string,
     input: { title: string; content?: string; connect?: string | null }
@@ -227,7 +227,7 @@ export class BridgeService {
     });
     let connectedTo: string | null = null;
     if (input.connect === 'all') {
-      // Specs/briefs do lider: visiveis para o time inteiro.
+      // Specs/briefs do líder: visiveis para o time inteiro.
       const agents = await this.listAgents(workspaceId);
       for (const agent of agents) {
         await this.ensureEdge(workspaceId, note.id, agent.nodeId);
@@ -254,7 +254,7 @@ export class BridgeService {
     const node = await this.requireNoteNode(workspaceId, nodeId);
     const content = String((node.payload as { content?: string }).content ?? '');
     if (!content.includes(oldText)) {
-      throw new Error('Trecho antigo nao encontrado na nota.');
+      throw new Error('Trecho antigo não encontrado na nota.');
     }
     const next = content.replace(oldText, newText);
     const payload = { ...(node.payload as Record<string, unknown>), content: next };
@@ -274,7 +274,7 @@ export class BridgeService {
     return nodes.filter((node) => noteIds.has(node.id) && node.type === 'note').map((node) => node.id);
   }
 
-  /** Portais conectados ao agente (para o `list` da CLI): id, titulo e URL. */
+  /** Portais conectados ao agente (para o `list` da CLI): id, título e URL. */
   async portalsForAgent(workspaceId: string, agentNodeId: string): Promise<Array<{ id: string; title: string; url: string }>> {
     const edges = await workspaceRepository.listEdges(workspaceId);
     const portalIds = new Set<string>();
@@ -309,7 +309,7 @@ export class BridgeService {
     const node = await workspaceRepository.getNode(origin.nodeId);
     const maestro = Boolean((node?.payload as { maestro?: boolean } | undefined)?.maestro);
     if (!maestro) {
-      throw new Error(`O agente "${origin.title}" nao esta no Modo Maestro. Ative no no do terminal.`);
+      throw new Error(`O agente "${origin.title}" não está no Modo Maestro. Ative no nó do terminal.`);
     }
     return origin;
   }
@@ -365,7 +365,7 @@ export class BridgeService {
     return { nodeId: node.id, title: node.title, replaced: false };
   }
 
-  /** Titulo unico por workspace: "Dev" ocupado vira "Dev 2", "Dev 3"... (ask ambiguo quebra o roteamento). */
+  /** Título único por workspace: "Dev" ocupado vira "Dev 2", "Dev 3"... (ask ambiguo quebra o roteamento). */
   private async uniqueAgentTitle(workspaceId: string, title: string): Promise<string> {
     const agents = await this.listAgents(workspaceId);
     const taken = new Set(agents.map((agent) => agent.title.toLowerCase()));
@@ -376,7 +376,7 @@ export class BridgeService {
     }
   }
 
-  /** Cria a aresta se o par ainda nao estiver conectado (qualquer direcao). */
+  /** Cria a aresta se o par ainda não estiver conectado (qualquer direcao). */
   private async ensureEdge(workspaceId: string, a: string, b: string): Promise<string | null> {
     if (a === b) return null;
     const edges = await workspaceRepository.listEdges(workspaceId);
@@ -392,8 +392,8 @@ export class BridgeService {
 
   /**
    * Posicao de organograma para um novo recruta: fileiras de 3 abaixo do
-   * maestro, offsets estaveis (nos ja postos nunca se movem). O maestro so
-   * recruta reports diretos, entao uma arvore de 1 nivel basta.
+   * maestro, offsets estaveis (nos já postos nunca se movem). O maestro só
+   * recruta reports diretos, entao uma árvore de 1 nível basta.
    */
   private async orgChartPosition(workspaceId: string, maestroNodeId: string, floorId?: string | null) {
     const maestro = await workspaceRepository.getNode(maestroNodeId);
@@ -452,7 +452,7 @@ export class BridgeService {
 
   /**
    * Garante que existe um no de quadro (tasks) no canvas — criado na primeira
-   * tarefa para o kanban nao ficar invisivel "por baixo dos panos". O quadro
+   * tarefa para o kanban não ficar invisivel "por baixo dos panos". O quadro
    * nasce conectado ao maestro (ou ao primeiro terminal).
    */
   async ensureTasksBoard(workspaceId: string): Promise<void> {
@@ -474,12 +474,12 @@ export class BridgeService {
     this.notifyWorkspaceChanged(workspaceId);
   }
 
-  /** Dispensa um recruta: mata a sessao PTY e remove o no do canvas. */
+  /** Dispensa um recruta: mata a sessão PTY e remove o no do canvas. */
   async dismiss(workspaceId: string, input: { from: string; target: string }) {
     const origin = await this.requireMaestro(workspaceId, input.from);
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.target);
-    if (target.nodeId === origin.nodeId) throw new Error('O maestro nao pode dispensar a si mesmo.');
+    if (target.nodeId === origin.nodeId) throw new Error('O maestro não pode dispensar a si mesmo.');
     if (target.sessionId) ptySessionManager.kill(target.sessionId);
     await workspaceRepository.deleteNode(target.nodeId);
     this.notifyWorkspaceChanged(workspaceId);
@@ -515,7 +515,7 @@ export class BridgeService {
     return { command: spec.command, args: spec.args };
   }
 
-  /** Conteudo da skill da ponte (extraido para comparar/atualizar installs antigas). */
+  /** Conteúdo da skill da ponte (extraido para comparar/atualizar installs antigas). */
   bridgeSkillContent(): string {
     return `---
 name: orkestrai-bridge
@@ -524,70 +524,70 @@ description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com 
 
 # Ponte Orkestrai
 
-Voce esta rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` da acesso a ponte.
-Sua identidade ja esta no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voce e, entao \`--from\` e \`--agent\` sao opcionais.
-Se \`orkestrai\` nao resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), chame a CLI DIRETO pelo node: \`node "$ORKESTRAI_CLI" ...\` (Linux/macOS), \`node %ORKESTRAI_CLI% ...\` (cmd.exe) ou \`node $env:ORKESTRAI_CLI ...\` (PowerShell) — o caminho completo da CLI esta na variavel de ambiente ORKESTRAI_CLI e funciona sempre, sem depender de PATH.
-Se as tools \`orkestrai\` (list/ask/note_*/task_*/portal_*/floor_*/notify/port/recruit/dismiss) estiverem disponiveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
+Você está rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` dá acesso à ponte.
+Sua identidade já está no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem você é, então \`--from\` e \`--agent\` são opcionais.
+Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), chame a CLI DIRETO pelo node: \`node "$ORKESTRAI_CLI" ...\` (Linux/macOS), \`node %ORKESTRAI_CLI% ...\` (cmd.exe) ou \`node $env:ORKESTRAI_CLI ...\` (PowerShell) — o caminho completo da CLI está na variável de ambiente ORKESTRAI_CLI e funciona sempre, sem depender de PATH.
+Se as tools \`orkestrai\` (list/ask/note_*/task_*/portal_*/floor_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
-- \`orkestrai list\` — lista os agentes do workspace (titulo, provider, sessao viva) e SUAS notas e portais conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, nao um titulo — fale com o lider pelo TITULO dele (ex.: \`orkestrai ask "Lider" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente nao existe).
+- \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas e portais conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
-- \`orkestrai note read <nodeId>\` — le uma nota conectada a voce.
-- \`orkestrai note create "<titulo>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
-- \`orkestrai note write <nodeId> "<conteudo>"\` — substitui o conteudo da nota.
-- \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edicao pontual.
-- \`orkestrai task list\` — quadro de tarefas do workspace. Tarefas podem ter IMAGENS DE REFERENCIA (paths relativos ao workspace, ex.: .orkestrai/images/x.png) — leia o arquivo se a referencia for util pra execucao.
-- \`orkestrai task add "<titulo>" --assign "<Agente>"\` — cria tarefa e ja despacha para o agente.
-- \`orkestrai task done <taskId>\` — marca tarefa atribuida a voce como concluida.
-- \`orkestrai task archive <taskId>\` / \`task archive-done\` — arquiva concluidas: saem do quadro, ficam no historico. Lidere a limpeza do quadro ao fechar uma frente.
-- \`orkestrai task history\` — historico do workspace (concluidas + arquivadas, da mais recente): o "o que ja foi feito" do projeto.
-- \`orkestrai task add "<titulo>" --note "<titulo-da-nota>"\` / \`task link <taskId> <nota>\` / \`task unlink <taskId>\` — vincula a tarefa a sua nota de spec. SEMPRE vincule: tarefa com spec vinculada e autossuficiente. Regras: UMA nota por tarefa (a mesma nota pode servir varias tarefas); ao arquivar a tarefa, a nota sai do canvas JUNTO (fica acessivel pelo historico); nota vinculada nao apaga pelo X do canvas — so sai de verdade junto com a tarefa (ou se desvinculada).
+- \`orkestrai note read <nodeId>\` — lê uma nota conectada a você.
+- \`orkestrai note create "<título>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
+- \`orkestrai note write <nodeId> "<conteúdo>"\` — substitui o conteúdo da nota.
+- \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edição pontual.
+- \`orkestrai task list\` — quadro de tarefas do workspace. Tarefas podem ter IMAGENS DE REFERÊNCIA (paths relativos ao workspace, ex.: .orkestrai/images/x.png) — leia o arquivo se a referência for útil para a execução.
+- \`orkestrai task add "<título>" --assign "<Agente>"\` — cria tarefa e já despacha para o agente.
+- \`orkestrai task done <taskId>\` — marca a tarefa atribuída a você como concluída.
+- \`orkestrai task archive <taskId>\` / \`task archive-done\` — arquiva concluídas: saem do quadro, ficam no histórico. Lidere a limpeza do quadro ao fechar uma frente.
+- \`orkestrai task history\` — histórico do workspace (concluídas + arquivadas, da mais recente): o "o que já foi feito" do projeto.
+- \`orkestrai task add "<título>" --note "<título-da-nota>"\` / \`task link <taskId> <nota>\` / \`task unlink <taskId>\` — vincula a tarefa à sua nota de spec. SEMPRE vincule: tarefa com spec vinculada é autossuficiente. Regras: UMA nota por tarefa (a mesma nota pode servir várias tarefas); ao arquivar a tarefa, a nota sai do canvas JUNTO (fica acessível pelo histórico); nota vinculada não é apagada pelo X do canvas — só sai de verdade junto com a tarefa (ou se desvinculada).
 - \`orkestrai portal create "<url>" [--title "<t>"] [--connect "<Agente>"|all]\` — cria um portal (browser) no canvas.
 - \`orkestrai portal <nodeId> navigate "<url>"\` — abre uma URL no portal conectado.
-- \`orkestrai portal <nodeId> eval "<js>"\` — executa JS na pagina e retorna o resultado.
-- \`orkestrai portal <nodeId> dom\` — devolve o HTML atual (ler telas, pesquisar, testar o que voce esta construindo).
+- \`orkestrai portal <nodeId> eval "<js>"\` — executa JS na página e retorna o resultado.
+- \`orkestrai portal <nodeId> dom\` — devolve o HTML atual (ler telas, pesquisar, testar o que você está construindo).
 - \`orkestrai portal <nodeId> screenshot\` — captura a tela do portal.
-- \`orkestrai floor create "<nome>" [--clone]\` — cria um andar (worktree git com branch propria) para trabalho isolado.
+- \`orkestrai floor create "<nome>" [--clone]\` — cria um andar (worktree git com branch própria) para trabalho isolado.
 - \`orkestrai floor list\` / \`floor preview <id>\` / \`floor land <id>\` / \`floor remove <id>\` — gerencia andares; preview mostra conflitos ANTES do merge.
-- \`orkestrai notify "<mensagem>"\` — notificacao NATIVA no desktop do usuario (use ao concluir ou ao precisar de atencao).
-- \`orkestrai port\` — devolve uma porta LIVRE para subir servidores; \`orkestrai port --check <porta>\` testa se uma porta esta livre.
-- \`orkestrai fs read <path>\` / \`fs write <path> <conteudo>\` / \`fs search <termo> [--content]\` — arquivos do workspace via ponte.
-- \`orkestrai run <taskId>\` — re-despacha a tarefa para o responsavel (re-tentar/re-briefar).
-- \`orkestrai say "<texto>"\` — fala em voz alta no desktop do usuario, na voz configurada.
+- \`orkestrai notify "<mensagem>"\` — notificação NATIVA no desktop do usuário (use ao concluir ou ao precisar de atenção).
+- \`orkestrai port\` — devolve uma porta LIVRE para subir servidores; \`orkestrai port --check <porta>\` testa se uma porta está livre.
+- \`orkestrai fs read <path>\` / \`fs write <path> <conteúdo>\` / \`fs search <termo> [--content]\` — arquivos do workspace via ponte.
+- \`orkestrai run <taskId>\` — re-despacha a tarefa para o responsável (re-tentar/re-briefar).
+- \`orkestrai say "<texto>"\` — fala em voz alta no desktop do usuário, na voz configurada.
 - \`orkestrai notes\` / \`orkestrai portals\` — listagens rapidas das suas notas/portais.
-- \`orkestrai clip\` — le a area de transferencia local.
+- \`orkestrai clip\` — lê a área de transferência local.
 
 ## Portas e processos (varios workspaces rodam AO MESMO TEMPO nesta maquina)
 
-- Ao subir QUALQUER servidor (dev server, preview, API local), NUNCA assuma a porta padrao (5173, 3000...): ela pode estar em uso por OUTRO workspace/time. Pegue uma porta livre e use-a: \`PORTA=$(orkestrai port)\` e entao ex.: \`npm run dev -- --port $PORTA\` ou \`npx vite --port $PORTA\`.
-- NUNCA mate processos por porta (\`kill $(lsof -ti :5173)\`, \`fuser -k\`, Stop-Process etc.) — o processo pode ser de outro time e voce derruba o trabalho dele. Porta ocupada? Escolha OUTRA com \`orkestrai port\`; nao mate nada.
-- Depois de subir o servidor, REGISTRE a porta: diga ao lider (\`orkestrai ask\`) ou escreva na nota do projeto — o portal e o time precisam da URL certa.
+- Ao subir QUALQUER servidor (dev server, preview, API local), NUNCA assuma a porta padrão (5173, 3000...): ela pode estar em uso por OUTRO workspace/time. Pegue uma porta livre e use-a: \`PORTA=$(orkestrai port)\` e então ex.: \`npm run dev -- --port $PORTA\` ou \`npx vite --port $PORTA\`.
+- NUNCA mate processos por porta (\`kill $(lsof -ti :5173)\`, \`fuser -k\`, Stop-Process etc.) — o processo pode ser de outro time e você derruba o trabalho dele. Porta ocupada? Escolha OUTRA com \`orkestrai port\`; não mate nada.
+- Depois de subir o servidor, REGISTRE a porta: diga ao líder (\`orkestrai ask\`) ou escreva na nota do projeto — o portal e o time precisam da URL certa.
 
-Ao aterrissar (land), conflitos NAO sao resolvidos automaticamente — o erro lista os arquivos em conflito; resolva-os voce mesmo no checkout principal (ou atribua a um agente) e repita o land.
+Ao aterrissar (land), conflitos NÃO são resolvidos automaticamente — o erro lista os arquivos em conflito; resolva-os você mesmo no checkout principal (ou atribua a um agente) e repita o land.
 
-Use \`--json\` para saida estruturada em qualquer comando.
+Use \`--json\` para saída estruturada em qualquer comando.
 
-## Orquestrar times (Modo Maestro) — OBRIGATORIO para o lider
+## Orquestrar times (Modo Maestro) — OBRIGATÓRIO para o líder
 
-Se voce e o lider (Modo Maestro), voce NUNCA executa o trabalho sozinho: voce orquestra — isso vale INCLUSIVE quando o time trava, demora ou erra. Se der ruim, voce DESBLOQUEIA o time (passo 7); assumir o trabalho e falha de orquestracao, nao solucao. Ao receber um projeto/tarefa grande:
+Se você é o líder (Modo Maestro), você NUNCA executa o trabalho sozinho: você orquestra — isso vale INCLUSIVE quando o time trava, demora ou erra. Se der ruim, você DESBLOQUEIA o time (passo 7); assumir o trabalho é falha de orquestração, não solução. Ao receber um projeto/tarefa grande:
 
-PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NAO aparecem no canvas, NAO tem terminal proprio e o usuario nao ve nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
+PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NÃO aparecem no canvas, NÃO têm terminal próprio e o usuário não vê nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
 
-1. PRIMEIRO proponha o time: liste os agentes sugeridos (titulo, provider, role de cada um) e pergunte quais ele quer criar — nao crie nada sem aprovacao. VARIE os providers: times com 3+ agentes devem misturar claude, codex, kimi e opencode (ex.: codex implementa, claude revisa/arquiteta, kimi cuida de design/docs) — NUNCA crie o time inteiro com um provider so.
-2. Aprovado, crie com \`orkestrai recruit "<Titulo>" [--provider claude|codex|kimi|opencode] [--role <papel>]\`. Recrutas nascem CONECTADOS a voce no organograma (nao precisa de \`connect\`). Use titulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descricoes longas vao na nota de briefing.
-3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota ja conecta ao time inteiro por padrao).
-4. Trabalho em codigo? Cada agente trabalha no PROPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente comecar — NUNCA deixe varios agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (ve conflitos) e \`orkestrai floor land\`.
-5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente). HANDOFF: cada task tem que ser AUTOSSUFICIENTE (a descricao diz o que fazer e onde esta o spec) OU citar o id de uma nota que JA EXISTE e ja esta conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que voce ainda nao criou. E cada agente PRODUZ os proprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; nao fica esperando o lider mandar uma — deixe isso explicito na descricao da task.
-6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time esta construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrao 5173/3000 — outro workspace pode estar usando).
-7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silencio ou pedir algo (uma nota, um id, um esclarecimento), VOCE resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCE MESMO e o ultimo recurso, so depois de tentar desbloquear e o agente realmente nao dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado e problema de coordenacao do lider, nao motivo pra assumir o trabalho.
-8. AO CONCLUIR (ou quando precisar de atencao/aprovacao do usuario), chame \`orkestrai notify "<resumo do que foi entregue>"\` — vira notificacao nativa no desktop do usuario. NUNCA termine em silencio.
-9. Ao finalizar uma frente, dispense o que nao precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
+1. PRIMEIRO proponha o time: liste os agentes sugeridos (título, provider, role de cada um) e pergunte quais ele quer criar — não crie nada sem aprovação. VARIE os providers: times com 3+ agentes devem misturar claude, codex, kimi e opencode (ex.: codex implementa, claude revisa/arquiteta, kimi cuida de design/docs) — NUNCA crie o time inteiro com um provider só.
+2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider claude|codex|kimi|opencode] [--role <papel>]\`. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
+3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota já conecta ao time inteiro por padrão).
+4. Trabalho em código? Cada agente trabalha no PRÓPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente começar — NUNCA deixe vários agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (vê conflitos) e \`orkestrai floor land\`.
+5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente). HANDOFF: cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.
+6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time está construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrão 5173/3000 — outro workspace pode estar usando).
+7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silêncio ou pedir algo (uma nota, um id, um esclarecimento), VOCÊ resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCÊ MESMO é o último recurso, só depois de tentar desbloquear e o agente realmente não dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado é problema de coordenação do líder, não motivo para assumir o trabalho.
+8. AO CONCLUIR (ou quando precisar de atenção/aprovação do usuário), chame \`orkestrai notify "<resumo do que foi entregue>"\` — vira notificação nativa no desktop do usuário. NUNCA termine em silêncio.
+9. Ao finalizar uma frente, dispense o que não precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
-Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instrucoes). Skills novas sao descobertas nas proximas sessoes do agente.
+Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instruções). Skills novas são descobertas nas próximas sessões do agente.
 `;
   }
 
   /**
-   * Provisiona a skill da ponte nos diretorios convencionais dos agentes
+   * Provisiona a skill da ponte nos diretórios convencionais dos agentes
    * (.claude/skills e .orkestrai) ao conectar dois terminais.
    */
   provisionSkill(workspace: Workspace, token: string): void {
@@ -602,14 +602,14 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
         writeFileSync(resolve(dir, 'SKILL.md'), skill);
       }
       // .mcp.json na raiz do projeto: agentes que falam MCP (Claude, Kimi...)
-      // ganham as acoes do canvas como TOOLS nativas via `orkestrai mcp`.
-      // MERGE — nunca sobrescreve os servidores que o usuario ja configurou.
+      // ganham as ações do canvas como TOOLS nativas via `orkestrai mcp`.
+      // MERGE — nunca sobrescreve os servidores que o usuário já configurou.
       const mcpPath = resolve(workspace.workingDir, '.mcp.json');
       let mcpConfig: { mcpServers?: Record<string, unknown> } = {};
       try {
         mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf8'));
       } catch {
-        // nao existe ou invalido — cria do zero
+        // não existe ou inválido — cria do zero
       }
       const current = JSON.stringify(mcpConfig.mcpServers?.orkestrai ?? null);
       const desired = { command: 'orkestrai', args: ['mcp'] };
@@ -633,32 +633,32 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
         }
       }
     } catch {
-      // Sem permissao de escrita no working_dir nao bloqueia a conexao.
+      // Sem permissao de escrita no working_dir não bloqueia a conexão.
     }
     this.writeBridgeConfig(workspace, token);
   }
 
-  /** Bloco AGENTS.md: o que Codex, Kimi e OpenCode leem (eles nao leem .claude/skills). */
+  /** Bloco AGENTS.md: o que Codex, Kimi e OpenCode leem (eles não leem .claude/skills). */
   private agentsMdBlock(): string {
     return [
       '<!-- orkestrai:begin -->',
       '## Ponte Orkestrai (agentes)',
       '',
-      'Este projeto roda dentro de um workspace do Orkestrai. Voce tem a CLI `orkestrai` e/ou tools MCP `orkestrai` disponiveis para colaborar com o time no canvas:',
-      '- `orkestrai list` — agentes do workspace, notas e portais conectados. O [LIDER] marcado e o maestro do time: fale com ele pelo TITULO ("Maestro" e o papel, nao um nome de agente).',
+      'Este projeto roda dentro de um workspace do Orkestrai. Você tem a CLI `orkestrai` e/ou tools MCP `orkestrai` disponíveis para colaborar com o time no canvas:',
+      '- `orkestrai list` — agentes do workspace, notas e portais conectados. O [LIDER] marcado e o maestro do time: fale com ele pelo TITULO ("Maestro" e o papel, não um nome de agente).',
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
       '- `orkestrai task list/add/done` — quadro kanban do time.',
       '- `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.',
-      '- `orkestrai notify "<msg>"` — notificacao nativa para o usuario ao concluir.',
-      '- Sua identidade esta no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` sao opcionais. Se `orkestrai` nao resolver no PATH, use `node "$ORKESTRAI_CLI" ...`.',
-      '- Se as tools MCP `orkestrai` estiverem disponiveis, PREFIRA elas (chamadas tipadas); a CLI e o fallback.',
+      '- `orkestrai notify "<msg>"` — notificação nativa para o usuário ao concluir.',
+      '- Sua identidade está no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` são opcionais. Se `orkestrai` não resolver no PATH, use `node "$ORKESTRAI_CLI" ...`.',
+      '- Se as tools MCP `orkestrai` estiverem disponíveis, PREFIRA elas (chamadas tipadas); a CLI e o fallback.',
       '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',
       '<!-- orkestrai:end -->',
     ].join('\n');
   }
 
-  /** Escreve/mescla o bloco da ponte no AGENTS.md (preserva o conteudo do usuario). */
+  /** Escreve/mescla o bloco da ponte no AGENTS.md (preserva o conteúdo do usuário). */
   private provisionAgentsMd(workingDir: string): void {
     const path = resolve(workingDir, 'AGENTS.md');
     const block = this.agentsMdBlock();
@@ -672,11 +672,11 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
     writeFileSync(path, `${current.replace(/\s*$/, '\n\n')}${block}\n`);
   }
 
-  /** Codex le MCP de ~/.codex/config.toml ([mcp_servers.*]) — nao le .mcp.json. */
+  /** Codex le MCP de ~/.codex/config.toml ([mcp_servers.*]) — não le .mcp.json. */
   private provisionCodexMcp(): void {
     if (process.env.VITEST) return;
     const dir = resolve(homedir(), '.codex');
-    if (!existsSync(dir)) return; // codex nao instalado — nao polui o HOME
+    if (!existsSync(dir)) return; // codex não instalado — não polui o HOME
     const path = resolve(dir, 'config.toml');
     const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
     const cliEntry = process.env.ORKESTRAI_CLI ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
@@ -697,7 +697,7 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
     try {
       config = JSON.parse(readFileSync(path, 'utf8'));
     } catch {
-      // nao existe ou invalido — cria do zero
+      // não existe ou inválido — cria do zero
     }
     const desired = { type: 'local', command: ['orkestrai', 'mcp'], enabled: true };
     if (JSON.stringify(config.mcp?.orkestrai ?? null) === JSON.stringify(desired)) return;
@@ -711,14 +711,14 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
     const normalized = query.trim().toLowerCase();
     const exact = agents.filter((item) => item.title.toLowerCase() === normalized);
     if (exact.length > 1) {
-      throw new Error(`Ha ${exact.length} agentes chamados "${query}" — renomeie um deles (duplo-clique no titulo do no) ou use o id do no.`);
+      throw new Error(`Há ${exact.length} agentes chamados "${query}" — renomeie um deles (duplo-clique no título do no) ou use o id do no.`);
     }
     const agent =
       agents.find((item) => item.nodeId === query) ??
       exact[0] ??
       agents.find((item) => item.title.toLowerCase().includes(normalized));
     if (!agent) {
-      throw new Error(`Agente "${query}" nao encontrado. Use orkestrai list para ver os disponiveis.`);
+      throw new Error(`Agente "${query}" não encontrado. Use orkestrai list para ver os disponíveis.`);
     }
     return agent;
   }
@@ -726,7 +726,7 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
   private async requireNoteNode(workspaceId: string, nodeId: string): Promise<CanvasNode> {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId || node.type !== 'note') {
-      throw new Error('Nota nao encontrada neste workspace.');
+      throw new Error('Nota não encontrada neste workspace.');
     }
     return node;
   }
@@ -745,23 +745,25 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       const sentAt = Date.now();
       let lastOutputAt = sentAt;
 
-      // Conclusao por silencio: so termina depois de saida real seguida de
+      // Conclusao por silencio: só termina depois de saída real seguida de
       // QUIET_MS sem novos bytes, e nunca antes de MIN_AFTER_SEND_MS — sem o
-      // piso, um agente ja ocioso dispara "waiting" no eco da propria
+      // piso, um agente já ocioso dispara "waiting" no eco da propria
       // mensagem e a resposta se perde.
       const MIN_AFTER_SEND_MS = 3_500;
       const QUIET_MS = 2_000;
       let retryTimer: ReturnType<typeof setInterval> | null = null;
 
+      let cancelQueuedDelivery: (() => boolean) | null = null;
       const finish = (timedOut: boolean) => {
         if (done) return;
         done = true;
-        clearTimeout(timer);
+        cancelQueuedDelivery?.();
+        if (timer) clearTimeout(timer);
         if (quietTimer) clearTimeout(quietTimer);
         if (retryTimer) clearInterval(retryTimer);
         signal?.removeEventListener('abort', onAbort);
         detach();
-        // So conta o que saiu DEPOIS do envio (boot paint nao e resposta).
+        // Só conta o que saiu DEPOIS do envio (boot paint não e resposta).
         resolvePromise({ text: stripAnsi(captured.slice(capturedAtSend)), timedOut });
       };
 
@@ -769,12 +771,12 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       let sent = false;
       let sentRealAt = 0;
       const maybeFinish = () => {
-        if (done || !sent) return; // boot quieto NAO e resposta — so vale depois do envio
+        if (done || !sent) return; // boot quieto NAO e resposta — só vale depois do envio
         const now = Date.now();
         const quietFor = now - lastOutputAt;
         const elapsed = now - sentRealAt;
         // TUIs de provider precisam de tempo para pensar (8s pos-envio); o
-        // quieto imediato apos o eco nao e resposta — e o retry do Enter atua
+        // quieto imediato após o eco não e resposta — e o retry do Enter atua
         // nessa janela. Shell puro segue o piso classico.
         const sessInfo = ptySessionManager.get(sessionId);
         const isTui = Boolean(provider && sessInfo && /claude|codex|kimi|opencode/.test(sessInfo.command));
@@ -788,7 +790,7 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       };
 
       const onAbort = () => finish(true);
-      const timer = setTimeout(() => finish(true), timeoutMs);
+      let timer: ReturnType<typeof setTimeout> | null = null;
 
       let detachFn: (() => void) | null = null;
       try {
@@ -805,7 +807,7 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
         );
         detachFn = attached.detach;
       } catch (error) {
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
         reject(error);
         return;
       }
@@ -818,55 +820,55 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
       signal?.addEventListener('abort', onAbort, { once: true });
 
       const send = () => {
-        sent = true;
-        sentRealAt = Date.now();
-        // Texto e Enter em writes separados: TUIs (Codex) tratam o \r colado
-        // ao texto como quebra de linha no composer em vez de submit. E o texto
-        // vai sanitizado: \n solto seria submit parcial no Claude; bytes de
-        // controle disparam atalhos do TUI (editor externo etc).
-        ptySessionManager.write(sessionId, sanitizeComposerText(message));
-        setTimeout(() => {
-          if (done) return;
-          try {
-            ptySessionManager.write(sessionId, '\r');
-          } catch {
-            finish(true);
-            return;
-          }
-          // Seguro contra Enter engolido: o eco do texto engana o "output
-          // novo". O que conta e ATIVIDADE RECENTE: se ficou quieto de novo
-          // (composer parado, nada processando), re-envia o \r — ate 3x.
-          let retries = 0;
-          retryTimer = setInterval(() => {
-            if (done || retries >= 3) {
-              if (retryTimer) clearInterval(retryTimer);
-              return;
-            }
-            if (Date.now() - lastOutputAt < 3_500) return; // atividade recente: segue
-            retries += 1;
-            try {
-              ptySessionManager.write(sessionId, '\r');
-            } catch {
-              finish(true);
-            }
-          }, 4_000);
-          retryTimer.unref?.();
-        }, 120);
-        // Rede de seguranca caso o evento de atencao nunca dispare.
-        quietTimer = setTimeout(maybeFinish, MIN_AFTER_SEND_MS);
+        const delivery = ptySessionManager.queueWithSubmit(sessionId, message, 120);
+        cancelQueuedDelivery = delivery.cancel;
+        delivery.submitted
+          .then(() => {
+            if (done) return;
+            cancelQueuedDelivery = null;
+            // Ignora boot/eco/comandos observados enquanto a mensagem aguardava
+            // um rascunho humano ser enviado. Daqui em diante e resposta real.
+            capturedAtSend = captured.length;
+            sent = true;
+            sentRealAt = Date.now();
+            lastOutputAt = sentRealAt;
+            timer = setTimeout(() => finish(true), timeoutMs);
+            // Seguro contra Enter engolido: o eco do texto engana o "output
+            // novo". O que conta e ATIVIDADE RECENTE: se ficou quieto de novo
+            // (composer parado, nada processando), tenta reenviar o \r. O
+            // gerenciador recusa se o usuário já tiver iniciado outro rascunho.
+            let retries = 0;
+            retryTimer = setInterval(() => {
+              if (done || retries >= 3) {
+                if (retryTimer) clearInterval(retryTimer);
+                return;
+              }
+              if (Date.now() - lastOutputAt < 3_500) return; // atividade recente: segue
+              retries += 1;
+              try {
+                ptySessionManager.submitIfComposerFree(sessionId);
+              } catch {
+                finish(true);
+              }
+            }, 4_000);
+            retryTimer.unref?.();
+            // Rede de segurança caso o evento de ociosidade nunca dispare.
+            quietTimer = setTimeout(maybeFinish, MIN_AFTER_SEND_MS);
+          })
+          .catch(() => finish(true));
       };
 
       // PRONTIDAO: escrever durante o boot faz o Enter virar newline no
-      // composer (Kimi) ou cair no limbo. Agente de provider (TUI): so escreve
-      // quando JA PRODUZIU output E ficou ocioso E a sessao tem idade minima
-      // (o boot do Kimi e bifasico: paint, depois MCP/sessao — o ocioso de
+      // composer (Kimi) ou cair no limbo. Agente de provider (TUI): só escreve
+      // quando JA PRODUZIU output E ficou ocioso E a sessão tem idade minima
+      // (o boot do Kimi e bifasico: paint, depois MCP/sessão — o ocioso de
       // 2.5s dispara no meio). Shell puro/desconhecido: escreve na hora.
       const readyDeadline = Date.now() + 30_000;
       const waitReady = () => {
         if (done) return;
         const sess = ptySessionManager.get(sessionId);
         const ageMs = sess ? Date.now() - Date.parse(sess.createdAt) : 0;
-        // A espera so vale para TUIs de provider de verdade (claude/codex/
+        // A espera só vale para TUIs de provider de verdade (claude/codex/
         // kimi/opencode): shell puro (ou provider simulado em teste) manda na hora.
         const isTui = Boolean(provider && sess && /claude|codex|kimi|opencode/.test(sess.command));
         const ready = Boolean(sess?.hasOutput && sess.waiting && ageMs >= 12_000);
@@ -898,7 +900,7 @@ Se uma tarefa exigir uma habilidade que voce nao tem, voce pode AUTORAR uma skil
         )
       );
     } catch {
-      // Config local e conveniencia; nao bloqueia o fluxo.
+      // Config local e conveniencia; não bloqueia o fluxo.
     }
   }
 }

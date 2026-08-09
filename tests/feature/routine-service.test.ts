@@ -83,7 +83,7 @@ describe('RoutineService', () => {
     });
     const result = await routineService.runNow(routine.id);
     expect(result.ok).toBe(false);
-    expect(result.detail).toContain('sessao PTY');
+    expect(result.detail).toContain('sessão PTY');
   });
 
   it('valida alvo e prompt', async () => {

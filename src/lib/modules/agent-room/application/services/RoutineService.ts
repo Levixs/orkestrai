@@ -28,7 +28,7 @@ function mapRoutine(model: AgentRoutine): Routine {
 
 /**
  * Rotinas: prompts agendados disparados a terminais do workspace.
- * Multiplas etapas: linhas começando com `&&` sao enviadas em sequencia.
+ * Multiplas etapas: linhas começando com `&&` sao enviadas em sequência.
  * O scheduler roda em processo (tick a cada 15s) e dispara as rotinas devidas.
  */
 export class RoutineService {
@@ -110,7 +110,7 @@ export class RoutineService {
   /** Dispara uma rotina agora (envia o prompt ao PTY do alvo, etapa a etapa). */
   async runNow(id: string): Promise<{ ok: boolean; detail: string }> {
     const model = await AgentRoutine.find(id);
-    if (!model) throw new Error('Rotina nao encontrada.');
+    if (!model) throw new Error('Rotina não encontrada.');
     const routine = mapRoutine(model);
 
     const node = await workspaceRepository.getNode(routine.targetNodeId);
@@ -121,20 +121,14 @@ export class RoutineService {
     let detail = '';
     try {
       if (!sessionId || !session || session.exited) {
-        throw new Error('O terminal alvo nao tem sessao PTY ativa.');
+        throw new Error('O terminal alvo não tem sessão PTY ativa.');
       }
       const steps = routine.prompt
         .split('\n')
         .map((line) => line.replace(/^&&\s*/, '').trim())
         .filter(Boolean);
       for (const step of steps) {
-        // Texto e Enter em writes separados (TUIs como o Codex tratam o \r
-        // colado como quebra de linha no composer em vez de submit).
-        ptySessionManager.write(sessionId, step);
-        await new Promise((resolve) => setTimeout(resolve, 120));
-        ptySessionManager.write(sessionId, '\r');
-        // Pequeno intervalo entre etapas para o agente processar
-        await new Promise((resolve) => setTimeout(resolve, 400));
+        await ptySessionManager.writeWithSubmit(sessionId, step, 120);
       }
       detail = `${steps.length} etapa(s) enviadas para ${node?.title ?? 'terminal'}.`;
     } catch (error) {
@@ -147,7 +141,7 @@ export class RoutineService {
       .where('id', id)
       .update({ last_run_at: new Date(), run_count: routine.runCount + 1 });
 
-    // Rotina de execucao unica se desativa apos rodar
+    // Rotina de execução única se desativa após rodar
     if (!routine.intervalMinutes) {
       await AgentRoutine.query().where('id', id).update({ enabled: false });
     }
@@ -155,13 +149,13 @@ export class RoutineService {
     return { ok, detail };
   }
 
-  /** Rotinas devidas agora (habilitadas, intervalo vencido ou nunca rodadas com >1min de criacao). */
+  /** Rotinas devidas agora (habilitadas, intervalo vencido ou nunca rodadas com >1min de criação). */
   async dueRoutines(): Promise<Routine[]> {
     const rows = await AgentRoutine.query().where('enabled', true).get();
     const now = Date.now();
     return rows.map(mapRoutine).filter((routine) => {
       if (!routine.intervalMinutes) {
-        // execucao unica: dispara 1 min apos criacao se ainda nao rodou
+        // execução única: dispara 1 min após criação se ainda não rodou
         return !routine.lastRunAt && now - new Date(routine.createdAt).getTime() > 60_000;
       }
       if (!routine.lastRunAt) return true;

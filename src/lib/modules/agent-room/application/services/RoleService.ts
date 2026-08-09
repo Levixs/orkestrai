@@ -22,17 +22,17 @@ function slugify(text: string): string {
 }
 
 /**
- * Responsabilidades (roles) de agentes: nome, cor e conjunto de instrucoes.
+ * Responsabilidades (roles) de agentes: nome, cor e conjunto de instruções.
  * Portateis: ficam em `.orkestrai/roles/<slug>/role.json` (+ AGENTS.md) no
- * working_dir do workspace, entao viajam com o repositorio.
+ * working_dir do workspace, entao viajam com o repositório.
  *
- * Aplicacao: quando um terminal com role inicia uma sessao PTY, o prompt da
+ * Aplicacao: quando um terminal com role inicia uma sessão PTY, o prompt da
  * role e injetado como primeira mensagem ao agente (funciona em qualquer TUI).
  */
 export class RoleService {
   private async rolesDir(workspaceId: string): Promise<string> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
-    if (!workspace) throw new Error('Workspace nao encontrado.');
+    if (!workspace) throw new Error('Workspace não encontrado.');
     const current = resolve(workspace.workingDir, '.orkestrai', 'roles');
     // Legado: workspaces criados na era .pantheon/ continuam legiveis.
     if (!existsSync(current)) {
@@ -59,7 +59,7 @@ export class RoleService {
           prompt: String(raw.prompt ?? ''),
         });
       } catch {
-        // role.json invalido e ignorado
+        // role.json inválido e ignorado
       }
     }
     return roles.sort((a, b) => a.name.localeCompare(b.name));
@@ -93,7 +93,7 @@ export class RoleService {
   async edit(workspaceId: string, nameOrSlug: string, oldText: string, newText: string): Promise<AgentRole> {
     const role = await this.requireRole(workspaceId, nameOrSlug);
     if (!role.prompt.includes(oldText)) {
-      throw new Error('Trecho antigo nao encontrado no prompt da responsabilidade.');
+      throw new Error('Trecho antigo não encontrado no prompt da responsabilidade.');
     }
     return this.save(workspaceId, {
       name: role.name,
@@ -110,12 +110,12 @@ export class RoleService {
   }
 
   /**
-   * Descobre roles de um diretorio (ex.: repo de um colega) e importa para a
+   * Descobre roles de um diretório (ex.: repo de um colega) e importa para a
    * biblioteca do workspace. Retorna quantas foram importadas.
    */
   async discover(workspaceId: string, fromDir?: string): Promise<{ imported: number; roles: AgentRole[] }> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
-    if (!workspace) throw new Error('Workspace nao encontrado.');
+    if (!workspace) throw new Error('Workspace não encontrado.');
     const source = resolve(fromDir ?? workspace.workingDir, '.orkestrai', 'roles');
     if (!existsSync(source)) return { imported: 0, roles: [] };
 
@@ -133,7 +133,7 @@ export class RoleService {
           prompt: String(raw.prompt ?? ''),
         });
       } catch {
-        // ignora invalido
+        // ignora inválido
       }
     }
 
@@ -148,30 +148,30 @@ export class RoleService {
   }
 
   /**
-   * Injeta o prompt da role na sessao PTY do terminal (primeira mensagem).
-   * Chamado pela UI quando um terminal com role cria sua sessao.
+   * Injeta o prompt da role na sessão PTY do terminal (primeira mensagem).
+   * Chamado pela UI quando um terminal com role cria sua sessão.
    */
   async applyToTerminal(workspaceId: string, nodeId: string): Promise<{ applied: boolean }> {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId || node.type !== 'terminal') {
-      throw new Error('Terminal nao encontrado neste workspace.');
+      throw new Error('Terminal não encontrado neste workspace.');
     }
     const payload = node.payload as { role?: string | null; sessionId?: string };
     if (!payload.role) return { applied: false };
     const role = await this.get(workspaceId, payload.role);
-    if (!role) throw new Error(`Responsabilidade "${payload.role}" nao encontrada.`);
-    if (!payload.sessionId) throw new Error('O terminal ainda nao tem sessao PTY.');
+    if (!role) throw new Error(`Responsabilidade "${payload.role}" não encontrada.`);
+    if (!payload.sessionId) throw new Error('O terminal ainda não tem sessão PTY.');
 
     const session = ptySessionManager.get(payload.sessionId);
-    if (!session || session.exited) throw new Error('Sessao PTY nao esta ativa.');
+    if (!session || session.exited) throw new Error('Sessão PTY não está ativa.');
     // Texto e Enter em writes separados (composer do Codex — ver writeWithSubmit).
-    ptySessionManager.writeWithSubmit(payload.sessionId, `[responsabilidade: ${role.name}] ${role.prompt.trim()}`);
+    await ptySessionManager.writeWithSubmit(payload.sessionId, `[responsabilidade: ${role.name}] ${role.prompt.trim()}`);
     return { applied: true };
   }
 
   private async requireRole(workspaceId: string, nameOrSlug: string): Promise<AgentRole> {
     const role = await this.get(workspaceId, nameOrSlug);
-    if (!role) throw new Error(`Responsabilidade "${nameOrSlug}" nao encontrada.`);
+    if (!role) throw new Error(`Responsabilidade "${nameOrSlug}" não encontrada.`);
     return role;
   }
 }

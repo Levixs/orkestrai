@@ -5,6 +5,27 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.1.5 - 2026-08-09
+
+### Changed
+
+- Reclassified terminal silence as a neutral idle state, with a green status
+  indicator instead of a false attention warning.
+- Renamed the terminal navigation shortcut to describe idle agents accurately.
+
+### Fixed
+
+- Stopped ordinary terminal silence and successful unload/reload exits from
+  generating native desktop notifications; completion and attention messages
+  now require an explicit event, while abnormal exits remain visible.
+- Added a per-session composer delivery queue that preserves unfinished human
+  drafts, serializes automated agent messages, and prevents concurrent input
+  from being combined in the leader terminal.
+- Removed the silent 4,000-character truncation from inter-agent messages.
+- Corrected missing Brazilian Portuguese accents across the main UI, update,
+  voice, workspace, task, terminal, and agent instruction surfaces, with a
+  regression test for frequently mistyped words.
+
 ## 0.1.4 - 2026-08-08
 
 ### Changed

@@ -45,6 +45,6 @@ describe('RoleService', () => {
       payload: { command: '/bin/cat', role: 'Revisor' },
     });
     await roleService.save(workspace.id, { name: 'Revisor', prompt: 'x' });
-    await expect(roleService.applyToTerminal(workspace.id, withRole.id)).rejects.toThrow('sessao');
+    await expect(roleService.applyToTerminal(workspace.id, withRole.id)).rejects.toThrow('sessão');
   });
 });

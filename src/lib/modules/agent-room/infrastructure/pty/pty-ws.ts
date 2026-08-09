@@ -1,7 +1,7 @@
 /**
- * Camada de transporte WebSocket para sessoes PTY do Agent Room.
+ * Camada de transporte WebSocket para sessões PTY do Agent Room.
  *
- * Arquivo deliberadamente autocontido (so depende de PtySessionManager e ws)
+ * Arquivo deliberadamente autocontido (só depende de PtySessionManager e ws)
  * para ser importado tanto pelo vite (dev) quanto pelo servidor de producao
  * (scripts/orkestrai-server.mjs, rodado com type stripping do Node 24+).
  *
@@ -40,7 +40,7 @@ export function isPtyWsPath(pathname: string): boolean {
 
 // Registro global de sockets vivos + broadcast para eventos de workspace
 // (ex.: edge "talking"). Vai em globalThis porque o bundle SSR e a camada
-// type-stripped carregam copias separadas deste modulo no mesmo processo.
+// type-stripped carregam copias separadas deste módulo no mesmo processo.
 const wsGlobal = globalThis as unknown as {
   __orkestraiWsClients?: Set<WebSocket>;
   __orkestraiBroadcast?: (payload: Record<string, unknown>) => void;
@@ -54,8 +54,8 @@ wsGlobal.__orkestraiBroadcast = (payload) => {
 };
 
 /**
- * Aceita apenas origens same-origin ou loopback (o servidor so escuta em
- * 127.0.0.1; sem origin — ex.: curl/testes — tambem passa).
+ * Aceita apenas origens same-origin ou loopback (o servidor só escuta em
+ * 127.0.0.1; sem origin — ex.: curl/testes — também passa).
  */
 export function isAllowedPtyWsOrigin(origin: string | undefined, host: string | undefined): boolean {
   if (!origin) return true;
@@ -71,11 +71,11 @@ export function isAllowedPtyWsOrigin(origin: string | undefined, host: string | 
 
 function resolveCwd(cwd: unknown): string {
   if (typeof cwd !== 'string' || !cwd.trim()) {
-    throw new Error('Informe um diretorio de trabalho (cwd) para a sessao PTY.');
+    throw new Error('Informe um diretório de trabalho (cwd) para a sessão PTY.');
   }
   const resolved = cwd.trim();
   if (!existsSync(resolved) || !statSync(resolved).isDirectory()) {
-    throw new Error(`Diretorio de trabalho nao existe: ${resolved}`);
+    throw new Error(`Diretório de trabalho não existe: ${resolved}`);
   }
   return resolved;
 }
@@ -95,7 +95,7 @@ export function handlePtyConnection(socket: WebSocket): void {
       sessionId,
       (data) => send({ type: 'output', sessionId, data }),
       (exitCode) => send({ type: 'exit', sessionId, exitCode }),
-      (waiting) => send({ type: 'attention', sessionId, waiting })
+      (waiting) => send({ type: 'idle', sessionId, idle: waiting })
     );
     detachers.set(sessionId, detach);
     return scrollback;
@@ -106,7 +106,7 @@ export function handlePtyConnection(socket: WebSocket): void {
     try {
       message = JSON.parse(String(raw));
     } catch {
-      send({ type: 'error', message: 'Mensagem invalida (JSON esperado).' });
+      send({ type: 'error', message: 'Mensagem inválida (JSON esperado).' });
       return;
     }
 
@@ -114,7 +114,7 @@ export function handlePtyConnection(socket: WebSocket): void {
       switch (message.type) {
         case 'create': {
           if (typeof message.command !== 'string' || !message.command.trim()) {
-            throw new Error('Informe o comando da sessao PTY.');
+            throw new Error('Informe o comando da sessão PTY.');
           }
           const session = ptySessionManager.create({
             command: message.command.trim(),
@@ -129,8 +129,9 @@ export function handlePtyConnection(socket: WebSocket): void {
           const scrollback = attachSession(session.id);
           send({ type: 'created', session, scrollback });
 
-          // Notificacao nativa quando a sessao termina (objetivo concluido,
-          // saida do agente etc) — o Electron escuta o marker no stdout.
+          // Encerramento normal pode ser unload/reload solicitado pelo usuário
+          // e não deve gerar ruído. Só uma saída anormal vira notificação; para
+          // conclusões e pedidos de atenção, o agente usa `orkestrai notify`.
           const label = typeof message.label === 'string' && message.label.trim() ? message.label.trim() : null;
           if (label) {
             const workspaceName = typeof message.workspace === 'string' && message.workspace.trim() ? message.workspace.trim() : 'Orkestrai';
@@ -138,7 +139,9 @@ export function handlePtyConnection(socket: WebSocket): void {
               session.id,
               () => {},
               (exitCode) => {
-                console.log(`[orkestrai:notify] [${workspaceName}] ${label} finalizou (codigo ${exitCode}).`);
+                if (exitCode !== 0) {
+                  console.log(`[orkestrai:notify] [${workspaceName}] ${label} encerrou com erro (código ${exitCode}).`);
+                }
               }
             );
           }
@@ -150,7 +153,7 @@ export function handlePtyConnection(socket: WebSocket): void {
               : null;
           if (provider) {
             agentSessionTracker.watch(session.id, provider, session.cwd, Date.now(), (agentSessionId) => {
-              // Broadcast global: o socket criador pode ja ter sido fechado
+              // Broadcast global: o socket criador pode já ter sido fechado
               // (o no remonta em modo attach ao receber o sessionId).
               wsGlobal.__orkestraiBroadcast?.({
                 type: 'agentSession',
@@ -171,7 +174,7 @@ export function handlePtyConnection(socket: WebSocket): void {
           break;
         }
         case 'input': {
-          ptySessionManager.write(message.sessionId, String(message.data ?? ''));
+          ptySessionManager.writeHumanInput(message.sessionId, String(message.data ?? ''));
           break;
         }
         case 'resize': {
@@ -196,7 +199,7 @@ export function handlePtyConnection(socket: WebSocket): void {
           send({ type: 'error', message: `Tipo de mensagem desconhecido: ${(message as { type?: string }).type}` });
       }
     } catch (error) {
-      send({ type: 'error', message: error instanceof Error ? error.message : 'Erro na sessao PTY.' });
+      send({ type: 'error', message: error instanceof Error ? error.message : 'Erro na sessão PTY.' });
     }
   });
 
@@ -207,7 +210,7 @@ export function handlePtyConnection(socket: WebSocket): void {
 
   function requireSession(sessionId: string): PtySessionInfo {
     const info = ptySessionManager.get(sessionId);
-    if (!info) throw new Error(`Sessao PTY nao encontrada: ${sessionId}`);
+    if (!info) throw new Error(`Sessão PTY não encontrada: ${sessionId}`);
     return info;
   }
 }

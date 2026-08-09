@@ -17,7 +17,7 @@ const { canInstallUpdatesAutomatically, isNewerVersion } = require('./update-pol
 
 const isDev = !app.isPackaged;
 const appRoot = path.resolve(__dirname, '..');
-// Processos filhos (ELECTRON_RUN_AS_NODE) nao leem dentro do asar: o servidor
+// Processos filhos (ELECTRON_RUN_AS_NODE) não leem dentro do asar: o servidor
 // roda a partir dos arquivos unpacked quando empacotado.
 const runtimeRoot = app.isPackaged ? appRoot.replace('app.asar', 'app.asar.unpacked') : appRoot;
 
@@ -56,8 +56,8 @@ function closeSplash() {
 }
 
 /**
- * Carrega variaveis do .env do projeto (o adapter-node nao carrega .env
- * sozinho; em dev o vite faz isso). Nao sobrescreve variaveis ja definidas.
+ * Carrega variaveis do .env do projeto (o adapter-node não carrega .env
+ * sozinho; em dev o vite faz isso). Não sobrescreve variaveis já definidas.
  */
 function loadDotEnv(filePath) {
   const env = {};
@@ -74,7 +74,7 @@ function loadDotEnv(filePath) {
   return env;
 }
 
-/** Em producao, garante um APP_KEY persistente na pasta do usuario. */
+/** Em producao, garante um APP_KEY persistente na pasta do usuário. */
 function ensureAppKey() {
   if (process.env.APP_KEY) return process.env.APP_KEY;
   const keyFile = path.join(app.getPath('userData'), '.app-key');
@@ -118,7 +118,7 @@ async function waitForServer(url, timeoutMs = 30_000) {
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error(`Servidor interno nao respondeu em ${url}`);
+  throw new Error(`Servidor interno não respondeu em ${url}`);
 }
 
 /** Extrai o node-pty para o userData (macOS 15+ mata o spawn-helper dentro do bundle). */
@@ -154,11 +154,11 @@ async function startServer(port) {
       ELECTRON_RUN_AS_NODE: '1',
       HOST: '127.0.0.1',
       PORT: String(port),
-      // A porta e livre (muda a cada execucao): configs da ponte gravados em
-      // workspaces precisam da URL atual (ver tambem ~/.orkestrai/runtime.json).
+      // A porta e livre (muda a cada execução): configs da ponte gravados em
+      // workspaces precisam da URL atual (ver também ~/.orkestrai/runtime.json).
       ORKESTRAI_API_URL: `http://127.0.0.1:${port}`,
       ...(ptyModuleDir ? { ORKESTRAI_PTY_MODULE: ptyModuleDir } : {}),
-      // Em Electron, o banco e os dados ficam na pasta do usuario em producao;
+      // Em Electron, o banco e os dados ficam na pasta do usuário em producao;
       // em dev, usa a pasta do projeto como sempre.
       ...(app.isPackaged ? { ORKESTRAI_DATA_DIR: app.getPath('userData') } : {}),
     },
@@ -173,18 +173,11 @@ async function startServer(port) {
       if (notifyMatch) {
         showNativeNotification(`Orkestrai — ${notifyMatch[1]}`, notifyMatch[2]);
       }
-      // Formatos: "[ws] Titulo do no" (novo) ou "Terminal cmd (cwd)" (legado).
-      const attentionMatch = line.match(/\[orkestrai:attention\](?: \[(.+?)\])? (.+)/);
-      if (attentionMatch) {
-        const workspace = attentionMatch[1];
-        const who = attentionMatch[2];
-        showNativeNotification(workspace ? `Orkestrai — ${workspace}` : 'Orkestrai', `${who} aguardando atencao`);
-      }
     }
   });
   serverProcess.stderr.on('data', (chunk) => process.stderr.write(`[server] ${chunk}`));
   serverProcess.on('exit', (code) => {
-    console.log(`[server] finalizado com codigo ${code}`);
+    console.log(`[server] finalizado com código ${code}`);
     serverProcess = null;
   });
 
@@ -197,13 +190,13 @@ function stopServer() {
   try {
     serverProcess.kill('SIGTERM');
   } catch {
-    // processo ja morreu
+    // processo já morreu
   }
   serverProcess = null;
 }
 
 async function createWindow() {
-  // Reaproveita o servidor se ja estiver vivo (janela reaberta apos fechar
+  // Reaproveita o servidor se já estiver vivo (janela reaberta após fechar
   // no macOS mantem o app rodando sem janela).
   if (!serverProcess || serverPort === null) {
     serverPort = await findFreePort();
@@ -249,9 +242,9 @@ ipcMain.handle('orkestrai:pick-directory', async () => {
 });
 
 // -- Auto-update (electron-updater, releases publicos no GitHub) --------------
-// O download cai num cache separado e so e ativado na troca (quitAndInstall):
-// a versao atual NUNCA e tocada antes da nova estar 100% baixada e verificada
-// (sha512 do latest-mac.yml). Dados do usuario ficam fora do bundle.
+// O download cai num cache separado e só e ativado na troca (quitAndInstall):
+// a versão atual NUNCA e tocada antes da nova estar 100% baixada e verificada
+// (sha512 do latest-mac.yml). Dados do usuário ficam fora do bundle.
 
 let autoUpdater = null;
 if (app.isPackaged) {
@@ -293,7 +286,7 @@ async function checkManualMacUpdate() {
 async function checkForUpdates() {
   if (!autoUpdater) {
     return app.isPackaged
-      ? { status: 'check-error', message: 'O modulo de atualizacao nao esta disponivel neste pacote.' }
+      ? { status: 'check-error', message: 'O módulo de atualização não está disponível neste pacote.' }
       : { status: 'unsupported' };
   }
   if (updateCheckPromise) return updateCheckPromise;
@@ -363,7 +356,7 @@ ipcMain.handle('orkestrai:update-install', () => {
 ipcMain.handle('orkestrai:app-version', () => app.getVersion());
 
 ipcMain.handle('orkestrai:open-external', (_event, url) => {
-  // So https — nunca abre esquema arbitrario vindo do renderer.
+  // Só https — nunca abre esquema arbitrario vindo do renderer.
   if (typeof url === 'string' && url.startsWith('https://')) shell.openExternal(url);
 });
 
@@ -374,7 +367,7 @@ function showNativeNotification(title, body) {
   const notification = new Notification({
     title,
     body: String(body).slice(0, 200),
-    // Icone da marca no toast (Win/macOS) em vez do generico do sistema.
+    // Ícone da marca no toast (Win/macOS) em vez do generico do sistema.
     icon: nativeImage.createFromPath(path.join(appRoot, 'electron', 'resources', 'icon.png')),
     silent: false,
   });
@@ -391,7 +384,7 @@ function showNativeNotification(title, body) {
 
 function updateTrayTitle() {
   if (!tray) return;
-  tray.setToolTip(pendingNotifications > 0 ? `Orkestrai — ${pendingNotifications} notificacao(oes)` : 'Orkestrai');
+  tray.setToolTip(pendingNotifications > 0 ? `Orkestrai — ${pendingNotifications} notificação(oes)` : 'Orkestrai');
 }
 
 function createTray() {
@@ -440,11 +433,11 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    // Icone do dock em dev (empacotado vem do electron-builder).
+    // Ícone do dock em dev (empacotado vem do electron-builder).
     if (process.platform === 'darwin' && !app.isPackaged) {
       app.dock.setIcon(path.join(appRoot, 'electron', 'resources', 'icon.png'));
     }
-    // Ditado por voz: permite microfone so para o proprio app (localhost).
+    // Ditado por voz: permite microfone só para o proprio app (localhost).
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
       const url = webContents?.getURL?.() ?? '';
       const own = url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1') || url.startsWith('file://');

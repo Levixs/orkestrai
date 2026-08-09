@@ -196,6 +196,15 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
+      date: 'Aug 09, 2026 · 0.1.5',
+      items: [
+        'Automated messages now wait for the user to finish a draft and are delivered through a queue, so other agents cannot merge text into the leader terminal.',
+        'Inter-agent messages are no longer silently truncated at 4,000 characters.',
+        'Terminal silence is now a neutral idle state and no longer triggers false desktop attention notifications.',
+        'Brazilian Portuguese copy received an accent and language-quality pass, backed by a regression test for frequent mistakes.',
+      ],
+    },
+    {
       date: 'Aug 08, 2026 · 0.1.4',
       items: [
         'Orkestrai 0.1.4 is the first macOS release signed with Developer ID Application and notarized by Apple; ad-hoc signing is restricted to local builds.',

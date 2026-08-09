@@ -391,8 +391,8 @@
             scheduleSpeakFromCapture();
           }
           break;
-        case 'attention':
-          waiting = Boolean(message.waiting);
+        case 'idle':
+          waiting = Boolean(message.idle);
           break;
         case 'exit':
           waiting = false;
@@ -521,10 +521,10 @@
     <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
-            <span {...props} class="attention-dot" aria-label={m['term.waiting_attention']()}></span>
+            <span {...props} class="idle-dot" aria-label={m['term.idle']()}></span>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="left">{m['term.waiting_attention']()}</Tooltip.Content>
+        <Tooltip.Content side="left">{m['term.idle']()}</Tooltip.Content>
       </Tooltip.Root>
   {/if}
   {#if dictationSupported}
@@ -696,16 +696,16 @@
     50% { opacity: 0.35; }
   }
 
-  .attention-dot {
+  .idle-dot {
     position: absolute;
     top: 8px;
     right: 8px;
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #e5484d;
+    background: #4ca66a;
     z-index: 10;
-    box-shadow: 0 0 6px rgba(229, 72, 77, 0.8);
+    box-shadow: 0 0 5px rgba(76, 166, 106, 0.55);
   }
 
   .terminal-status {

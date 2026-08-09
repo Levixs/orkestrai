@@ -31,7 +31,7 @@ describe('BridgeService', () => {
     const resolved = await bridgeService.resolveWorkspaceByToken(token);
     expect(resolved.id).toBe(workspace.id);
 
-    await expect(bridgeService.resolveWorkspaceByToken('token-errado')).rejects.toThrow('invalido');
+    await expect(bridgeService.resolveWorkspaceByToken('token-errado')).rejects.toThrow('inválido');
   });
 
   it('lista agentes do workspace com estado da sessao', async () => {
@@ -61,7 +61,7 @@ describe('BridgeService', () => {
 
   it('ask falha claro para agente inexistente', async () => {
     const { workspace, session } = await createWorkspaceWithTerminal();
-    await expect(bridgeService.ask(workspace.id, { to: 'NaoExiste', message: 'oi' })).rejects.toThrow('nao encontrado');
+    await expect(bridgeService.ask(workspace.id, { to: 'NaoExiste', message: 'oi' })).rejects.toThrow('não encontrado');
     ptySessionManager.kill(session.id);
   });
 
@@ -82,7 +82,7 @@ describe('BridgeService', () => {
     await bridgeService.editNote(workspace.id, note.id, 'versao 2', 'versao 3');
     expect((await bridgeService.readNote(workspace.id, note.id)).content).toBe('versao 3 do plano inteiro');
 
-    await expect(bridgeService.editNote(workspace.id, note.id, 'inexistente', 'x')).rejects.toThrow('nao encontrado');
+    await expect(bridgeService.editNote(workspace.id, note.id, 'inexistente', 'x')).rejects.toThrow('não encontrado');
   });
 
   it('notas conectadas a um agente via aresta', async () => {

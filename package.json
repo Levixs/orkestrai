@@ -1,6 +1,6 @@
 {
   "name": "orkestrai",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A visual canvas for orchestrating teams of AI coding agents.",
   "private": true,
   "license": "Apache-2.0",
