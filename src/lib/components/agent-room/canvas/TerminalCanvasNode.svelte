@@ -24,6 +24,7 @@
     resumeArgsFor?: () => string[] | null;
     /** Avalia os args de resume exato por session-id NA HORA do respawn. */
     exactResumeArgsFor?: (agentSessionId: string) => string[] | null;
+    sessionStorageFor?: () => string | null;
     onAgentSessionFound?: (id: string, agentSessionId: string) => void;
     /** Promise da pagina: providers carregados (para o respawn nao correr a race). */
     providersReady?: Promise<void>;
@@ -224,7 +225,11 @@
 
   // Resume exato quando temos o session-id real da CLI; senao, fallback
   // para "a sessao mais recente do diretorio".
-  const agentEnv = $derived({ ORKESTRAI_NODE_ID: id, ORKESTRAI_AGENT_TITLE: data.title });
+  const agentEnv = $derived({
+    ...((data.payload as TerminalNodePayload).env ?? {}),
+    ORKESTRAI_NODE_ID: id,
+    ORKESTRAI_AGENT_TITLE: data.title,
+  });
   const respawnRequest = $derived.by(() => {
     const payload = data.payload as TerminalNodePayload & { agentSessionId?: string };
     const exactId = payload.agentSessionId ?? respawnAgentSessionId;
@@ -342,6 +347,7 @@
         onOpenPath={(path) => data.onOpenFile?.(path)}
         themeName={data.payload.theme ?? 'dark'}
         provider={data.payload.provider}
+        sessionStorage={data.sessionStorageFor?.() ?? undefined}
         onRespawn={resolveRespawn}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
@@ -363,6 +369,7 @@
         onOpenPath={(path) => data.onOpenFile?.(path)}
         themeName={data.payload.theme ?? 'dark'}
         provider={data.payload.provider}
+        sessionStorage={data.sessionStorageFor?.() ?? undefined}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
         onTalking={data.onTalking}
         onAgentReply={handleAgentReply}

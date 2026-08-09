@@ -23,6 +23,8 @@ export type PtySessionInfo = {
   /** Rotulos humanos (título do no / workspace) para notificações. */
   label?: string | null;
   workspace?: string | null;
+  /** Provider registrado; ausente em shells puros. */
+  provider?: string | null;
 };
 
 export type PtySessionListener = (data: string) => void;
@@ -70,6 +72,7 @@ export type CreatePtySessionInput = {
   /** Rotulos humanos (título do no / workspace) para notificações. */
   label?: string | null;
   workspace?: string | null;
+  provider?: string | null;
 };
 
 const SCROLLBACK_LIMIT = 256 * 1024; // 256 KB por sessão
@@ -133,6 +136,7 @@ export class PtySessionManager {
       waiting: false,
       label: input.label ?? null,
       workspace: input.workspace ?? null,
+      provider: input.provider ?? null,
       pty: ptyProcess,
       scrollback: '',
       listeners: new Set(),
@@ -385,7 +389,7 @@ export class PtySessionManager {
   }
 
   private deliverySettleMs(session: PtySession): number {
-    return /claude|codex|kimi|opencode|cursor-agent|cline|agy/i.test(session.command)
+    return session.provider
       ? AGENT_DELIVERY_SETTLE_MS
       : SHELL_DELIVERY_SETTLE_MS;
   }
@@ -460,6 +464,9 @@ export class PtySessionManager {
       exited: session.exited,
       exitCode: session.exitCode,
       waiting: session.waiting,
+      label: session.label,
+      workspace: session.workspace,
+      provider: session.provider,
       /** Já produziu algum output (boot comecou/terminou) — usado na prontidao do ask. */
       hasOutput: session.scrollback.length > 0,
     };

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { getAgentAdapter, hasAgentAdapter } from '../../application/adapters/registry.js';
 
 /**
  * Le a ULTIMA resposta do agente direto do transcrito da CLI (JSONL em disco)
@@ -98,7 +99,47 @@ export function parseCodexTranscriptReply(jsonl: string): string | null {
 
 /** Kimi/opencode: tentativa generica role/content (melhor esforco). */
 export function parseGenericTranscriptReply(jsonl: string): string | null {
-  return parseCodexTranscriptReply(jsonl);
+  const events: unknown[] = [];
+  for (const line of jsonl.trim().split('\n')) {
+    try {
+      events.push(JSON.parse(line));
+    } catch {
+      // Ignora linhas parciais enquanto o agente grava o transcrito.
+    }
+  }
+  return parseStructuredMessagesReply(events);
+}
+
+/** Cursor, Cline e Antigravity: formatos variam, mas preservam role + content. */
+export function parseStructuredMessagesReply(messages: unknown[]): string | null {
+  const parts: string[] = [];
+  for (const raw of [...messages].reverse()) {
+    if (!raw || typeof raw !== 'object') continue;
+    const event = raw as Record<string, any>;
+    const message = event.message && typeof event.message === 'object' ? event.message : event.payload ?? event;
+    const role = String(message.role ?? message.author?.role ?? message.speaker ?? message.type ?? event.role ?? event.type ?? '').toLowerCase();
+    const text = transcriptText(message.content ?? message.parts ?? message.text ?? message.output ?? message.response);
+    if (!text) continue;
+    if (['assistant', 'agent', 'model'].includes(role)) {
+      parts.unshift(text);
+      continue;
+    }
+    if (['user', 'human'].includes(role)) break;
+  }
+  const text = parts.join('\n\n').trim();
+  return text || null;
+}
+
+function transcriptText(value: unknown): string | null {
+  if (typeof value === 'string') return value.trim() || null;
+  if (Array.isArray(value)) {
+    const parts = value.map(transcriptText).filter((part): part is string => Boolean(part));
+    return parts.length ? parts.join('\n') : null;
+  }
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  if (record.type && !['text', 'output_text', 'message'].includes(String(record.type)) && !('text' in record)) return null;
+  return transcriptText(record.text ?? record.content ?? record.value);
 }
 
 /**
@@ -204,29 +245,78 @@ function findKimiTranscript(sessionId: string): string | null {
   return walk(root, 0);
 }
 
+function cursorTranscriptPath(cwd: string, sessionId: string): string | null {
+  const slug = realCwd(cwd).replace(/^[\\/]+/, '').replace(/[^a-zA-Z0-9]/g, '-');
+  for (const projectSlug of [slug, `-${slug}`]) {
+    const path = join(homedir(), '.cursor', 'projects', projectSlug, 'agent-transcripts', sessionId, `${sessionId}.jsonl`);
+    if (existsSync(path)) return path;
+  }
+  return null;
+}
+
+function antigravityTranscriptPath(sessionId: string): string | null {
+  const path = join(homedir(), '.gemini', 'antigravity-cli', 'brain', sessionId, '.system_generated', 'logs', 'transcript.jsonl');
+  return existsSync(path) ? path : null;
+}
+
+function clineMessagesPath(sessionId: string): string | null {
+  const root = join(homedir(), '.cline', 'data', 'sessions', sessionId);
+  const manifestPath = join(root, `${sessionId}.json`);
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { messages_path?: unknown };
+    const configured = typeof manifest.messages_path === 'string' ? manifest.messages_path : null;
+    const path = configured || join(root, `${sessionId}.messages.json`);
+    return existsSync(path) ? path : null;
+  } catch {
+    const fallback = join(root, `${sessionId}.messages.json`);
+    return existsSync(fallback) ? fallback : null;
+  }
+}
+
 /**
  * Ultima resposta do agente pelo transcrito da CLI (null = indisponivel —
  * quem chama cai na raspagem de tela como fallback).
  */
 export async function lastReplyText(provider: string, cwd: string, sessionId: string): Promise<string | null> {
   try {
-    if (provider === 'claude') {
+    const storage = hasAgentAdapter(provider) ? getAgentAdapter(provider).sessionStorage : undefined;
+    if (storage === 'claude-project-jsonl') {
       const path = claudeTranscriptPath(cwd, sessionId);
       if (!existsSync(path)) return null;
       const jsonl = readTail(path);
       return jsonl ? parseClaudeTranscriptReply(jsonl) : null;
     }
-    if (provider === 'codex') {
+    if (storage === 'codex-rollout-jsonl') {
       const path = findCodexTranscript(sessionId);
       if (!path) return null;
       const jsonl = readTail(path);
       return jsonl ? parseCodexTranscriptReply(jsonl) : null;
     }
-    if (provider === 'kimi') {
+    if (storage === 'kimi-session-dir') {
       const path = findKimiTranscript(sessionId);
       if (!path) return null;
       const jsonl = readTail(path);
       return jsonl ? parseKimiTranscriptReply(jsonl) : null;
+    }
+    if (storage === 'cursor-transcript-jsonl') {
+      const path = cursorTranscriptPath(cwd, sessionId);
+      const jsonl = path ? readTail(path) : null;
+      return jsonl ? parseGenericTranscriptReply(jsonl) : null;
+    }
+    if (storage === 'antigravity-workspace-cache') {
+      const path = antigravityTranscriptPath(sessionId);
+      const jsonl = path ? readTail(path) : null;
+      return jsonl ? parseGenericTranscriptReply(jsonl) : null;
+    }
+    if (storage === 'cline-session-manifest') {
+      const path = clineMessagesPath(sessionId);
+      if (!path) return null;
+      const payload = JSON.parse(readFileSync(path, 'utf8')) as unknown;
+      if (Array.isArray(payload)) return parseStructuredMessagesReply(payload);
+      const messages = payload && typeof payload === 'object'
+        ? (payload as { messages?: unknown }).messages
+        : null;
+      return Array.isArray(messages) ? parseStructuredMessagesReply(messages) : null;
     }
     return null;
   } catch {

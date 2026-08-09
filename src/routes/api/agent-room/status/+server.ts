@@ -12,9 +12,17 @@ export const GET: RequestHandler = async () => {
         id: adapter.id,
         displayName: adapter.displayName,
         supportsResume: adapter.supportsResume,
+        efforts: adapter.efforts,
+        sessionStorage: adapter.sessionStorage,
         installed: detection.installed,
         detail: detection.detail,
-        tui: { command: tui.command, args: tui.args, resumeArgs: adapter.resumeArgs() },
+        tui: {
+          command: tui.command,
+          args: tui.args,
+          env: tui.env,
+          resumeArgs: adapter.resumeArgs(),
+          exactResumeArgs: adapter.resumeArgs('__ORKESTRAI_SESSION_ID__'),
+        },
         models,
       };
     })

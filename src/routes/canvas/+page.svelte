@@ -81,8 +81,8 @@
     image: ImageCanvasNode,
   };
 
-  // Icones de marca dos providers (SVG em static/images); opencode cai no
-  // fallback lucide (CodeXml) no toolbar.
+  // Icones de marca disponiveis em static/images; os demais providers usam
+  // o fallback lucide (CodeXml) no toolbar.
   const PROVIDER_ICONS: Record<string, string> = {
     claude: '/images/claude.svg',
     codex: '/images/codex.svg',
@@ -539,6 +539,7 @@
         // avaliar aqui congelaria undefined no restart (providers ainda vazios).
         resumeArgsFor: () => resumeArgsFor(node),
         exactResumeArgsFor: (agentSessionId: string) => exactResumeArgsFor(node)?.(agentSessionId) ?? null,
+        sessionStorageFor: () => sessionStorageFor(node),
         onAgentSessionFound: (id: string, agentSessionId: string) => updateNodePayload(id, { agentSessionId }),
         connections: connectionsFor(node.id),
         onJumpToNode: jumpToNode,
@@ -587,21 +588,25 @@
   }
 
   function exactResumeArgsFor(node: CanvasNode): ((agentSessionId: string) => string[] | null) | undefined {
-    const payload = node.payload as { command?: string };
-    const provider = providers.find((item) => item.tui?.command === payload.command);
-    if (!provider || !hasResume(provider.id)) return undefined;
-    return (agentSessionId: string) => RESUME_EXACT[provider.id]?.(agentSessionId) ?? null;
-  }
-
-  function hasResume(providerId: string): boolean {
-    return providerId in RESUME_EXACT;
+    const provider = providerForNode(node);
+    const template = provider?.tui?.exactResumeArgs;
+    if (!template) return undefined;
+    return (agentSessionId: string) =>
+      template.map((arg) => arg.replace('__ORKESTRAI_SESSION_ID__', agentSessionId));
   }
 
   function resumeArgsFor(node: CanvasNode): string[] | null {
-    const payload = node.payload as { command?: string };
-    if (!payload.command) return null;
-    const provider = providers.find((item) => item.tui?.command === payload.command);
-    return provider?.tui?.resumeArgs ?? null;
+    return providerForNode(node)?.tui?.resumeArgs ?? null;
+  }
+
+  function sessionStorageFor(node: CanvasNode): string | null {
+    return providerForNode(node)?.sessionStorage ?? null;
+  }
+
+  function providerForNode(node: CanvasNode): AgentProviderInfo | undefined {
+    const payload = node.payload as { provider?: string; command?: string };
+    return providers.find((item) => item.id === payload.provider) ??
+      providers.find((item) => item.tui?.command === payload.command);
   }
 
   function connectionsFor(nodeId: string) {
@@ -630,14 +635,6 @@
   }
 
   const edgeTypes = { orkestrai: OrkestraiEdge };
-
-  // Espelha resumeArgs(id) dos adapters (claude/codex/kimi/opencode).
-  const RESUME_EXACT: Record<string, (id: string) => string[]> = {
-    claude: (id) => ['--resume', id],
-    codex: (id) => ['resume', id],
-    kimi: (id) => ['-r', id],
-    opencode: (id) => ['--session', id],
-  };
 
   function toFlowEdge(edge: CanvasEdge): Edge {
     return {
@@ -855,15 +852,17 @@
     if (provider) {
       // Monta o comando com model/effort escolhidos no dialogo (server-side,
       // via adapter — as flags variam por provider).
-      let spec = provider.tui ? { command: provider.tui.command, args: provider.tui.args } : null;
+      let spec = provider.tui
+        ? { command: provider.tui.command, args: provider.tui.args, env: provider.tui.env }
+        : null;
       if (creation && (creation.model || creation.effort)) {
         const params = new URLSearchParams({ provider: provider.id });
         if (creation.model) params.set('model', creation.model);
         if (creation.effort) params.set('effort', creation.effort);
-        spec = await api<{ command: string; args: string[] }>(`/api/agent-room/agent-spec?${params}`).catch(() => spec);
+        spec = await api<{ command: string; args: string[]; env?: Record<string, string> }>(`/api/agent-room/agent-spec?${params}`).catch(() => spec);
       }
       payload = spec
-        ? { command: spec.command, args: spec.args, provider: provider.id, ...(creation?.leader ? { maestro: true } : {}) }
+        ? { command: spec.command, args: spec.args, env: spec.env, provider: provider.id, ...(creation?.leader ? { maestro: true } : {}) }
         : { command: provider.id, args: [], provider: provider.id };
     } else {
       payload = { command: navigator.platform.startsWith('Win') ? 'powershell.exe' : '/bin/zsh', args: [] };

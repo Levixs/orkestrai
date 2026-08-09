@@ -156,7 +156,16 @@ describe('Modo Maestro', () => {
     expect(replaced.nodeId).toBe(recruited.nodeId);
     const node = await workspaceRepository.getNode(recruited.nodeId);
     expect((node!.payload as { command?: string }).command).toBe('claude');
-    expect((node!.payload as { sessionId?: string }).sessionId).toBeUndefined();
+    expect((node!.payload as { provider?: string }).provider).toBe('claude');
+    expect((node!.payload as { sessionId?: string; agentSessionId?: string }).sessionId).toBeUndefined();
+    expect((node!.payload as { agentSessionId?: string }).agentSessionId).toBeUndefined();
+  });
+
+  it('rejeita provider desconhecido em vez de criar um shell sem agente', async () => {
+    const { workspace } = await setupMaestro(true);
+    await expect(
+      bridgeService.recruit(workspace.id, { from: 'Lider', title: 'Invalido', provider: 'nao-existe' })
+    ).rejects.toThrow('Provider desconhecido');
   });
 
   it('recruta nasce conectado ao maestro e com titulo curto', async () => {

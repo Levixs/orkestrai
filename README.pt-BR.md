@@ -11,7 +11,8 @@
 </p>
 
 Orkestrai é um aplicativo desktop local-first para macOS, Windows e Linux. Ele
-reúne Claude Code, Codex CLI, Kimi Code, OpenCode, shells, tarefas, notas,
+reúne Claude Code, Codex CLI, Kimi Code, OpenCode, Cursor, Antigravity, Cline,
+shells, tarefas, notas,
 navegadores e worktrees Git em um canvas persistente onde devs, vibe coders,
 designers, marketers e creators podem dirigir um time de IA em tempo real.
 
@@ -64,6 +65,14 @@ autentique somente os providers que pretende usar:
 - [Codex CLI](https://github.com/openai/codex)
 - [Kimi Code](https://www.kimi.com/code)
 - [OpenCode](https://opencode.ai/)
+- [Cursor Agent CLI](https://docs.cursor.com/en/cli/overview)
+- [Antigravity CLI](https://antigravity.google/docs/cli/getting-started)
+- [Cline CLI](https://docs.cline.bot/cli/cli-reference)
+
+Você não precisa instalar todos os providers nem conhecer terminal. O Orkestrai
+ativa as CLIs que detectar, mantém cada conversa separada e permite organizar os
+agentes pelo resultado: pesquisa, design, conteúdo, marketing, produto,
+engenharia ou revisão.
 
 ## Desenvolvimento
 

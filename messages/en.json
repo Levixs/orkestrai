@@ -751,7 +751,7 @@
   "update.download_site": "Download from site",
   "update.restart": "Restart and update",
   "flow.empty_guide": "Each Agent step talks to an agent and the reply becomes the next step's input (use input in double curly braces in the prompt). Approval pauses and waits for you.",
-  "flow.no_agents_hint": "Create an agent on the canvas first (Claude, Codex, Kimi or Shell) — the Agent step needs someone to run it.",
+  "flow.no_agents_hint": "Create any available agent on the canvas first — the Agent step needs someone to run it.",
   "flow.no_steps_hint": "Add at least one step before running.",
   "flow.starting": "starting...",
   "flow.last_run_failed": "Last run failed",

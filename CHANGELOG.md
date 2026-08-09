@@ -5,6 +5,31 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.4.0 - 2026-08-09
+
+### Added
+
+- Added native Cursor Agent, Antigravity CLI, and Cline CLI adapters alongside
+  Claude Code, Codex CLI, Kimi Code, and OpenCode.
+- Added provider-specific model, reasoning-effort, interactive, headless,
+  structured-output, and exact-resume contracts where each CLI supports them.
+- Added bridge skills and MCP provisioning for Cursor (`.cursor/mcp.json`),
+  Cline (`.cline/mcp.json` with workspace-scoped settings), and Antigravity
+  (`.agents/mcp_config.json`).
+- Added exact session discovery from Cursor transcripts, Antigravity's
+  workspace cache, and Cline session manifests, plus clean transcript reads for
+  agent-to-agent replies.
+- Added localized documentation and onboarding for choosing agents by desired
+  outcome, aimed at developers, vibe coders, designers, marketers, creators,
+  and product teams.
+
+### Changed
+
+- Replaced fixed provider enums and effort lists across the canvas, validation,
+  tours, recruitment bridge, and PTY transport with adapter registry metadata.
+- Prevented ambiguous latest-session fallback for providers whose exact
+  conversation ID is not known.
+
 ## 0.3.0 - 2026-08-09
 
 ### Added

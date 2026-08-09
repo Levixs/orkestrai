@@ -22,6 +22,7 @@ export const openCodeAdapter: AgentAdapter = {
   id: 'opencode',
   displayName: 'OpenCode',
   supportsResume: true,
+  sessionStorage: 'opencode-session-json',
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('opencode');

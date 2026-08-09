@@ -31,10 +31,19 @@ export type AgentProviderInfo = {
   id: AgentProviderId;
   displayName: string;
   supportsResume: boolean;
+  efforts?: string[];
+  sessionStorage?: string;
   installed?: boolean;
   detail?: string;
   /** Comando TUI interativo do agente para sessoes PTY. */
-  tui?: { command: string; args: string[]; resumeArgs?: string[] | null };
+  tui?: {
+    command: string;
+    args: string[];
+    env?: Record<string, string>;
+    resumeArgs?: string[] | null;
+    /** Args exatos com o token abaixo no lugar do id real da conversa. */
+    exactResumeArgs?: string[] | null;
+  };
   /** Modelos disponiveis no provider (para o dialogo de criacao). */
   models?: AgentModelOption[];
 };
@@ -202,6 +211,7 @@ export type TerminalNodePayload = {
   sessionId?: string;
   command?: string;
   args?: string[];
+  env?: Record<string, string>;
   provider?: AgentProviderId;
   role?: string | null;
   /** Modo Maestro: pode recrutar/dispensar/conectar outros agentes via ponte. */

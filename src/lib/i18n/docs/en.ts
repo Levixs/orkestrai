@@ -4,7 +4,7 @@ import type { DocsCatalog } from './types.js';
 export const DOCS_EN: DocsCatalog = {
   quickstart: [
     'Create a workspace (+ button in the sidebar) pointing to your project folder.',
-    'Click + Claude in the bottom bar and drag a rectangle on the canvas — name the agent, pick model/effort and check Leader if it will command the team.',
+    'Click any available agent in the bottom bar and drag a rectangle on the canvas — name it, optionally choose model/effort, and check Leader if it will command the team.',
     'Draw more agents and connect them by dragging from one handle dot to the other.',
     'Open the Tasks board (+ Tasks), create cards and assign them — each task lands straight in the agent\'s terminal.',
     'Talk to any agent through its own terminal, or let the leader distribute everything on its own via the orkestrai CLI.',
@@ -18,7 +18,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `When you draw an agent (+ Claude/Codex/Kimi), the creation dialog asks: window name, model (the provider's real list), reasoning effort (low→max, where supported) and whether it is the team Leader (Maestro Mode). After it's created: double-click the title to rename any node (agent, note, whatever). The badge in the terminal header assigns a role; ◐ toggles the theme; ★ toggles Maestro Mode.`,
+      body: `The toolbar automatically shows installed CLIs among Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). A disabled button means the CLI still needs to be installed and authenticated. After creation: double-click renames the node; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode.`,
     },
     {
       id: 'roles',
@@ -83,7 +83,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'mcp',
       title: 'MCP (external tools for agents)',
-      body: `MCP is the standard for giving external tools to agents (GitHub, Gmail, Figma, Drive, Postgres...). THE EASY WAY: Skills page (sidebar) → MCPs tab — search the official curation or the MCP registry and install with one click; if the server asks for a key/token, the app asks with instructions on where to get it. Remote servers install with 1 click (no command). ADVANCED: pencil next to the workspace name → "MCP Servers" section to edit .mcp.json by hand. AUTOMATIC: Orkestrai self-provisions on ALL providers — .mcp.json (Claude/Kimi), ~/.codex/config.toml (Codex), opencode.json (OpenCode) plus an AGENTS.md block explaining the bridge — agents get the canvas actions as typed tools. Presets carry their MCPs along with the team.`,
+      body: `MCP is the standard for giving external tools to agents (GitHub, Gmail, Figma, Drive, Postgres...). THE EASY WAY: Skills page (sidebar) → MCPs tab — search the official curation or MCP registry and install with one click; when a server needs a key/token, the app explains where to get it. Remote servers require no command. ADVANCED: pencil next to the workspace → "MCP Servers". AUTOMATIC: Orkestrai provisions its own bridge for Claude/Kimi (.mcp.json), Codex (~/.codex/config.toml), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json), and Antigravity (.agents/mcp_config.json), plus skills and a preserved AGENTS.md block. Every agent receives typed canvas tools scoped to the correct workspace.`,
     },
     {
       id: 'cli',
@@ -138,6 +138,12 @@ export const DOCS_EN: DocsCatalog = {
       title: 'Cross-review between providers',
       body: 'Connect Claude and Codex: Claude implements, Codex reviews (orkestrai ask), the verdict comes back on the same rope (it glows green during the conversation). Two different model perspectives on every change.',
       tags: ['Connections', 'ask', 'multi-provider'],
+    },
+    {
+      id: 'choose-agent-provider',
+      title: 'Choose an agent without learning CLIs',
+      body: 'Use a provider you already have installed and authenticated; Orkestrai handles the terminal, bridge, and conversation resume. Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline appear in the same toolbar when available. For a campaign, visual identity, research, content, or product work, name agents after the outcome you need and add a second provider only when you want an independent review.',
+      tags: ['7 providers', 'no terminal knowledge', 'any profession'],
     },
     {
       id: 'deploy-sentinel',
@@ -213,6 +219,15 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 09, 2026 · 0.4.0',
+      items: [
+        'Cursor, Antigravity, and Cline now join the canvas as native providers alongside Claude, Codex, Kimi, and OpenCode.',
+        'Provider, model, and effort choices come from installed adapters, with no fixed provider enums in the UI, schemas, or recruitment bridge.',
+        'Each provider receives the bridge skill and MCP configuration in its supported format; Cline uses workspace-scoped settings.',
+        'Session resume tracks exact IDs through each CLI’s transcripts, manifests, or cache, preventing a terminal from opening another agent’s conversation.',
+      ],
+    },
     {
       date: 'Aug 09, 2026 · 0.3.0',
       items: [

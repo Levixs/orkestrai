@@ -38,11 +38,12 @@ function stubAdapter(id: string): AgentAdapter {
 }
 
 describe('agent adapter registry', () => {
-  it('registra claude e codex por padrao', () => {
-    expect(hasAgentAdapter('claude')).toBe(true);
-    expect(hasAgentAdapter('codex')).toBe(true);
-    expect(getAgentAdapter('claude').displayName).toBe('Claude');
-    expect(getAgentAdapter('codex').displayName).toBe('Codex');
+  it('registra todos os providers embutidos por padrao', () => {
+    const expected = ['claude', 'codex', 'kimi', 'opencode', 'cursor', 'antigravity', 'cline'];
+    for (const id of expected) expect(hasAgentAdapter(id)).toBe(true);
+    expect(getAgentAdapter('cursor').displayName).toBe('Cursor');
+    expect(getAgentAdapter('antigravity').displayName).toBe('Antigravity');
+    expect(getAgentAdapter('cline').displayName).toBe('Cline');
   });
 
   it('registra e recupera um novo adapter', () => {

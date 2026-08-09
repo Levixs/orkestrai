@@ -38,6 +38,7 @@ export const kimiAdapter: AgentAdapter = {
   id: 'kimi',
   displayName: 'Kimi',
   supportsResume: true,
+  sessionStorage: 'kimi-session-dir',
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('kimi');

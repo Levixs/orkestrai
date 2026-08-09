@@ -751,7 +751,7 @@
   "update.download_site": "Baixar do site",
   "update.restart": "Reiniciar e atualizar",
   "flow.empty_guide": "Cada passo Agente conversa com um agente e a resposta vira a entrada do próximo (use input entre chaves duplas no prompt). Aprovação pausa e espera você.",
-  "flow.no_agents_hint": "Crie um agente no canvas primeiro (Claude, Codex, Kimi ou Shell) — o passo Agente precisa de alguém para executar.",
+  "flow.no_agents_hint": "Crie primeiro qualquer agente disponível no canvas — o passo Agente precisa de alguém para executar.",
   "flow.no_steps_hint": "Adicione pelo menos um passo antes de rodar.",
   "flow.starting": "iniciando...",
   "flow.last_run_failed": "Última execução falhou",

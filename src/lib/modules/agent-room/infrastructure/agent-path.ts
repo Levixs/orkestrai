@@ -1,6 +1,6 @@
 /**
- * Resolucao de PATH e de comandos das CLIs de agente (claude, codex, kimi,
- * opencode), compartilhada por todos os caminhos de spawn:
+ * Resolucao de PATH e de comandos das CLIs de agente registradas,
+ * compartilhada por todos os caminhos de spawn:
  *   - canvas/PTY (PtySessionManager, node-pty)
  *   - Modo Maestro one-shot (application/agents.ts, child_process.spawn)
  *   - deteccao "installed" e listagem de modelos (adapters, child_process.execFile)
@@ -33,6 +33,8 @@ const EXTRA_PATH_DIRS = IS_WIN
       process.env.APPDATA ? `${process.env.APPDATA}\\npm` : '', // CLIs via npm -g (ex.: codex, opencode)
       process.env.LOCALAPPDATA ? `${process.env.LOCALAPPDATA}\\Microsoft\\WinGet\\Links` : '', // via winget
       process.env.LOCALAPPDATA ? `${process.env.LOCALAPPDATA}\\Microsoft\\WindowsApps` : '',
+      process.env.LOCALAPPDATA ? `${process.env.LOCALAPPDATA}\\agy\\bin` : '', // Antigravity CLI
+      `${homedir()}\\.cursor\\bin`, // Cursor Agent CLI
       `${homedir()}\\.kimi-code\\bin`, // kimi (instalador proprio, fora do PATH)
       `${homedir()}\\.local\\bin`,
       `${homedir()}\\.bun\\bin`,
@@ -49,6 +51,7 @@ const EXTRA_PATH_DIRS = IS_WIN
       `${homedir()}/.deno/bin`,
       `${homedir()}/.cargo/bin`,
       `${homedir()}/.npm-global/bin`,
+      `${homedir()}/.cursor/bin`,
       `${homedir()}/.kimi-code/bin`,
       `${homedir()}/bin`,
     ];

@@ -3,6 +3,9 @@ import { claudeAdapter } from './ClaudeAdapter.js';
 import { codexAdapter } from './CodexAdapter.js';
 import { kimiAdapter } from './KimiAdapter.js';
 import { openCodeAdapter } from './OpenCodeAdapter.js';
+import { cursorAdapter } from './CursorAdapter.js';
+import { antigravityAdapter } from './AntigravityAdapter.js';
+import { clineAdapter } from './ClineAdapter.js';
 
 /**
  * Registry de adaptadores de agente. Novos providers (kimi, opencode, ...)
@@ -35,3 +38,6 @@ registerAgentAdapter(claudeAdapter);
 registerAgentAdapter(codexAdapter);
 registerAgentAdapter(kimiAdapter);
 registerAgentAdapter(openCodeAdapter);
+registerAgentAdapter(cursorAdapter);
+registerAgentAdapter(antigravityAdapter);
+registerAgentAdapter(clineAdapter);

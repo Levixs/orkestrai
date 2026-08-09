@@ -27,7 +27,7 @@ import { agentSessionTracker } from './AgentSessionTracker.ts';
 export const PTY_WS_PATH = '/ws/agent-room/pty';
 
 type ClientMessage =
-  | { type: 'create'; command: string; args?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; label?: string; workspace?: string }
+  | { type: 'create'; command: string; args?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string }
   | { type: 'attach'; sessionId: string }
   | { type: 'input'; sessionId: string; data: string }
   | { type: 'resize'; sessionId: string; cols: number; rows: number }
@@ -116,6 +116,7 @@ export function handlePtyConnection(socket: WebSocket): void {
           if (typeof message.command !== 'string' || !message.command.trim()) {
             throw new Error('Informe o comando da sessão PTY.');
           }
+          const trackingStartedAt = Date.now();
           const session = ptySessionManager.create({
             command: message.command.trim(),
             args: Array.isArray(message.args) ? message.args.map(String) : [],
@@ -125,6 +126,7 @@ export function handlePtyConnection(socket: WebSocket): void {
             env: message.env,
             label: typeof message.label === 'string' ? message.label : null,
             workspace: typeof message.workspace === 'string' ? message.workspace : null,
+            provider: typeof message.provider === 'string' ? message.provider : null,
           });
           const scrollback = attachSession(session.id);
           send({ type: 'created', session, scrollback });
@@ -147,12 +149,9 @@ export function handlePtyConnection(socket: WebSocket): void {
           }
 
           // Rastreia o session-id REAL da CLI para resume exato futuro.
-          const provider =
-            typeof message.provider === 'string' && ['claude', 'codex', 'kimi', 'opencode'].includes(message.provider)
-              ? message.provider
-              : null;
+          const provider = typeof message.provider === 'string' && message.provider.trim() ? message.provider : null;
           if (provider) {
-            agentSessionTracker.watch(session.id, provider, session.cwd, Date.now(), (agentSessionId) => {
+            agentSessionTracker.watch(session.id, message.sessionStorage, session.cwd, trackingStartedAt, (agentSessionId) => {
               // Broadcast global: o socket criador pode já ter sido fechado
               // (o no remonta em modo attach ao receber o sessionId).
               wsGlobal.__orkestraiBroadcast?.({

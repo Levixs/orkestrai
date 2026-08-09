@@ -1,4 +1,5 @@
 import type { AgentModelOption, AgentName, AgentRunRequest, ModelEffort } from '../../domain/types.js';
+import type { AgentSessionStorage } from '../../infrastructure/pty/AgentSessionTracker.js';
 
 /**
  * Resultado da deteccao da CLI de um agente na maquina local.
@@ -50,14 +51,16 @@ export interface AgentAdapter {
   displayName: string;
   /** Se a CLI suporta retomar sessoes (resume). Ainda nao usado pelo runner. */
   supportsResume: boolean;
+  /** Niveis de raciocinio aceitos pela CLI, quando configuraveis. */
+  efforts?: string[];
+  /** Layout persistido pela CLI, usado para descobrir o id exato da sessao. */
+  sessionStorage?: AgentSessionStorage;
   /** Verifica se a CLI esta instalada (hoje via `<cli> --version`). */
   detect(): Promise<AgentDetection>;
   /** Monta o comando headless one-shot a partir do payload de execucao. */
   buildCommand(request: AgentRunRequest): AgentCommandSpec;
   /** Monta o comando TUI interativo para rodar o agente num terminal PTY. */
   interactiveCommand(options?: { model?: string; effort?: ModelEffort | null }): AgentCommandSpec;
-  /** Args de resume: exato com session-id, ou a mais recente do diretorio sem id. */
-  resumeArgs(agentSessionId?: string): string[] | null;
   /** Args de resume: exato com session-id, ou a mais recente do diretorio sem id. */
   resumeArgs(agentSessionId?: string): string[] | null;
   /** Extrai o texto final e metadados do stdout (JSON-lines) da CLI. */

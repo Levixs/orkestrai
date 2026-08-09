@@ -1,14 +1,14 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import type { CanvasNode, Workspace } from '../../domain/types.js';
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pty/PtySessionManager.ts';
 import { lastReplyText } from '../../infrastructure/transcript/AgentTranscript.js';
 import { floorService } from './FloorService.js';
-import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
+import { getAgentAdapter, hasAgentAdapter, listAgentAdapters } from '../adapters/registry.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
 import { upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
 
@@ -334,10 +334,14 @@ export class BridgeService {
       const payload = {
         ...(node.payload as Record<string, unknown>),
         ...command,
+        env: command.env,
+        provider: input.provider ?? null,
         role: input.role ?? (node.payload as { role?: string }).role,
         sessionId: undefined,
+        agentSessionId: undefined,
       };
       delete payload.sessionId;
+      delete payload.agentSessionId;
       const updated = await workspaceRepository.updateNode(node.id, { payload, title: input.title || node.title });
       this.notifyWorkspaceChanged(workspaceId);
       return { nodeId: updated!.id, title: updated!.title, replaced: true };
@@ -509,14 +513,16 @@ export class BridgeService {
     return { edgeId, from: origin.title, to: target.title };
   }
 
-  private commandForProvider(provider?: string | null): { command: string; args: string[] } {
-    if (!provider || !hasAgentAdapter(provider)) return { command: defaultShell(), args: [] };
+  private commandForProvider(provider?: string | null): { command: string; args: string[]; env?: Record<string, string> } {
+    if (!provider) return { command: defaultShell(), args: [] };
+    if (!hasAgentAdapter(provider)) throw new Error(`Provider desconhecido: ${provider}.`);
     const spec = getAgentAdapter(provider).interactiveCommand();
-    return { command: spec.command, args: spec.args };
+    return { command: spec.command, args: spec.args, env: spec.env };
   }
 
   /** Conteúdo da skill da ponte (extraido para comparar/atualizar installs antigas). */
   bridgeSkillContent(): string {
+    const providerIds = listAgentAdapters().map((adapter) => adapter.id).join('|');
     return `---
 name: orkestrai-bridge
 description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, montar/orquestrar um time de agentes, recrutar ou dispensar agentes, distribuir tarefas no quadro (kanban), criar notas, controlar portais (browser) ou gerenciar andares (worktrees git).
@@ -574,8 +580,8 @@ Se você é o líder (Modo Maestro), você NUNCA executa o trabalho sozinho: voc
 
 PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NÃO aparecem no canvas, NÃO têm terminal próprio e o usuário não vê nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
 
-1. PRIMEIRO proponha o time: liste os agentes sugeridos (título, provider, role de cada um) e pergunte quais ele quer criar — não crie nada sem aprovação. VARIE os providers: times com 3+ agentes devem misturar claude, codex, kimi e opencode (ex.: codex implementa, claude revisa/arquiteta, kimi cuida de design/docs) — NUNCA crie o time inteiro com um provider só.
-2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider claude|codex|kimi|opencode] [--role <papel>]\`. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
+1. PRIMEIRO proponha o time: liste os agentes sugeridos (título, provider, role de cada um) e pergunte quais ele quer criar — não crie nada sem aprovação. VARIE os providers instalados: times com 3+ agentes devem combinar perspectivas diferentes — NUNCA crie o time inteiro com um provider só.
+2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider ${providerIds}] [--role <papel>]\`. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota já conecta ao time inteiro por padrão).
 4. Trabalho em código? Cada agente trabalha no PRÓPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente começar — NUNCA deixe vários agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (vê conflitos) e \`orkestrai floor land\`.
 5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente). HANDOFF: cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.
@@ -590,34 +596,30 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
 
   /**
    * Provisiona a skill da ponte nos diretórios convencionais dos agentes
-   * (.claude/skills e .orkestrai) ao conectar dois terminais.
+   * de Claude, Cline, Antigravity e no formato portavel do Orkestrai.
    */
   provisionSkill(workspace: Workspace, token: string): void {
     const skill = this.bridgeSkillContent();
     try {
       const dirs = [
         resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai'),
+        resolve(workspace.workingDir, '.cline', 'skills', 'orkestrai'),
+        resolve(workspace.workingDir, '.agents', 'skills', 'orkestrai'),
         resolve(workspace.workingDir, '.orkestrai'),
       ];
       for (const dir of dirs) {
         mkdirSync(dir, { recursive: true });
         writeFileSync(resolve(dir, 'SKILL.md'), skill);
       }
-      // .mcp.json na raiz do projeto: agentes que falam MCP (Claude, Kimi...)
-      // ganham as ações do canvas como TOOLS nativas via `orkestrai mcp`.
-      // MERGE — nunca sobrescreve os servidores que o usuário já configurou.
-      const mcpPath = resolve(workspace.workingDir, '.mcp.json');
-      let mcpConfig: { mcpServers?: Record<string, unknown> } = {};
-      try {
-        mcpConfig = JSON.parse(readFileSync(mcpPath, 'utf8'));
-      } catch {
-        // não existe ou inválido — cria do zero
-      }
-      const current = JSON.stringify(mcpConfig.mcpServers?.orkestrai ?? null);
-      const desired = { command: 'orkestrai', args: ['mcp'] };
-      if (current !== JSON.stringify(desired)) {
-        mcpConfig.mcpServers = { ...(mcpConfig.mcpServers ?? {}), orkestrai: desired };
-        writeFileSync(mcpPath, `${JSON.stringify(mcpConfig, null, 2)}\n`);
+      // Cada CLI descobre MCP em um caminho proprio. Todos recebem o mesmo
+      // launch absoluto (inclusive no Windows) e o merge preserva servidores.
+      for (const relativePath of [
+        '.mcp.json',
+        '.cursor/mcp.json',
+        '.cline/mcp.json',
+        '.agents/mcp_config.json',
+      ]) {
+        this.provisionStandardMcp(resolve(workspace.workingDir, relativePath));
       }
       this.provisionAgentsMd(workspace.workingDir);
       this.provisionCodexMcp();
@@ -628,7 +630,18 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       if (existsSync(gitDir)) {
         const excludePath = resolve(gitDir, 'info', 'exclude');
         const currentExclude = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
-        const additions = ['.orkestrai/', '.claude/skills/orkestrai/', '.mcp.json', 'opencode.json', 'AGENTS.md'].filter((entry) => !currentExclude.includes(entry));
+        const additions = [
+          '.orkestrai/',
+          '.claude/skills/orkestrai/',
+          '.cline/skills/orkestrai/',
+          '.agents/skills/orkestrai/',
+          '.mcp.json',
+          '.cursor/mcp.json',
+          '.cline/mcp.json',
+          '.agents/mcp_config.json',
+          'opencode.json',
+          'AGENTS.md',
+        ].filter((entry) => !currentExclude.includes(entry));
         if (additions.length) {
           mkdirSync(resolve(gitDir, 'info'), { recursive: true });
           writeFileSync(excludePath, `${currentExclude.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
@@ -640,7 +653,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     this.writeBridgeConfig(workspace, token);
   }
 
-  /** Bloco AGENTS.md: o que Codex, Kimi e OpenCode leem (eles não leem .claude/skills). */
+  /** Bloco portavel lido pelos providers que nao usam a skill do Claude. */
   private agentsMdBlock(): string {
     return [
       '<!-- orkestrai:begin -->',
@@ -655,7 +668,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai notify "<msg>"` — notificação nativa para o usuário ao concluir.',
       '- Sua identidade está no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` são opcionais. Se `orkestrai` não resolver no PATH, use `node "$ORKESTRAI_CLI" ...`.',
       '- Se as tools MCP `orkestrai` estiverem disponíveis, PREFIRA elas (chamadas tipadas); a CLI e o fallback.',
-      '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',
+      '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md`, `.cline/skills/orkestrai/SKILL.md`, `.agents/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',
       '<!-- orkestrai:end -->',
     ].join('\n');
   }
@@ -690,6 +703,28 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron),
     });
     if (next !== current) writeFileSync(path, next);
+  }
+
+  /** Formato MCP padrao usado por Claude/Kimi, Cursor, Cline e Antigravity. */
+  private provisionStandardMcp(path: string): void {
+    let config: { mcpServers?: Record<string, unknown> } & Record<string, unknown> = {};
+    try {
+      config = JSON.parse(readFileSync(path, 'utf8'));
+    } catch {
+      // Ausente ou invalido: cria o documento minimo.
+    }
+    const cliEntry = process.env.ORKESTRAI_CLI ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
+    const electronRuntime = process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron);
+    const desired = {
+      command: runtime,
+      args: [cliEntry, 'mcp'],
+      ...(electronRuntime ? { env: { ELECTRON_RUN_AS_NODE: '1' } } : {}),
+    };
+    if (JSON.stringify(config.mcpServers?.orkestrai ?? null) === JSON.stringify(desired)) return;
+    mkdirSync(dirname(path), { recursive: true });
+    config.mcpServers = { ...(config.mcpServers ?? {}), orkestrai: desired };
+    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
   }
 
   /** OpenCode le MCP do opencode.json do projeto (secao "mcp", type local). */
@@ -781,7 +816,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         // quieto imediato após o eco não e resposta — e o retry do Enter atua
         // nessa janela. Shell puro segue o piso classico.
         const sessInfo = ptySessionManager.get(sessionId);
-        const isTui = Boolean(provider && sessInfo && /claude|codex|kimi|opencode/.test(sessInfo.command));
+        const isTui = Boolean(provider && sessInfo?.provider);
         const minElapsed = isTui ? 8_000 : MIN_AFTER_SEND_MS;
         if (captured.length > capturedAtSend && quietFor >= QUIET_MS && elapsed >= minElapsed) {
           finish(false);
@@ -870,9 +905,9 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         if (done) return;
         const sess = ptySessionManager.get(sessionId);
         const ageMs = sess ? Date.now() - Date.parse(sess.createdAt) : 0;
-        // A espera só vale para TUIs de provider de verdade (claude/codex/
-        // kimi/opencode): shell puro (ou provider simulado em teste) manda na hora.
-        const isTui = Boolean(provider && sess && /claude|codex|kimi|opencode/.test(sess.command));
+        // A espera só vale para TUIs de providers registrados; shell puro (ou
+        // provider simulado em teste) recebe a mensagem imediatamente.
+        const isTui = Boolean(provider && sess?.provider);
         const ready = Boolean(sess?.hasOutput && sess.waiting && ageMs >= 12_000);
         if (!sess || sess.exited || !isTui || ready || Date.now() >= readyDeadline) {
           send();

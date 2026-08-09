@@ -608,4 +608,27 @@ export const TOURS_PT: Tour[] = [
       },
     ],
   },
+  {
+    id: 'choose-agent-provider',
+    icon: 'Users',
+    title: 'Escolher agentes sem conhecer terminal',
+    tagline: 'Use o serviço que você já tem e organize o time pelo resultado.',
+    steps: [
+      {
+        id: 'available',
+        title: 'Veja o que já está disponível',
+        body: 'A barra inferior detecta Claude, Codex, Kimi, OpenCode, Cursor, Antigravity e Cline. Os disponíveis ficam ativos; os desativados só precisam de instalação e login.',
+      },
+      {
+        id: 'outcome',
+        title: 'Dê nome ao trabalho, não à tecnologia',
+        body: 'Crie “Pesquisa de público”, “Direção de arte”, “Copy da campanha” ou “Revisão do produto”. Roles, notas e tarefas dizem ao agente o que entregar, mesmo que você nunca use um terminal fora do Orkestrai.',
+      },
+      {
+        id: 'perspective',
+        title: 'Combine apenas quando ajudar',
+        body: 'Um provider basta para começar. Adicione outro para revisar uma decisão importante ou trazer uma perspectiva independente; o Orkestrai mantém cada conversa separada e conectada ao workspace.',
+      },
+    ],
+  },
 ];

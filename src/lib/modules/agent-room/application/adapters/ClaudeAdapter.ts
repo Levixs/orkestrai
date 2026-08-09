@@ -16,6 +16,8 @@ export const claudeAdapter: AgentAdapter = {
   id: 'claude',
   displayName: 'Claude',
   supportsResume: false,
+  efforts: CLAUDE_EFFORTS,
+  sessionStorage: 'claude-project-jsonl',
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('claude');

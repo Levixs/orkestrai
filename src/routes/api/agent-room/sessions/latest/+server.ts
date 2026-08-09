@@ -1,6 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { agentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.ts';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
+import { getAgentAdapter, hasAgentAdapter } from '$lib/modules/agent-room/application/adapters/registry.js';
 
 /**
  * Session-id mais recente de um provider num diretorio que NENHUM outro
@@ -25,7 +26,8 @@ export const GET: RequestHandler = async ({ url }) => {
     }
   }
 
-  const agentSessionId = agentSessionTracker.findLatestUnclaimedSessionId(provider, cwd, exclude);
+  const storage = hasAgentAdapter(provider) ? getAgentAdapter(provider).sessionStorage : undefined;
+  const agentSessionId = agentSessionTracker.findLatestUnclaimedSessionId(storage, cwd, exclude);
   if (agentSessionId) agentSessionTracker.claim(agentSessionId);
   return json({ data: { agentSessionId } });
 };

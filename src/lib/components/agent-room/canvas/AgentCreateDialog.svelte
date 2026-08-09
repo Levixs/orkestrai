@@ -40,19 +40,14 @@
     ultra: m['dlg.effort_ultra'](),
   });
 
-  const PROVIDER_EFFORTS: Record<string, string[]> = {
-    claude: ['low', 'medium', 'high', 'xhigh', 'max'],
-    codex: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
-  };
-
   const modelOptions = $derived(provider?.models ?? []);
 
-  // Esforcos do modelo selecionado (a CLI informa por modelo); sem selecao,
-  // usa os do provider. Kimi/OpenCode nao tem flag de effort — escondido.
+  // Esforcos do modelo selecionado (quando informado); sem selecao, usa a
+  // capacidade declarada pelo adapter. Providers sem effort ficam ocultos.
   const effortOptions = $derived.by(() => {
-    if (!provider || !(provider.id in PROVIDER_EFFORTS)) return [];
+    if (!provider) return [];
     const selected = modelOptions.find((option) => option.value === ($formData?.model ?? ''));
-    const efforts = selected?.efforts?.length ? selected.efforts : PROVIDER_EFFORTS[provider.id];
+    const efforts = selected?.efforts?.length ? selected.efforts : (provider.efforts ?? []);
     return efforts.map((value) => ({ value, label: EFFORT_LABELS[value] ?? value }));
   });
   const supportsEffort = $derived(effortOptions.length > 0);

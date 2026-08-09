@@ -40,7 +40,7 @@ const TOOLS = [
   { name: 'floor_land', description: 'Aterrissa o andar (merge da branch).', inputSchema: { type: 'object', properties: { floorId: { type: 'string' } }, required: ['floorId'] } },
   { name: 'notify', description: 'Notificacao nativa no desktop do usuario.', inputSchema: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } },
   { name: 'port', description: 'Devolve uma porta livre para subir servidores.', inputSchema: { type: 'object', properties: {} } },
-  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', enum: ['claude', 'codex', 'kimi', 'opencode'] }, role: { type: 'string' } }, required: ['title'] } },
+  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', description: 'Id de um provider registrado no Orkestrai.' }, role: { type: 'string' } }, required: ['title'] } },
   { name: 'dismiss', description: '(maestro) Dispensa um agente.', inputSchema: { type: 'object', properties: { agent: { type: 'string' } }, required: ['agent'] } },
 ];
 

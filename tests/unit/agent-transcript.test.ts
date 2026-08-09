@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseClaudeTranscriptReply, parseCodexTranscriptReply, parseKimiTranscriptReply } from '$lib/modules/agent-room/infrastructure/transcript/AgentTranscript.js';
+import {
+  parseClaudeTranscriptReply,
+  parseCodexTranscriptReply,
+  parseGenericTranscriptReply,
+  parseKimiTranscriptReply,
+  parseStructuredMessagesReply,
+} from '$lib/modules/agent-room/infrastructure/transcript/AgentTranscript.js';
 
 describe('parseClaudeTranscriptReply', () => {
   it('junta TODOS os blocos de texto do assistant apos a ultima pergunta (inclusive com tool calls no meio)', () => {
@@ -79,5 +85,25 @@ describe('parseKimiTranscriptReply (formato real do wire.jsonl, 0.33)', () => {
     ].join('\n');
     expect(parseKimiTranscriptReply(jsonl)).toBeNull();
     expect(parseKimiTranscriptReply('{"type":"profile.bind"}')).toBeNull();
+  });
+});
+
+describe('transcritos estruturados dos providers adicionais', () => {
+  it('le Cursor e Antigravity em JSONL sem misturar a resposta anterior', () => {
+    const jsonl = [
+      JSON.stringify({ role: 'assistant', content: 'resposta antiga' }),
+      JSON.stringify({ role: 'user', content: 'nova pergunta' }),
+      JSON.stringify({ role: 'assistant', content: [{ type: 'text', text: 'Resposta atual.' }] }),
+    ].join('\n');
+    expect(parseGenericTranscriptReply(jsonl)).toBe('Resposta atual.');
+  });
+
+  it('le o array de mensagens persistido pelo Cline', () => {
+    expect(
+      parseStructuredMessagesReply([
+        { role: 'user', content: 'faça a análise' },
+        { role: 'assistant', content: [{ type: 'text', text: 'Análise concluída.' }] },
+      ])
+    ).toBe('Análise concluída.');
   });
 });

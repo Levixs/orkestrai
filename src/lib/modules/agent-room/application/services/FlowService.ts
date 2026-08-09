@@ -3,6 +3,7 @@ import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.js
 import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.js';
 import { bridgeService } from './BridgeService.js';
 import { floorService } from './FloorService.js';
+import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
 
 export type FlowStep = {
   kind: 'agent' | 'approval';
@@ -137,7 +138,7 @@ export class FlowService {
     const nodes = await workspaceRepository.listNodes(workspaceId, undefined, true);
     const target = nodes.find((node) => node.type === 'terminal' && (node.title ?? '').trim() === title.trim());
     if (!target) throw new Error(`Agente "${title}" nao encontrado no canvas.`);
-    const payload = (target.payload ?? {}) as { sessionId?: string; command?: string; args?: string[] };
+    const payload = (target.payload ?? {}) as { sessionId?: string; command?: string; args?: string[]; env?: Record<string, string> };
     const existing = payload.sessionId ? ptySessionManager.get(payload.sessionId) : null;
     if (existing && !existing.exited) return;
     if (!payload.command) throw new Error(`O agente "${title}" nao tem comando configurado — recrie o terminal dele.`);
@@ -147,21 +148,23 @@ export class FlowService {
       const floor = await floorService.get(target.floorId);
       if (floor?.path) cwd = floor.path;
     }
+    const trackingStartedAt = Date.now();
     const session = ptySessionManager.create({
       command: payload.command,
       args: payload.args ?? [],
       cwd,
       label: title,
       workspace: workspace?.name ?? null,
-      env: { ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
+      provider: (payload as { provider?: string }).provider ?? null,
+      env: { ...(payload.env ?? {}), ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
     });
     await workspaceRepository.updateNode(target.id, { payload: { ...payload, sessionId: session.id } as never });
     // Spawn server-side nao passa pelo pty-ws: registra o rastreio do
     // session-id da CLI aqui, senao o transcrito nunca e achado (ask caia no
     // fallback de tela crua).
     const provider = (payload as { provider?: string }).provider;
-    if (provider && ['claude', 'codex', 'kimi', 'opencode'].includes(provider)) {
-      agentSessionTracker.watch(session.id, provider, cwd, Date.now(), (agentSessionId) => {
+    if (provider && hasAgentAdapter(provider)) {
+      agentSessionTracker.watch(session.id, getAgentAdapter(provider).sessionStorage, cwd, trackingStartedAt, (agentSessionId) => {
         void workspaceRepository
           .updateNode(target.id, { payload: { ...payload, sessionId: session.id, agentSessionId } as never })
           .then(() => notifyWorkspaceChanged(workspaceId))

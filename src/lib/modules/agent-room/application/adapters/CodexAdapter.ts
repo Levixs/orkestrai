@@ -5,8 +5,8 @@ import type { AgentAdapter, AgentCommandSpec, AgentDetection, ParsedAgentOutput 
 import { parseJsonLinesOutput } from './json-lines.js';
 
 const CODEX_FALLBACK_OPTIONS: AgentModelOption[] = [
-  { provider: 'codex', value: 'gpt-5.5', label: 'GPT-5.5' },
-  { provider: 'codex', value: 'gpt-5-codex', label: 'GPT-5 Codex' },
+  { provider: 'codex', value: 'gpt-5.5', label: 'GPT-5.5', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
+  { provider: 'codex', value: 'gpt-5-codex', label: 'GPT-5 Codex', efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] },
 ];
 
 function codexSandbox(request: AgentRunRequest) {
@@ -17,6 +17,8 @@ export const codexAdapter: AgentAdapter = {
   id: 'codex',
   displayName: 'Codex',
   supportsResume: false,
+  efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+  sessionStorage: 'codex-rollout-jsonl',
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('codex');

@@ -1,7 +1,7 @@
 /** Tipos do motor de tours guiados (onboarding interativo por caso de uso). */
 
 export type TourAction =
-  | { kind: 'createAgent'; title: string; provider: 'claude' | 'codex' | 'kimi'; leader?: boolean }
+  | { kind: 'createAgent'; title: string; provider: string; leader?: boolean }
   | { kind: 'createNote'; title: string; content: string }
   | { kind: 'createTasksBoard' }
   | { kind: 'createTask'; title: string; assigneeTitle?: string }

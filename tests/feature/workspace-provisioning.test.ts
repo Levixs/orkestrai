@@ -16,12 +16,19 @@ describe('WorkspaceService — provisionamento da ponte', () => {
     expect(workspace.id).toBeTruthy();
     expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
     expect(existsSync(join(dir, '.claude', 'skills', 'orkestrai', 'SKILL.md'))).toBe(true);
-    // AGENTS.md (codex/kimi/opencode) com o bloco da ponte + opencode.json com o MCP
+    expect(existsSync(join(dir, '.cline', 'skills', 'orkestrai', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(dir, '.agents', 'skills', 'orkestrai', 'SKILL.md'))).toBe(true);
+    // AGENTS.md portavel + os formatos MCP proprios de cada provider.
     const agentsMd = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
     expect(agentsMd).toContain('<!-- orkestrai:begin -->');
     expect(agentsMd).toContain('orkestrai ask');
     const opencode = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf8'));
     expect(opencode.mcp.orkestrai).toMatchObject({ type: 'local', command: ['orkestrai', 'mcp'] });
+    for (const path of ['.mcp.json', '.cursor/mcp.json', '.cline/mcp.json', '.agents/mcp_config.json']) {
+      const config = JSON.parse(readFileSync(join(dir, path), 'utf8'));
+      expect(config.mcpServers.orkestrai.command).toBe(process.execPath);
+      expect(config.mcpServers.orkestrai.args.at(-1)).toBe('mcp');
+    }
   });
 
   it('preserva conteudo do usuario no AGENTS.md ao atualizar o bloco', async () => {
@@ -34,6 +41,22 @@ describe('WorkspaceService — provisionamento da ponte', () => {
     expect(agentsMd).toContain('Regras minhas aqui.');
     expect(agentsMd).toContain('<!-- orkestrai:begin -->');
     expect(workspace.id).toBeTruthy();
+  });
+
+  it('preserva servidores MCP configurados pelo usuario', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-prov-mcp-'));
+    const { mkdirSync: mkdir, writeFileSync: write } = await import('node:fs');
+    mkdir(join(dir, '.cursor'), { recursive: true });
+    write(
+      join(dir, '.cursor', 'mcp.json'),
+      `${JSON.stringify({ mcpServers: { custom: { command: 'custom-server', args: ['serve'] } } }, null, 2)}\n`
+    );
+
+    await workspaceService.create({ name: 'mcp-merge', workingDir: dir, icon: null, instructions: null });
+
+    const config = JSON.parse(readFileSync(join(dir, '.cursor', 'mcp.json'), 'utf8'));
+    expect(config.mcpServers.custom).toEqual({ command: 'custom-server', args: ['serve'] });
+    expect(config.mcpServers.orkestrai.command).toBe(process.execPath);
   });
 
   it('repara skill e token ao abrir workspace antigo (sem provisionamento)', async () => {

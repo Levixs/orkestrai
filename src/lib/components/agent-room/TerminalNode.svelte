@@ -38,6 +38,7 @@
     createRequest?: CreatePtyRequest;
     /** Provider do agente (para rastrear o session-id da CLI). */
     provider?: string;
+    sessionStorage?: string;
     /** Workspace do no (filtra eventos de broadcast, ex.: talking). */
     workspaceId?: string;
     /** Rotulos para a notificacao nativa de fim de sessao. */
@@ -64,7 +65,7 @@
     themeName?: TerminalThemeName;
   };
 
-  let { sessionId, createRequest, provider, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
+  let { sessionId, createRequest, provider, sessionStorage, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
 
   let container: HTMLDivElement;
   let xtermInstance: Terminal | null = null;
@@ -354,6 +355,7 @@
           type: 'create',
           ...createRequest,
           provider,
+          sessionStorage,
           label: sessionLabel,
           workspace: workspaceName,
           cols: terminal.cols,

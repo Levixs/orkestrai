@@ -3,6 +3,9 @@ import { claudeAdapter } from '$lib/modules/agent-room/application/adapters/Clau
 import { codexAdapter } from '$lib/modules/agent-room/application/adapters/CodexAdapter.js';
 import { kimiAdapter } from '$lib/modules/agent-room/application/adapters/KimiAdapter.js';
 import { openCodeAdapter } from '$lib/modules/agent-room/application/adapters/OpenCodeAdapter.js';
+import { cursorAdapter } from '$lib/modules/agent-room/application/adapters/CursorAdapter.js';
+import { antigravityAdapter } from '$lib/modules/agent-room/application/adapters/AntigravityAdapter.js';
+import { clineAdapter } from '$lib/modules/agent-room/application/adapters/ClineAdapter.js';
 import type { AgentRunRequest } from '$lib/modules/agent-room/domain/types.js';
 
 function request(overrides: Partial<AgentRunRequest> = {}): AgentRunRequest {
@@ -107,5 +110,90 @@ describe('openCodeAdapter', () => {
   it('cai no parser generico quando nao ha partes text', () => {
     const parsed = openCodeAdapter.parseOutput('{"content":"texto solto"}');
     expect(parsed.content).toBe('texto solto');
+  });
+});
+
+describe('cursorAdapter', () => {
+  it('usa print estruturado e so libera escrita com --force', () => {
+    const review = cursorAdapter.buildCommand(request({ agent: 'cursor', prompt: 'revise' }));
+    expect(review.command).toBe('cursor-agent');
+    expect(review.args).toContain('stream-json');
+    expect(review.args).not.toContain('--force');
+    expect(review.args.at(-1)).toContain('READ-ONLY TASK');
+    expect(review.args.at(-1)).toContain('revise');
+    expect(review.displayArgs).not.toContain(review.args.at(-1));
+    expect(review.promptDelivery).toBe('args');
+
+    const write = cursorAdapter.buildCommand(request({ agent: 'cursor', allowWrites: true }));
+    expect(write.args).toContain('--force');
+  });
+
+  it('extrai resultado e id de sessao do stream-json', () => {
+    const parsed = cursorAdapter.parseOutput([
+      '{"type":"system","subtype":"init","session_id":"cursor-1"}',
+      '{"type":"result","subtype":"success","result":"feito"}',
+    ].join('\n'));
+    expect(parsed.content).toBe('feito');
+    expect(parsed.metadata?.sessionId).toBe('cursor-1');
+  });
+
+  it('retoma somente a conversa exata', () => {
+    expect(cursorAdapter.resumeArgs('cursor-1')).toEqual(['--resume', 'cursor-1']);
+    expect(cursorAdapter.resumeArgs()).toBeNull();
+  });
+});
+
+describe('antigravityAdapter', () => {
+  it('usa agy em sandbox para leitura e bypass explicito para escrita', () => {
+    const review = antigravityAdapter.buildCommand(request({ agent: 'antigravity' }));
+    expect(review.command).toBe('agy');
+    expect(review.args).toContain('--sandbox');
+    expect(review.args).not.toContain('--dangerously-skip-permissions');
+
+    const write = antigravityAdapter.buildCommand(request({ agent: 'antigravity', allowWrites: true }));
+    expect(write.args).toContain('--dangerously-skip-permissions');
+  });
+
+  it('retoma uma conversa conhecida sem adivinhar a mais recente', () => {
+    expect(antigravityAdapter.resumeArgs('agy-1')).toEqual(['--conversation=agy-1']);
+    expect(antigravityAdapter.resumeArgs()).toBeNull();
+  });
+});
+
+describe('clineAdapter', () => {
+  it('usa JSON headless, respeita plan/effort e controla auto-aprovacao', () => {
+    const review = clineAdapter.buildCommand(request({ agent: 'cline', mode: 'plan', effort: 'high' }));
+    expect(review.command).toBe('cline');
+    expect(review.args).toContain('--json');
+    expect(review.args).toContain('--plan');
+    expect(review.args).toContain('--thinking');
+    expect(review.args).toContain('false');
+    expect(review.env?.CLINE_MCP_SETTINGS_PATH).toBe('.cline/mcp.json');
+
+    const write = clineAdapter.buildCommand(request({ agent: 'cline', allowWrites: true }));
+    expect(write.args).toContain('true');
+  });
+
+  it('extrai a ultima mensagem completa e id de sessao', () => {
+    const parsed = clineAdapter.parseOutput([
+      '{"type":"say","say":"text","text":"parcial","partial":true,"sessionId":"cline-1"}',
+      '{"type":"say","say":"completion_result","text":"concluido","partial":false}',
+    ].join('\n'));
+    expect(parsed.content).toBe('concluido');
+    expect(parsed.metadata?.sessionId).toBe('cline-1');
+  });
+
+  it('extrai o resultado emitido pela CLI atual', () => {
+    const parsed = clineAdapter.parseOutput(
+      '{"type":"run_result","finishReason":"completed","text":"concluido"}'
+    );
+    expect(parsed.content).toBe('concluido');
+  });
+
+  it('abre TUI e retoma por id', () => {
+    expect(clineAdapter.interactiveCommand({ effort: 'xhigh' }).args).toEqual(['--tui', '--thinking', 'xhigh']);
+    expect(clineAdapter.interactiveCommand().env?.CLINE_MCP_SETTINGS_PATH).toBe('.cline/mcp.json');
+    expect(clineAdapter.resumeArgs('cline-1')).toEqual(['--id', 'cline-1']);
+    expect(clineAdapter.resumeArgs()).toBeNull();
   });
 });

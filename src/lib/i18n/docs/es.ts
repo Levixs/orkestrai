@@ -4,7 +4,7 @@ import type { DocsCatalog } from './types.js';
 export const DOCS_ES: DocsCatalog = {
   quickstart: [
     'Crea un workspace (botón + en la barra lateral) apuntando a la carpeta de tu proyecto.',
-    'Haz clic en + Claude en la barra inferior y arrastra un rectángulo en el canvas — nombra el agente, elige modelo/esfuerzo y marca Líder si va a comandar el equipo.',
+    'Haz clic en cualquier agente disponible de la barra inferior y arrastra un rectángulo en el canvas — nómbralo, elige modelo/esfuerzo si quieres y marca Líder si comandará el equipo.',
     'Dibuja más agentes y conéctalos arrastrando desde la bolita (handle) de uno hasta el otro.',
     'Abre el tablero Tareas (+ Tareas), crea tarjetas y asígnalas — cada tarea cae directo en la terminal del agente.',
     'Habla con cualquier agente desde su propia terminal, o deja que el líder distribuya todo solo vía CLI orkestrai.',
@@ -18,7 +18,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: crear, nombrar, modelo y esfuerzo',
-      body: `Al dibujar un agente (+ Claude/Codex/Kimi), el diálogo de creación pregunta: nombre de la ventana, modelo (lista real del provider), esfuerzo de razonamiento (low→max, donde se soporte) y si es el Líder del equipo (Modo Maestro). Después de creado: doble clic en el título renombra cualquier nodo (agente, nota, lo que sea). El sello en el encabezado de la terminal asigna una role; ◐ cambia el tema; ★ enciende/apaga el Modo Maestro.`,
+      body: `La barra muestra automáticamente las CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity y Cline. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider ofrece esas opciones, además de Líder (Modo Maestro). Un botón desactivado significa que la CLI todavía debe instalarse y autenticarse. Después: doble clic renombra el nodo; el sello asigna un rol; ◐ cambia el tema; ★ alterna el Modo Maestro.`,
     },
     {
       id: 'roles',
@@ -83,7 +83,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'mcp',
       title: 'MCP (tools externas de los agentes)',
-      body: `MCP es el estándar para dar herramientas externas a los agentes (GitHub, Gmail, Figma, Drive, Postgres...). EL MODO FÁCIL: página Skills (barra lateral) → pestaña MCPs — busca en la curaduría oficial o en el registry MCP e instala con un clic; si el servidor pide clave/token, la app pregunta con instrucciones de dónde conseguirla. Los remotos instalan con 1 clic (sin comando). AVANZADO: lápiz junto al nombre del workspace → sección "Servidores MCP" para editar el .mcp.json a mano. AUTOMÁTICO: Orkestrai se autoprovisiona en TODOS los providers — .mcp.json (Claude/Kimi), ~/.codex/config.toml (Codex), opencode.json (OpenCode) y un bloque en AGENTS.md explicando el puente — los agentes ganan las acciones del canvas como tools tipadas. Los presets cargan sus MCPs junto con el equipo.`,
+      body: `MCP es el estándar para dar herramientas externas a los agentes (GitHub, Gmail, Figma, Drive, Postgres...). EL MODO FÁCIL: página Skills (barra lateral) → pestaña MCPs — busca en la curaduría oficial o el registry MCP e instala con un clic; si un servidor necesita clave/token, la app explica dónde obtenerla. Los remotos no requieren comandos. AVANZADO: lápiz junto al workspace → "Servidores MCP". AUTOMÁTICO: Orkestrai provisiona su puente para Claude/Kimi (.mcp.json), Codex (~/.codex/config.toml), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json) y Antigravity (.agents/mcp_config.json), además de skills y un bloque preservado en AGENTS.md. Cada agente recibe tools tipadas del canvas limitadas al workspace correcto.`,
     },
     {
       id: 'cli',
@@ -138,6 +138,12 @@ export const DOCS_ES: DocsCatalog = {
       title: 'Revisión cruzada entre providers',
       body: 'Conecta Claude y Codex: Claude implementa, Codex revisa (orkestrai ask), el veredicto vuelve por la misma cuerda (se enciende verde durante la conversación). Dos miradas de modelos diferentes en cada cambio.',
       tags: ['Conexiones', 'ask', 'multi-provider'],
+    },
+    {
+      id: 'choose-agent-provider',
+      title: 'Elegir un agente sin aprender CLIs',
+      body: 'Usa un provider que ya tengas instalado y autenticado; Orkestrai se ocupa de la terminal, el puente y la reanudación de la conversación. Claude, Codex, Kimi, OpenCode, Cursor, Antigravity y Cline aparecen en la misma barra cuando están disponibles. Para campañas, identidad visual, investigación, contenido o producto, nombra a los agentes por el resultado esperado y agrega un segundo provider solo cuando quieras una revisión independiente.',
+      tags: ['7 providers', 'sin conocer terminal', 'cualquier profesión'],
     },
     {
       id: 'deploy-sentinel',
@@ -213,6 +219,15 @@ export const DOCS_ES: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '09 ago 2026 · 0.4.0',
+      items: [
+        'Cursor, Antigravity y Cline ahora se integran al canvas como providers nativos junto a Claude, Codex, Kimi y OpenCode.',
+        'Las opciones de provider, modelo y esfuerzo provienen de los adapters instalados, sin enums fijos en la UI, los schemas ni el puente de reclutamiento.',
+        'Cada provider recibe la skill y la configuración MCP en el formato que reconoce; Cline usa ajustes aislados por workspace.',
+        'La reanudación rastrea IDs exactos en transcritos, manifestos y caches de cada CLI, evitando abrir la conversación de otro agente.',
+      ],
+    },
     {
       date: '09 ago 2026 · 0.3.0',
       items: [

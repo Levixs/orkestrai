@@ -2,7 +2,7 @@ import type { BuiltinPresetRecipe, PresetLocale } from './BuiltinPresetCatalog.j
 
 type AgentRecipe = {
   title: string;
-  provider: 'claude' | 'codex' | 'kimi';
+  provider: string;
   color: string;
   prompt: string;
 };

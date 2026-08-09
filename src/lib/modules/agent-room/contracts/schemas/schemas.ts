@@ -13,7 +13,7 @@ export type AgentLoopInput = z.infer<typeof agentLoopSchema>;
 
 /** Query do spec de comando interativo de um agente (dialogo de criacao). */
 export const agentSpecSchema = z.object({
-  provider: z.enum(['claude', 'codex', 'kimi', 'opencode']),
+  provider: z.string().trim().min(1),
   model: z.string().trim().nullish(),
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']).nullish(),
 });
