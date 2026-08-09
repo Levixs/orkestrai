@@ -22,7 +22,12 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: criar, nomear, modelo & esforço',
-      body: `A barra mostra automaticamente as CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity e Cline. Você não precisa conhecer terminal nem usar todas: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Botão desativado significa que a CLI ainda precisa ser instalada e autenticada. Depois de criado: duplo-clique renomeia o nó; o selo atribui uma role; ◐ troca o tema; ★ liga/desliga o Modo Maestro.`,
+      body: `A barra mostra automaticamente as CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity e Cline. Você não precisa conhecer terminal nem usar todas: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Abra a Central de Providers pelo ícone de cabo na barra lateral, Cmd/Ctrl+2 ou pelo menu nativo Workspace para ver o que está disponível e seguir a configuração. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Depois de criado: duplo-clique renomeia o nó; o selo atribui uma role; ◐ troca o tema; ★ liga/desliga o Modo Maestro.`,
+    },
+    {
+      id: 'provider-center',
+      title: 'Central de Providers',
+      body: `A Central verifica localmente as sete CLIs compatíveis e separa os agentes prontos daqueles que ainda precisam de configuração. Expanda um provider para ver o guia oficial, um comando de instalação para seu sistema quando disponível, instruções de login e capacidades detectadas como retomada de conversa, modelos e esforço ajustável. O Orkestrai nunca recebe credenciais nem autentica um agente silenciosamente; o login continua dentro da CLI oficial. Depois de instalar, use Verificar novamente e volte ao canvas.`,
     },
     {
       id: 'roles',
@@ -97,7 +102,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'atalhos',
       title: 'Atalhos',
-      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. No desktop, o menu nativo Workspace abre Canvas, novo workspace, Presets, Andares, Roles, Uso e Portas; Editar, Visualizar, Janela e Ajuda mantêm ações do sistema em macOS, Windows e Linux.`,
+      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘2 Central de Providers · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. No desktop, o menu nativo Workspace abre Canvas, Central de Providers, novo workspace, Presets, Andares, Roles, Uso e Portas; Editar, Visualizar, Janela e Ajuda mantêm ações do sistema em macOS, Windows e Linux.`,
     },
   ],
   useCases: [
@@ -148,6 +153,12 @@ export const DOCS_PT: DocsCatalog = {
       title: 'Escolher um agente sem conhecer CLIs',
       body: 'Use o provider que você já tem instalado e autenticado; o Orkestrai cuida do terminal, da ponte e da retomada da conversa. Claude, Codex, Kimi, OpenCode, Cursor, Antigravity e Cline aparecem na mesma barra quando disponíveis. Para uma campanha, identidade visual, pesquisa, conteúdo ou produto, nomeie os agentes pelo resultado esperado e combine um segundo provider apenas quando quiser revisão independente.',
       tags: ['7 providers', 'sem terminal', 'qualquer profissão'],
+    },
+    {
+      id: 'setup-agent-provider',
+      title: 'Preparar um provider de IA sem adivinhar comandos',
+      body: 'Abra a Central de Providers para ver quais agentes este dispositivo já consegue usar. Expanda Claude, Codex, Kimi, OpenCode, Cursor, Antigravity ou Cline, siga a instalação indicada para seu sistema, conclua o login na CLI oficial e use Verificar novamente antes de voltar ao canvas.',
+      tags: ['Central de Providers', 'configuração guiada', 'credenciais locais'],
     },
     {
       id: 'deploy-sentinel',
@@ -230,6 +241,9 @@ export const DOCS_PT: DocsCatalog = {
         'A lista de providers, modelos e esforços vem dos adapters instalados, sem enums fixos na UI, nos schemas ou na ponte de recrutamento.',
         'Cada provider recebe a skill e a configuração MCP no formato que reconhece; o Cline usa configuração isolada por workspace.',
         'A retomada rastreia IDs exatos nos transcritos, manifestos e caches de cada CLI, evitando conectar um terminal à conversa de outro agente.',
+        'A Central de Providers agora detecta as CLIs localmente e oferece instalação por sistema, orientação oficial de login, capacidades e nova verificação em um clique.',
+        'Novas instalações começam em inglês e perguntam o idioma primeiro no onboarding, salvando português brasileiro, inglês ou espanhol imediatamente.',
+        'O app agora aguarda o idioma inicial salvo antes de liberar a interface, evitando telas com idiomas misturados e cliques perdidos no startup.',
       ],
     },
     {

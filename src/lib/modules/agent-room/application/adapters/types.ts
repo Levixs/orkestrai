@@ -1,4 +1,4 @@
-import type { AgentModelOption, AgentName, AgentRunRequest, ModelEffort } from '../../domain/types.js';
+import type { AgentModelOption, AgentName, AgentProviderSetup, AgentRunRequest, ModelEffort } from '../../domain/types.js';
 import type { AgentSessionStorage } from '../../infrastructure/pty/AgentSessionTracker.js';
 
 /**
@@ -55,6 +55,8 @@ export interface AgentAdapter {
   efforts?: string[];
   /** Layout persistido pela CLI, usado para descobrir o id exato da sessao. */
   sessionStorage?: AgentSessionStorage;
+  /** Guia oficial e instaladores exibidos pela Central de Providers. */
+  setup: AgentProviderSetup;
   /** Verifica se a CLI esta instalada (hoje via `<cli> --version`). */
   detect(): Promise<AgentDetection>;
   /** Monta o comando headless one-shot a partir do payload de execucao. */

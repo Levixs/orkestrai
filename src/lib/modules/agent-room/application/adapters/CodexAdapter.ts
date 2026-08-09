@@ -19,6 +19,14 @@ export const codexAdapter: AgentAdapter = {
   supportsResume: false,
   efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
   sessionStorage: 'codex-rollout-jsonl',
+  setup: {
+    docsUrl: 'https://developers.openai.com/codex/cli/',
+    installCommands: {
+      darwin: 'curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+      windows: 'npm install -g @openai/codex',
+      linux: 'curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+    },
+  },
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('codex');

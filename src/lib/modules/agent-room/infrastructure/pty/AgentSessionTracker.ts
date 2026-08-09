@@ -23,8 +23,11 @@ export class AgentSessionTracker {
   /** Ids ja atribuidos a algum terminal — dois agentes no mesmo diretorio
       nao podem receber o mesmo session-id. */
   private claimed = new Set<string>();
+  private readonly homeDir: string;
 
-  constructor(private readonly homeDir = homedir()) {}
+  constructor(homeDir = homedir()) {
+    this.homeDir = homeDir;
+  }
 
   /** Marca um id como reivindicado (watch ou lookup de respawn). */
   claim(agentSessionId: string): void {

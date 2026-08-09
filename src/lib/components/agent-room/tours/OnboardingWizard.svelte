@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { getCsrfToken } from '@beeblock/svelar/http';
+  import { toast } from '@beeblock/svelar/ui';
   import * as Dialog from '$lib/components/ui/dialog';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -8,6 +11,7 @@
   } from '@lucide/svelte';
   import { toursCatalog, startTour } from './engine.svelte.js';
   import type { Tour } from './types.js';
+  import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
 
   type Workspace = { id: string; name: string };
 
@@ -24,14 +28,18 @@
 
   const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutTemplate, Palette, RadioTower, Mic, Languages };
 
-  type WizardStep = 'welcome' | 'workspace' | 'usecase';
-  let step = $state<WizardStep>('welcome');
+  type WizardStep = 'language' | 'welcome' | 'workspace' | 'usecase';
+  type UiLanguage = 'pt-BR' | 'en' | 'es';
+
+  let step = $state<WizardStep>('language');
   let name = $state('');
   let workingDir = $state('');
   let creating = $state(false);
   let createError = $state('');
   let workspaceId = $state<string | null>(null);
   let pickedTour = $state<Tour | null>(null);
+  let languageSaving = $state<UiLanguage | null>(null);
+  let wasOpen = false;
 
   const desktop =
     typeof window !== 'undefined'
@@ -39,15 +47,51 @@
       : undefined;
 
   $effect(() => {
-    if (open) {
-      // O onboarding SEMPRE guia do zero: boas-vindas → criar workspace novo →
-      // caso de uso. Ter um workspace ativo so destrava o atalho "usar atual".
-      step = 'welcome';
-      workspaceId = activeWorkspaceId;
+    if (open && !wasOpen) {
+      // A troca de idioma remonta toda a arvore. A etapa persistida impede que
+      // o wizard volte ao seletor logo depois de salvar a preferencia.
+      let savedStep: WizardStep = 'language';
+      try {
+        if (sessionStorage.getItem('orkestrai.onboarding-step') === 'welcome') savedStep = 'welcome';
+      } catch {
+        // storage indisponivel: recomeca pela escolha de idioma
+      }
+      step = savedStep;
+      workspaceId = untrack(() => activeWorkspaceId);
       createError = '';
       pickedTour = null;
+      languageSaving = null;
     }
+    wasOpen = open;
   });
+
+  async function chooseLanguage(language: UiLanguage) {
+    if (languageSaving) return;
+    languageSaving = language;
+    try {
+      // Grave o proximo passo antes do PUT: getAppSettings troca o locale e
+      // remonta este componente assim que a resposta chega.
+      sessionStorage.setItem('orkestrai.onboarding-step', 'welcome');
+      const csrf = getCsrfToken();
+      const response = await fetch('/api/agent-room/settings', {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+        },
+        body: JSON.stringify({ uiLanguage: language }),
+      });
+      if (!response.ok) throw new Error('language_save_failed');
+      invalidateAppSettings();
+      await getAppSettings(true);
+      // Quando o idioma escolhido ja era o atual, nao ha remount.
+      step = 'welcome';
+    } catch {
+      try { sessionStorage.removeItem('orkestrai.onboarding-step'); } catch {}
+      toast.error(m['onboarding.language_error']());
+      languageSaving = null;
+    }
+  }
 
   async function pickDirectory() {
     if (!desktop) return;
@@ -80,7 +124,28 @@
 
 <Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onClose()}>
   <Dialog.Content class="{step === 'usecase' ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} wizard-content">
-    {#if step === 'welcome'}
+    {#if step === 'language'}
+      <div class="wizard-center">
+        <span class="wizard-icon"><Languages size={26} /></span>
+        <h2 class="wizard-title">{m['onboarding.language_title']()}</h2>
+        <p class="wizard-sub">{m['onboarding.language_body']()}</p>
+        <div class="language-grid" aria-busy={languageSaving !== null}>
+          <button class="language-option" disabled={languageSaving !== null} onclick={() => chooseLanguage('en')}>
+            <span class="language-code">EN</span>
+            <span>{m['language.name_en']()}</span>
+          </button>
+          <button class="language-option" disabled={languageSaving !== null} onclick={() => chooseLanguage('pt-BR')}>
+            <span class="language-code">PT</span>
+            <span>{m['language.name_pt_br']()}</span>
+          </button>
+          <button class="language-option" disabled={languageSaving !== null} onclick={() => chooseLanguage('es')}>
+            <span class="language-code">ES</span>
+            <span>{m['language.name_es']()}</span>
+          </button>
+        </div>
+        {#if languageSaving}<p class="language-saving">{m['onboarding.language_saving']()}</p>{/if}
+      </div>
+    {:else if step === 'welcome'}
       <div class="wizard-center">
         <span class="wizard-icon"><Sparkles size={26} /></span>
         <h2 class="wizard-title">{m['onboarding.welcome_title']()}</h2>
@@ -201,6 +266,47 @@
     margin-top: 6px;
   }
 
+  .language-grid {
+    width: min(100%, 460px);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .language-option {
+    min-height: 92px;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.035);
+    color: #e6e6eb;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+  }
+
+  .language-option:hover:not(:disabled) {
+    border-color: rgba(124, 93, 255, 0.6);
+    background: rgba(124, 93, 255, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .language-option:focus-visible {
+    outline: 2px solid rgba(124, 93, 255, 0.8);
+    outline-offset: 2px;
+  }
+
+  .language-option:disabled { opacity: 0.55; cursor: wait; }
+  .language-code { color: #a893ff; font-size: 17px; font-weight: 700; }
+  .language-saving { min-height: 18px; margin: 0; color: #8b8c96; font-size: 11px; }
+
   .wizard-form {
     display: flex;
     flex-direction: column;
@@ -307,5 +413,10 @@
     color: #8b8c96;
     line-height: 1.45;
     text-wrap: pretty;
+  }
+
+  @media (max-width: 560px) {
+    .language-grid { grid-template-columns: 1fr; }
+    .language-option { min-height: 58px; flex-direction: row; }
   }
 </style>

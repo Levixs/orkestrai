@@ -23,6 +23,14 @@ export const openCodeAdapter: AgentAdapter = {
   displayName: 'OpenCode',
   supportsResume: true,
   sessionStorage: 'opencode-session-json',
+  setup: {
+    docsUrl: 'https://opencode.ai/docs/',
+    installCommands: {
+      darwin: 'curl -fsSL https://opencode.ai/install | bash',
+      windows: 'npm install -g opencode-ai',
+      linux: 'curl -fsSL https://opencode.ai/install | bash',
+    },
+  },
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('opencode');

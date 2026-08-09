@@ -39,6 +39,14 @@ export const kimiAdapter: AgentAdapter = {
   displayName: 'Kimi',
   supportsResume: true,
   sessionStorage: 'kimi-session-dir',
+  setup: {
+    docsUrl: 'https://www.kimi.com/code/docs/en/',
+    installCommands: {
+      darwin: 'curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash',
+      windows: 'irm https://code.kimi.com/kimi-code/install.ps1 | iex',
+      linux: 'curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash',
+    },
+  },
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('kimi');

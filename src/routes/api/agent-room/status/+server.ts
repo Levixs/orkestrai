@@ -14,6 +14,7 @@ export const GET: RequestHandler = async () => {
         supportsResume: adapter.supportsResume,
         efforts: adapter.efforts,
         sessionStorage: adapter.sessionStorage,
+        setup: adapter.setup,
         installed: detection.installed,
         detail: detection.detail,
         tui: {

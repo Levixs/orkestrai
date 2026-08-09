@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 test.describe('onboarding guiado', () => {
   test('sempre abre nas boas-vindas e guia para criar workspace novo', async ({ page, request }) => {
     const workspaceName = `E2E onboarding ${Date.now()}`;
+    await request.put('/api/agent-room/settings', { data: { uiLanguage: 'pt-BR' } });
 
     // Cria e seleciona um workspace — o wizard NAO pode pular direto pros tours
     await page.goto('/canvas');
@@ -16,9 +17,14 @@ test.describe('onboarding guiado', () => {
     await page.goto('/canvas?onboarding=1');
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 10_000 });
-    // Etapa 1: boas-vindas (com workspace ativo, antes pulava direto pros tours)
+    // Etapa 1: idioma; a escolha e salva antes de qualquer outra configuracao.
+    await expect(dialog.getByText('Escolha seu idioma')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Português (Brasil)' }).click();
+    const settings = await request.get('/api/agent-room/settings');
+    expect((await settings.json()).data.uiLanguage).toBe('pt-BR');
+    // Etapa 2: boas-vindas (com workspace ativo, antes pulava direto pros tours)
     await expect(dialog.getByText('Bem-vindo ao Orkestrai')).toBeVisible();
-    // Etapa 2: criação de workspace
+    // Etapa 3: criação de workspace
     await dialog.getByRole('button', { name: 'Criar e continuar' }).click();
     await expect(dialog.getByPlaceholder('/caminho/do/projeto')).toBeVisible();
     // E com workspace ativo, o atalho "usar atual" existe na etapa de criacao
@@ -31,6 +37,7 @@ test.describe('onboarding guiado', () => {
 
   test('Fazer por mim cria o agente e ele aparece no canvas SEM recarregar', async ({ page, request }) => {
     const workspaceName = `E2E tour-live ${Date.now()}`;
+    await request.put('/api/agent-room/settings', { data: { uiLanguage: 'pt-BR' } });
 
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
@@ -44,6 +51,7 @@ test.describe('onboarding guiado', () => {
     await page.goto('/canvas?onboarding=1');
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await dialog.getByRole('button', { name: 'Português (Brasil)' }).click();
     await dialog.getByRole('button', { name: 'Já tenho workspace — pular' }).click();
     await dialog.locator('.tour-card').first().click();
     await dialog.getByRole('button', { name: 'Começar o tour guiado' }).click();
@@ -62,10 +70,10 @@ test.describe('onboarding guiado', () => {
     await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
   });
 
-  test('abre em inglês mesmo quando a troca de locale remonta a página (corrida)', async ({ page, request }) => {
-    // Locale en + settings LENTAS: o flip pt-BR→en acontece DEPOIS do mount do
-    // canvas e remonta a arvore — sem a flag em sessionStorage o wizard morria.
-    await request.put('/api/agent-room/settings', { data: { uiLanguage: 'en' } });
+  test('salva inglês e continua aberto quando a troca de locale remonta a página', async ({ page, request }) => {
+    // O runtime nasce em ingles, mas settings pt-BR LENTAS provocam um remount
+    // depois do mount. Escolher ingles provoca outro; o wizard deve continuar.
+    await request.put('/api/agent-room/settings', { data: { uiLanguage: 'pt-BR' } });
     await page.route('**/api/agent-room/settings', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1_500));
       await route.continue();
@@ -74,16 +82,22 @@ test.describe('onboarding guiado', () => {
     await page.goto('/canvas?onboarding=1');
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 15_000 });
-    // Espera as settings chegarem (remount) — o wizard precisa CONTINUAR aberto
+    // Espera as settings chegarem (remount) — o seletor precisa continuar aberto.
     await page.waitForTimeout(3_000);
     await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Escolha seu idioma')).toBeVisible();
+    await dialog.getByRole('button', { name: 'English' }).click();
     await expect(dialog.getByText('Welcome to Orkestrai')).toBeVisible();
+
+    const settings = await request.get('/api/agent-room/settings');
+    expect((await settings.json()).data.uiLanguage).toBe('en');
 
     await request.put('/api/agent-room/settings', { data: { uiLanguage: 'pt-BR' } });
   });
 
   test('tour de pesquisa: 4 passos com Fazer por mim, 2 conexões e conclusão', async ({ page, request }) => {
     const workspaceName = `E2E tour-pesquisa ${Date.now()}`;
+    await request.put('/api/agent-room/settings', { data: { uiLanguage: 'pt-BR' } });
 
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
@@ -96,6 +110,7 @@ test.describe('onboarding guiado', () => {
     await page.goto('/canvas?onboarding=1');
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await dialog.getByRole('button', { name: 'Português (Brasil)' }).click();
     await dialog.getByRole('button', { name: 'Já tenho workspace — pular' }).click();
     await dialog.locator('.tour-card', { hasText: 'Pesquisa automatizada' }).click();
     await dialog.getByRole('button', { name: 'Começar o tour guiado' }).click();

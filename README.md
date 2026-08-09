@@ -46,6 +46,9 @@ Download the latest installers from
   the user's machine.
 - **Operational controls:** inspect provider usage, manage local portal ports,
   configure recurring routines, and install skills from the marketplace.
+- **Provider Center:** detect all seven supported CLIs locally, follow OS-aware
+  installation and official sign-in guidance, and inspect capabilities without
+  sending provider credentials to Orkestrai.
 - **Session continuity:** each terminal resumes its own provider conversation
   after the application is closed and reopened.
 
@@ -71,6 +74,10 @@ authenticate only the providers you plan to use:
 You do not need every provider or terminal expertise. Orkestrai enables the CLIs
 it detects, keeps their conversations separate, and lets you organize agents by
 outcome: research, design, content, marketing, product, engineering, or review.
+Open Provider Center from the canvas cable icon, `Cmd/Ctrl+2`, or the native
+Workspace menu to prepare a provider and check it again after installation.
+New installations start in English and ask for the preferred interface language
+as the first onboarding step.
 
 ## Development
 

@@ -23,6 +23,13 @@ export type AgentTarget =
   | 'codex_then_claude_review'
   | 'claude_then_codex_review';
 
+export type AgentProviderSetup = {
+  /** Documentacao oficial de instalacao e autenticacao. */
+  docsUrl: string;
+  /** Instaladores oficiais que podem ser copiados pela Central de Providers. */
+  installCommands?: Partial<Record<'darwin' | 'windows' | 'linux', string>>;
+};
+
 /**
  * Metadados publicos de um adapter de agente, expostos pela rota
  * /api/agent-room/status para a UI montar seletores dinamicamente.
@@ -33,6 +40,7 @@ export type AgentProviderInfo = {
   supportsResume: boolean;
   efforts?: string[];
   sessionStorage?: string;
+  setup?: AgentProviderSetup;
   installed?: boolean;
   detail?: string;
   /** Comando TUI interativo do agente para sessoes PTY. */

@@ -22,6 +22,11 @@ pt-BR, English, and Spanish translations.
 - Added localized documentation and onboarding for choosing agents by desired
   outcome, aimed at developers, vibe coders, designers, marketers, creators,
   and product teams.
+- Added a localized Provider Center that detects available CLIs, explains each
+  provider's capabilities, and provides OS-aware installation and official
+  authentication guidance without collecting credentials.
+- Added language selection as the first onboarding step, persisted immediately
+  for Brazilian Portuguese, English, or Spanish.
 
 ### Changed
 
@@ -29,6 +34,13 @@ pt-BR, English, and Spanish translations.
   tours, recruitment bridge, and PTY transport with adapter registry metadata.
 - Prevented ambiguous latest-session fallback for providers whose exact
   conversation ID is not known.
+- Changed the default interface language for new installations to English;
+  existing saved language preferences remain unchanged.
+
+### Fixed
+
+- Prevented the initial locale request from mixing languages on one screen or
+  discarding an early click while the application remounted.
 
 ## 0.3.0 - 2026-08-09
 

@@ -18,7 +18,12 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `The toolbar automatically shows installed CLIs among Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). A disabled button means the CLI still needs to be installed and authenticated. After creation: double-click renames the node; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode.`,
+      body: `The toolbar automatically shows installed CLIs among Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Open Provider Center from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu to see what is available and follow setup guidance. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). After creation: double-click renames the node; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode.`,
+    },
+    {
+      id: 'provider-center',
+      title: 'Provider Center',
+      body: `Provider Center checks all seven supported CLIs locally and separates agents that are ready from those that still need setup. Expand a provider to see its official guide, an installation command for your operating system when available, sign-in instructions, and detected capabilities such as conversation resume, models, and adjustable effort. Orkestrai never receives provider credentials or authenticates an agent silently; sign-in remains inside the official CLI. Use Check again after installing, then return to the canvas.`,
     },
     {
       id: 'roles',
@@ -93,7 +98,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'atalhos',
       title: 'Shortcuts',
-      body: `⌘P palette · ⌘K (or Ctrl+K) search documentation from any screen · ⌘⇧A next attention · ⌘⇧T tidy · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation · ⌘F search terminal · ⌘Z undo · Backspace delete. On desktop, the native Workspace menu opens Canvas, new workspace, Presets, Floors, Roles, Usage, and Ports; Edit, View, Window, and Help preserve platform actions on macOS, Windows, and Linux.`,
+      body: `⌘P palette · ⌘K (or Ctrl+K) search documentation from any screen · ⌘2 Provider Center · ⌘⇧A next attention · ⌘⇧T tidy · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation · ⌘F search terminal · ⌘Z undo · Backspace delete. On desktop, the native Workspace menu opens Canvas, Provider Center, new workspace, Presets, Floors, Roles, Usage, and Ports; Edit, View, Window, and Help preserve platform actions on macOS, Windows, and Linux.`,
     },
   ],
   useCases: [
@@ -144,6 +149,12 @@ export const DOCS_EN: DocsCatalog = {
       title: 'Choose an agent without learning CLIs',
       body: 'Use a provider you already have installed and authenticated; Orkestrai handles the terminal, bridge, and conversation resume. Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline appear in the same toolbar when available. For a campaign, visual identity, research, content, or product work, name agents after the outcome you need and add a second provider only when you want an independent review.',
       tags: ['7 providers', 'no terminal knowledge', 'any profession'],
+    },
+    {
+      id: 'setup-agent-provider',
+      title: 'Prepare an AI provider without guessing commands',
+      body: 'Open Provider Center to see which agents this device can already use. Expand Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, or Cline for OS-aware installation guidance, complete sign-in in the official CLI, and use Check again before returning to the canvas.',
+      tags: ['Provider Center', 'guided setup', 'local credentials'],
     },
     {
       id: 'deploy-sentinel',
@@ -226,6 +237,9 @@ export const DOCS_EN: DocsCatalog = {
         'Provider, model, and effort choices come from installed adapters, with no fixed provider enums in the UI, schemas, or recruitment bridge.',
         'Each provider receives the bridge skill and MCP configuration in its supported format; Cline uses workspace-scoped settings.',
         'Session resume tracks exact IDs through each CLI’s transcripts, manifests, or cache, preventing a terminal from opening another agent’s conversation.',
+        'Provider Center now detects supported CLIs locally and provides OS-aware installation, official sign-in guidance, capability details, and one-click rechecks.',
+        'New installations start in English and ask for language first in onboarding, immediately saving Brazilian Portuguese, English, or Spanish.',
+        'The app now waits for the initial saved locale before enabling the interface, preventing mixed-language screens and lost startup clicks.',
       ],
     },
     {

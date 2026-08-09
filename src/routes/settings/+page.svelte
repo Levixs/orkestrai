@@ -91,6 +91,12 @@
     return m['settings.tts_preview_text_pt']();
   }
 
+  function languageLabel(language: string): string {
+    if (language === 'pt-BR') return m['language.name_pt_br']();
+    if (language === 'es') return m['language.name_es']();
+    return m['language.name_en']();
+  }
+
   function setTtsSpeed(value: number) {
     settings = { ...settings, voiceTtsSpeed: normalizeEmbeddedTtsSpeed(value).toFixed(2) };
   }
@@ -695,14 +701,14 @@
       </div>
     </header>
     <div class="field" style="max-width: 240px">
-      <Select.Root type="single" value={settings.uiLanguage ?? 'pt-BR'} onValueChange={changeLanguage}>
+      <Select.Root type="single" value={settings.uiLanguage ?? 'en'} onValueChange={changeLanguage}>
         <Select.Trigger data-slot="select-trigger">
-          {{ 'pt-BR': 'Português (Brasil)', en: 'English', es: 'Español' }[settings.uiLanguage ?? 'pt-BR']}
+          {languageLabel(settings.uiLanguage ?? 'en')}
         </Select.Trigger>
         <Select.Content>
-          <Select.Item value="pt-BR">Português (Brasil)</Select.Item>
-          <Select.Item value="en">English</Select.Item>
-          <Select.Item value="es">Español</Select.Item>
+          <Select.Item value="pt-BR">{m['language.name_pt_br']()}</Select.Item>
+          <Select.Item value="en">{m['language.name_en']()}</Select.Item>
+          <Select.Item value="es">{m['language.name_es']()}</Select.Item>
         </Select.Content>
       </Select.Root>
     </div>

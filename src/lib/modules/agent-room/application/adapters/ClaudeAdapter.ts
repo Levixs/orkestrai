@@ -18,6 +18,14 @@ export const claudeAdapter: AgentAdapter = {
   supportsResume: false,
   efforts: CLAUDE_EFFORTS,
   sessionStorage: 'claude-project-jsonl',
+  setup: {
+    docsUrl: 'https://code.claude.com/docs/en/setup',
+    installCommands: {
+      darwin: 'curl -fsSL https://claude.ai/install.sh | bash',
+      windows: 'irm https://claude.ai/install.ps1 | iex',
+      linux: 'curl -fsSL https://claude.ai/install.sh | bash',
+    },
+  },
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('claude');

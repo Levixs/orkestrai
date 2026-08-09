@@ -609,6 +609,29 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'provider-center-setup',
+    icon: 'Cable',
+    title: 'Preparar seus providers de IA',
+    tagline: 'Veja o que está pronto e siga a configuração oficial sem adivinhar comandos.',
+    steps: [
+      {
+        id: 'open-center',
+        title: 'Abra a Central de Providers',
+        body: 'Use o ícone de cabo na barra lateral esquerda, Cmd/Ctrl+2 ou Workspace → Central de Providers. Ela verifica Claude, Codex, Kimi, OpenCode, Cursor, Antigravity e Cline localmente.',
+      },
+      {
+        id: 'follow-setup',
+        title: 'Siga a configuração do seu dispositivo',
+        body: 'Expanda um agente para ver o guia oficial e, quando disponível, um comando de instalação para macOS, Windows ou Linux. Conclua o login na própria CLI do provider; o Orkestrai nunca recebe a credencial.',
+      },
+      {
+        id: 'verify',
+        title: 'Verifique novamente e crie o agente',
+        body: 'Volte à Central e use Verificar novamente. Quando a CLI for detectada, retorne ao canvas e crie esse agente pela barra inferior.',
+      },
+    ],
+  },
+  {
     id: 'choose-agent-provider',
     icon: 'Users',
     title: 'Escolher agentes sem conhecer terminal',

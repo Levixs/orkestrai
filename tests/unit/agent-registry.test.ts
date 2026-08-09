@@ -13,6 +13,7 @@ function stubAdapter(id: string): AgentAdapter {
     id,
     displayName: `Stub ${id}`,
     supportsResume: false,
+    setup: { docsUrl: 'https://example.com/setup' },
     async detect() {
       return { installed: true };
     },
@@ -44,6 +45,13 @@ describe('agent adapter registry', () => {
     expect(getAgentAdapter('cursor').displayName).toBe('Cursor');
     expect(getAgentAdapter('antigravity').displayName).toBe('Antigravity');
     expect(getAgentAdapter('cline').displayName).toBe('Cline');
+    for (const id of expected) {
+      const setup = getAgentAdapter(id).setup;
+      expect(setup.docsUrl).toMatch(/^https:\/\//);
+      expect(setup.installCommands?.darwin).toBeTruthy();
+      expect(setup.installCommands?.windows).toBeTruthy();
+      expect(setup.installCommands?.linux).toBeTruthy();
+    }
   });
 
   it('registra e recupera um novo adapter', () => {

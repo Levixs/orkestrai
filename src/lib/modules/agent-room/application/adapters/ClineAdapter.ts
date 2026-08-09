@@ -11,6 +11,14 @@ export const clineAdapter: AgentAdapter = {
   supportsResume: true,
   efforts: CLINE_EFFORTS,
   sessionStorage: 'cline-session-manifest',
+  setup: {
+    docsUrl: 'https://docs.cline.bot/getting-started/installing-cline',
+    installCommands: {
+      darwin: 'npm install -g cline',
+      windows: 'npm install -g cline',
+      linux: 'npm install -g cline',
+    },
+  },
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('cline');

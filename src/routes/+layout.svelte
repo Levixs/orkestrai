@@ -27,9 +27,12 @@
   });
 
   let { children } = $props();
+  let localeReady = $state(false);
 
   onMount(() => {
-    initLocaleRuntime();
+    // Nao libere interacao antes da preferencia inicial chegar: caso contrario
+    // o remount de locale pode descartar um clique feito durante o startup.
+    void initLocaleRuntime().finally(() => (localeReady = true));
     // Cmd/Ctrl+K global: de qualquer tela, abre a busca da documentacao.
     const docsSearchShortcut = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
@@ -42,6 +45,7 @@
     const canvasActions = new Set(['new-workspace', 'presets', 'floors', 'roles', 'usage', 'ports', 'command-palette']);
     const unsubscribeMenu = desktopMenu?.onMenuAction?.((action) => {
       if (action === 'canvas') location.assign('/canvas');
+      else if (action === 'providers') location.assign('/providers');
       else if (action === 'settings') location.assign('/settings');
       else if (action === 'docs') location.assign('/docs');
       else if (action === 'changelog') location.assign('/docs#changelog');
@@ -101,9 +105,11 @@
 <Tooltip.Provider>
   <!-- #key no locale: ao trocar de idioma, a arvore inteira remonta e todo
        m.*() reavalia — i18n reativo garantido por construcao. -->
-  {#key localeState.current}
-    {@render children()}
-  {/key}
+  {#if localeReady}
+    {#key localeState.current}
+      {@render children()}
+    {/key}
+  {/if}
 </Tooltip.Provider>
 
 <Toaster position="bottom-right" />

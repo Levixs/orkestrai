@@ -48,6 +48,9 @@ Descarga los instaladores más recientes desde
 - **Controles operativos:** consulta el uso de los proveedores, administra
   puertos de portales locales, configura rutinas recurrentes e instala skills
   desde el marketplace.
+- **Central de Providers:** detecta localmente las siete CLIs compatibles, sigue
+  la instalación adecuada al sistema y el inicio de sesión oficial, y consulta
+  capacidades sin enviar credenciales de providers a Orkestrai.
 - **Continuidad de sesión:** cada terminal reanuda su propia conversación del
   proveedor después de cerrar y volver a abrir la aplicación.
 
@@ -74,6 +77,10 @@ No necesitas instalar todos los providers ni conocer la terminal. Orkestrai
 activa las CLIs que detecta, mantiene cada conversación separada y permite
 organizar los agentes por resultado: investigación, diseño, contenido,
 marketing, producto, ingeniería o revisión.
+Abre la Central desde el icono de cable del canvas, `Cmd/Ctrl+2` o el menú nativo
+Workspace para preparar un provider y verificarlo de nuevo después de instalar.
+Las instalaciones nuevas comienzan en inglés y preguntan el idioma preferido
+como primer paso del onboarding.
 
 ## Desarrollo
 

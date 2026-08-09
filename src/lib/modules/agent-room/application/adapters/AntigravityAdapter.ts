@@ -9,6 +9,14 @@ export const antigravityAdapter: AgentAdapter = {
   displayName: 'Antigravity',
   supportsResume: true,
   sessionStorage: 'antigravity-workspace-cache',
+  setup: {
+    docsUrl: 'https://antigravity.google/docs/cli/getting-started',
+    installCommands: {
+      darwin: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+      windows: 'irm https://antigravity.google/cli/install.ps1 | iex',
+      linux: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+    },
+  },
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('agy');

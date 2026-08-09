@@ -13,6 +13,14 @@ export const cursorAdapter: AgentAdapter = {
   displayName: 'Cursor',
   supportsResume: true,
   sessionStorage: 'cursor-transcript-jsonl',
+  setup: {
+    docsUrl: 'https://cursor.com/docs/cli/installation',
+    installCommands: {
+      darwin: 'curl https://cursor.com/install -fsS | bash',
+      windows: "irm 'https://cursor.com/install?win32=true' | iex",
+      linux: 'curl https://cursor.com/install -fsS | bash',
+    },
+  },
 
   async detect(): Promise<AgentDetection> {
     return probeCliVersion('cursor-agent');
