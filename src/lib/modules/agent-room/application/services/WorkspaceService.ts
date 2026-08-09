@@ -13,6 +13,7 @@ import type {
   UpdateCanvasNodeDto,
   UpdateWorkspaceDto,
 } from '../dto/WorkspaceDtos.js';
+import { materializeInteractiveAgentCommand } from '../adapters/registry.js';
 
 /**
  * Servico de aplicacao de workspaces e canvas: valida diretorios,
@@ -103,7 +104,13 @@ export class WorkspaceService {
 
   async listNodes(workspaceId: string) {
     await this.get(workspaceId);
-    return workspaceRepository.listNodes(workspaceId);
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    return Promise.all(nodes.map(async (node) => {
+      if (node.type !== 'terminal') return node;
+      const materialized = materializeInteractiveAgentCommand(node.payload as Record<string, unknown>);
+      if (!materialized.changed) return node;
+      return (await workspaceRepository.updateNode(node.id, { payload: materialized.payload as never })) ?? node;
+    }));
   }
 
   async createNode(dto: CreateCanvasNodeDto) {

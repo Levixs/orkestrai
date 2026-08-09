@@ -29,7 +29,8 @@ Baixe os instaladores mais recentes em
   não forem mais necessários.
 - **Times prontos:** inicie ou amplie um workspace com presets de Produto,
   Campanha e lançamento, Brand e design, Conteúdo e SEO, React, Next.js,
-  SvelteKit, Svelar, Laravel e Orkestrai Contributing.
+  SvelteKit, Svelar, Laravel e Orkestrai Contributing. Os agentes iniciam no
+  modo autônomo de acesso total do provider, sem pedidos repetidos de permissão.
 - **Fluxos que combinam com o trabalho:** nomeie, dê cores e ordene até dez etapas
   do quadro. Líder e agentes descobrem e atualizam o mesmo processo sozinhos.
 - **Visões operacionais do time:** instale funções especializadas por um

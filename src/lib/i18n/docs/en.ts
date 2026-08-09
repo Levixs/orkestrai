@@ -53,7 +53,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'presets',
       title: 'Team presets',
-      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, roles, skills, brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Use New workspace for another folder or + to add the team to the current canvas without deleting anything. Format v2 preserves context and portable skills, never PTY sessions.`,
+      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, roles, skills, brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Preset agents start with the provider adapter's autonomous full-access flags, avoiding repeated permission prompts. Use New workspace for another folder or + to add the team to the current canvas without deleting anything. Format v2 preserves context and portable skills, never PTY sessions.`,
     },
     {
       id: 'fluxos',
@@ -165,7 +165,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'framework-preset',
       title: 'Preset for your framework (new project in 30s)',
-      body: 'Open the Preset library and choose React, Next.js, SvelteKit, Svelar, or Laravel. The project starts with connected lead, implementation, architecture, and QA agents, complete roles, Claude/Codex skills, a board, and an initial task. Save the workspace as a preset to duplicate and customize the recipe.',
+      body: 'Open the Preset library and choose React, Next.js, SvelteKit, Svelar, or Laravel. The project starts with connected lead, implementation, architecture, and QA agents, complete roles, Claude/Codex skills, a board, and an initial task. Agent terminals use the provider adapter’s autonomous full-access mode so the team can execute without repeated confirmations. Save the workspace as a preset to duplicate and customize the recipe.',
       tags: ['Preset library', 'roles/skills', 'bootstrap'],
     },
     {
@@ -240,6 +240,7 @@ export const DOCS_EN: DocsCatalog = {
         'Provider Center now detects supported CLIs locally and provides OS-aware installation, official sign-in guidance, capability details, and one-click rechecks.',
         'New installations start in English and ask for language first in onboarding, immediately saving Brazilian Portuguese, English, or Spanish.',
         'The app now waits for the initial saved locale before enabling the interface, preventing mixed-language screens and lost startup clicks.',
+        'Preset terminals now start with each provider’s autonomous full-access flags; existing empty-argument terminals are repaired without overwriting customized commands.',
       ],
     },
     {

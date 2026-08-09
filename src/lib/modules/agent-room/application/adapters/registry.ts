@@ -34,6 +34,40 @@ export function listAgentAdapters(): AgentAdapter[] {
   return [...agentAdapters.values()];
 }
 
+/**
+ * Presets antigos e receitas embutidas podem guardar apenas o id do provider.
+ * Materializa o comando interativo atual quando nao ha args personalizados,
+ * garantindo as flags de autonomia definidas pelo adapter sem apagar modelo,
+ * effort ou outras opcoes salvas pelo usuario.
+ */
+export function materializeInteractiveAgentCommand(
+  payload: Record<string, unknown>
+): { payload: Record<string, unknown>; changed: boolean } {
+  const provider = typeof payload.provider === 'string' ? payload.provider : null;
+  if (!provider || !hasAgentAdapter(provider)) return { payload, changed: false };
+  if (Array.isArray(payload.args) && payload.args.length > 0) return { payload, changed: false };
+
+  const spec = getAgentAdapter(provider).interactiveCommand();
+  const storedEnv = payload.env && typeof payload.env === 'object' && !Array.isArray(payload.env)
+    ? payload.env as Record<string, string>
+    : {};
+  const env = { ...(spec.env ?? {}), ...storedEnv };
+  const nextPayload: Record<string, unknown> = {
+    ...payload,
+    command: spec.command,
+    args: [...spec.args],
+    ...(Object.keys(env).length ? { env } : {}),
+  };
+  const currentArgs = Array.isArray(payload.args) ? payload.args : [];
+  const commandChanged = payload.command !== spec.command;
+  const argsChanged = JSON.stringify(currentArgs) !== JSON.stringify(spec.args);
+  const envChanged = spec.env
+    ? Object.entries(spec.env).some(([key, value]) => storedEnv[key] !== value)
+    : false;
+
+  return { payload: nextPayload, changed: commandChanged || argsChanged || envChanged };
+}
+
 registerAgentAdapter(claudeAdapter);
 registerAgentAdapter(codexAdapter);
 registerAgentAdapter(kimiAdapter);

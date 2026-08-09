@@ -57,7 +57,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'presets',
       title: 'Presets de equipe',
-      body: `A Biblioteca de presets fica no ícone de template da barra lateral e no botão Presets da barra inferior. Além dos times de Produto, React, Next.js, SvelteKit, Svelar e Laravel, ela traz Campanha e lançamento, Brand e design, Conteúdo e SEO e Orkestrai Contributing. Cada receita inclui líder, especialistas, papéis, skills, briefing, quadro, tarefa inicial e layout; o time de contribuição inclui ainda consenso obrigatório entre Claude, Codex e Kimi. Use Novo workspace para preparar outra pasta ou + para somar o time ao canvas atual sem apagar nada. O formato v2 preserva contexto e skills portáveis, nunca sessões PTY.`,
+      body: `A Biblioteca de presets fica no ícone de template da barra lateral e no botão Presets da barra inferior. Além dos times de Produto, React, Next.js, SvelteKit, Svelar e Laravel, ela traz Campanha e lançamento, Brand e design, Conteúdo e SEO e Orkestrai Contributing. Cada receita inclui líder, especialistas, papéis, skills, briefing, quadro, tarefa inicial e layout; o time de contribuição inclui ainda consenso obrigatório entre Claude, Codex e Kimi. Agentes de preset iniciam com as flags de acesso total autônomo definidas pelo adapter do provider, evitando pedidos repetidos de permissão. Use Novo workspace para preparar outra pasta ou + para somar o time ao canvas atual sem apagar nada. O formato v2 preserva contexto e skills portáveis, nunca sessões PTY.`,
     },
     {
       id: 'fluxos',
@@ -169,7 +169,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'framework-preset',
       title: 'Preset do seu framework (projeto novo em 30s)',
-      body: 'Abra a Biblioteca de presets e escolha React, Next.js, SvelteKit, Svelar ou Laravel. O projeto nasce com líder, implementação, arquitetura e QA conectados, roles completas, skills para Claude/Codex, quadro e tarefa inicial. Salve o workspace como preset quando quiser duplicar e personalizar a receita.',
+      body: 'Abra a Biblioteca de presets e escolha React, Next.js, SvelteKit, Svelar ou Laravel. O projeto nasce com líder, implementação, arquitetura e QA conectados, roles completas, skills para Claude/Codex, quadro e tarefa inicial. Os terminais usam o modo autônomo de acesso total do adapter do provider para o time executar sem confirmações repetidas. Salve o workspace como preset quando quiser duplicar e personalizar a receita.',
       tags: ['Biblioteca de presets', 'roles/skills', 'bootstrap'],
     },
     {
@@ -244,6 +244,7 @@ export const DOCS_PT: DocsCatalog = {
         'A Central de Providers agora detecta as CLIs localmente e oferece instalação por sistema, orientação oficial de login, capacidades e nova verificação em um clique.',
         'Novas instalações começam em inglês e perguntam o idioma primeiro no onboarding, salvando português brasileiro, inglês ou espanhol imediatamente.',
         'O app agora aguarda o idioma inicial salvo antes de liberar a interface, evitando telas com idiomas misturados e cliques perdidos no startup.',
+        'Terminais de presets agora iniciam com as flags autônomas de acesso total de cada provider; terminais antigos sem argumentos são reparados sem sobrescrever comandos personalizados.',
       ],
     },
     {

@@ -66,6 +66,9 @@ describe('PresetService', () => {
     expect(leaderPayload.sessionId).toBeUndefined();
     expect(leaderPayload.agentSessionId).toBeUndefined();
     expect(leaderPayload.maestro).toBe(true);
+    expect(leaderPayload.args).toContain('--dangerously-skip-permissions');
+    const newDev = nodes.find((node) => node.title === 'Dev');
+    expect((newDev!.payload as { args?: string[] }).args).toContain('--dangerously-bypass-approvals-and-sandbox');
 
     // Arestas apontam para os NOVOS ids.
     const edges = await workspaceRepository.listEdges(applied.workspaceId);
@@ -151,6 +154,17 @@ describe('PresetService', () => {
     expect(existsSync(join(dir, 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(dir, 'CLAUDE.md'))).toBe(true);
     expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
+
+    const nodes = await workspaceRepository.listNodes(applied.workspaceId);
+    const argsFor = (provider: string) => {
+      const terminal = nodes.find(
+        (node) => node.type === 'terminal' && (node.payload as { provider?: string }).provider === provider
+      );
+      return (terminal?.payload as { args?: string[] } | undefined)?.args;
+    };
+    expect(argsFor('claude')).toContain('--dangerously-skip-permissions');
+    expect(argsFor('codex')).toContain('--dangerously-bypass-approvals-and-sandbox');
+    expect(argsFor('kimi')).toContain('--auto');
   });
 
   it('installs the Orkestrai contributing consensus team and its complete workflow', async () => {

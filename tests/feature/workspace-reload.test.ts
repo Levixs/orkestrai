@@ -30,4 +30,21 @@ describe('WorkspaceService.reloadNode', () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'reload2', workingDir: '/tmp' });
     await expect(workspaceService.reloadNode(workspace.id, 'inexistente')).rejects.toThrow('nao encontrado');
   });
+
+  it('repara terminais antigos de presets com o acesso total do adapter', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'preset antigo', workingDir: '/tmp' });
+    const node = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Claude',
+      payload: { command: 'claude', args: [], provider: 'claude' },
+    });
+
+    const nodes = await workspaceService.listNodes(workspace.id);
+    const payload = nodes.find((item) => item.id === node.id)!.payload as { args?: string[] };
+    expect(payload.args).toContain('--dangerously-skip-permissions');
+
+    const persisted = (await workspaceRepository.getNode(node.id))!.payload as { args?: string[] };
+    expect(persisted.args).toContain('--dangerously-skip-permissions');
+  });
 });

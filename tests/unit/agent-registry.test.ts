@@ -4,6 +4,7 @@ import {
   getAgentAdapter,
   hasAgentAdapter,
   listAgentAdapters,
+  materializeInteractiveAgentCommand,
   registerAgentAdapter,
 } from '$lib/modules/agent-room/application/adapters/registry.js';
 import type { AgentAdapter } from '$lib/modules/agent-room/application/adapters/types.js';
@@ -68,6 +69,17 @@ describe('agent adapter registry', () => {
     expect(ids).toContain('claude');
     expect(ids).toContain('codex');
     expect(ids).toContain('stub-test');
+  });
+
+  it('materializa comandos interativos ausentes sem sobrescrever args personalizados', () => {
+    const claude = materializeInteractiveAgentCommand({ provider: 'claude', command: 'claude', args: [] });
+    expect(claude.changed).toBe(true);
+    expect(claude.payload.args).toContain('--dangerously-skip-permissions');
+
+    const custom = { provider: 'codex', command: 'codex', args: ['--model', 'gpt-custom'] };
+    const preserved = materializeInteractiveAgentCommand(custom);
+    expect(preserved.changed).toBe(false);
+    expect(preserved.payload).toBe(custom);
   });
 
   it('lanca erro claro para adapter desconhecido', () => {

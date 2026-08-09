@@ -29,7 +29,8 @@ Descarga los instaladores más recientes desde
   cuando ya no sean necesarios.
 - **Equipos listos:** inicia o amplía un workspace con presets de Producto,
   Campaña y lanzamiento, Brand y diseño, Contenido y SEO, React, Next.js,
-  SvelteKit, Svelar, Laravel y Orkestrai Contributing.
+  SvelteKit, Svelar, Laravel y Orkestrai Contributing. Los agentes comienzan en
+  el modo autónomo de acceso total del provider, sin solicitudes repetidas de permiso.
 - **Flujos que corresponden al trabajo:** nombra, colorea y ordena hasta diez
   etapas del tablero. Líder y agentes descubren y actualizan el mismo proceso.
 - **Vistas operativas del equipo:** instala funciones especializadas desde un

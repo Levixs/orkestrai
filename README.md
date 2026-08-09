@@ -29,7 +29,9 @@ Download the latest installers from
   work is done.
 - **Ready-made teams:** start or expand a workspace with complete Product,
   Campaign and launch, Brand and design, Content and SEO, React, Next.js,
-  SvelteKit, Svelar, Laravel, and Orkestrai Contributing presets.
+  SvelteKit, Svelar, Laravel, and Orkestrai Contributing presets. Their agents
+  start with the provider's autonomous full-access mode so the team can work
+  without repeated permission prompts.
 - **Workflows that fit the work:** name, color, and reorder up to ten board
   stages. Leads and agents discover and update the same stages automatically.
 - **Operational team views:** install specialized roles from a 12-role catalog

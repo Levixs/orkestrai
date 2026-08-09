@@ -41,6 +41,10 @@ pt-BR, English, and Spanish translations.
 
 - Prevented the initial locale request from mixing languages on one screen or
   discarding an early click while the application remounted.
+- Ensured preset terminals are materialized through the current provider
+  adapter so Claude, Codex, and Kimi start with their autonomous full-access
+  flags. Existing provider terminals with empty arguments are repaired lazily,
+  while customized arguments remain untouched.
 
 ## 0.3.0 - 2026-08-09
 

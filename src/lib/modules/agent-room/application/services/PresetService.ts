@@ -11,6 +11,7 @@ import { mcpService } from './McpService.js';
 import { builtinPresetCatalog, normalizePresetLocale, type PresetLocale } from '../catalogs/BuiltinPresetCatalog.js';
 import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
 import { boardColumnService, type BoardColumnRecipe } from './BoardColumnService.js';
+import { materializeInteractiveAgentCommand } from '../adapters/registry.js';
 
 export type PresetSummary = {
   id: string;
@@ -70,6 +71,13 @@ function sanitizePayload(payload: unknown): Record<string, unknown> {
   const clean = { ...((payload ?? {}) as Record<string, unknown>) };
   for (const key of RUNTIME_PAYLOAD_KEYS) delete clean[key];
   return clean;
+}
+
+function presetNodePayload(node: PresetData['nodes'][number]): Record<string, unknown> {
+  const payload = sanitizePayload(node.payload);
+  return node.type === 'terminal'
+    ? materializeInteractiveAgentCommand(payload).payload
+    : payload;
 }
 
 function mapSummary(model: AgentPreset): PresetSummary {
@@ -281,7 +289,7 @@ export class PresetService {
         width: node.width ?? 560,
         height: node.height ?? 360,
         zIndex: node.zIndex ?? 0,
-        payload: sanitizePayload(node.payload) as never,
+        payload: presetNodePayload(node) as never,
       });
       nodeIds.push(created.id);
     }
