@@ -22,12 +22,12 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: criar, nomear, modelo & esforço',
-      body: `A barra mostra automaticamente as CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity e Cline. Você não precisa conhecer terminal nem usar todas: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Abra a Central de Providers pelo ícone de cabo na barra lateral, Cmd/Ctrl+2 ou pelo menu nativo Workspace para ver o que está disponível e seguir a configuração. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Depois de criado: duplo-clique renomeia; o selo atribui uma role; ◐ troca o tema; ★ liga/desliga o Modo Maestro; e ⇄ troca o provider sem remover o membro, suas conexões, role, andar ou posição. A conversa antiga é encerrada e o novo provider começa uma sessão limpa.`,
+      body: `A barra mostra automaticamente as CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin. Você não precisa conhecer terminal nem usar todas: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Abra a Central de Providers pelo ícone de cabo na barra lateral, Cmd/Ctrl+2 ou pelo menu nativo Workspace para ver o que está disponível e seguir a configuração. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Depois de criado: duplo-clique renomeia; o selo atribui uma role; ◐ troca o tema; ★ liga/desliga o Modo Maestro; e ⇄ troca o provider sem remover o membro, suas conexões, role, andar ou posição. A conversa antiga é encerrada e o novo provider começa uma sessão limpa.`,
     },
     {
       id: 'provider-center',
       title: 'Central de Providers',
-      body: `A Central verifica localmente as sete CLIs compatíveis e separa os agentes prontos daqueles que ainda precisam de configuração. Expanda um provider para ver o guia oficial, um comando de instalação para seu sistema quando disponível, instruções de login e capacidades detectadas como retomada de conversa, modelos e esforço ajustável. O Orkestrai nunca recebe credenciais nem autentica um agente silenciosamente; o login continua dentro da CLI oficial. Depois de instalar, use Verificar novamente e volte ao canvas.`,
+      body: `A Central verifica localmente as oito CLIs compatíveis e separa os agentes prontos daqueles que ainda precisam de configuração. Expanda um provider para ver o guia oficial, um comando de instalação para seu sistema quando disponível, instruções de login e capacidades detectadas como retomada de conversa, modelos e esforço ajustável. O Orkestrai nunca recebe credenciais nem autentica um agente silenciosamente; o login continua dentro da CLI oficial. Depois de instalar, use Verificar novamente e volte ao canvas.`,
     },
     {
       id: 'roles',
@@ -92,7 +92,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'mcp',
       title: 'MCP (tools externas dos agentes)',
-      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app explica onde conseguir. Remotos instalam sem comando. AVANÇADO: lápis ao lado do workspace → "Servidores MCP". AUTOMÁTICO: o Orkestrai provisiona a própria ponte nos formatos de Claude/Kimi (.mcp.json), Codex (~/.codex/config.toml), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json) e Antigravity (.agents/mcp_config.json), além das skills e do bloco preservado em AGENTS.md. Cada agente recebe as ações do canvas como tools tipadas no workspace correto.`,
+      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app explica onde conseguir. Remotos instalam sem comando. AVANÇADO: lápis ao lado do workspace → "Servidores MCP". AUTOMÁTICO: o Orkestrai provisiona a própria ponte nos formatos de Claude/Kimi (.mcp.json), Codex (~/.codex/config.toml), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json), Devin (.devin/mcp_config.json) e Antigravity (.agents/mcp_config.json), além das skills e do bloco preservado em AGENTS.md. Cada agente recebe as ações do canvas como tools tipadas no workspace correto.`,
     },
     {
       id: 'cli',
@@ -151,13 +151,13 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'choose-agent-provider',
       title: 'Escolher um agente sem conhecer CLIs',
-      body: 'Use o provider que você já tem instalado e autenticado; o Orkestrai cuida do terminal, da ponte e da retomada da conversa. Claude, Codex, Kimi, OpenCode, Cursor, Antigravity e Cline aparecem na mesma barra quando disponíveis. Para uma campanha, identidade visual, pesquisa, conteúdo ou produto, nomeie os agentes pelo resultado esperado e combine um segundo provider apenas quando quiser revisão independente.',
-      tags: ['7 providers', 'sem terminal', 'qualquer profissão'],
+      body: 'Use o provider que você já tem instalado e autenticado; o Orkestrai cuida do terminal, da ponte e da retomada da conversa. Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin aparecem na mesma barra quando disponíveis. Para uma campanha, identidade visual, pesquisa, conteúdo ou produto, nomeie os agentes pelo resultado esperado e combine um segundo provider apenas quando quiser revisão independente.',
+      tags: ['8 providers', 'sem terminal', 'qualquer profissão'],
     },
     {
       id: 'setup-agent-provider',
       title: 'Preparar um provider de IA sem adivinhar comandos',
-      body: 'Abra a Central de Providers para ver quais agentes este dispositivo já consegue usar. Expanda Claude, Codex, Kimi, OpenCode, Cursor, Antigravity ou Cline, siga a instalação indicada para seu sistema, conclua o login na CLI oficial e use Verificar novamente antes de voltar ao canvas.',
+      body: 'Abra a Central de Providers para ver quais agentes este dispositivo já consegue usar. Expanda Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline ou Devin, siga a instalação indicada para seu sistema, conclua o login na CLI oficial e use Verificar novamente antes de voltar ao canvas.',
       tags: ['Central de Providers', 'configuração guiada', 'credenciais locais'],
     },
     {
@@ -233,6 +233,12 @@ export const DOCS_PT: DocsCatalog = {
       tags: ['Providers', 'troca sem recriar', 'time preservado'],
     },
     {
+      id: 'devin-local-agent',
+      title: 'Usar o Devin como membro local do time',
+      body: 'Instale e autentique a CLI oficial do Devin e crie um agente Devin pelo canvas. O Orkestrai inicia a sessão com acesso autônomo ao workspace, provisiona a ponte MCP e a skill nativas, carrega os modelos disponíveis na sua conta e retoma a conversa local exata depois de reiniciar o app.',
+      tags: ['Devin CLI', 'agente local', 'retomada exata'],
+    },
+    {
       id: 'multilingual-spoken-replies',
       title: 'Ouvir respostas no seu idioma',
       body: 'Em Configurações → Voz, escolha uma das três vozes locais: português do Brasil, inglês dos Estados Unidos ou espanhol latino-americano. Ajuste a velocidade entre 0,75× e 1,50× e use Ouvir prévia para comparar antes de ativar o alto-falante no cabeçalho do agente. O Parakeet continua cuidando apenas do ditado; as respostas usam o Supertonic 3 offline e começam a tocar por frases para reduzir a espera.',
@@ -240,6 +246,15 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '10 ago 2026 · 0.6.0',
+      items: [
+        'O Devin agora é um provider nativo com detecção local, modelos da conta, sessões interativas autônomas e retomada exata da conversa.',
+        'A ponte do Orkestrai provisiona a configuração MCP e a skill do Devin, enquanto os transcripts ATIF entregam respostas limpas entre agentes e para o TTS.',
+        'Agentes Devin concorrentes são vinculados às próprias sessões locais pelo diretório do workspace, sem inspecionar nem alterar os dados do Devin.',
+        'O Cursor agora inicia com confiança no workspace e aprovação de MCP, enquanto o Antigravity inicia de forma autônoma e expõe seus níveis de esforço.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.5.2',
       items: [

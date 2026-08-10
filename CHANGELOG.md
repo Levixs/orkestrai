@@ -5,6 +5,27 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.6.0 - 2026-08-10
+
+### Added
+
+- Added Devin as a native provider with official CLI detection, account model
+  discovery, autonomous interactive sessions, headless execution, and exact
+  conversation resume.
+- Added read-only discovery of concurrent Devin sessions by real workspace
+  directory and clean agent replies from Devin's ATIF transcripts.
+- Added Orkestrai skill and MCP bridge provisioning for Devin through
+  `.devin/skills/orkestrai` and `.devin/mcp_config.json`.
+- Added a localized Devin use case and guided onboarding tour in Brazilian
+  Portuguese, English, and Spanish.
+
+### Fixed
+
+- Started Cursor Agent with workspace trust, MCP approval, and autonomous write
+  access so canvas agents do not stop on repeated confirmation prompts.
+- Started Antigravity autonomously and exposed its low, medium, and high effort
+  controls in the agent configuration.
+
 ## 0.5.2 - 2026-08-10
 
 ### Fixed

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { AgentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.js';
 import { claudeAdapter } from '$lib/modules/agent-room/application/adapters/ClaudeAdapter.js';
 import { codexAdapter } from '$lib/modules/agent-room/application/adapters/CodexAdapter.js';
@@ -10,6 +11,7 @@ import { openCodeAdapter } from '$lib/modules/agent-room/application/adapters/Op
 import { cursorAdapter } from '$lib/modules/agent-room/application/adapters/CursorAdapter.js';
 import { antigravityAdapter } from '$lib/modules/agent-room/application/adapters/AntigravityAdapter.js';
 import { clineAdapter } from '$lib/modules/agent-room/application/adapters/ClineAdapter.js';
+import { devinAdapter } from '$lib/modules/agent-room/application/adapters/DevinAdapter.js';
 
 const temporaryHomes: string[] = [];
 
@@ -174,6 +176,32 @@ describe('AgentSessionTracker', () => {
 
     expect(tracker.findAgentSessionId(clineAdapter.sessionStorage, cwd, since)).toBe('cline-session-1');
   });
+
+  it('resolve sessoes concorrentes do Devin pelo banco e cwd exatos', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), `devin-workspace-${Date.now()}`);
+    const otherCwd = join(tmpdir(), `devin-other-${Date.now()}`);
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(otherCwd, { recursive: true });
+    const { home, tracker } = isolatedTracker();
+    const databaseDir = join(home, '.local', 'share', 'devin', 'cli');
+    mkdirSync(databaseDir, { recursive: true });
+    const database = new DatabaseSync(join(databaseDir, 'sessions.db'));
+    database.exec('CREATE TABLE sessions (id TEXT PRIMARY KEY, working_directory TEXT NOT NULL, created_at INTEGER NOT NULL, hidden INTEGER NOT NULL DEFAULT 0)');
+    const insert = database.prepare('INSERT INTO sessions (id, working_directory, created_at, hidden) VALUES (?, ?, ?, ?)');
+    const now = Math.floor(Date.now() / 1_000);
+    insert.run('devin-other', otherCwd, now - 2, 0);
+    insert.run('calm-river', cwd, now - 1, 0);
+    insert.run('bright-piano', cwd, now, 0);
+    insert.run('hidden-helper', cwd, now, 1);
+    database.close();
+
+    const first = tracker.findAgentSessionId(devinAdapter.sessionStorage, cwd, since);
+    expect(first).toBe('calm-river');
+    tracker.claim(first!);
+    expect(tracker.findAgentSessionId(devinAdapter.sessionStorage, cwd, since)).toBe('bright-piano');
+    expect(tracker.findLatestUnclaimedSessionId(devinAdapter.sessionStorage, cwd)).toBe('bright-piano');
+  });
 });
 
 describe('resume exato dos adapters', () => {
@@ -198,5 +226,10 @@ describe('resume exato dos adapters', () => {
   it('opencode resume exato com id e --continue sem id', () => {
     expect(openCodeAdapter.resumeArgs('ses_1')).toEqual(['--session', 'ses_1']);
     expect(openCodeAdapter.resumeArgs()).toEqual(['--continue']);
+  });
+
+  it('devin resume apenas com id exato', () => {
+    expect(devinAdapter.resumeArgs('calm-river')).toEqual(['--resume', 'calm-river']);
+    expect(devinAdapter.resumeArgs()).toBeNull();
   });
 });

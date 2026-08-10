@@ -636,7 +636,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open-center',
         title: 'Open Provider Center',
-        body: 'Use the cable icon in the left sidebar, Cmd/Ctrl+2, or Workspace → Provider Center. It checks Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline locally.',
+        body: 'Use the cable icon in the left sidebar, Cmd/Ctrl+2, or Workspace → Provider Center. It checks Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin locally.',
       },
       {
         id: 'follow-setup',
@@ -659,7 +659,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'available',
         title: 'See what is already available',
-        body: 'The bottom toolbar detects Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline. Available services are active; disabled ones only need installation and sign-in.',
+        body: 'The bottom toolbar detects Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin. Available services are active; disabled ones only need installation and sign-in.',
       },
       {
         id: 'outcome',
@@ -670,6 +670,29 @@ export const TOURS_EN: Tour[] = [
         id: 'perspective',
         title: 'Combine only when it helps',
         body: 'One provider is enough to start. Add another to review an important decision or bring an independent perspective; Orkestrai keeps every conversation separate and tied to the workspace.',
+      },
+    ],
+  },
+  {
+    id: 'devin-local-agent',
+    icon: 'Cable',
+    title: 'Add Devin to the local team',
+    tagline: 'Use the official local agent with the same canvas workflow.',
+    steps: [
+      {
+        id: 'prepare',
+        title: 'Prepare the official CLI',
+        body: 'Open Provider Center, expand Devin, and follow the installation and sign-in guidance. Check again until Devin appears as ready.',
+      },
+      {
+        id: 'create',
+        title: 'Create the Devin member',
+        body: 'Return to the canvas and select Devin in the bottom toolbar. Choose any model available to your account; the terminal starts with autonomous workspace access.',
+      },
+      {
+        id: 'continue',
+        title: 'Work through the bridge',
+        body: 'Connect Devin to the leader, board, or notes. Orkestrai provisions its MCP tools and skill, keeps agent replies clean, and resumes the exact conversation after a restart.',
       },
     ],
   },

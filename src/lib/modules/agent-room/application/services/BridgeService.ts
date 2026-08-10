@@ -617,7 +617,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
 
   /**
    * Provisiona a skill da ponte nos diretórios convencionais dos agentes
-   * de Claude, Cline, Antigravity e no formato portavel do Orkestrai.
+   * de Claude, Cline, Devin, Antigravity e no formato portavel do Orkestrai.
    */
   provisionSkill(workspace: Workspace, token: string): void {
     const skill = this.bridgeSkillContent();
@@ -625,6 +625,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       const dirs = [
         resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai'),
         resolve(workspace.workingDir, '.cline', 'skills', 'orkestrai'),
+        resolve(workspace.workingDir, '.devin', 'skills', 'orkestrai'),
         resolve(workspace.workingDir, '.agents', 'skills', 'orkestrai'),
         resolve(workspace.workingDir, '.orkestrai'),
       ];
@@ -638,6 +639,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         '.mcp.json',
         '.cursor/mcp.json',
         '.cline/mcp.json',
+        '.devin/mcp_config.json',
         '.agents/mcp_config.json',
       ]) {
         this.provisionStandardMcp(resolve(workspace.workingDir, relativePath));
@@ -655,10 +657,12 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
           '.orkestrai/',
           '.claude/skills/orkestrai/',
           '.cline/skills/orkestrai/',
+          '.devin/skills/orkestrai/',
           '.agents/skills/orkestrai/',
           '.mcp.json',
           '.cursor/mcp.json',
           '.cline/mcp.json',
+          '.devin/mcp_config.json',
           '.agents/mcp_config.json',
           'opencode.json',
           'AGENTS.md',
@@ -691,7 +695,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- Todo trabalho delegado precisa de uma task no Kanban ANTES da mensagem direta; nunca execute ou delegue trabalho sem rastreamento.',
       '- Sua identidade está no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` são opcionais. Se `orkestrai` não resolver no PATH, use `node "$ORKESTRAI_CLI" ...`.',
       '- Se as tools MCP `orkestrai` estiverem disponíveis, PREFIRA elas (chamadas tipadas); a CLI e o fallback.',
-      '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md`, `.cline/skills/orkestrai/SKILL.md`, `.agents/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',
+      '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md`, `.cline/skills/orkestrai/SKILL.md`, `.devin/skills/orkestrai/SKILL.md`, `.agents/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',
       '<!-- orkestrai:end -->',
     ].join('\n');
   }
@@ -728,7 +732,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     if (next !== current) writeFileSync(path, next);
   }
 
-  /** Formato MCP padrao usado por Claude/Kimi, Cursor, Cline e Antigravity. */
+  /** Formato MCP padrao usado por Claude/Kimi, Cursor, Cline, Devin e Antigravity. */
   private provisionStandardMcp(path: string): void {
     let config: { mcpServers?: Record<string, unknown> } & Record<string, unknown> = {};
     try {

@@ -41,11 +41,12 @@ function stubAdapter(id: string): AgentAdapter {
 
 describe('agent adapter registry', () => {
   it('registra todos os providers embutidos por padrao', () => {
-    const expected = ['claude', 'codex', 'kimi', 'opencode', 'cursor', 'antigravity', 'cline'];
+    const expected = ['claude', 'codex', 'kimi', 'opencode', 'cursor', 'antigravity', 'cline', 'devin'];
     for (const id of expected) expect(hasAgentAdapter(id)).toBe(true);
     expect(getAgentAdapter('cursor').displayName).toBe('Cursor');
     expect(getAgentAdapter('antigravity').displayName).toBe('Antigravity');
     expect(getAgentAdapter('cline').displayName).toBe('Cline');
+    expect(getAgentAdapter('devin').displayName).toBe('Devin');
     for (const id of expected) {
       const setup = getAgentAdapter(id).setup;
       expect(setup.docsUrl).toMatch(/^https:\/\//);

@@ -34,6 +34,8 @@ export const cursorAdapter: AgentAdapter = {
     const args = [
       '-p',
       ...(request.allowWrites ? ['--force'] : []),
+      '--trust',
+      '--approve-mcps',
       '--output-format',
       'stream-json',
       ...modelArgs,
@@ -54,7 +56,12 @@ export const cursorAdapter: AgentAdapter = {
   interactiveCommand(options?: { model?: string; effort?: ModelEffort | null }): AgentCommandSpec {
     return {
       command: 'cursor-agent',
-      args: options?.model ? ['--model', options.model] : [],
+      args: [
+        '--force',
+        '--trust',
+        '--approve-mcps',
+        ...(options?.model ? ['--model', options.model] : []),
+      ],
     };
   },
 

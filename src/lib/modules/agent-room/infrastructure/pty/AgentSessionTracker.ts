@@ -1,6 +1,30 @@
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
+
+type ReadonlySqliteDatabase = {
+  prepare(sql: string): { all(...params: unknown[]): unknown[] };
+  close(): void;
+};
+
+const require = createRequire(import.meta.url);
+
+function openReadonlySqlite(path: string): ReadonlySqliteDatabase {
+  try {
+    const BetterSqlite = require('better-sqlite3') as new (
+      filename: string,
+      options: { readonly: boolean; fileMustExist: boolean }
+    ) => ReadonlySqliteDatabase;
+    return new BetterSqlite(path, { readonly: true, fileMustExist: true });
+  } catch {
+    // Tests may run against a different ABI than the Electron-native module.
+    const { DatabaseSync } = require('node:sqlite') as {
+      DatabaseSync: new (filename: string, options: { readOnly: boolean }) => ReadonlySqliteDatabase;
+    };
+    return new DatabaseSync(path, { readOnly: true });
+  }
+}
 
 export type AgentSessionStorage =
   | 'claude-project-jsonl'
@@ -9,7 +33,8 @@ export type AgentSessionStorage =
   | 'opencode-session-json'
   | 'cursor-transcript-jsonl'
   | 'antigravity-workspace-cache'
-  | 'cline-session-manifest';
+  | 'cline-session-manifest'
+  | 'devin-session-db';
 
 /**
  * Rastreia o session-id REAL que cada CLI de agente grava em disco.
@@ -70,6 +95,8 @@ export class AgentSessionTracker {
           return this.findAntigravitySession(cwd, since, exclude);
         case 'cline-session-manifest':
           return this.findClineSession(cwd, since, exclude, strategy);
+        case 'devin-session-db':
+          return this.findDevinSession(cwd, since, exclude, strategy);
         default:
           return null;
       }
@@ -297,6 +324,41 @@ export class AgentSessionTracker {
 
     candidates.sort((a, b) => (strategy === 'oldest' ? a.mtime - b.mtime : b.mtime - a.mtime));
     return candidates[0]?.id ?? null;
+  }
+
+  // Devin mantem as sessoes em um SQLite proprio. A leitura e estritamente
+  // read-only e filtra pelo cwd real, evitando cruzar agentes concorrentes.
+  private findDevinSession(cwd: string, since: number, exclude: Set<string>, strategy: 'oldest' | 'newest'): string | null {
+    const candidates = [
+      process.env.XDG_DATA_HOME ? join(process.env.XDG_DATA_HOME, 'devin', 'cli', 'sessions.db') : '',
+      join(this.homeDir, '.local', 'share', 'devin', 'cli', 'sessions.db'),
+      process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'devin', 'cli', 'sessions.db') : '',
+      join(this.homeDir, 'AppData', 'Local', 'devin', 'cli', 'sessions.db'),
+    ].filter((path, index, paths) => Boolean(path) && paths.indexOf(path) === index && existsSync(path));
+    const targetCwd = this.realCwd(cwd);
+    const fallbackCwd = resolve(cwd);
+    const direction = strategy === 'oldest' ? 'ASC' : 'DESC';
+
+    for (const path of candidates) {
+      let database: ReadonlySqliteDatabase | null = null;
+      try {
+        database = openReadonlySqlite(path);
+        const rows = database.prepare(
+          `SELECT id FROM sessions
+           WHERE hidden = 0
+             AND working_directory IN (?, ?)
+             AND created_at >= ?
+           ORDER BY created_at ${direction}, rowid ${direction}`
+        ).all(targetCwd, fallbackCwd, Math.floor(since / 1_000)) as Array<{ id?: unknown }>;
+        const found = rows.find((row) => typeof row.id === 'string' && row.id.trim() && !exclude.has(row.id));
+        if (found && typeof found.id === 'string') return found.id;
+      } catch {
+        // Banco ainda nao existe, esta migrando ou pertence a outra versao.
+      } finally {
+        database?.close();
+      }
+    }
+    return null;
   }
 
   private oldestFile(dir: string, since: number, match: (name: string) => boolean): string | null {

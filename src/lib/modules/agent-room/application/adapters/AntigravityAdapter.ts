@@ -8,6 +8,7 @@ export const antigravityAdapter: AgentAdapter = {
   id: 'antigravity',
   displayName: 'Antigravity',
   supportsResume: true,
+  efforts: ['low', 'medium', 'high'],
   sessionStorage: 'antigravity-workspace-cache',
   setup: {
     docsUrl: 'https://antigravity.google/docs/cli/getting-started',
@@ -29,6 +30,7 @@ export const antigravityAdapter: AgentAdapter = {
       '--output-format',
       'stream-json',
       ...modelArgs,
+      ...(request.effort ? ['--effort', request.effort] : []),
       ...(request.allowWrites ? ['--dangerously-skip-permissions'] : ['--sandbox']),
       request.prompt,
     ];
@@ -47,7 +49,11 @@ export const antigravityAdapter: AgentAdapter = {
   interactiveCommand(options?: { model?: string; effort?: ModelEffort | null }): AgentCommandSpec {
     return {
       command: 'agy',
-      args: options?.model ? ['--model', options.model] : [],
+      args: [
+        '--dangerously-skip-permissions',
+        ...(options?.model ? ['--model', options.model] : []),
+        ...(options?.effort ? ['--effort', options.effort] : []),
+      ],
     };
   },
 

@@ -636,7 +636,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'open-center',
         title: 'Abre la Central de Providers',
-        body: 'Usa el icono de cable en la barra lateral izquierda, Cmd/Ctrl+2 o Workspace → Central de Providers. Verifica Claude, Codex, Kimi, OpenCode, Cursor, Antigravity y Cline localmente.',
+        body: 'Usa el icono de cable en la barra lateral izquierda, Cmd/Ctrl+2 o Workspace → Central de Providers. Verifica Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin localmente.',
       },
       {
         id: 'follow-setup',
@@ -659,7 +659,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'available',
         title: 'Mira lo que ya está disponible',
-        body: 'La barra inferior detecta Claude, Codex, Kimi, OpenCode, Cursor, Antigravity y Cline. Los disponibles quedan activos; los desactivados solo necesitan instalación e inicio de sesión.',
+        body: 'La barra inferior detecta Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin. Los disponibles quedan activos; los desactivados solo necesitan instalación e inicio de sesión.',
       },
       {
         id: 'outcome',
@@ -670,6 +670,29 @@ export const TOURS_ES: Tour[] = [
         id: 'perspective',
         title: 'Combina solo cuando ayude',
         body: 'Un provider basta para empezar. Agrega otro para revisar una decisión importante o aportar una perspectiva independiente; Orkestrai mantiene cada conversación separada y vinculada al workspace.',
+      },
+    ],
+  },
+  {
+    id: 'devin-local-agent',
+    icon: 'Cable',
+    title: 'Agregar Devin al equipo local',
+    tagline: 'Usa el agente local oficial en el mismo flujo visual del canvas.',
+    steps: [
+      {
+        id: 'prepare',
+        title: 'Prepara la CLI oficial',
+        body: 'Abre la Central de Providers, expande Devin y sigue las instrucciones de instalación e inicio de sesión. Verifica de nuevo hasta que Devin aparezca listo.',
+      },
+      {
+        id: 'create',
+        title: 'Crea el miembro Devin',
+        body: 'Vuelve al canvas y selecciona Devin en la barra inferior. Elige un modelo disponible en tu cuenta; la terminal inicia con acceso autónomo al workspace.',
+      },
+      {
+        id: 'continue',
+        title: 'Trabaja mediante el puente',
+        body: 'Conecta Devin con el líder, tablero o notas. Orkestrai provisiona sus tools MCP y skill, mantiene respuestas limpias y reanuda la conversación exacta después de reiniciar.',
       },
     ],
   },

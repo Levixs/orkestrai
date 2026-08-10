@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseClaudeTranscriptReply,
   parseCodexTranscriptReply,
+  parseDevinTranscriptReply,
   parseGenericTranscriptReply,
   parseKimiTranscriptReply,
   parseStructuredMessagesReply,
@@ -105,5 +106,17 @@ describe('transcritos estruturados dos providers adicionais', () => {
         { role: 'assistant', content: [{ type: 'text', text: 'Análise concluída.' }] },
       ])
     ).toBe('Análise concluída.');
+  });
+
+  it('le o ATIF do Devin e usa reasoning_content apenas quando message esta vazio', () => {
+    const transcript = JSON.stringify({
+      steps: [
+        { source: 'agent', message: 'resposta antiga' },
+        { source: 'user', message: 'nova pergunta' },
+        { source: 'agent', message: 'Primeira parte.' },
+        { source: 'agent', message: '', reasoning_content: 'Segunda parte.' },
+      ],
+    });
+    expect(parseDevinTranscriptReply(transcript)).toBe('Primeira parte.\n\nSegunda parte.');
   });
 });

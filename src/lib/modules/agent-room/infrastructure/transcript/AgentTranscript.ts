@@ -130,6 +130,29 @@ export function parseStructuredMessagesReply(messages: unknown[]): string | null
   return text || null;
 }
 
+/** Devin (ATIF JSON): passos agent depois do ultimo passo user. */
+export function parseDevinTranscriptReply(json: string): string | null {
+  let payload: { steps?: unknown };
+  try {
+    payload = JSON.parse(json) as { steps?: unknown };
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(payload.steps)) return null;
+
+  const parts: string[] = [];
+  for (const raw of [...payload.steps].reverse()) {
+    if (!raw || typeof raw !== 'object') continue;
+    const step = raw as Record<string, unknown>;
+    const source = String(step.source ?? '').toLowerCase();
+    if (source === 'user') break;
+    if (source !== 'agent') continue;
+    const text = transcriptText(step.message) ?? transcriptText(step.reasoning_content);
+    if (text) parts.unshift(text);
+  }
+  return parts.join('\n\n').trim() || null;
+}
+
 function transcriptText(value: unknown): string | null {
   if (typeof value === 'string') return value.trim() || null;
   if (Array.isArray(value)) {
@@ -273,6 +296,16 @@ function clineMessagesPath(sessionId: string): string | null {
   }
 }
 
+function devinTranscriptPath(sessionId: string): string | null {
+  const candidates = [
+    process.env.XDG_DATA_HOME ? join(process.env.XDG_DATA_HOME, 'devin', 'cli', 'transcripts', `${sessionId}.json`) : '',
+    join(homedir(), '.local', 'share', 'devin', 'cli', 'transcripts', `${sessionId}.json`),
+    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'devin', 'cli', 'transcripts', `${sessionId}.json`) : '',
+    join(homedir(), 'AppData', 'Local', 'devin', 'cli', 'transcripts', `${sessionId}.json`),
+  ];
+  return candidates.find((path) => Boolean(path) && existsSync(path)) ?? null;
+}
+
 /**
  * Ultima resposta do agente pelo transcrito da CLI (null = indisponivel —
  * quem chama cai na raspagem de tela como fallback).
@@ -317,6 +350,10 @@ export async function lastReplyText(provider: string, cwd: string, sessionId: st
         ? (payload as { messages?: unknown }).messages
         : null;
       return Array.isArray(messages) ? parseStructuredMessagesReply(messages) : null;
+    }
+    if (storage === 'devin-session-db') {
+      const path = devinTranscriptPath(sessionId);
+      return path ? parseDevinTranscriptReply(readFileSync(path, 'utf8')) : null;
     }
     return null;
   } catch {

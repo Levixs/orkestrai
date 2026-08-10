@@ -6,6 +6,7 @@ import { openCodeAdapter } from '$lib/modules/agent-room/application/adapters/Op
 import { cursorAdapter } from '$lib/modules/agent-room/application/adapters/CursorAdapter.js';
 import { antigravityAdapter } from '$lib/modules/agent-room/application/adapters/AntigravityAdapter.js';
 import { clineAdapter } from '$lib/modules/agent-room/application/adapters/ClineAdapter.js';
+import { devinAdapter } from '$lib/modules/agent-room/application/adapters/DevinAdapter.js';
 import type { AgentRunRequest } from '$lib/modules/agent-room/domain/types.js';
 
 function request(overrides: Partial<AgentRunRequest> = {}): AgentRunRequest {
@@ -119,6 +120,8 @@ describe('cursorAdapter', () => {
     expect(review.command).toBe('cursor-agent');
     expect(review.args).toContain('stream-json');
     expect(review.args).not.toContain('--force');
+    expect(review.args).toContain('--trust');
+    expect(review.args).toContain('--approve-mcps');
     expect(review.args.at(-1)).toContain('READ-ONLY TASK');
     expect(review.args.at(-1)).toContain('revise');
     expect(review.displayArgs).not.toContain(review.args.at(-1));
@@ -126,6 +129,7 @@ describe('cursorAdapter', () => {
 
     const write = cursorAdapter.buildCommand(request({ agent: 'cursor', allowWrites: true }));
     expect(write.args).toContain('--force');
+    expect(cursorAdapter.interactiveCommand().args).toEqual(['--force', '--trust', '--approve-mcps']);
   });
 
   it('extrai resultado e id de sessao do stream-json', () => {
@@ -152,11 +156,44 @@ describe('antigravityAdapter', () => {
 
     const write = antigravityAdapter.buildCommand(request({ agent: 'antigravity', allowWrites: true }));
     expect(write.args).toContain('--dangerously-skip-permissions');
+    expect(antigravityAdapter.interactiveCommand({ effort: 'high' }).args).toEqual([
+      '--dangerously-skip-permissions', '--effort', 'high',
+    ]);
   });
 
   it('retoma uma conversa conhecida sem adivinhar a mais recente', () => {
     expect(antigravityAdapter.resumeArgs('agy-1')).toEqual(['--conversation=agy-1']);
     expect(antigravityAdapter.resumeArgs()).toBeNull();
+  });
+});
+
+describe('devinAdapter', () => {
+  it('usa print headless com trust explicito e permissoes coerentes', () => {
+    const review = devinAdapter.buildCommand(request({ agent: 'devin', prompt: 'revise' }));
+    expect(review.command).toBe('devin');
+    expect(review.args).toContain('auto');
+    expect(review.args).toContain('--respect-workspace-trust');
+    expect(review.args.at(-1)).toContain('READ-ONLY TASK');
+    expect(review.promptDelivery).toBe('args');
+
+    const write = devinAdapter.buildCommand(request({ agent: 'devin', allowWrites: true }));
+    expect(write.args).toContain('dangerous');
+    expect(write.args).not.toContain('READ-ONLY TASK');
+  });
+
+  it('abre TUI autonoma, exporta transcript e retoma pelo id exato', () => {
+    expect(devinAdapter.interactiveCommand({ model: 'swe-1.7' }).args).toEqual([
+      '--permission-mode', 'dangerous',
+      '--respect-workspace-trust', 'false',
+      '--model', 'swe-1.7',
+      '--export',
+    ]);
+    expect(devinAdapter.resumeArgs('bright-piano')).toEqual(['--resume', 'bright-piano']);
+    expect(devinAdapter.resumeArgs()).toBeNull();
+  });
+
+  it('preserva a resposta textual do modo print', () => {
+    expect(devinAdapter.parseOutput('resposta do Devin\n').content).toBe('resposta do Devin');
   });
 });
 
