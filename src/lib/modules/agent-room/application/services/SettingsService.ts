@@ -20,6 +20,7 @@ const DEFAULTS: Record<string, string> = {
   voiceTtsVoice: DEFAULT_EMBEDDED_TTS_VOICE,
   voiceTtsSpeed: String(DEFAULT_EMBEDDED_TTS_SPEED),
   voiceSidecarTtsVoice: 'pf_dora',
+  pinnedAgentProviders: '[]',
 };
 
 /** Configuracoes globais do app (chave/valor, com defaults). */

@@ -45,6 +45,7 @@
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
   import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
   import PresetLibraryPanel from '$lib/components/agent-room/canvas/PresetLibraryPanel.svelte';
+  import AgentToolbarMenu from '$lib/components/agent-room/canvas/AgentToolbarMenu.svelte';
   import CommandPalette, { type PaletteAction } from '$lib/components/agent-room/canvas/CommandPalette.svelte';
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
   import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
@@ -55,8 +56,14 @@
     type LeaderDictationStatus,
   } from '$lib/components/agent-room/leader-dictation.js';
   import { TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from '$lib/components/agent-room/text-dictation.js';
+  import { invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
+  import {
+    parsePinnedAgentProviders,
+    PINNED_AGENT_PROVIDERS_SETTING,
+    setAgentProviderPinned,
+  } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -81,14 +88,6 @@
     tasks: TasksCanvasNode,
     flow: FlowCanvasNode,
     image: ImageCanvasNode,
-  };
-
-  // Icones de marca disponiveis em static/images; os demais providers usam
-  // o fallback lucide (CodeXml) no toolbar.
-  const PROVIDER_ICONS: Record<string, string> = {
-    claude: '/images/claude.svg',
-    codex: '/images/codex.svg',
-    kimi: '/images/kimi.svg',
   };
 
   let workspaces = $state<Workspace[]>([]);
@@ -435,6 +434,41 @@
   }
 
   let appSettings = $state<Record<string, string>>({});
+  let pinnedProviderIds = $state<string[]>([]);
+  let persistedPinnedProviderIds: string[] = [];
+  let pinnedProviderSaveQueue: Promise<void> = Promise.resolve();
+
+  function togglePinnedProvider(providerId: string, pinned: boolean) {
+    const next = setAgentProviderPinned(pinnedProviderIds, providerId, pinned);
+    if (next.limitReached) {
+      toast.error(m['canvas.pinned_agents_limit']());
+      return;
+    }
+
+    pinnedProviderIds = next.ids;
+    const serialized = JSON.stringify(next.ids);
+    appSettings = { ...appSettings, [PINNED_AGENT_PROVIDERS_SETTING]: serialized };
+
+    pinnedProviderSaveQueue = pinnedProviderSaveQueue.then(async () => {
+      try {
+        await api<Record<string, string>>('/api/agent-room/settings', {
+          method: 'PUT',
+          body: JSON.stringify({ [PINNED_AGENT_PROVIDERS_SETTING]: serialized }),
+        });
+        persistedPinnedProviderIds = next.ids;
+        invalidateAppSettings();
+      } catch {
+        if (JSON.stringify(pinnedProviderIds) === serialized) {
+          pinnedProviderIds = persistedPinnedProviderIds;
+          appSettings = {
+            ...appSettings,
+            [PINNED_AGENT_PROVIDERS_SETTING]: JSON.stringify(persistedPinnedProviderIds),
+          };
+        }
+        toast.error(m['canvas.pinned_agents_save_error']());
+      }
+    });
+  }
 
   // Live refresh: a bridge (CLI dos agentes) escreve direto no banco; o
   // servidor avisa via WS e a pagina recarrega nos/edges/andares do workspace
@@ -474,6 +508,10 @@
       api<Record<string, string>>('/api/agent-room/settings'),
     ]);
     appSettings = settingsResponse ?? {};
+    const registeredProviderIds = new Set((status.providers ?? []).map((provider) => provider.id));
+    pinnedProviderIds = parsePinnedAgentProviders(appSettings[PINNED_AGENT_PROVIDERS_SETTING])
+      .filter((id) => registeredProviderIds.has(id));
+    persistedPinnedProviderIds = pinnedProviderIds;
     // Se o usuario ja criou/selecionou algo enquanto o fetch inicial estava
     // em voo, a lista antiga nao sobrescreve o estado mais novo.
     if (selectionRequestId === 0) {
@@ -1597,16 +1635,14 @@
             <ToolbarButton label={m['tool.shell']()} active={drawTool === 'terminal' && !drawProvider} onclick={() => toggleDrawTool('terminal')}>
               <img src="/images/cli.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.default_shell']()}
             </ToolbarButton>
-            {#each providers as provider}
-              <ToolbarButton label={provider.detail ?? provider.displayName} active={drawTool === 'terminal' && drawProvider?.id === provider.id} disabled={!provider.installed} onclick={() => toggleDrawTool('terminal', provider)}>
-                {#if PROVIDER_ICONS[provider.id]}
-                  <img src={PROVIDER_ICONS[provider.id]} width="15" height="15" alt="" class="tool-icon" />
-                {:else}
-                  <CodeXml size={15} class="tool-icon-svg" />
-                {/if}
-                {provider.displayName}
-              </ToolbarButton>
-            {/each}
+            <AgentToolbarMenu
+              {providers}
+              {pinnedProviderIds}
+              activeProviderId={drawTool === 'terminal' ? (drawProvider?.id ?? null) : null}
+              onSelect={(provider) => toggleDrawTool('terminal', provider)}
+              onTogglePin={togglePinnedProvider}
+              onOpenProviderCenter={() => location.assign('/providers')}
+            />
             <ToolbarButton label={m['tool.note']()} active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
               <StickyNote size={15} class="tool-icon-svg" /> {m['canvas.default_note']()}
             </ToolbarButton>

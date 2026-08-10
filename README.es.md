@@ -53,6 +53,8 @@ Descarga los instaladores más recientes desde
 - **Central de Providers:** detecta localmente las ocho CLIs compatibles, sigue
   la instalación adecuada al sistema y el inicio de sesión oficial, y consulta
   capacidades sin enviar credenciales de providers a Orkestrai.
+- **Barra de agentes personal:** elige cualquier servicio desde un menú Agentes
+  compacto y fija hasta cuatro favoritos listos entre workspaces y reinicios.
 - **Providers reemplazables:** cambia un miembro de Claude a Codex, Kimi u otro
   provider instalado conservando su rol, piso y conexiones.
 - **Continuidad de sesión:** cada terminal reanuda su propia conversación del

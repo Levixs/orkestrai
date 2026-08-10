@@ -674,6 +674,29 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'pin-favorite-agents',
+    icon: 'Pin',
+    title: 'Mantener tus agentes favoritos cerca',
+    tagline: 'Adapta la barra a tu rutina sin ocultar las demás opciones.',
+    steps: [
+      {
+        id: 'open-agents',
+        title: 'Abre el menú Agentes',
+        body: 'Usa Agentes en la barra inferior para ver todos los servicios compatibles. Seleccionar un agente listo activa la misma herramienta de dibujo de antes; un agente que requiere configuración abre la Central de Providers.',
+      },
+      {
+        id: 'pin-favorites',
+        title: 'Fija hasta cuatro favoritos',
+        body: 'En Fijados en la barra, marca los servicios que más usas. Los favoritos listos aparecen como botones directos junto a Agentes, en el orden elegido.',
+      },
+      {
+        id: 'keep-your-preference',
+        title: 'Usa la misma barra en todas partes',
+        body: 'La selección es global y persiste al cambiar de workspace o reiniciar la app. Si una CLI fijada deja de estar disponible, sigue guardada pero no ocupa espacio.',
+      },
+    ],
+  },
+  {
     id: 'devin-local-agent',
     icon: 'Cable',
     title: 'Agregar Devin al equipo local',

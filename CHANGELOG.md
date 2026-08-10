@@ -5,6 +5,22 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.7.0 - 2026-08-10
+
+### Added
+
+- Added a compact Agents menu to the canvas toolbar that lists every registered
+  provider and sends unavailable agents directly to Provider Center.
+- Added a global, persistent preference for pinning up to four ready agents as
+  direct toolbar buttons in the user's chosen order.
+- Added localized documentation, use case, and guided onboarding for the agent
+  menu in Brazilian Portuguese, English, and Spanish.
+
+### Changed
+
+- Consolidated the eight provider buttons into the Agents menu while keeping
+  Shell directly accessible and preserving the existing agent drawing flow.
+
 ## 0.6.0 - 2026-08-10
 
 ### Added

@@ -4,7 +4,7 @@ import type { DocsCatalog } from './types.js';
 export const DOCS_ES: DocsCatalog = {
   quickstart: [
     'Crea un workspace (botón + en la barra lateral) apuntando a la carpeta de tu proyecto.',
-    'Haz clic en cualquier agente disponible de la barra inferior y arrastra un rectángulo en el canvas — nómbralo, elige modelo/esfuerzo si quieres y marca Líder si comandará el equipo.',
+    'Abre Agentes en la barra inferior, elige un servicio disponible y arrastra un rectángulo en el canvas — nómbralo, elige modelo/esfuerzo si quieres y marca Líder si comandará el equipo.',
     'Dibuja más agentes y conéctalos arrastrando desde la bolita (handle) de uno hasta el otro.',
     'Abre el tablero Tareas (+ Tareas), crea tarjetas y asígnalas — cada tarea cae directo en la terminal del agente.',
     'Habla con cualquier agente desde su propia terminal, o deja que el líder distribuya todo solo vía CLI orkestrai.',
@@ -18,7 +18,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: crear, nombrar, modelo y esfuerzo',
-      body: `La barra muestra automáticamente las CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Abre la Central de Providers desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace para ver qué está disponible. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después: doble clic renombra; el sello asigna un rol; ◐ cambia el tema; ★ alterna el Modo Maestro; y ⇄ cambia el provider sin eliminar al miembro, sus conexiones, rol, piso o posición. La conversación anterior se cierra y el nuevo provider comienza una sesión limpia.`,
+      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después: doble clic renombra; el sello asigna un rol; ◐ cambia el tema; ★ alterna el Modo Maestro; y ⇄ cambia el provider sin eliminar al miembro, sus conexiones, rol, piso o posición. La conversación anterior se cierra y el nuevo provider comienza una sesión limpia.`,
     },
     {
       id: 'provider-center',
@@ -151,6 +151,12 @@ export const DOCS_ES: DocsCatalog = {
       tags: ['8 providers', 'sin conocer terminal', 'cualquier profesión'],
     },
     {
+      id: 'pin-favorite-agents',
+      title: 'Mantener tus agentes favoritos a un clic',
+      body: 'Abre Agentes en la barra inferior y fija hasta cuatro servicios que uses con más frecuencia. Los favoritos listos se convierten en botones directos junto al menú, en el orden elegido, en todos los workspaces y reinicios; un servicio temporalmente no disponible sigue guardado sin ocupar espacio.',
+      tags: ['Menú Agentes', 'favoritos fijados', 'preferencia global'],
+    },
+    {
       id: 'setup-agent-provider',
       title: 'Preparar un provider de IA sin adivinar comandos',
       body: 'Abre la Central de Providers para ver qué agentes ya puede usar este dispositivo. Expande Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline o Devin, sigue la instalación indicada para tu sistema, completa el inicio de sesión en la CLI oficial y usa Verificar de nuevo antes de volver al canvas.',
@@ -242,6 +248,14 @@ export const DOCS_ES: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '10 ago 2026 · 0.7.0',
+      items: [
+        'Los botones de providers se consolidaron en un único menú Agentes, mientras Shell sigue disponible directamente.',
+        'Se pueden fijar hasta cuatro agentes favoritos junto al menú, con el orden guardado globalmente entre workspaces y reinicios.',
+        'Los agentes no disponibles siguen visibles con acceso directo a la Central de Providers y nunca ocupan la barra.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.6.0',
       items: [

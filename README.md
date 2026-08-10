@@ -51,6 +51,8 @@ Download the latest installers from
 - **Provider Center:** detect all eight supported CLIs locally, follow OS-aware
   installation and official sign-in guidance, and inspect capabilities without
   sending provider credentials to Orkestrai.
+- **Personal agent toolbar:** choose any service from one compact Agents menu
+  and pin up to four ready favorites globally across workspaces and restarts.
 - **Replaceable providers:** switch a team member from Claude to Codex, Kimi, or
   another installed provider while preserving its role, floor, and connections.
 - **Session continuity:** each terminal resumes its own provider conversation

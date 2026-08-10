@@ -674,6 +674,29 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'pin-favorite-agents',
+    icon: 'Pin',
+    title: 'Keep favorite agents within reach',
+    tagline: 'Make the toolbar fit your routine without hiding other options.',
+    steps: [
+      {
+        id: 'open-agents',
+        title: 'Open the Agents menu',
+        body: 'Use Agents in the bottom toolbar to see every supported service. Selecting a ready agent arms the same draw tool as before; an agent that needs setup opens Provider Center.',
+      },
+      {
+        id: 'pin-favorites',
+        title: 'Pin up to four favorites',
+        body: 'In Pinned to toolbar, check the services you use most. Ready favorites appear as direct buttons beside Agents in the order you selected them.',
+      },
+      {
+        id: 'keep-your-preference',
+        title: 'Use the same toolbar everywhere',
+        body: 'Your selection is global and survives workspace switches and app restarts. If a pinned CLI becomes unavailable, it stays saved but does not take toolbar space.',
+      },
+    ],
+  },
+  {
     id: 'devin-local-agent',
     icon: 'Cable',
     title: 'Add Devin to the local team',

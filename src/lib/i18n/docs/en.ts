@@ -4,7 +4,7 @@ import type { DocsCatalog } from './types.js';
 export const DOCS_EN: DocsCatalog = {
   quickstart: [
     'Create a workspace (+ button in the sidebar) pointing to your project folder.',
-    'Click any available agent in the bottom bar and drag a rectangle on the canvas — name it, optionally choose model/effort, and check Leader if it will command the team.',
+    'Open Agents in the bottom bar, choose an available service, and drag a rectangle on the canvas — name it, optionally choose model/effort, and check Leader if it will command the team.',
     'Draw more agents and connect them by dragging from one handle dot to the other.',
     'Open the Tasks board (+ Tasks), create cards and assign them — each task lands straight in the agent\'s terminal.',
     'Talk to any agent through its own terminal, or let the leader distribute everything on its own via the orkestrai CLI.',
@@ -18,7 +18,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `The toolbar automatically shows installed CLIs among Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Open Provider Center from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu to see what is available and follow setup guidance. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). After creation: double-click renames; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode; and ⇄ changes provider without removing the member, connections, role, floor, or position. The previous conversation closes and the new provider starts a clean session.`,
+      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). After creation: double-click renames; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode; and ⇄ changes provider without removing the member, connections, role, floor, or position. The previous conversation closes and the new provider starts a clean session.`,
     },
     {
       id: 'provider-center',
@@ -151,6 +151,12 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['8 providers', 'no terminal knowledge', 'any profession'],
     },
     {
+      id: 'pin-favorite-agents',
+      title: 'Keep favorite agents one click away',
+      body: 'Open Agents in the bottom toolbar and pin up to four services you use most. Ready favorites become direct buttons beside the menu in your chosen order across every workspace and app restart; a temporarily unavailable service stays in your preference without taking toolbar space.',
+      tags: ['Agents menu', 'pinned favorites', 'global preference'],
+    },
+    {
       id: 'setup-agent-provider',
       title: 'Prepare an AI provider without guessing commands',
       body: 'Open Provider Center to see which agents this device can already use. Expand Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, or Devin for OS-aware installation guidance, complete sign-in in the official CLI, and use Check again before returning to the canvas.',
@@ -242,6 +248,14 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 10, 2026 · 0.7.0',
+      items: [
+        'The crowded provider buttons are now consolidated into one Agents menu while Shell remains directly available.',
+        'Up to four favorite agents can be pinned beside the menu, with their order saved globally across workspaces and restarts.',
+        'Unavailable agents remain visible with a direct path to Provider Center and never occupy the toolbar.',
+      ],
+    },
     {
       date: 'Aug 10, 2026 · 0.6.0',
       items: [
