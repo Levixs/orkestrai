@@ -17,6 +17,7 @@
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
+  import { terminalDictationInput } from './terminal-dictation.js';
   import { terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
   import {
     LEADER_DICTATION_COMMAND,
@@ -87,6 +88,7 @@
   let checkingVoiceModels = false;
   /** Atalho REATIVO da store global (mudanca em Configuracoes aplica na hora). */
   const dictateHotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
+  const dictationAutoSubmit = $derived(appSettingsStore.values.dictationAutoSubmit === 'true');
   let mediaRecorder: MediaRecorder | null = null;
   let mediaStream: MediaStream | null = null;
   let audioChunks: Blob[] = [];
@@ -148,6 +150,13 @@
         // voz indisponivel — segue em texto
       }
     }, 5_000);
+  }
+
+  function armDictationReplyCapture() {
+    pendingDictation = false;
+    captureAfterDictation = true;
+    captureBuf = '';
+    scheduleSpeakFromCapture();
   }
 
   /** Ultima resposta do agente pelo transcrito da CLI (null = usar raspagem). */
@@ -226,11 +235,13 @@
         if (!response.ok || payload.error) throw new Error(payload.error || `Erro ${response.status}`);
         const text = String(payload.data?.text ?? '').trim();
         if (text) {
-          sendInput?.(text);
-          // Ciclo conversa: marca que ha um ditado aguardando Enter. A captura
-          // da resposta arma SOMENTE no submit (ver terminal.onData abaixo) —
-          // sem Enter, nada e falado.
-          if (voiceOn && provider) pendingDictation = true;
+          sendInput?.(terminalDictationInput(text, dictationAutoSubmit));
+          if (voiceOn && provider) {
+            // No envio automatico, o Enter ja foi junto com a transcricao.
+            // No modo manual, a captura aguarda o usuario pressionar Enter.
+            if (dictationAutoSubmit) armDictationReplyCapture();
+            else pendingDictation = true;
+          }
         } else dictateError = m['voice.nothing_transcribed']();
       } catch (error) {
         dictateError = error instanceof Error ? error.message : m['voice.dictation_error']();
@@ -517,10 +528,7 @@
       send({ type: 'input', sessionId: currentSessionId(), data });
       // Enter depois de um ditado: agora sim arma a captura da resposta.
       if (pendingDictation && data.includes('\r')) {
-        pendingDictation = false;
-        captureAfterDictation = true;
-        captureBuf = '';
-        scheduleSpeakFromCapture();
+        armDictationReplyCapture();
       }
     });
     sendInput = (data) => send({ type: 'input', sessionId: currentSessionId(), data });

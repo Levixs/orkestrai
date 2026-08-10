@@ -479,6 +479,11 @@ export const TOURS_ES: Tour[] = [
         body: 'Usa la esfera de colores o Alt+Espacio para grabar. El primer clic conserva el campo enfocado. Ctrl+clic o Command+clic abre los controles de posición; suelta la esfera para arrastrarla dentro del canvas visible.',
       },
       {
+        id: 'auto-submit',
+        title: 'Elige si la terminal debe enviar',
+        body: 'En Configuración → Dictado por voz, activa Enviar automáticamente en terminales para agregar Enter a la transcripción. Solo envía en terminales; kanban, roles, notas y formularios siguen recibiendo únicamente el texto.',
+      },
+      {
         id: 'fallback',
         title: 'Usa el atajo del líder en el canvas',
         body: 'Sin un campo activo, la esfera conserva el atajo anterior y envía la transcripción al líder Maestro. Creo uno para probar; sin campo ni líder, la app muestra un aviso.',

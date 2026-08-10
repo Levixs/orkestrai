@@ -11,7 +11,7 @@ html {
 }
 
 /* Focus visivel consistente (Web Interface Guidelines) */
-:focus-visible {
+:focus-visible:not([data-slot]) {
   outline: 2px solid var(--app-accent, #7C4DFF);
   outline-offset: 2px;
   border-radius: 4px;

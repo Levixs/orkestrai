@@ -479,6 +479,11 @@ export const TOURS_EN: Tour[] = [
         body: 'Use the colored orb or Alt+Space to record. The first click preserves the focused field. Ctrl-click or Command-click opens position controls; unpin the orb to drag it inside the visible canvas.',
       },
       {
+        id: 'auto-submit',
+        title: 'Choose whether the terminal sends',
+        body: 'Under Settings → Voice dictation, enable Send automatically in terminals to append Enter to the transcript. It only submits in terminals; kanban, roles, notes, and forms still only receive text.',
+      },
+      {
         id: 'fallback',
         title: 'Use the leader shortcut on the canvas',
         body: 'With no active field, the orb keeps its previous shortcut and sends the transcript to the Maestro leader. I create one to test; without a field or leader, the app shows a warning.',

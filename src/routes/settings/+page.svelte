@@ -6,6 +6,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Slider } from '$lib/components/ui/slider';
+  import { Switch } from '$lib/components/ui/switch';
   import * as Select from '$lib/components/ui/select';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { getCsrfToken } from '@beeblock/svelar/http';
@@ -463,6 +464,18 @@
       <p class="field-hint">
         {m['settings.dictation_hint']()}
       </p>
+    </div>
+
+    <div class="flex min-h-11 items-center justify-between gap-4 border-t border-[var(--line)] pt-3.5">
+      <div class="flex min-w-0 flex-col gap-1">
+        <span class="field-label">{m['settings.dictation_auto_submit']()}</span>
+        <p class="field-hint">{m['settings.dictation_auto_submit_desc']()}</p>
+      </div>
+      <Switch
+        checked={settings.dictationAutoSubmit === 'true'}
+        aria-label={m['settings.dictation_auto_submit']()}
+        onCheckedChange={(checked: boolean) => (settings = { ...settings, dictationAutoSubmit: String(checked) })}
+      />
     </div>
   </section>
 

@@ -5,6 +5,19 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.8.3 - 2026-08-10
+
+### Added
+
+- Added an opt-in voice setting that submits terminal dictation with Enter while
+  leaving regular text fields in insert-only mode.
+
+### Fixed
+
+- Rebuilt the searchable provider model selector with the official
+  shadcn-svelte combobox composition so its search field remains visible,
+  aligned, filterable, and keyboard accessible inside the agent dialog.
+
 ## 0.8.2 - 2026-08-10
 
 ### Changed

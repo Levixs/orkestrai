@@ -45,7 +45,8 @@ Download the latest installers from
   completed changes from the canvas.
 - **Local voice:** dictate into any text field or use the no-focus canvas
   shortcut for the leader, then listen to replies in Brazilian Portuguese, US
-  English, or Latin American Spanish. STT and TTS run on the user's machine.
+  English, or Latin American Spanish. Terminal dictation can optionally submit
+  with Enter; regular text fields remain insert-only. STT and TTS run locally.
 - **Quota-aware delegation:** pin Claude, Codex, and Kimi usage to the canvas,
   configure a source, fallback, and threshold, and let the leader consult the
   same recommendation through the CLI or MCP before assigning new work.

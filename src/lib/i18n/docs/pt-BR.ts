@@ -239,7 +239,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Ditar em qualquer campo de texto',
-      body: 'Clique em qualquer campo editável — título ou descrição do kanban, role, nota ou formulário — e use a bolinha de voz global ou Alt+Espaço. Já no primeiro clique, o campo é preservado e a transcrição entra exatamente no cursor, sem exigir líder. Use Ctrl+clique ou Command+clique na bolinha para fixar, soltar ou redefinir sua posição; solta, ela pode ser arrastada dentro do canvas. Sem campo ativo, o controle envia o texto ao líder.',
+      body: 'Clique em qualquer campo editável — título ou descrição do kanban, role, nota ou formulário — e use a bolinha de voz global ou Alt+Espaço. Já no primeiro clique, o campo é preservado e a transcrição entra exatamente no cursor, sem exigir líder. Em Configurações → Ditado por voz, você pode ativar o envio automático: em terminais, a transcrição também pressiona Enter; campos comuns continuam apenas recebendo o texto. Use Ctrl+clique ou Command+clique na bolinha para controlar sua posição. Sem campo ativo, o controle envia o texto ao líder.',
       tags: ['Ditado global', 'campos de texto', 'voz local'],
     },
     {
@@ -280,6 +280,13 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '10 ago 2026 · 0.8.3',
+      items: [
+        'Orkestrai 0.8.3: o seletor pesquisável de modelos agora segue a composição oficial do shadcn-svelte, abre sem cortar a busca e mantém lupa, lista e foco alinhados.',
+        'Configurações ganhou a opção de enviar automaticamente o ditado em terminais com Enter, sem submeter formulários ou outros campos de texto.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.8.2',
       items: [

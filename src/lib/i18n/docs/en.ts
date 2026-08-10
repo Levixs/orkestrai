@@ -235,7 +235,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictate into any text field',
-      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Ctrl-click or Command-click the orb to pin, unpin, or reset it; when unpinned, drag it anywhere inside the visible canvas. With no active field, the same control sends text to the leader.',
+      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Under Settings → Voice dictation, you can enable automatic sending: terminals also receive Enter after the transcript, while regular fields still only receive text. Ctrl-click or Command-click the orb to control its position. With no active field, the same control sends text to the leader.',
       tags: ['Global dictation', 'text fields', 'local voice'],
     },
     {
@@ -276,6 +276,13 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 10, 2026 · 0.8.3',
+      items: [
+        'Orkestrai 0.8.3: the searchable model selector now follows the official shadcn-svelte composition, opens without clipping search, and keeps its icon, list, and focus aligned.',
+        'Settings now offers automatic terminal dictation submission with Enter without submitting forms or other text fields.',
+      ],
+    },
     {
       date: 'Aug 10, 2026 · 0.8.2',
       items: [

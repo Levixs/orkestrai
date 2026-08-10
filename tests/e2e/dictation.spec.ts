@@ -49,4 +49,26 @@ test.describe('ditado por voz', () => {
       return (await response.json()).data?.dictationHotkey;
     }).toBe('alt+space');
   });
+
+  test('envio automatico do terminal e opt-in e persiste', async ({ page, request }) => {
+    await request.put('/api/agent-room/settings', { data: { dictationAutoSubmit: 'false' } });
+    await page.goto('/settings');
+
+    const autoSubmit = page.getByRole('switch', { name: /Enviar automaticamente|Send automatically|Enviar automáticamente/ });
+    await expect(autoSubmit).not.toBeChecked();
+    await autoSubmit.click();
+    await page.getByRole('button', { name: /Salvar|Save|Guardar/ }).first().click();
+
+    await expect.poll(async () => {
+      const response = await request.get('/api/agent-room/settings');
+      return (await response.json()).data?.dictationAutoSubmit;
+    }).toBe('true');
+
+    await autoSubmit.click();
+    await page.getByRole('button', { name: /Salvar|Save|Guardar/ }).first().click();
+    await expect.poll(async () => {
+      const response = await request.get('/api/agent-room/settings');
+      return (await response.json()).data?.dictationAutoSubmit;
+    }).toBe('false');
+  });
 });

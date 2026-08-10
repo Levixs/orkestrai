@@ -483,6 +483,11 @@ export const TOURS_PT: Tour[] = [
         body: 'Use a bolinha colorida ou Alt+Espaço para gravar. O primeiro clique preserva o campo focado. Ctrl+clique ou Command+clique abre os controles de posição; solte a bolinha para arrastá-la dentro do canvas visível.',
       },
       {
+        id: 'auto-submit',
+        title: 'Escolha se o terminal deve enviar',
+        body: 'Em Configurações → Ditado por voz, ative Enviar automaticamente no terminal para anexar Enter à transcrição. A opção só envia em terminais; kanban, roles, notas e formulários continuam apenas recebendo o texto.',
+      },
+      {
         id: 'fallback',
         title: 'Use o atalho do líder no canvas',
         body: 'Sem um campo ativo, a bolinha mantém o atalho antigo: envia a transcrição ao líder em Modo Maestro. Crio um líder para você testar; sem campo e sem líder, o app mostra um aviso.',
