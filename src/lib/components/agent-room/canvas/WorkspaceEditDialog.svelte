@@ -318,16 +318,16 @@
     justify-content: center;
     aspect-ratio: 1;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
+    border: 1px solid var(--app-border);
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
     transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
   }
 
   .icon-option:hover {
-    color: #e6e6eb;
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--app-text);
+    background: var(--app-border);
   }
 
   .icon-option.selected {
@@ -339,6 +339,6 @@
   .icon-legacy-hint {
     margin: 4px 0 0;
     font-size: 11px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 </style>

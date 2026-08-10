@@ -38,6 +38,7 @@ const USAGE = `orkestrai — ponte entre agentes do Orkestrai
 
 Uso:
   orkestrai list [--agent <seuNodeId>] [--json]
+  orkestrai usage [--json]
   orkestrai ask <agente> <mensagem> [--from <agente>] [--timeout <ms>] [--raw] [--json]
   orkestrai note read <nodeId>
   orkestrai note write <nodeId> <conteudo>
@@ -259,6 +260,23 @@ export async function run(argv, options = {}) {
       if (flags.json) out(JSON.stringify(data, null, 2));
       else out(data.reply || '(sem resposta)');
       if (data.timedOut) console.error('(aviso: resposta parcial — timeout ou interrupcao)');
+      return 0;
+    }
+    case 'usage': {
+      const data = await bridge(config, 'GET', '/api/agent-room/bridge/usage');
+      if (flags.json) {
+        out(JSON.stringify(data, null, 2));
+      } else {
+        for (const provider of data.providers ?? []) {
+          const windows = (provider.windows ?? []).map((window) => `${window.kind}: ${window.usedPercent}%`).join(', ');
+          out(`- ${provider.provider}: ${provider.status}${windows ? ` (${windows})` : ''}`);
+        }
+        if (data.shouldFallback) {
+          out(`ROTEAMENTO RECOMENDADO: novas tarefas de ${data.policy.sourceProvider} devem ir para ${data.recommendedProvider}.`);
+        } else {
+          out('Roteamento atual mantido; nenhuma troca de provider recomendada.');
+        }
+      }
       return 0;
     }
     case 'role': {

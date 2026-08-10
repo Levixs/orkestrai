@@ -63,7 +63,7 @@
   {id}
   {selected}
   class="canvas-image"
-  accent="#7DE5FF"
+  accent="var(--app-secondary)"
   minWidth={220}
   minHeight={160}
   onResize={data.onResize}

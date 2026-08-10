@@ -67,7 +67,7 @@
   }
 
   .canvas-group.selected {
-    border-color: #7DE5FF;
+    border-color: var(--app-secondary);
   }
 
   .group-header {
@@ -79,9 +79,9 @@
     gap: 6px;
     padding: 3px 10px;
     border-radius: 999px;
-    background: #262155;
+    background: var(--app-surface-raised);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #c7c8d0;
+    color: var(--app-text-soft);
     font-size: 11px;
     font-weight: 500;
     cursor: grab;
@@ -100,13 +100,13 @@
   :global(.group-ungroup) {
     border: none;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
     display: inline-flex;
     padding: 0;
   }
 
   :global(.group-ungroup):hover {
-    color: #e5484d;
+    color: var(--app-danger);
   }
 </style>

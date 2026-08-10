@@ -118,8 +118,8 @@
   .palette {
     width: 480px;
     max-width: 92vw;
-    background: #1A1742;
-    border: 1px solid #2c2c36;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
@@ -131,9 +131,9 @@
     border: none;
     outline: none;
     background: transparent;
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 14px;
-    border-bottom: 1px solid #2c2c36;
+    border-bottom: 1px solid var(--app-border);
     box-sizing: border-box;
   }
 
@@ -154,7 +154,7 @@
     border: none;
     border-radius: 7px;
     background: transparent;
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 13px;
     cursor: pointer;
     text-align: left;
@@ -166,7 +166,7 @@
   }
 
   .item-kind {
-    color: #7DE5FF;
+    color: var(--app-secondary);
   }
 
   .item-label {
@@ -177,13 +177,13 @@
   }
 
   .item-hint {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 11px;
   }
 
   .empty {
     padding: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 12px;
   }
 </style>

@@ -18,7 +18,6 @@
   let cwd = $state('');
 
   onMount(async () => {
-    document.documentElement.classList.add('dark');
     const response = await fetch('/api/agent-room/status');
     const payload = await response.json();
     providers = payload.data?.providers ?? [];

@@ -18,6 +18,7 @@ const PROTOCOL_VERSION = '2024-11-05';
 /** Tools expostas (inputSchema JSON Schema). args -> bridge no callTool(). */
 const TOOLS = [
   { name: 'list', description: 'Lista agentes do workspace (titulo, provider, sessao viva) e suas notas/portais conectados.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'usage', description: 'Consulta cotas dos providers e a recomendacao de roteamento configurada no no Usage do canvas.', inputSchema: { type: 'object', properties: {} } },
   { name: 'ask', description: 'Envia mensagem a outro agente e aguarda a resposta.', inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Titulo do agente' }, message: { type: 'string' } }, required: ['agent', 'message'] } },
   { name: 'note_read', description: 'Le uma nota pelo nodeId.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'note_write', description: 'Substitui o conteudo de uma nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, content: { type: 'string' } }, required: ['nodeId', 'content'] } },
@@ -51,6 +52,8 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
       return bridge('GET', `/api/agent-room/bridge/agents${query}`);
     }
+    case 'usage':
+      return bridge('GET', '/api/agent-room/bridge/usage');
     case 'ask':
       return bridge('POST', '/api/agent-room/bridge/ask', { to: args.agent, message: args.message, from: selfAgent });
     case 'note_read':

@@ -276,9 +276,9 @@
     width: 100%;
     padding: 3px 8px;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: #0D0B2E;
-    color: #e6e6eb;
+    border: 1px solid var(--app-border);
+    background: var(--app-canvas);
+    color: var(--app-text);
     font-size: 12px;
     font-weight: 400;
   }
@@ -297,10 +297,10 @@
   }
 
   .portal-empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 12px;
     padding: 12px;
-    background: #0D0B2E;
+    background: var(--app-canvas);
     height: 100%;
     margin: 0;
   }

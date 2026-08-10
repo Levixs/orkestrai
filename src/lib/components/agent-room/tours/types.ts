@@ -4,6 +4,7 @@ export type TourAction =
   | { kind: 'createAgent'; title: string; provider: string; leader?: boolean }
   | { kind: 'createNote'; title: string; content: string }
   | { kind: 'createTasksBoard' }
+  | { kind: 'createUsage'; title: string }
   | { kind: 'createTask'; title: string; assigneeTitle?: string }
   | { kind: 'connect'; fromTitle: string; toTitle: string }
   | { kind: 'createPortal'; url: string; title?: string }

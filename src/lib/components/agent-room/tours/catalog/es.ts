@@ -719,4 +719,52 @@ export const TOURS_ES: Tour[] = [
       },
     ],
   },
+  {
+    id: 'quota-aware-delegation',
+    icon: 'RadioTower',
+    title: 'Delegación según la cuota',
+    tagline: 'El líder ve los límites antes de distribuir trabajo nuevo.',
+    steps: [
+      {
+        id: 'add-usage',
+        title: 'Pon Uso en el canvas',
+        body: 'Creo un nodo Uso persistente con Claude como origen, Codex como fallback y un límite inicial de 90%. Consulta Claude, Codex y Kimi cada cinco minutos.',
+        action: { kind: 'createUsage', title: 'Uso de providers' },
+        check: { kind: 'nodeExists', nodeType: 'usage', titleIncludes: 'Uso de providers' },
+      },
+      {
+        id: 'set-policy',
+        title: 'Ajusta la política',
+        body: 'En el nodo, elige el origen, un fallback diferente y el porcentaje que significa "cerca del límite". La recomendación sigue el snapshot actual de las CLIs.',
+      },
+      {
+        id: 'leader-checks',
+        title: 'El líder consulta antes de delegar',
+        body: 'La skill enseña al líder a llamar orkestrai usage antes de distribuir trabajo nuevo. Recomienda un fallback saludable sin mover silenciosamente tareas o conversaciones que ya están en curso.',
+      },
+    ],
+  },
+  {
+    id: 'custom-app-theme',
+    icon: 'Palette',
+    title: 'Personalizar la apariencia',
+    tagline: 'Elige un tema listo o ajusta cada token visual de la app.',
+    steps: [
+      {
+        id: 'choose-theme',
+        title: 'Elige claro u oscuro',
+        body: 'En Configuración → Apariencia, compara Orkestrai Dark, Graphite, Midnight y Orkestrai Light. La vista previa se aplica al instante en toda la interfaz.',
+      },
+      {
+        id: 'edit-tokens',
+        title: 'Crea tu propio tema',
+        body: 'Duplica el tema más cercano y edita tokens semánticos de superficies, texto, bordes, acento, estados, cuadrícula y conexiones. Usa Guardar para conservarlo.',
+      },
+      {
+        id: 'share-theme',
+        title: 'Lleva el tema contigo',
+        body: 'Exporta el tema personalizado como JSON e impórtalo en otra instalación. El archivo se valida y no puede ejecutar CSS arbitrario.',
+      },
+    ],
+  },
 ];

@@ -43,6 +43,7 @@
   import RoutinePanel from '$lib/components/agent-room/canvas/RoutinePanel.svelte';
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
+  import UsageCanvasNode from '$lib/components/agent-room/canvas/UsageCanvasNode.svelte';
   import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
   import PresetLibraryPanel from '$lib/components/agent-room/canvas/PresetLibraryPanel.svelte';
   import AgentToolbarMenu from '$lib/components/agent-room/canvas/AgentToolbarMenu.svelte';
@@ -88,6 +89,7 @@
     tasks: TasksCanvasNode,
     flow: FlowCanvasNode,
     image: ImageCanvasNode,
+    usage: UsageCanvasNode,
   };
 
   let workspaces = $state<Workspace[]>([]);
@@ -183,7 +185,7 @@
   }
 
   // Modo "desenhar no": clique na ferramenta e arraste o retangulo no canvas.
-  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image';
+  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage';
   let drawTool = $state<DrawTool | null>(null);
   let drawStart = $state<{ x: number; y: number } | null>(null);
   let drawCurrent = $state<{ x: number; y: number } | null>(null);
@@ -214,6 +216,7 @@
     tasks: async (rect) => { await addTasksNode(rect); },
     flow: async (rect) => { await addFlowNode(rect); },
     image: async (rect) => { await addImageNode(rect); },
+    usage: async (rect) => { await addUsageNode(rect); },
   };
 
   function toggleDrawTool(tool: DrawTool, provider?: AgentProviderInfo) {
@@ -500,7 +503,6 @@
   }
 
   onMount(async () => {
-    document.documentElement.classList.add('dark');
     const eventsSocket = connectWorkspaceEvents();
     const [workspaceList, status, settingsResponse] = await Promise.all([
       api<Workspace[]>('/api/agent-room/workspaces'),
@@ -1038,6 +1040,29 @@
     nodes = [...nodes, toFlowNode(node)];
   }
 
+  async function addUsageNode(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const existing = nodes.find((node) => node.type === 'usage');
+    if (existing) {
+      jumpToNode(existing.id);
+      toast.info(m['usage.already_on_canvas']());
+      return;
+    }
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'usage',
+        title: m['usage.node_title'](),
+        ...position,
+        ...nodeSize(rect, 380, 300, 560, 440),
+        payload: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', thresholdPercent: 90 },
+        floorId: visibleFloorId,
+      }),
+    });
+    nodes = [...nodes, toFlowNode(node)];
+  }
+
   async function addFlowNode(rect?: { x: number; y: number; width: number; height: number }) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1203,6 +1228,7 @@
 
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
+    { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
     ...providers
       .filter((provider) => provider.installed && provider.tui)
       .map((provider) => ({
@@ -1616,13 +1642,13 @@
         onpointerup={handlePanePointerUp}
       >
         {#if backgroundVariant !== 'none'}
-          <Background gap={20} variant={backgroundVariant} />
+          <Background gap={20} variant={backgroundVariant} patternColor="var(--app-grid)" />
         {/if}
         {#if appSettings.showControls !== 'false'}
           <Controls />
         {/if}
         {#if appSettings.showMinimap !== 'false'}
-          <MiniMap bgColor="#1C1946" maskColor="rgba(16, 16, 20, 0.72)" nodeColor="#3a3b46" />
+          <MiniMap bgColor="var(--app-surface)" maskColor="color-mix(in srgb, var(--app-canvas) 72%, transparent)" nodeColor="var(--app-border-strong)" />
         {/if}
         <Panel position="bottom-center">
           <div class="toolbar-wrap">
@@ -1737,7 +1763,13 @@
       />
     {/if}
     {#if showUsagePanel}
-      <UsagePanel onClose={() => (showUsagePanel = false)} />
+      <UsagePanel
+        onClose={() => (showUsagePanel = false)}
+        onAddToCanvas={() => {
+          void addUsageNode();
+          showUsagePanel = false;
+        }}
+      />
     {/if}
     {#if showPortsPanel && activeWorkspace}
       <PortsPanel workspace={activeWorkspace} onClose={() => (showPortsPanel = false)} />
@@ -1830,8 +1862,8 @@
   .canvas-page {
     display: flex;
     height: 100vh;
-    background: #0D0B2E;
-    color: #e6e6eb;
+    background: var(--app-canvas);
+    color: var(--app-text);
   }
 
   .sidebar:has(.workspace-list.collapsed) {
@@ -1851,7 +1883,7 @@
     /* Largura para o cabecalho caber em UMA linha: titulo + 8 icones. */
     width: 332px;
     flex-shrink: 0;
-    border-right: 1px solid #2c2c36;
+    border-right: 1px solid var(--app-border);
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -1876,7 +1908,7 @@
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #9a9aa5;
+    color: var(--app-text-muted);
     margin: 0;
     white-space: nowrap;
   }
@@ -1886,7 +1918,7 @@
     align-items: center;
     gap: 8px;
     padding: 2px 2px 6px;
-    border-bottom: 1px solid rgba(229, 225, 255, 0.08);
+    border-bottom: 1px solid var(--app-border);
   }
 
   .brand-name {
@@ -1894,7 +1926,7 @@
     font-size: 16.5px;
     font-weight: 600;
     letter-spacing: -0.01em;
-    color: #e5e1ff;
+    color: var(--app-text);
   }
 
   .workspace-filter {
@@ -1903,15 +1935,15 @@
     gap: 7px;
     padding: 6px 9px;
     border-radius: 9px;
-    border: 1px solid rgba(229, 225, 255, 0.09);
-    background: rgba(9, 8, 32, 0.6);
-    color: #8b8c96;
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-canvas) 60%, transparent);
+    color: var(--app-text-muted);
     flex-shrink: 0;
     transition: border-color 140ms ease;
   }
 
   .workspace-filter:focus-within {
-    border-color: rgba(124, 77, 255, 0.55);
+    border-color: var(--app-accent);
   }
 
   .workspace-filter input {
@@ -1920,7 +1952,7 @@
     border: none;
     outline: none;
     background: transparent;
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 12px;
   }
 
@@ -1931,7 +1963,7 @@
   .empty-filter {
     padding: 8px;
     font-size: 12px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-style: italic;
   }
 
@@ -1967,7 +1999,7 @@
   }
 
   .workspace-list li.active {
-    background: #1e1e26;
+    background: var(--app-surface-raised);
   }
 
   .workspace-list.collapsed li {
@@ -2014,7 +2046,7 @@
   .canvas-page :global(.workspace-icon) {
     display: inline-flex;
     align-items: center;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     flex-shrink: 0;
     position: relative;
   }
@@ -2025,8 +2057,8 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #8ec98e;
-    box-shadow: 0 0 6px rgba(142, 201, 142, 0.8);
+    background: var(--app-success);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--app-success) 80%, transparent);
     margin-left: 6px;
     flex-shrink: 0;
     animation: live-pulse 2s ease-in-out infinite;
@@ -2072,7 +2104,7 @@
   .canvas-page :global(.icon-btn) {
     border: none;
     background: transparent;
-    color: #9a9aa5;
+    color: var(--app-text-muted);
     cursor: pointer;
     font-size: 15px;
     padding: 2px 6px;
@@ -2080,16 +2112,16 @@
   }
 
   .canvas-page :global(.icon-btn:hover) {
-    color: #e6e6eb;
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--app-text);
+    background: var(--app-border);
   }
 
   .canvas-page :global(.icon-btn.danger:hover) {
-    color: #e5484d;
+    color: var(--app-danger);
   }
 
   .empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 12px;
     padding: 8px;
   }
@@ -2106,12 +2138,12 @@
   .canvas-area :global(.svelte-flow) {
     flex: 1;
     min-width: 0;
-    background: #0D0B2E;
+    background: var(--app-canvas);
   }
 
   .canvas-area :global(.svelte-flow__minimap) {
-    background: #1C1946;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
     border-radius: 10px;
     overflow: hidden;
   }
@@ -2124,36 +2156,36 @@
   }
 
   .canvas-area :global(.svelte-flow__controls-button) {
-    background: #1C1946;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    color: #c7c8d0;
+    background: var(--app-surface);
+    border-bottom: 1px solid var(--app-border);
+    color: var(--app-text-soft);
   }
 
   .canvas-area :global(.svelte-flow__controls-button:hover) {
-    background: #26272e;
+    background: var(--app-surface-raised);
   }
 
   .canvas-area :global(.svelte-flow__controls-button svg) {
-    fill: #c7c8d0;
+    fill: var(--app-text-soft);
   }
 
   .canvas-area :global(.svelte-flow__edge-path) {
-    stroke: #4A4580;
+    stroke: var(--app-edge);
     stroke-width: 1.6;
   }
 
   .canvas-area :global(.svelte-flow__edge.selected .svelte-flow__edge-path) {
-    stroke: #7C4DFF;
+    stroke: var(--app-accent);
   }
 
   .canvas-area :global(.svelte-flow__connectionline path) {
-    stroke: #7C4DFF;
+    stroke: var(--app-accent);
     stroke-width: 1.6;
   }
 
   .canvas-area :global(.svelte-flow__attribution) {
     background: transparent;
-    color: #4a4a55;
+    color: var(--app-text-muted);
   }
 
   /* Labels de edge (X de remover) acima dos nos; o tema default do xyflow
@@ -2180,16 +2212,16 @@
 
   .draw-ghost {
     position: absolute;
-    border: 1.5px dashed #7C4DFF;
-    background: rgba(91, 141, 239, 0.08);
+    border: 1.5px dashed var(--app-accent);
+    background: color-mix(in srgb, var(--app-accent) 8%, transparent);
     border-radius: 10px;
     z-index: 40;
     pointer-events: none;
   }
 
   .toolbar button.active {
-    background: rgba(91, 141, 239, 0.2);
-    color: #fff;
+    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
+    color: var(--app-text);
   }
 
   .toolbar-wrap {
@@ -2207,9 +2239,9 @@
     height: 26px;
     flex-shrink: 0;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(27, 28, 33, 0.92);
-    color: #c7c8d0;
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface-raised) 92%, transparent);
+    color: var(--app-text-soft);
     cursor: pointer;
     backdrop-filter: blur(12px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
@@ -2217,8 +2249,8 @@
   }
 
   .toolbar-arrow:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    background: var(--app-surface-raised);
+    color: var(--app-text);
   }
 
   .toolbar {
@@ -2226,8 +2258,8 @@
     gap: 4px;
     padding: 6px 8px;
     border-radius: 999px;
-    background: rgba(27, 28, 33, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--app-surface-raised) 92%, transparent);
+    border: 1px solid var(--app-border);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(12px);
     /* Muitos botoes (providers + paineis): rola em vez de cortar fora da tela.
@@ -2252,7 +2284,7 @@
     border-radius: 10px;
     border: none;
     background: transparent;
-    color: #c7c8d0;
+    color: var(--app-text-soft);
     cursor: pointer;
     font-size: 10.5px;
     font-weight: 500;
@@ -2267,7 +2299,7 @@
 
   .toolbar .tool-icon-svg {
     flex-shrink: 0;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .toolbar button.active .tool-icon-svg,
@@ -2276,8 +2308,8 @@
   }
 
   .toolbar button:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: #fff;
+    background: var(--app-border);
+    color: var(--app-text);
   }
 
   .toolbar button:disabled {
@@ -2287,7 +2319,7 @@
 
   .toolbar-sep {
     width: 1px;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--app-border);
     margin: 4px 4px;
   }
 
@@ -2300,7 +2332,7 @@
     gap: 10px;
     height: 100%;
     text-align: center;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .canvas-empty img {
@@ -2312,9 +2344,9 @@
     bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(229, 72, 77, 0.15);
-    border: 1px solid #e5484d;
-    color: #ffb3b6;
+    background: color-mix(in srgb, var(--app-danger) 15%, transparent);
+    border: 1px solid var(--app-danger);
+    color: var(--app-danger);
     padding: 6px 14px;
     border-radius: 8px;
     font-size: 12px;
@@ -2325,9 +2357,9 @@
     bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(61, 214, 140, 0.12);
-    border: 1px solid rgba(61, 214, 140, 0.55);
-    color: #8ff0c0;
+    background: color-mix(in srgb, var(--app-success) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-success) 55%, transparent);
+    color: var(--app-success);
     padding: 6px 14px;
     border-radius: 8px;
     font-size: 12px;

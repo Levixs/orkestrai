@@ -109,7 +109,7 @@
   {id}
   {selected}
   class="canvas-diff"
-  accent="#7DE5FF"
+  accent="var(--app-secondary)"
   minWidth={380}
   minHeight={240}
   onResize={data.onResize}
@@ -177,7 +177,7 @@
 <style>
   .branch-badge {
     font-size: 11px;
-    color: #8ec98e;
+    color: var(--app-success);
     background: rgba(142, 201, 142, 0.12);
     padding: 1px 7px;
     border-radius: 8px;
@@ -192,7 +192,7 @@
 
   .change-list {
     overflow-y: auto;
-    border-right: 1px solid #1e1e26;
+    border-right: 1px solid var(--app-surface-raised);
     padding: 4px;
   }
 
@@ -203,7 +203,7 @@
   }
 
   .change-row.active {
-    background: #1e1e26;
+    background: var(--app-surface-raised);
   }
 
   .change-open {
@@ -224,12 +224,12 @@
   }
 
   .change-status {
-    color: #FFC857;
+    color: var(--app-warning);
     font-weight: 700;
   }
 
   .change-status.staged {
-    color: #8ec98e;
+    color: var(--app-success);
   }
 
   .change-actions {
@@ -239,14 +239,14 @@
   .change-actions button {
     border: none;
     background: transparent;
-    color: #9a9aa5;
+    color: var(--app-text-muted);
     cursor: pointer;
     font-size: 11px;
     padding: 1px 3px;
   }
 
   .change-actions button:hover {
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .diff-view {
@@ -257,7 +257,7 @@
   .diff-path {
     margin: 0 0 6px;
     font-size: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .diff-text {
@@ -270,7 +270,7 @@
   }
 
   .diff-add {
-    color: #8ec98e;
+    color: var(--app-success);
     background: rgba(142, 201, 142, 0.08);
     display: block;
   }
@@ -282,17 +282,17 @@
   }
 
   .diff-hunk {
-    color: #7DE5FF;
+    color: var(--app-secondary);
     display: block;
   }
 
   .diff-meta {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     display: block;
   }
 
   .empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 11px;
     padding: 8px;
   }
@@ -302,6 +302,6 @@
     padding: 4px 10px;
     font-size: 11px;
     color: #ffb3b6;
-    border-top: 1px solid #1e1e26;
+    border-top: 1px solid var(--app-surface-raised);
   }
 </style>

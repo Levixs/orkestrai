@@ -132,7 +132,7 @@
     {#each filtered as preset (preset.id)}
       <article class="rounded-md border border-white/10 bg-white/[0.035] p-3 transition-colors hover:border-cyan-300/30 hover:bg-white/[0.055]">
         <div class="flex items-start gap-3">
-          <span class="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-[#1c1946] text-cyan-200">
+          <span class="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-[var(--app-surface)] text-cyan-200">
             <WorkspaceIcon name={preset.icon} size={17} />
           </span>
           <div class="min-w-0 flex-1">

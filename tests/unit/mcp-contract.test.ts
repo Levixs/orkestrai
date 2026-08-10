@@ -41,6 +41,7 @@ type Expectation = { method: string; path: RegExp; schema?: z.ZodTypeAny };
 
 const EXPECTED: Record<string, Expectation> = {
   list: { method: 'GET', path: /\/bridge\/agents\?/ },
+  usage: { method: 'GET', path: /\/bridge\/usage$/ },
   ask: { method: 'POST', path: /\/bridge\/ask$/, schema: bridgeAskSchema },
   note_read: { method: 'GET', path: /\/bridge\/notes\/n1$/ },
   note_write: { method: 'PUT', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteWriteSchema },

@@ -186,7 +186,7 @@
 
   const talking = $derived(Boolean((data as { talking?: boolean } | undefined)?.talking));
   const pinned = $derived(Boolean((data as { pinned?: boolean } | undefined)?.pinned));
-  const stroke = $derived(talking ? '#8ec98e' : pinned ? '#7C4DFF' : '#4A4580');
+  const stroke = $derived(talking ? 'var(--app-success)' : pinned ? 'var(--app-accent)' : 'var(--app-edge)');
 
   // O X so aparece com hover na corda (ou no proprio botao) ou com a edge
   // selecionada/pinned — escondido ele nao intercepta cliques do canvas.
@@ -282,8 +282,8 @@
   }
 
   .edge-delete:hover {
-    background: #e5484d;
-    border-color: #e5484d;
+    background: var(--app-danger);
+    border-color: var(--app-danger);
     color: #fff;
     transform: scale(1.1);
   }

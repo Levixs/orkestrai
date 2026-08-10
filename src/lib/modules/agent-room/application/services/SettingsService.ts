@@ -3,6 +3,8 @@ import { DEFAULT_EMBEDDED_TTS_SPEED, DEFAULT_EMBEDDED_TTS_VOICE } from '../../do
 
 const DEFAULTS: Record<string, string> = {
   uiLanguage: 'en',
+  appTheme: 'orkestrai-dark',
+  customAppThemes: '[]',
   terminalTheme: 'dark',
   showMinimap: 'true',
   showControls: 'true',

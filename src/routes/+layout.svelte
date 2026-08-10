@@ -7,6 +7,8 @@
   import UpdateNotifier from '$lib/components/agent-room/UpdateNotifier.svelte';
   import GlobalDictation from '$lib/components/agent-room/GlobalDictation.svelte';
   import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
+  import { appSettingsStore } from '$lib/components/agent-room/app-settings.svelte.js';
+  import { applyAppTheme } from '$lib/components/agent-room/app-themes.js';
 
   type DesktopMenuBridge = {
     setMenuLocale?: (locale: string) => Promise<string>;
@@ -30,10 +32,17 @@
   let { children } = $props();
   let localeReady = $state(false);
 
+  $effect(() => {
+    applyAppTheme(appSettingsStore.values);
+  });
+
   onMount(() => {
     // Nao libere interacao antes da preferencia inicial chegar: caso contrario
     // o remount de locale pode descartar um clique feito durante o startup.
-    void initLocaleRuntime().finally(() => (localeReady = true));
+    void initLocaleRuntime().finally(() => {
+      applyAppTheme(appSettingsStore.values);
+      localeReady = true;
+    });
     // Cmd/Ctrl+K global: de qualquer tela, abre a busca da documentacao.
     const docsSearchShortcut = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;

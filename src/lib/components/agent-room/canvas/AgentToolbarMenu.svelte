@@ -132,7 +132,7 @@
     border: 0;
     border-radius: 8px;
     background: transparent;
-    color: #c7c8d0;
+    color: var(--app-text-soft);
     font-family: inherit;
     font-size: 10.5px;
     font-weight: 500;
@@ -146,7 +146,7 @@
   :global(.agents-trigger > svg:first-child) {
     grid-column: 1 / 4;
     justify-self: center;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   :global(.agents-trigger > span) {
@@ -156,7 +156,7 @@
 
   :global(.agents-trigger .agents-chevron) {
     grid-column: 3;
-    color: #777984;
+    color: var(--app-text-muted);
     transition: transform 120ms ease;
   }
 
@@ -167,12 +167,12 @@
   :global(.agents-trigger:hover),
   :global(.agents-trigger[data-state='open']),
   :global(.agents-trigger.active) {
-    background: rgba(91, 141, 239, 0.2);
-    color: #fff;
+    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
+    color: var(--app-text);
   }
 
   :global(.agents-trigger:focus-visible) {
-    outline: 2px solid #7c9dff;
+    outline: 2px solid var(--app-accent);
     outline-offset: 2px;
   }
 
@@ -202,8 +202,8 @@
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.06);
-    color: #aeb0ba;
+    background: var(--app-border);
+    color: var(--app-text-soft);
     flex-shrink: 0;
   }
 
@@ -229,12 +229,12 @@
   }
 
   :global(.provider-menu-copy small) {
-    color: #83858f;
+    color: var(--app-text-muted);
     font-size: 10.5px;
   }
 
   :global(.provider-setup-icon) {
-    color: #83858f;
+    color: var(--app-text-muted);
   }
 
   :global(.pin-provider-name) {

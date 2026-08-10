@@ -38,7 +38,7 @@
     border-radius: 10px;
     border: none;
     background: transparent;
-    color: #c7c8d0;
+    color: var(--app-text-soft);
     cursor: pointer;
     font-size: 10.5px;
     font-weight: 500;
@@ -48,13 +48,13 @@
   }
 
   button:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: #fff;
+    background: var(--app-border);
+    color: var(--app-text);
   }
 
   button.active {
-    background: rgba(91, 141, 239, 0.2);
-    color: #fff;
+    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
+    color: var(--app-text);
   }
 
   button:disabled {
@@ -63,7 +63,7 @@
   }
 
   button :global(.tool-icon-svg) {
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   button.active :global(.tool-icon-svg),
@@ -71,4 +71,3 @@
     color: currentColor;
   }
 </style>
-

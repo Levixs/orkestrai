@@ -191,6 +191,20 @@ async function runAction(action: TourAction): Promise<void> {
         });
         break;
       }
+      case 'createUsage': {
+        await api(`/api/agent-room/workspaces/${workspaceId}/nodes`, {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'usage',
+            title: action.title,
+            ...nextPosition(),
+            width: 560,
+            height: 440,
+            payload: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', thresholdPercent: 90 },
+          }),
+        });
+        break;
+      }
       case 'createTask': {
         const assigneeNodeId = action.assigneeTitle ? await findNodeId(action.assigneeTitle) : null;
         await api(`/api/agent-room/workspaces/${workspaceId}/tasks`, {

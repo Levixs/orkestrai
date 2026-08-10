@@ -45,7 +45,7 @@
     stroke: '#7C4DFF',
     strokeWidth: 2,
     strokeDash: false,
-    textColor: '#e6e6eb',
+    textColor: '#ffffff',
     fontSize: 12,
     fontWeight: 500,
     textAlign: 'center',
@@ -55,7 +55,7 @@
   const shape = $derived(data.payload.shape ?? 'rectangle');
   const label = $derived(data.payload.label ?? data.title ?? '');
 
-  const SWATCHES = ['#7C4DFF', '#00BFFF', '#FFC857', '#3dd68c', '#e5484d', '#e6e6eb', '#8b8c96', 'transparent'];
+  const SWATCHES = ['#7C4DFF', '#00BFFF', '#FFC857', '#3dd68c', '#e5484d', '#ffffff', '#8b8c96', 'transparent'];
 
   function patch(partial: Record<string, unknown>) {
     data.onPayloadChange?.(id, partial);
@@ -403,7 +403,7 @@
 
         <span class="pop-label">{m['shape.lbl_text']()}</span>
         <div class="swatches">
-          {#each ['#e6e6eb', '#8b8c96', '#7C4DFF', '#00BFFF', '#FFC857', '#3dd68c', '#e5484d'] as swatch (swatch)}
+          {#each ['#ffffff', '#8b8c96', '#7C4DFF', '#00BFFF', '#FFC857', '#3dd68c', '#e5484d'] as swatch (swatch)}
             <button
               class="swatch"
               class:active={style.textColor === swatch}
@@ -573,14 +573,14 @@
 
   .arrow-anchor {
     fill: #fff;
-    stroke: var(--accent, #7c4dff);
+    stroke: var(--accent, var(--app-accent));
     stroke-width: 2;
     cursor: grab;
     pointer-events: all;
   }
 
   .arrow-anchor:hover {
-    fill: #7c4dff;
+    fill: var(--app-accent);
   }
 
   .arrow-anchor:active {
@@ -617,8 +617,8 @@
     height: 20px;
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #262155;
-    color: #8b8c96;
+    background: var(--app-surface-raised);
+    color: var(--app-text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -627,7 +627,7 @@
   }
 
   :global(.shape-delete):hover {
-    color: #e5484d;
+    color: var(--app-danger);
   }
 
   :global(.shape-settings) {
@@ -638,8 +638,8 @@
     height: 20px;
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #262155;
-    color: #8b8c96;
+    background: var(--app-surface-raised);
+    color: var(--app-text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -649,7 +649,7 @@
 
   :global(.shape-settings:hover),
   .shape-settings.style-open {
-    color: #7c4dff;
+    color: var(--app-accent);
     border-color: rgba(124, 77, 255, 0.5);
   }
 
@@ -660,7 +660,7 @@
     width: 264px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
-    background: #1C1946;
+    background: var(--app-surface);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
     padding: 10px 12px 12px;
     user-select: none;
@@ -672,8 +672,8 @@
     gap: 6px;
     margin: -4px -6px 10px;
     padding: 6px 6px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    color: #8b8c96;
+    border-bottom: 1px solid var(--app-border);
+    color: var(--app-text-muted);
     font-size: 11px;
     font-weight: 600;
     cursor: grab;
@@ -691,7 +691,7 @@
   .style-panel-close {
     border: none;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
     display: inline-flex;
     padding: 2px;
@@ -699,8 +699,8 @@
   }
 
   .style-panel-close:hover {
-    color: #e5484d;
-    background: rgba(255, 255, 255, 0.07);
+    color: var(--app-danger);
+    background: var(--app-border);
   }
 
   .pop-grid {
@@ -712,7 +712,7 @@
 
   .pop-label {
     font-size: 11px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .pop-row {
@@ -723,14 +723,14 @@
 
   .pop-value {
     font-size: 10px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     min-width: 28px;
     text-align: right;
   }
 
   .pop-hint {
     font-size: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     line-height: 1.4;
   }
 
@@ -761,7 +761,7 @@
   .mini-toggle {
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     font-size: 10px;
     border-radius: 6px;
     padding: 3px 8px;
@@ -771,6 +771,6 @@
   .mini-toggle.active {
     background: rgba(124, 77, 255, 0.2);
     border-color: rgba(124, 77, 255, 0.5);
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 </style>

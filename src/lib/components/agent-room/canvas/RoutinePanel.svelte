@@ -212,8 +212,8 @@
   .side-panel {
     width: 300px;
     flex-shrink: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
-    background: #151238;
+    border-left: 1px solid var(--app-border);
+    background: var(--app-sidebar);
     padding: 12px;
     overflow-y: auto;
     display: flex;
@@ -232,15 +232,15 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .routine-item {
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--app-border);
     border-radius: 10px;
     padding: 8px;
     font-size: 12px;
-    background: #1C1946;
+    background: var(--app-surface);
   }
 
   .routine-item.disabled {
@@ -248,14 +248,14 @@
   }
 
   .routine-info small {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     display: block;
   }
 
   .routine-prompt {
     margin: 4px 0 0;
     font-size: 11px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -271,10 +271,10 @@
     list-style: none;
     margin: 6px 0 0;
     padding: 6px;
-    background: #0D0B2E;
+    background: var(--app-canvas);
     border-radius: 6px;
     font-size: 10px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     max-height: 120px;
     overflow-y: auto;
   }
@@ -284,7 +284,7 @@
   }
 
   .empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 11px;
   }
 
@@ -292,19 +292,19 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--app-border);
     padding-top: 10px;
   }
   .editing-hint {
     margin: 0;
     font-size: 11px;
-    color: #FFC857;
+    color: var(--app-warning);
   }
 
   .link-btn {
     border: none;
     background: transparent;
-    color: #7DE5FF;
+    color: var(--app-secondary);
     cursor: pointer;
     font-size: 11px;
     padding: 0;

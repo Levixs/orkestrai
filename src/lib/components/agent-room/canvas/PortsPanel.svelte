@@ -209,8 +209,8 @@
   .ports-panel {
     width: 300px;
     flex-shrink: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
-    background: #151238;
+    border-left: 1px solid var(--app-border);
+    background: var(--app-sidebar);
     padding: 12px;
     overflow-y: auto;
     display: flex;
@@ -235,7 +235,7 @@
 
   .panel-heading {
     gap: 7px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .panel-heading h3 {
@@ -255,7 +255,7 @@
     margin: 0;
     font-size: 11px;
     line-height: 1.45;
-    color: #77778a;
+    color: var(--app-text-muted);
   }
 
   .port-list {
@@ -270,9 +270,9 @@
     flex-direction: column;
     gap: 9px;
     padding: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
-    background: #1c1946;
+    background: var(--app-surface);
   }
 
   .port-card:has(:global(.kill-button)) {
@@ -303,13 +303,13 @@
   }
 
   .status-dot.listening {
-    background: #3dd68c;
+    background: var(--app-success);
     box-shadow: 0 0 8px rgba(61, 214, 140, 0.55);
   }
 
   .status-label {
     font-size: 10px;
-    color: #77778a;
+    color: var(--app-text-muted);
   }
 
   .status-label.listening {
@@ -352,7 +352,7 @@
 
   code {
     overflow: hidden;
-    color: #77778a;
+    color: var(--app-text-muted);
     font: 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -406,28 +406,28 @@
   }
 
   .panel-state.error {
-    color: #ffc857;
+    color: var(--app-warning);
   }
 
   .panel-state button {
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 6px;
     padding: 5px 9px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-border);
     color: #d8d6e4;
     font: inherit;
     cursor: pointer;
   }
 
   .refresh-error {
-    color: #ffc857;
+    color: var(--app-warning);
   }
 
   footer {
     margin-top: auto;
     padding-top: 8px;
     text-align: center;
-    color: #55556a;
+    color: var(--app-text-muted);
   }
 
   :global(.spinning) {

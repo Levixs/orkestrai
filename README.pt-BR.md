@@ -47,8 +47,13 @@ Baixe os instaladores mais recentes em
 - **Voz local:** dite em qualquer campo de texto ou use o atalho do canvas sem
   foco para o líder e ouça respostas em português brasileiro, inglês americano
   ou espanhol latino-americano. STT e TTS rodam na máquina do usuário.
-- **Controles operacionais:** acompanhe o usage dos providers, gerencie portas de
-  portais locais, configure rotinas recorrentes e instale skills pelo marketplace.
+- **Delegação por cota:** fixe o uso de Claude, Codex e Kimi no canvas, configure
+  origem, fallback e limite e deixe o líder consultar a mesma recomendação pela
+  CLI ou ponte MCP antes de atribuir trabalho novo.
+- **Aparência personalizada:** escolha entre três temas escuros e um claro ou
+  duplique um deles e edite tokens semânticos com prévia e importação/exportação JSON.
+- **Controles operacionais:** gerencie portas de portais locais, configure rotinas
+  recorrentes e instale skills pelo marketplace.
 - **Central de Providers:** detecte localmente as oito CLIs compatíveis, siga a
   instalação adequada ao sistema e o login oficial, e veja capacidades sem
   enviar credenciais dos providers ao Orkestrai.

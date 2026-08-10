@@ -9,6 +9,8 @@ import { filesystemService } from '$lib/modules/agent-room/application/services/
 import { bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { portalService } from '$lib/modules/agent-room/application/services/PortalService.js';
+import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
+import { buildUsageRoutingReport } from '$lib/modules/agent-room/domain/usage-routing.js';
 import { z } from 'zod';
 import {
   BridgeAskRequest,
@@ -38,6 +40,17 @@ export class BridgeController extends Controller {
       return this.json({ data: { workspace: { id: workspace.id, name: workspace.name }, agents, notes, portals } });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao listar agentes.', 401);
+    }
+  }
+
+  async usage(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const nodes = await workspaceRepository.listNodes(workspace.id);
+      const policy = nodes.find((node) => node.type === 'usage')?.payload ?? undefined;
+      return this.json({ data: buildUsageRoutingReport(await usageService.getAll(false), policy) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao consultar uso dos providers.', 401);
     }
   }
 

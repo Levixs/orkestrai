@@ -358,8 +358,8 @@
   .side-panel {
     width: 300px;
     flex-shrink: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
-    background: #151238;
+    border-left: 1px solid var(--app-border);
+    background: var(--app-sidebar);
     padding: 12px;
     overflow-y: auto;
     display: flex;
@@ -378,7 +378,7 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .panel-header-actions {
@@ -394,16 +394,16 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--app-border);
     padding-top: 10px;
   }
 
   .landing-preview {
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--app-border);
     border-radius: 10px;
     padding: 10px;
     font-size: 11px;
-    background: #1C1946;
+    background: var(--app-surface);
   }
 
   .landing-preview h4 {
@@ -411,14 +411,14 @@
   }
 
   .preview-route {
-    color: #8b8c96;
+    color: var(--app-text-muted);
     margin: 0 0 6px;
   }
 
   .landing-preview pre {
     font-size: 10px;
     overflow-x: auto;
-    background: #0D0B2E;
+    background: var(--app-canvas);
     padding: 6px;
     border-radius: 6px;
   }
@@ -428,7 +428,7 @@
   }
 
   .muted {
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .preview-actions {
@@ -441,7 +441,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--app-border);
     padding-top: 10px;
   }
 
@@ -455,6 +455,6 @@
     flex-direction: column;
     gap: 3px;
     font-size: 10px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 </style>

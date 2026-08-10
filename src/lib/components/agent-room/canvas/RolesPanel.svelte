@@ -305,8 +305,8 @@
   .side-panel {
     width: 360px;
     flex-shrink: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
-    background: #151238;
+    border-left: 1px solid var(--app-border);
+    background: var(--app-sidebar);
     padding: 12px;
     overflow-y: auto;
     display: flex;
@@ -325,7 +325,7 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .panel-header-actions {
@@ -336,7 +336,7 @@
   .hint {
     margin: 0;
     font-size: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     line-height: 1.5;
   }
 
@@ -344,10 +344,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--app-border);
     border-radius: 10px;
     padding: 8px;
-    background: #1C1946;
+    background: var(--app-surface);
   }
 
   .role-color {
@@ -364,17 +364,17 @@
   }
 
   .role-info small {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 10px;
   }
 
   .empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 11px;
   }
 
   .info {
-    color: #8ec98e;
+    color: var(--app-success);
     font-size: 11px;
   }
 
@@ -382,19 +382,19 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--app-border);
     padding-top: 10px;
   }
   .editing-hint {
     margin: 0;
     font-size: 11px;
-    color: #FFC857;
+    color: var(--app-warning);
   }
 
   .link-btn {
     border: none;
     background: transparent;
-    color: #7DE5FF;
+    color: var(--app-secondary);
     cursor: pointer;
     font-size: 11px;
     padding: 0;
@@ -422,7 +422,7 @@
   .prompt-tabs button {
     border: none;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     font-size: 10px;
     padding: 3px 10px;
     cursor: pointer;
@@ -430,7 +430,7 @@
 
   .prompt-tabs button.active {
     background: rgba(124, 77, 255, 0.2);
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .md-preview {
@@ -443,11 +443,11 @@
     padding: 10px 12px;
     font-size: 12px;
     line-height: 1.55;
-    color: #d7d8de;
+    color: var(--app-text-soft);
   }
 
   .md-preview :global(h1), .md-preview :global(h2), .md-preview :global(h3) {
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 13px;
     margin: 10px 0 4px;
   }
@@ -461,15 +461,15 @@
   .md-preview :global(li) { margin: 2px 0; }
 
   .md-preview :global(code) {
-    background: #262155;
+    background: var(--app-surface-raised);
     border-radius: 4px;
     padding: 1px 5px;
     font-size: 11px;
   }
 
   .md-preview :global(pre) {
-    background: #0d0b2e;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--app-canvas);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
     padding: 8px 10px;
     overflow-x: auto;
@@ -482,18 +482,18 @@
   }
 
   .md-preview :global(blockquote) {
-    border-left: 3px solid #7c4dff;
+    border-left: 3px solid var(--app-accent);
     margin: 8px 0;
     padding: 2px 10px;
     color: #b7b8c4;
   }
 
-  .md-preview :global(a) { color: #7de5ff; }
-  .md-preview :global(strong) { color: #e6e6eb; }
+  .md-preview :global(a) { color: var(--app-secondary); }
+  .md-preview :global(strong) { color: var(--app-text); }
 
   .md-empty {
     font-size: 11px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-style: italic;
   }
 </style>

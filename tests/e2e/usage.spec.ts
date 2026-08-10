@@ -17,14 +17,15 @@ test.describe('usage dos providers', () => {
 
   test('painel de usage abre no canvas e mostra cards', async ({ page, request }) => {
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-e2e-usage-'));
+    const workspaceName = `E2E usage ${Date.now()}`;
     const created = await request.post('/api/agent-room/workspaces', {
-      data: { name: `E2E usage ${Date.now()}`, workingDir: dir },
+      data: { name: workspaceName, workingDir: dir },
     });
     const workspace = (await created.json()).data as { id: string };
 
     try {
       await page.goto('/canvas');
-      await page.locator('.workspace-list .workspace-item', { hasText: 'E2E usage' }).click();
+      await page.getByRole('button', { name: workspaceName, exact: true }).click();
       await page.getByRole('button', { name: /Usage/ }).click();
 
       await expect(page.locator('.usage-panel h3')).toHaveText('Uso dos providers');
@@ -34,6 +35,18 @@ test.describe('usage dos providers', () => {
       for (const card of await cards.all()) {
         await expect(card.locator('.window-row, .usage-error, .hint').first()).toBeVisible();
       }
+
+      await page.getByRole('button', { name: /Adicionar Uso ao canvas/i }).click();
+      await expect(page.locator('.canvas-usage')).toBeVisible();
+      await expect(page.locator('.canvas-usage .routing-policy')).toContainText('Roteamento');
+
+      const nodes = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes`)).json()).data as Array<{ type: string; payload: Record<string, unknown> }>;
+      expect(nodes.find((node) => node.type === 'usage')?.payload).toMatchObject({
+        enabled: true,
+        sourceProvider: 'claude',
+        fallbackProvider: 'codex',
+        thresholdPercent: 90,
+      });
     } finally {
       await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
     }

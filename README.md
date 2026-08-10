@@ -46,8 +46,13 @@ Download the latest installers from
 - **Local voice:** dictate into any text field or use the no-focus canvas
   shortcut for the leader, then listen to replies in Brazilian Portuguese, US
   English, or Latin American Spanish. STT and TTS run on the user's machine.
-- **Operational controls:** inspect provider usage, manage local portal ports,
-  configure recurring routines, and install skills from the marketplace.
+- **Quota-aware delegation:** pin Claude, Codex, and Kimi usage to the canvas,
+  configure a source, fallback, and threshold, and let the leader consult the
+  same recommendation through the CLI or MCP before assigning new work.
+- **Custom appearance:** choose from three dark themes and one light theme, or
+  duplicate one and edit semantic tokens with live preview and JSON import/export.
+- **Operational controls:** manage local portal ports, configure recurring
+  routines, and install skills from the marketplace.
 - **Provider Center:** detect all eight supported CLIs locally, follow OS-aware
   installation and official sign-in guidance, and inspect capabilities without
   sending provider credentials to Orkestrai.

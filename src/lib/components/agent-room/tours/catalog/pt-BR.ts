@@ -723,4 +723,52 @@ export const TOURS_PT: Tour[] = [
       },
     ],
   },
+  {
+    id: 'quota-aware-delegation',
+    icon: 'RadioTower',
+    title: 'Delegação por cota',
+    tagline: 'O líder enxerga os limites antes de distribuir trabalho novo.',
+    steps: [
+      {
+        id: 'add-usage',
+        title: 'Coloque Uso no canvas',
+        body: 'Crio um nó Uso persistente com Claude como origem, Codex como fallback e limite inicial de 90%. Ele acompanha Claude, Codex e Kimi a cada cinco minutos.',
+        action: { kind: 'createUsage', title: 'Uso dos providers' },
+        check: { kind: 'nodeExists', nodeType: 'usage', titleIncludes: 'Uso dos providers' },
+      },
+      {
+        id: 'set-policy',
+        title: 'Ajuste a política',
+        body: 'No nó, escolha a origem, um fallback diferente e o percentual que significa "perto do limite". A indicação muda com o snapshot atual das CLIs.',
+      },
+      {
+        id: 'leader-checks',
+        title: 'O líder consulta antes de delegar',
+        body: 'A skill ensina o líder a chamar orkestrai usage antes de distribuir trabalho novo. Ele recomenda um fallback saudável sem mover silenciosamente tarefas ou conversas que já estão em execução.',
+      },
+    ],
+  },
+  {
+    id: 'custom-app-theme',
+    icon: 'Palette',
+    title: 'Personalizar a aparência',
+    tagline: 'Escolha um tema pronto ou ajuste cada token visual do app.',
+    steps: [
+      {
+        id: 'choose-theme',
+        title: 'Escolha claro ou escuro',
+        body: 'Em Configurações → Aparência, compare Orkestrai Dark, Graphite, Midnight e Orkestrai Light. A prévia se aplica imediatamente em toda a interface.',
+      },
+      {
+        id: 'edit-tokens',
+        title: 'Crie seu próprio tema',
+        body: 'Duplique o tema mais próximo e edite tokens semânticos de superfícies, textos, bordas, destaque, estados, grade e conexões. Use Salvar para persistir.',
+      },
+      {
+        id: 'share-theme',
+        title: 'Leve o tema com você',
+        body: 'Exporte o tema personalizado como JSON e importe em outra instalação. O arquivo é validado e não executa CSS arbitrário.',
+      },
+    ],
+  },
 ];

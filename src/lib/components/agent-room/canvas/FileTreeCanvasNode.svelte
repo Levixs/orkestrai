@@ -187,7 +187,7 @@
   {id}
   {selected}
   class="canvas-filetree"
-  accent="#8ec98e"
+  accent="var(--app-success)"
   minWidth={260}
   minHeight={200}
   onResize={data.onResize}
@@ -314,14 +314,14 @@
     align-items: center;
     border: none;
     background: transparent;
-    color: #8ec98e;
+    color: var(--app-success);
     cursor: pointer;
     padding: 2px;
     border-radius: 5px;
   }
 
   .git-menu-trigger:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--app-border);
   }
 
   .tree-search {
@@ -329,8 +329,8 @@
     align-items: center;
     gap: 5px;
     padding: 4px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    color: #6d6d78;
+    border-bottom: 1px solid var(--app-border);
+    color: var(--app-text-muted);
   }
 
   .tree-search input {
@@ -345,7 +345,7 @@
   .search-results {
     max-height: 160px;
     overflow-y: auto;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--app-border);
   }
 
   .search-result {
@@ -360,17 +360,17 @@
   }
 
   .search-result:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--app-border);
   }
 
   .result-path {
     font-size: 11px;
-    color: #7DE5FF;
+    color: var(--app-secondary);
   }
 
   .result-preview {
     font-size: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -401,7 +401,7 @@
     gap: 3px;
     font-size: 10px;
     font-weight: 400;
-    color: #8ec98e;
+    color: var(--app-success);
     background: rgba(142, 201, 142, 0.12);
     padding: 1px 7px;
     border-radius: 8px;
@@ -412,8 +412,8 @@
     margin: 0;
     padding: 3px 10px;
     font-size: 10px;
-    color: #6d6d78;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--app-text-muted);
+    border-bottom: 1px solid var(--app-border);
   }
 
   .tree-body {
@@ -439,12 +439,12 @@
   }
 
   .tree-entry:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--app-border);
   }
 
   .entry-icon {
     display: inline-flex;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .entry-name {
@@ -456,7 +456,7 @@
 
   .entry-status {
     font-size: 10px;
-    color: #FFC857;
+    color: var(--app-warning);
     font-weight: 600;
   }
 
@@ -467,7 +467,7 @@
   }
 
   .empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 11px;
     padding: 6px;
   }

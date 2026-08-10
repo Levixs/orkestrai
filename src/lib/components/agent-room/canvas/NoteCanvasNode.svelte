@@ -10,7 +10,7 @@
     green: { bg: '#15201a', fg: '#c8ecd4', label: m['note.color_green']() },
     purple: { bg: '#1d1726', fg: '#dccdf0', label: m['note.color_purple']() },
     red: { bg: '#241616', fg: '#f0cccc', label: m['note.color_red']() },
-    neutral: { bg: '#1C1946', fg: '#d7d8de', label: m['note.color_neutral']() },
+    neutral: { bg: '#1C1946', fg: '#c7c8d0', label: m['note.color_neutral']() },
   };
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
@@ -78,7 +78,7 @@
   {id}
   {selected}
   class="canvas-note"
-  accent="#FFC857"
+  accent="var(--app-warning)"
   minWidth={220}
   minHeight={140}
   onResize={data.onResize}
@@ -185,7 +185,7 @@
   }
 
   .note-preview :global(code) {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--app-border);
     border-radius: 4px;
     padding: 1px 5px;
     font-size: 11px;
@@ -223,7 +223,7 @@
   }
 
   .note-preview :global(a) {
-    color: #7DE5FF;
+    color: var(--app-secondary);
   }
 
   .note-preview :global(img) {

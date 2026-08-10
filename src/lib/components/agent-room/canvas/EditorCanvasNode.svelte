@@ -141,7 +141,7 @@
   {id}
   {selected}
   class="canvas-editor"
-  accent="#7DE5FF"
+  accent="var(--app-secondary)"
   minWidth={360}
   minHeight={220}
   onResize={data.onResize}
@@ -202,14 +202,14 @@
   }
 
   .dirty-badge {
-    color: #FFC857;
+    color: var(--app-warning);
     font-size: 10px;
     margin-left: 6px;
   }
 
   .trunc-badge {
     font-size: 10px;
-    color: #FFC857;
+    color: var(--app-warning);
     background: rgba(226, 185, 61, 0.12);
     padding: 1px 6px;
     border-radius: 8px;
@@ -220,8 +220,8 @@
     margin: 0;
     padding: 2px 10px;
     font-size: 10px;
-    color: #6d6d78;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--app-text-muted);
+    border-bottom: 1px solid var(--app-border);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -242,6 +242,6 @@
     padding: 4px 10px;
     font-size: 11px;
     color: #ffb3b6;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid var(--app-border);
   }
 </style>

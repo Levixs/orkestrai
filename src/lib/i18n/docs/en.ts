@@ -93,7 +93,17 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'cli',
       title: 'orkestrai CLI (the bridge)',
-      body: `Agents use the orkestrai CLI to act on the canvas: list, ask, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes, and portals. task columns returns the stages you defined; task add --column and task move let the lead and team follow any process, not only a software kanban. MCP-speaking agents receive the same actions as native tools through orkestrai mcp. Bridge provisioning is automatic and the token lives in .orkestrai/workspace.json.`,
+      body: `Agents use the orkestrai CLI to act on the canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes, and portals. usage returns current quotas and the recommendation configured in the Usage node. task columns returns the stages you defined; task add --column and task move let the lead and team follow any process, not only a software kanban. MCP-speaking agents receive the same actions as native tools through orkestrai mcp. Bridge provisioning is automatic and the token lives in .orkestrai/workspace.json.`,
+    },
+    {
+      id: 'usage-routing',
+      title: 'Usage and quota-aware routing',
+      body: `Open Usage in the bottom toolbar and use Add to canvas to keep Claude, Codex, and Kimi consumption visible in the workspace. The node refreshes every five minutes and lets you choose a source provider, fallback, and threshold from 50% to 100%. The leader checks this policy through CLI or MCP before distributing new work and can recommend the fallback when the source is near its limit, exhausted, or unavailable. A task already in progress is never moved to another terminal silently.`,
+    },
+    {
+      id: 'appearance',
+      title: 'Themes and appearance',
+      body: `In Settings → Appearance, choose Orkestrai Dark, Graphite, Midnight, or Orkestrai Light. To personalize one, duplicate any theme and edit its semantic tokens for backgrounds, surfaces, text, borders, accent, states, grid, and connections; the preview appears immediately and Save persists it. Custom themes can be exported or imported as validated JSON without accepting arbitrary CSS.`,
     },
     {
       id: 'atalhos',
@@ -246,8 +256,30 @@ export const DOCS_EN: DocsCatalog = {
       body: 'In Settings → Voice, choose one of the three local voices: Brazilian Portuguese, US English or Latin American Spanish. Adjust speed from 0.75× to 1.50× and use Play preview to compare before enabling the speaker in the agent header. Parakeet still handles dictation only; replies use offline Supertonic 3 and start playing sentence by sentence to reduce waiting.',
       tags: ['TTS', 'Supertonic 3', 'pt-BR · en-US · es-MX'],
     },
+    {
+      id: 'quota-aware-delegation',
+      title: 'Delegate work without exhausting a quota',
+      body: 'Add the Usage node to the canvas, set Claude as the source, Codex as the fallback, and choose a threshold. Before delegating new work, the leader checks orkestrai usage and recommends the healthy agent when the source crosses that threshold; conversations and tasks already in progress stay on their current provider.',
+      tags: ['Canvas usage', 'fallback', 'delegation'],
+    },
+    {
+      id: 'custom-app-theme',
+      title: 'Adapt the app appearance to your work',
+      body: 'Choose one of three dark themes or the light theme under Settings → Appearance. Duplicate the closest option, adjust semantic color tokens with an immediate preview, and export the JSON to use the same theme in another installation.',
+      tags: ['Themes', 'semantic tokens', 'import/export'],
+    },
   ],
   changelog: [
+    {
+      date: 'Aug 10, 2026 · 0.8.0',
+      items: [
+        'The Usage panel can now be added to the canvas as a persistent node with Claude, Codex, and Kimi quotas.',
+        'The Usage node configures source, fallback, and threshold; leaders and agents read its recommendation through the new CLI and MCP usage action before distributing new work.',
+        'Settings now includes Appearance with three dark themes, one light theme, and a semantic token editor with immediate preview.',
+        'Custom themes can be duplicated, imported, and exported as validated JSON and persist across restarts.',
+        'The canvas, nodes, Provider Center, Skills, documentation, and Settings now honor the global theme tokens.',
+      ],
+    },
     {
       date: 'Aug 10, 2026 · 0.7.0',
       items: [

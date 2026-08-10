@@ -719,4 +719,52 @@ export const TOURS_EN: Tour[] = [
       },
     ],
   },
+  {
+    id: 'quota-aware-delegation',
+    icon: 'RadioTower',
+    title: 'Quota-aware delegation',
+    tagline: 'The leader sees provider limits before distributing new work.',
+    steps: [
+      {
+        id: 'add-usage',
+        title: 'Put Usage on the canvas',
+        body: 'I create a persistent Usage node with Claude as source, Codex as fallback, and a 90% initial threshold. It checks Claude, Codex, and Kimi every five minutes.',
+        action: { kind: 'createUsage', title: 'Provider usage' },
+        check: { kind: 'nodeExists', nodeType: 'usage', titleIncludes: 'Provider usage' },
+      },
+      {
+        id: 'set-policy',
+        title: 'Adjust the policy',
+        body: 'In the node, choose the source, a different fallback, and the percentage that means "near the limit". The recommendation follows the current CLI snapshot.',
+      },
+      {
+        id: 'leader-checks',
+        title: 'The leader checks before delegating',
+        body: 'The skill teaches the leader to call orkestrai usage before distributing new work. It recommends a healthy fallback without silently moving tasks or conversations already in progress.',
+      },
+    ],
+  },
+  {
+    id: 'custom-app-theme',
+    icon: 'Palette',
+    title: 'Customize the appearance',
+    tagline: 'Choose a ready theme or adjust every visual token in the app.',
+    steps: [
+      {
+        id: 'choose-theme',
+        title: 'Choose light or dark',
+        body: 'Under Settings → Appearance, compare Orkestrai Dark, Graphite, Midnight, and Orkestrai Light. The preview applies immediately across the interface.',
+      },
+      {
+        id: 'edit-tokens',
+        title: 'Create your own theme',
+        body: 'Duplicate the closest theme and edit semantic tokens for surfaces, text, borders, accent, states, grid, and connections. Use Save to persist it.',
+      },
+      {
+        id: 'share-theme',
+        title: 'Take the theme with you',
+        body: 'Export the custom theme as JSON and import it into another installation. The file is validated and cannot run arbitrary CSS.',
+      },
+    ],
+  },
 ];

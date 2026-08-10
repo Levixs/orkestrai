@@ -199,7 +199,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 
 export type Workspace = {
@@ -234,6 +234,13 @@ export type TerminalNodePayload = {
 export type NoteNodePayload = {
   content: string;
   locked?: boolean;
+};
+
+export type UsageNodePayload = {
+  enabled?: boolean;
+  sourceProvider?: string;
+  fallbackProvider?: string;
+  thresholdPercent?: number;
 };
 
 export type CanvasNodePayload = TerminalNodePayload | NoteNodePayload | Record<string, unknown>;

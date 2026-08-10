@@ -25,6 +25,16 @@ describe('orkestrai CLI', () => {
         res.setHeader('content-type', 'application/json');
         if (req.url?.startsWith('/api/agent-room/bridge/agents')) {
           res.end(JSON.stringify({ data: { workspace: { id: 'w1', name: 'Teste' }, agents: [{ nodeId: 'n1', title: 'Claude', provider: 'claude', sessionAlive: true }], notes: [] } }));
+        } else if (req.url === '/api/agent-room/bridge/usage') {
+          res.end(JSON.stringify({ data: {
+            providers: [
+              { provider: 'claude', plan: 'Pro', windows: [{ kind: '5h', label: '5 hours', usedPercent: 96, resetsAt: null }], error: null, fetchedAt: new Date(0).toISOString(), status: 'near_limit', peakUsedPercent: 96 },
+              { provider: 'codex', plan: null, windows: [{ kind: 'weekly', label: 'Weekly', usedPercent: 18, resetsAt: null }], error: null, fetchedAt: new Date(0).toISOString(), status: 'available', peakUsedPercent: 18 },
+            ],
+            policy: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', thresholdPercent: 90 },
+            shouldFallback: true,
+            recommendedProvider: 'codex',
+          } }));
         } else if (req.url === '/api/agent-room/bridge/ask') {
           res.end(JSON.stringify({ data: { to: 'Claude', reply: 'resposta do claude', timedOut: false } }));
         } else if (req.url === '/api/agent-room/bridge/task-columns') {
@@ -68,6 +78,16 @@ describe('orkestrai CLI', () => {
     expect(code).toBe(0);
     expect(lines.join('\n')).toContain('resposta do claude');
     expect(requests.at(-1).body).toMatchObject({ to: 'Claude', message: 'como vai?' });
+  });
+
+  it('usage mostra status e recomendacao de roteamento', async () => {
+    const { lines, out } = capture();
+    const code = await run(['usage'], { cwd, out, env: {} });
+    expect(code).toBe(0);
+    expect(lines.join('\n')).toContain('claude');
+    expect(lines.join('\n')).toContain('codex');
+    expect(lines.join('\n')).toContain('codex');
+    expect(requests.at(-1).url).toBe('/api/agent-room/bridge/usage');
   });
 
   it('portal preserva o detalhe retornado pela ponte em erros HTTP 400', async () => {

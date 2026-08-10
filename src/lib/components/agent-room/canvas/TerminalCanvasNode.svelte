@@ -319,7 +319,7 @@
   {id}
   {selected}
   class="canvas-terminal"
-  accent="#7C4DFF"
+  accent="var(--app-accent)"
   minWidth={360}
   minHeight={220}
   onResize={data.onResize}
@@ -469,7 +469,7 @@
   }
 
   .terminal-empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 12px;
     padding: 10px;
   }
@@ -478,7 +478,7 @@
     margin: 0;
     padding: 4px 10px;
     font-size: 11px;
-    color: #ffc857;
+    color: var(--app-warning);
     background: rgba(226, 185, 61, 0.08);
   }
 
@@ -487,8 +487,8 @@
     align-items: center;
     gap: 6px;
     padding: 6px 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    background: #1A1742;
+    border-top: 1px solid var(--app-border);
+    background: var(--app-surface);
   }
 
   .composer input {
@@ -496,7 +496,7 @@
     border: none;
     outline: none;
     background: transparent;
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 12px;
   }
 
@@ -504,13 +504,13 @@
     display: inline-flex;
     border: none;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
     padding: 3px;
   }
 
   .composer-send:hover:not(:disabled) {
-    color: #7C4DFF;
+    color: var(--app-accent);
   }
 
   .composer-send:disabled {
@@ -527,7 +527,7 @@
   }
 
   .provider-state.available {
-    background: #3dd68c;
+    background: var(--app-success);
   }
 
   .mention-pop {
@@ -536,7 +536,7 @@
     left: 10px;
     right: 10px;
     z-index: 30;
-    background: #262155;
+    background: var(--app-surface-raised);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 10px;
     overflow: hidden;
@@ -551,21 +551,21 @@
     padding: 6px 10px;
     border: none;
     background: transparent;
-    color: #d7d8de;
+    color: var(--app-text-soft);
     font-size: 12px;
     cursor: pointer;
     text-align: left;
   }
 
   .mention-item:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--app-border);
   }
 
   .mention-type {
     font-size: 9px;
     text-transform: uppercase;
-    color: #6d6d78;
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--app-text-muted);
+    background: var(--app-border);
     border-radius: 4px;
     padding: 1px 5px;
   }
@@ -576,19 +576,19 @@
     gap: 4px;
     border: none;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
     padding: 3px;
     border-radius: 6px;
   }
 
   .role-trigger:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: #e6e6eb;
+    background: var(--app-border);
+    color: var(--app-text);
   }
 
   .role-trigger.has-role {
-    color: #8ec98e;
+    color: var(--app-success);
   }
 
   .role-name {

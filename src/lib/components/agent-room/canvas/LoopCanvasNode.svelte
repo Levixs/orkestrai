@@ -227,7 +227,7 @@
   {id}
   {selected}
   class="canvas-loop"
-  accent="#8ec98e"
+  accent="var(--app-success)"
   minWidth={380}
   minHeight={280}
   onResize={data.onResize}
@@ -247,7 +247,7 @@
       <IconAction label={m['loop.stop']()} danger onclick={stopLoop}><Square size={13} /></IconAction>
     {:else}
       <HeaderIconButton label={m['loop.run']()} class="node-action-btn" side="top" onclick={runLoop} disabled={!objective.trim()}>
-        <span style="color:#8ec98e;display:inline-flex"><Play size={13} /></span>
+        <span style="color:var(--app-success);display:inline-flex"><Play size={13} /></span>
       </HeaderIconButton>
     {/if}
     <IconAction label={m['loop.remove']()} danger onclick={() => data.onDelete(id)}><XIcon size={13} /></IconAction>
@@ -337,14 +337,14 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-    border: 1px solid #2c2c36;
+    border: 1px solid var(--app-border);
     border-radius: 10px;
-    background: #0D0B2E;
+    background: var(--app-canvas);
     overflow: hidden;
   }
 
   .canvas-loop.selected {
-    border-color: #7C4DFF;
+    border-color: var(--app-accent);
   }
 
   .loop-header {
@@ -352,9 +352,9 @@
     justify-content: space-between;
     align-items: center;
     padding: 5px 10px;
-    background: #1A1742;
+    background: var(--app-surface);
     font-size: 12px;
-    color: #e6e6eb;
+    color: var(--app-text);
     cursor: grab;
   }
 
@@ -366,22 +366,22 @@
   .icon-btn {
     border: none;
     background: transparent;
-    color: #9a9aa5;
+    color: var(--app-text-muted);
     cursor: pointer;
     font-size: 13px;
     padding: 1px 4px;
   }
 
   .icon-btn.run {
-    color: #8ec98e;
+    color: var(--app-success);
   }
 
   .icon-btn.stop {
-    color: #e5484d;
+    color: var(--app-danger);
   }
 
   .icon-btn.danger:hover {
-    color: #e5484d;
+    color: var(--app-danger);
   }
 
   .icon-btn:disabled {
@@ -391,7 +391,7 @@
 
   .loop-config {
     padding: 6px 8px;
-    border-bottom: 1px solid #1e1e26;
+    border-bottom: 1px solid var(--app-surface-raised);
     display: flex;
     flex-direction: column;
     gap: 5px;
@@ -399,10 +399,10 @@
 
   .loop-config textarea {
     resize: none;
-    border: 1px solid #2c2c36;
+    border: 1px solid var(--app-border);
     border-radius: 6px;
-    background: #0D0B2E;
-    color: #e6e6eb;
+    background: var(--app-canvas);
+    color: var(--app-text);
     font-size: 12px;
     padding: 6px;
     font-family: inherit;
@@ -412,15 +412,15 @@
     display: flex;
     gap: 12px;
     font-size: 11px;
-    color: #9a9aa5;
+    color: var(--app-text-muted);
   }
 
   .loop-options input[type='number'] {
     width: 48px;
-    background: #0D0B2E;
-    border: 1px solid #2c2c36;
+    background: var(--app-canvas);
+    border: 1px solid var(--app-border);
     border-radius: 5px;
-    color: #e6e6eb;
+    color: var(--app-text);
     padding: 2px 5px;
   }
 
@@ -447,16 +447,16 @@
   }
 
   .log-agent {
-    color: #7DE5FF;
+    color: var(--app-secondary);
   }
 
   .log-round {
-    color: #FFC857;
+    color: var(--app-warning);
     font-weight: 600;
   }
 
   .log-tasks {
-    color: #9a9aa5;
+    color: var(--app-text-muted);
   }
 
   .log-output {
@@ -468,11 +468,11 @@
   }
 
   .log-system {
-    color: #8ec98e;
+    color: var(--app-success);
   }
 
   .log-empty {
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .kanban {
@@ -480,7 +480,7 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 4px;
     padding: 6px 8px;
-    border-bottom: 1px solid #1e1e26;
+    border-bottom: 1px solid var(--app-surface-raised);
   }
 
   .kanban-column {
@@ -494,14 +494,14 @@
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .kanban-card {
     font-size: 10px;
     padding: 4px 6px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-border);
     color: #d5d5dc;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -512,7 +512,7 @@
     max-height: 240px;
     overflow-y: auto;
     padding: 8px;
-    border-bottom: 1px solid #1e1e26;
+    border-bottom: 1px solid var(--app-surface-raised);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -521,7 +521,7 @@
   .team-hint {
     margin: 0;
     font-size: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     line-height: 1.4;
   }
 
@@ -537,12 +537,12 @@
 
   .member-title {
     font-weight: 600;
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .member-meta {
     flex: 1;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 10px;
   }
 
@@ -550,7 +550,7 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
-    border-top: 1px solid #1e1e26;
+    border-top: 1px solid var(--app-surface-raised);
     padding-top: 6px;
   }
 
@@ -559,9 +559,9 @@
   .member-form textarea {
     padding: 5px 7px;
     border-radius: 6px;
-    border: 1px solid #2c2c36;
-    background: #0D0B2E;
-    color: #e6e6eb;
+    border: 1px solid var(--app-border);
+    background: var(--app-canvas);
+    color: var(--app-text);
     font-size: 11px;
     font-family: inherit;
   }
@@ -583,7 +583,7 @@
     padding: 6px;
     border: none;
     border-radius: 6px;
-    background: #7C4DFF;
+    background: var(--app-accent);
     color: #fff;
     font-size: 11px;
     cursor: pointer;

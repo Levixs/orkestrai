@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { ArrowLeft, Check, Keyboard, Languages, Layers, Mic, Pencil, Play, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { ArrowLeft, Check, Keyboard, Languages, Layers, Mic, Palette, Pencil, Play, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { Button } from '$lib/components/ui/button';
@@ -12,7 +12,7 @@
   import { toast } from '@beeblock/svelar/ui';
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
-  import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
+  import { appSettingsStore, getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
   import VoiceConfirmDialog from '$lib/components/agent-room/VoiceConfirmDialog.svelte';
   import {
     DEFAULT_EMBEDDED_TTS_SPEED,
@@ -22,6 +22,8 @@
     normalizeEmbeddedTtsVoice,
   } from '$lib/modules/agent-room/domain/voice.js';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import AppThemeSettings from '$lib/components/agent-room/AppThemeSettings.svelte';
+  import { applyAppTheme } from '$lib/components/agent-room/app-themes.js';
 
   let settings = $state<Record<string, string>>({});
   let loaded = $state(false);
@@ -46,7 +48,6 @@
   }
 
   onMount(async () => {
-    document.documentElement.classList.add('dark');
     const response = await fetch('/api/agent-room/settings');
     const payload = await response.json();
     settings = payload.data ?? {};
@@ -55,6 +56,10 @@
     await refreshModelStatus();
     await loadPresets();
     if (desktop?.appVersion) appVersion = await desktop.appVersion().catch(() => '');
+  });
+
+  onDestroy(() => {
+    applyAppTheme(appSettingsStore.values);
   });
 
   async function save() {
@@ -416,6 +421,17 @@
         <Input type="number" bind:value={settings.newNoteHeight} />
       </div>
     </div>
+  </section>
+
+  <section class="settings-section">
+    <header class="section-head">
+      <span class="icon-chip"><Palette size={15} aria-hidden="true" /></span>
+      <div class="section-titles">
+        <h2>{m['settings.section_appearance']()}</h2>
+        <p>{m['settings.section_appearance_desc']()}</p>
+      </div>
+    </header>
+    <AppThemeSettings {settings} onChange={(next) => (settings = next)} />
   </section>
 
   <section class="settings-section">
@@ -899,7 +915,7 @@
   }
 
   .preset-action.danger:hover {
-    color: #ff9c9f;
+    color: var(--app-danger);
   }
 
   /* ---- Campos em grade responsiva --------------------------------------- */
@@ -918,6 +934,43 @@
   }
 
   @media (max-width: 560px) {
+    .settings-page {
+      padding: 12px 12px 64px;
+      overflow-x: hidden;
+    }
+
+    .settings-header {
+      grid-template-columns: auto minmax(0, 1fr);
+      display: grid;
+      align-items: center;
+      padding-right: 56px;
+    }
+
+    .header-titles {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      min-width: 0;
+    }
+
+    .header-titles p {
+      text-wrap: pretty;
+    }
+
+    .header-spacer {
+      display: none;
+    }
+
+    :global(.save-btn) {
+      grid-column: 2;
+      grid-row: 1;
+      min-width: 0;
+      justify-self: end;
+    }
+
+    .settings-section {
+      padding: 16px;
+    }
+
     .span-2 {
       grid-column: span 1;
     }
@@ -1010,13 +1063,13 @@
     padding: 4px 10px;
     border-radius: 999px;
     font-size: 11.5px;
-    color: #ff9c9f;
-    background: rgba(229, 72, 77, 0.1);
+    color: var(--app-danger);
+    background: color-mix(in srgb, var(--app-danger) 10%, transparent);
   }
 
   .status-pill.ok {
-    color: #3dd68c;
-    background: rgba(61, 214, 140, 0.1);
+    color: var(--app-success);
+    background: color-mix(in srgb, var(--app-success) 10%, transparent);
   }
 
   .status-dot {

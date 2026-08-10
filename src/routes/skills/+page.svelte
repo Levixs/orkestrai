@@ -192,7 +192,6 @@
   }
 
   onMount(async () => {
-    document.documentElement.classList.add('dark');
     workspaces = await api<Workspace[]>('/api/agent-room/workspaces').catch(() => []);
     const fromUrl = new URLSearchParams(location.search).get('workspace');
     workspaceId = fromUrl && workspaces.some((workspace) => workspace.id === fromUrl) ? fromUrl : (workspaces[0]?.id ?? '');
@@ -456,8 +455,8 @@
 <style>
   .skills-page {
     min-height: 100vh;
-    background: #0D0B2E;
-    color: #e6e6eb;
+    background: var(--app-canvas);
+    color: var(--app-text);
     padding: 24px 24px 80px;
     display: flex;
     flex-direction: column;
@@ -478,7 +477,7 @@
     align-items: center;
     gap: 12px;
     padding: 10px 0 14px;
-    background: linear-gradient(180deg, #0D0B2E 78%, transparent);
+    background: linear-gradient(180deg, var(--app-canvas) 78%, transparent);
   }
 
   .header-titles h1 {
@@ -493,7 +492,7 @@
   .header-titles p {
     margin: 1px 0 0;
     font-size: 12px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .header-spacer {
@@ -508,7 +507,7 @@
 
   .picker-label {
     font-size: 12px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     white-space: nowrap;
   }
 
@@ -518,8 +517,8 @@
     gap: 4px;
     padding: 3px;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background: rgba(26, 23, 66, 0.8);
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 88%, transparent);
     width: auto;
     align-self: flex-start;
   }
@@ -532,7 +531,7 @@
     border-radius: 999px;
     border: none;
     background: transparent;
-    color: #a9aab3;
+    color: var(--app-text-soft);
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
@@ -540,12 +539,12 @@
   }
 
   .tab-btn:hover {
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .tab-btn.active {
-    background: rgba(91, 141, 239, 0.2);
-    color: #fff;
+    background: var(--app-accent-soft);
+    color: var(--app-text);
   }
 
   /* ---- Secoes (mesmo shell das Configuracoes) ------------------------------ */
@@ -553,15 +552,15 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--app-border);
     border-radius: 14px;
-    background: #1A1742;
+    background: var(--app-surface);
     padding: 18px 20px 20px;
     transition: border-color 160ms ease;
   }
 
   .page-section:hover {
-    border-color: rgba(255, 255, 255, 0.11);
+    border-color: var(--app-border-strong);
   }
 
   .section-head {
@@ -577,8 +576,8 @@
     width: 30px;
     height: 30px;
     border-radius: 9px;
-    background: rgba(91, 141, 239, 0.12);
-    color: #7DE5FF;
+    background: color-mix(in srgb, var(--app-secondary) 12%, transparent);
+    color: var(--app-secondary);
     flex-shrink: 0;
   }
 
@@ -588,13 +587,13 @@
     font-weight: 600;
     letter-spacing: -0.005em;
     margin: 0;
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .section-titles p {
     margin: 1px 0 0;
     font-size: 12px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   /* ---- Listas -------------------------------------------------------------- */
@@ -613,13 +612,13 @@
     gap: 10px;
     padding: 9px 12px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(13, 11, 46, 0.55);
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-subtle);
   }
 
   .item-icon {
     display: inline-flex;
-    color: #7c4dff;
+    color: var(--app-accent);
     flex-shrink: 0;
   }
 
@@ -641,14 +640,14 @@
   .item-name {
     font-size: 13px;
     font-weight: 500;
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .builtin-tag {
     font-size: 10px;
     font-weight: 500;
-    color: #3dd68c;
-    background: rgba(61, 214, 140, 0.12);
+    color: var(--app-success);
+    background: color-mix(in srgb, var(--app-success) 12%, transparent);
     border-radius: 6px;
     padding: 1px 6px;
     margin-left: 6px;
@@ -656,7 +655,7 @@
 
   .item-desc {
     font-size: 11.5px;
-    color: #a9aab3;
+    color: var(--app-text-soft);
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -665,7 +664,7 @@
 
   .item-source {
     font-size: 10.5px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -681,13 +680,13 @@
   .empty-hint {
     margin: 0;
     font-size: 12px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .feedback {
     margin: 0;
     font-size: 12px;
-    color: #8ec98e;
+    color: var(--app-success);
   }
 
   .search-row {
@@ -716,22 +715,22 @@
   .field-label {
     font-size: 12px;
     font-weight: 500;
-    color: #a9aab3;
+    color: var(--app-text-soft);
   }
 
   .mcp-env-help {
     font-size: 10.5px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .mcp-help-link {
-    color: #7de5ff;
+    color: var(--app-secondary);
   }
 
   .mcp-install-error {
     margin: 0;
     font-size: 12px;
-    color: #ff9c9f;
+    color: var(--app-danger);
   }
 
   @media (max-width: 640px) {

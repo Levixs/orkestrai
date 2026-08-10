@@ -60,7 +60,6 @@
   const changelog = $derived(catalog.changelog);
 
   onMount(() => {
-    document.documentElement.classList.add('dark');
     document.documentElement.style.colorScheme = 'dark';
     // Atalho global (Cmd/Ctrl+K de qualquer tela): abre a paleta ja focada.
     if (new URLSearchParams(location.search).has('search')) {
@@ -150,7 +149,7 @@
 
 <svelte:head>
   <title>{m['docs.page_title']()}</title>
-  <meta name="theme-color" content="#0D0B2E" />
+  <meta name="theme-color" content="#0d0b2e" />
 </svelte:head>
 
 <svelte:window onkeydown={handleGlobalKeydown} />
@@ -475,7 +474,7 @@
   }
 
   .anchor-link {
-    color: #4a4a55;
+    color: var(--app-text-muted);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
@@ -663,7 +662,7 @@
     min-height: 100dvh;
     box-sizing: border-box;
     z-index: 70;
-    background: rgba(9, 9, 18, 0.78);
+    background: color-mix(in srgb, var(--app-page) 78%, transparent);
     backdrop-filter: blur(3px);
     display: flex;
     align-items: center;
@@ -677,7 +676,7 @@
     background: var(--surface-raised);
     border: 1px solid var(--line-strong);
     border-radius: 8px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 24px 64px color-mix(in srgb, var(--app-text) 18%, transparent);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -688,7 +687,7 @@
     align-items: center;
     gap: 10px;
     padding: 12px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid var(--app-border);
     color: var(--copy-muted);
   }
 
@@ -760,7 +759,7 @@
   .palette-hint {
     margin: 0;
     padding: 8px 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--app-border);
     font-size: 10.5px;
     color: var(--copy-muted);
   }

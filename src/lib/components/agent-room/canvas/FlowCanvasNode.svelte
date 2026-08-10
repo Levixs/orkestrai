@@ -306,7 +306,7 @@
     gap: 8px;
     padding: 6px 8px 10px;
     font-size: 11.5px;
-    color: #c7c8d0;
+    color: var(--app-text-soft);
     overflow-y: auto;
   }
 
@@ -323,7 +323,7 @@
     gap: 6px;
     padding: 6px 8px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--app-border);
     background: rgba(255, 255, 255, 0.03);
   }
 
@@ -340,7 +340,7 @@
     height: 16px;
     border-radius: 50%;
     background: rgba(91, 141, 239, 0.18);
-    color: #7de5ff;
+    color: var(--app-secondary);
     font-size: 9.5px;
     font-weight: 600;
     display: inline-flex;
@@ -352,7 +352,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: #ffc857;
+    color: var(--app-warning);
     font-size: 10.5px;
   }
 
@@ -374,7 +374,7 @@
   .flow-mini-btn {
     border: none;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
     border-radius: 4px;
     padding: 1px 4px;
@@ -382,12 +382,12 @@
   }
 
   .flow-mini-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--app-border);
     color: #fff;
   }
 
   .flow-mini-btn.danger:hover {
-    color: #ff9c9f;
+    color: var(--app-danger);
   }
 
   .flow-step-prompt {
@@ -395,7 +395,7 @@
     width: 100%;
     resize: vertical;
     background: rgba(13, 11, 46, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     color: #c9cad2;
     font-size: 10.5px;
@@ -407,7 +407,7 @@
   .flow-step-excerpt {
     grid-column: 1 / -1;
     font-size: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -421,7 +421,7 @@
     gap: 5px;
     padding: 16px 12px;
     text-align: center;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     border: 1.5px dashed rgba(91, 141, 239, 0.3);
     border-radius: 10px;
     background: rgba(91, 141, 239, 0.04);
@@ -452,7 +452,7 @@
   .flow-banner.error {
     background: rgba(229, 72, 77, 0.1);
     border: 1px solid rgba(229, 72, 77, 0.35);
-    color: #ff9c9f;
+    color: var(--app-danger);
   }
 
   .flow-banner :global(svg) {
@@ -474,13 +474,13 @@
     border-radius: 7px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: transparent;
-    color: #c7c8d0;
+    color: var(--app-text-soft);
     font-size: 10.5px;
     cursor: pointer;
   }
 
   .flow-add-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--app-border);
   }
 
   .flow-add-btn:disabled {
@@ -494,7 +494,7 @@
     align-items: center;
     gap: 5px;
     font-size: 10.5px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .flow-iter input {
@@ -502,7 +502,7 @@
     background: rgba(13, 11, 46, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 11px;
     padding: 2px 5px;
     text-align: center;
@@ -520,7 +520,7 @@
     background: rgba(13, 11, 46, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 7px;
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 11px;
     padding: 5px 9px;
     outline: none;
@@ -552,13 +552,13 @@
 
   .flow-approve-btn {
     background: rgba(61, 214, 140, 0.18);
-    color: #3dd68c;
+    color: var(--app-success);
     border: 1px solid rgba(61, 214, 140, 0.4);
   }
 
   .flow-stop-btn {
     background: rgba(229, 72, 77, 0.14);
-    color: #ff9c9f;
+    color: var(--app-danger);
     border: 1px solid rgba(229, 72, 77, 0.35);
   }
 
@@ -567,14 +567,14 @@
     align-items: center;
     gap: 6px;
     font-size: 11px;
-    color: #7de5ff;
+    color: var(--app-secondary);
   }
 
   .flow-history {
     display: flex;
     flex-direction: column;
     gap: 3px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--app-border);
     padding-top: 6px;
   }
 
@@ -583,15 +583,15 @@
     align-items: center;
     gap: 6px;
     font-size: 10px;
-    color: #8ec98e;
+    color: var(--app-success);
   }
 
   .flow-history-row.failed {
-    color: #ff9c9f;
+    color: var(--app-danger);
   }
 
   .flow-history-detail {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

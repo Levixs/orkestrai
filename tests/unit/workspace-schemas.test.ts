@@ -6,7 +6,7 @@ import {
 
 describe('workspaceSchemas — tipos de nó do canvas', () => {
   it('aceita todos os tipos suportados, incluindo image', () => {
-    const types = ['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'loop', 'group', 'shape', 'tasks', 'flow', 'image'];
+    const types = ['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'loop', 'group', 'shape', 'tasks', 'flow', 'image', 'usage'];
     for (const type of types) {
       expect(canvasNodeTypeSchema.safeParse(type).success).toBe(true);
     }

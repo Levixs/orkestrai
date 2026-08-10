@@ -40,7 +40,7 @@
   let {
     id,
     selected,
-    accent = '#7C4DFF',
+    accent = 'var(--app-accent)',
     minWidth = 320,
     minHeight = 200,
     onResize,
@@ -170,8 +170,8 @@
     width: 100%;
     height: 100%;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    background: #1C1946;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
     box-shadow:
       0 1px 2px rgba(0, 0, 0, 0.35),
       0 10px 32px rgba(0, 0, 0, 0.38);
@@ -192,10 +192,10 @@
     align-items: center;
     gap: 8px;
     padding: 7px 10px;
-    background: #262155;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--app-surface-raised);
+    border-bottom: 1px solid var(--app-border);
     border-radius: 13px 13px 0 0;
-    color: #d7d8de;
+    color: var(--app-text-soft);
     font-size: 12px;
     font-weight: 500;
     cursor: grab;
@@ -227,9 +227,9 @@
     min-width: 0;
     border: none;
     outline: none;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--app-border);
     border-radius: 6px;
-    color: #e6e6eb;
+    color: var(--app-text);
     font-size: 12px;
     font-weight: 500;
     padding: 2px 6px;
@@ -246,8 +246,8 @@
     align-items: center;
     gap: 3px;
     border: none;
-    background: rgba(255, 255, 255, 0.07);
-    color: #8b8c96;
+    background: var(--app-border);
+    color: var(--app-text-muted);
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 8px;
@@ -272,18 +272,18 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #d7d8de;
+    color: var(--app-text-soft);
     font-size: 11px;
     cursor: pointer;
     text-align: left;
   }
 
   .connection-jump:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--app-border);
   }
 
   .connection-dir {
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .connection-title {
@@ -294,20 +294,20 @@
   }
 
   .connection-type {
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-size: 10px;
   }
 
   .connection-remove {
     border: none;
     background: transparent;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     cursor: pointer;
     padding: 4px;
   }
 
   .connection-remove:hover {
-    color: #e5484d;
+    color: var(--app-danger);
   }
 
   .node-body {
@@ -328,22 +328,22 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
     padding: 0;
   }
 
   .node-shell :global(.node-action-btn:hover) {
-    background: rgba(255, 255, 255, 0.07);
-    color: #e6e6eb;
+    background: var(--app-border);
+    color: var(--app-text);
   }
 
   .node-shell :global(.node-action-btn.danger:hover) {
-    color: #e5484d;
+    color: var(--app-danger);
   }
 
   .node-shell :global(.node-action-btn.active) {
-    color: #FFC857;
+    color: var(--app-warning);
   }
 
   .node-shell :global(.node-handle) {
@@ -351,7 +351,7 @@
     height: 13px;
     z-index: 20;
     background: var(--accent);
-    border: 2.5px solid rgba(255, 255, 255, 0.85);
+    border: 2.5px solid var(--app-accent-contrast);
     box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.35), 0 0 8px var(--accent);
     opacity: 0.95;
     transition: transform 130ms ease, box-shadow 130ms ease;

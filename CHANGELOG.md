@@ -5,6 +5,26 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.8.0 - 2026-08-10
+
+### Added
+
+- Added a persistent Usage canvas node for Claude, Codex, and Kimi quotas with
+  configurable source provider, fallback provider, and routing threshold.
+- Added `orkestrai usage` to the native CLI and MCP bridge so leaders inspect
+  the same quota snapshot and recommendation before assigning new work.
+- Added three dark application themes, one light theme, and a semantic token
+  editor with live preview, duplication, validated JSON import, and export.
+- Added localized documentation, use cases, and onboarding tours for quota-aware
+  delegation and custom themes in Brazilian Portuguese, English, and Spanish.
+
+### Changed
+
+- Updated the canvas, nodes, Provider Center, Skills, documentation, and Settings
+  surfaces to honor the selected global theme tokens.
+- Updated leader bridge instructions to route only new work to a healthy fallback
+  and never silently move an active task to another provider.
+
 ## 0.7.0 - 2026-08-10
 
 ### Added

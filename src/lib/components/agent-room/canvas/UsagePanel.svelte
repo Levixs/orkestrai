@@ -1,17 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { RefreshCw, TriangleAlert, X } from '@lucide/svelte';
+  import { PanelTopOpen, RefreshCw, TriangleAlert, X } from '@lucide/svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import * as m from '$lib/paraglide/messages.js';
+  import { localeState } from '$lib/i18n/locale.svelte.js';
   import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
   import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
 
   type Props = {
     onClose: () => void;
+    onAddToCanvas?: () => void;
   };
 
-  let { onClose }: Props = $props();
+  let { onClose, onAddToCanvas }: Props = $props();
 
   const PROVIDERS: Record<string, { name: string; icon: string }> = {
     claude: { name: 'Claude', icon: '/images/claude.svg' },
@@ -38,9 +40,9 @@
   }
 
   function barColor(percent: number): string {
-    if (percent >= 85) return '#e5484d';
-    if (percent >= 60) return '#ffc857';
-    return '#3dd68c';
+    if (percent >= 85) return 'var(--app-danger)';
+    if (percent >= 60) return 'var(--app-warning)';
+    return 'var(--app-success)';
   }
 
   function resetText(resetsAt: string | null): string {
@@ -52,14 +54,16 @@
     if (minutes < 60) return m['usage.reset_minutes']({ minutes });
     const hours = Math.floor(minutes / 60);
     if (hours < 48) return m['usage.reset_hours']({ hours, minutes: String(minutes % 60).padStart(2, '0') });
+    const locale = localeState.current === 'en' ? 'en-US' : localeState.current === 'es' ? 'es-MX' : 'pt-BR';
     const date = new Date(resetsAt);
     return m['usage.reset_at']({
-      date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      time: date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      date: date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }),
+      time: date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
     });
   }
 
   function updatedText(): string {
+    void clock;
     if (!lastFetchAt) return '';
     const seconds = Math.max(0, Math.floor((Date.now() - lastFetchAt.getTime()) / 1000));
     return seconds < 5 ? m['usage.just_now']() : m['usage.seconds_ago']({ seconds });
@@ -75,7 +79,6 @@
 
   // Tick de 5s so para re-renderizar os textos relativos (reseta em / ha Xs).
   let clock = $state(0);
-  void clock;
 
   onMount(() => {
     refresh();
@@ -97,6 +100,11 @@
   <header class="panel-header">
     <h3>{m['usage.title']()}</h3>
     <div class="panel-actions">
+      {#if onAddToCanvas}
+        <HeaderIconButton label={m['usage.add_canvas']()} class="node-action-btn" side="left" onclick={onAddToCanvas}>
+          <PanelTopOpen size={13} />
+        </HeaderIconButton>
+      {/if}
       <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={() => void refresh(true)}>
         <RefreshCw size={13} />
       </HeaderIconButton>
@@ -162,8 +170,8 @@
   .usage-panel {
     width: 300px;
     flex-shrink: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.07);
-    background: #151238;
+    border-left: 1px solid var(--app-border);
+    background: var(--app-sidebar);
     padding: 12px;
     overflow-y: auto;
     display: flex;
@@ -182,7 +190,7 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .panel-actions {
@@ -197,10 +205,10 @@
 
   .usage-card {
 
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--app-border);
     border-radius: 10px;
     padding: 10px;
-    background: #1C1946;
+    background: var(--app-surface);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -219,7 +227,7 @@
   .provider-name {
     font-size: 13px;
     font-weight: 600;
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .plan-badge {
@@ -228,9 +236,9 @@
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #b79cff;
-    background: rgba(124, 77, 255, 0.15);
-    border: 1px solid rgba(124, 77, 255, 0.35);
+    color: var(--app-accent);
+    background: color-mix(in srgb, var(--app-accent) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 35%, transparent);
     border-radius: 999px;
     padding: 2px 8px;
   }
@@ -249,7 +257,7 @@
 
   .window-label {
     font-size: 11px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
   }
 
   .window-percent {
@@ -261,7 +269,7 @@
   .bar-track {
     height: 6px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--app-border);
     overflow: hidden;
   }
 
@@ -273,7 +281,7 @@
 
   .window-reset {
     font-size: 10px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .usage-error {
@@ -283,19 +291,19 @@
     margin: 0;
     font-size: 11px;
     line-height: 1.4;
-    color: #ffc857;
+    color: var(--app-warning);
   }
 
   .hint {
     margin: 0;
     font-size: 11px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 
   .panel-footer {
     margin-top: auto;
     font-size: 10px;
-    color: #55556a;
+    color: var(--app-text-muted);
     text-align: center;
   }
 </style>

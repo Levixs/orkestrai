@@ -39,7 +39,6 @@
   );
 
   onMount(async () => {
-    document.documentElement.classList.add('dark');
     const userAgent = navigator.userAgent.toLowerCase();
     platform = userAgent.includes('mac')
       ? 'darwin'
@@ -225,7 +224,7 @@
   .providers-page {
     min-height: 100vh;
     padding: 28px clamp(20px, 4vw, 64px) 64px;
-    background: #0a0b10;
+    background: var(--app-page);
     color: var(--copy);
   }
 
@@ -261,45 +260,45 @@
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
-    color: #a893ff;
-    background: rgba(124, 93, 255, 0.13);
+    color: var(--app-accent);
+    background: var(--app-accent-soft);
   }
   .overview-icon { width: 36px; height: 36px; border-radius: 7px; }
   .overview strong { font-size: 13px; }
   .overview p { margin: 3px 0 0; color: var(--copy-muted); font-size: 11.5px; }
 
-  .filters { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: #0c0d13; }
+  .filters { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--app-surface-subtle); }
   .filters button { min-height: 30px; padding: 0 11px; border: 0; border-radius: 5px; background: transparent; color: var(--copy-muted); font: inherit; font-size: 11.5px; cursor: pointer; }
   .filters button:hover { color: var(--copy); }
-  .filters button.active { background: rgba(124, 93, 255, 0.16); color: #c8bbff; }
+  .filters button.active { background: var(--app-accent-soft); color: var(--app-accent); }
 
   .provider-list { width: min(1100px, 100%); margin: 0 auto; display: grid; gap: 9px; }
   .provider-row { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
-  .provider-row.available { border-color: rgba(89, 196, 128, 0.24); }
+  .provider-row.available { border-color: color-mix(in srgb, var(--app-success) 36%, var(--line)); }
   .provider-main { min-height: 126px; padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 14px; }
   .provider-icon { width: 38px; height: 38px; border-radius: 7px; }
   .provider-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
   .provider-copy h2 { margin: 0; font-size: 15px; font-weight: 650; }
   .provider-copy > p { max-width: 680px; margin: 7px 0 0; color: var(--copy-soft); font-size: 12.5px; line-height: 1.55; }
-  .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; background: rgba(240, 174, 75, 0.11); color: #efbd72; font-size: 10.5px; font-weight: 600; }
-  .status-badge.ready { background: rgba(89, 196, 128, 0.12); color: #78d69a; }
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, var(--app-warning) 12%, transparent); color: var(--app-warning); font-size: 10.5px; font-weight: 600; }
+  .status-badge.ready { background: color-mix(in srgb, var(--app-success) 12%, transparent); color: var(--app-success); }
   .capabilities { min-height: 24px; margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .capabilities span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 5px; background: rgba(255, 255, 255, 0.045); color: var(--copy-muted); font-size: 10.5px; }
+  .capabilities span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 5px; background: var(--app-surface-raised); color: var(--copy-muted); font-size: 10.5px; }
   .capabilities .version { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .provider-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 
-  .setup-panel { position: relative; padding: 18px 18px 18px 70px; border-top: 1px solid var(--line); background: rgba(255, 255, 255, 0.018); display: grid; gap: 15px; }
+  .setup-panel { position: relative; padding: 18px 18px 18px 70px; border-top: 1px solid var(--line); background: var(--app-surface-subtle); display: grid; gap: 15px; }
   .setup-step { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
   .step-icon { width: 28px; height: 28px; border-radius: 6px; }
   .step-copy h3 { margin: 1px 0 3px; font-size: 12px; font-weight: 650; }
   .step-copy p { margin: 0; color: var(--copy-muted); font-size: 11.5px; line-height: 1.55; }
-  .setup-note { margin-top: 7px !important; color: #c6b9f8 !important; }
-  .command-row { max-width: 700px; margin-top: 8px; display: grid; grid-template-columns: minmax(0, 1fr) 34px; border: 1px solid var(--line); border-radius: 6px; background: #090a0f; overflow: hidden; }
-  .command-row code { padding: 9px 11px; overflow-x: auto; color: #c9cbd3; font-size: 11px; white-space: nowrap; }
+  .setup-note { margin-top: 7px !important; color: var(--app-accent) !important; }
+  .command-row { max-width: 700px; margin-top: 8px; display: grid; grid-template-columns: minmax(0, 1fr) 34px; border: 1px solid var(--line); border-radius: 6px; background: var(--app-page); overflow: hidden; }
+  .command-row code { padding: 9px 11px; overflow-x: auto; color: var(--app-text-soft); font-size: 11px; white-space: nowrap; }
   .command-row button { border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--copy-muted); cursor: pointer; }
-  .command-row button:hover { color: #c8bbff; background: rgba(124, 93, 255, 0.08); }
-  .guide-link { position: absolute; right: 18px; bottom: 18px; display: inline-flex; align-items: center; gap: 6px; color: #a893ff; font-size: 11.5px; font-weight: 600; text-decoration: none; }
-  .guide-link:hover { color: #c8bbff; }
+  .command-row button:hover { color: var(--app-accent); background: var(--app-accent-soft); }
+  .guide-link { position: absolute; right: 18px; bottom: 18px; display: inline-flex; align-items: center; gap: 6px; color: var(--app-accent); font-size: 11.5px; font-weight: 600; text-decoration: none; }
+  .guide-link:hover { color: var(--app-accent); }
 
   .empty-state { width: min(1100px, 100%); min-height: 180px; margin: 0 auto; display: grid; place-items: center; align-content: center; gap: 8px; border: 1px dashed var(--line); border-radius: 8px; color: var(--copy-muted); }
   .empty-state p { margin: 0; font-size: 12px; }

@@ -12,7 +12,7 @@ html {
 
 /* Focus visivel consistente (Web Interface Guidelines) */
 :focus-visible {
-  outline: 2px solid #7C4DFF;
+  outline: 2px solid var(--app-accent, #7C4DFF);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -48,6 +48,26 @@ h4 {
   --violet-soft: #241d3e;
   --cyan: #25baf5;
   --success: #35d6a1;
+  --app-page: #090912;
+  --app-canvas: #0d0b2e;
+  --app-sidebar: #100e2a;
+  --app-surface: #1c1946;
+  --app-surface-raised: #262155;
+  --app-surface-subtle: #151238;
+  --app-text: #f4f3f8;
+  --app-text-soft: #c7c8d0;
+  --app-text-muted: #8b8c96;
+  --app-border: #302b62;
+  --app-border-strong: #4a4580;
+  --app-accent: #9675ff;
+  --app-accent-soft: #2a2254;
+  --app-accent-contrast: #0d0b2e;
+  --app-secondary: #25baf5;
+  --app-success: #3dd68c;
+  --app-warning: #ffc857;
+  --app-danger: #e6545d;
+  --app-grid: #2c2760;
+  --app-edge: #5c5696;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
