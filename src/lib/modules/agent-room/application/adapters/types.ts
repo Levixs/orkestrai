@@ -65,6 +65,8 @@ export interface AgentAdapter {
   interactiveCommand(options?: { model?: string; effort?: ModelEffort | null }): AgentCommandSpec;
   /** Args de resume: exato com session-id, ou a mais recente do diretorio sem id. */
   resumeArgs(agentSessionId?: string): string[] | null;
+  /** Args para reservar um id conhecido ao criar uma conversa nova, quando a CLI suporta. */
+  freshSessionArgs?(agentSessionId: string): string[];
   /** Extrai o texto final e metadados do stdout (JSON-lines) da CLI. */
   parseOutput(stdout: string): ParsedAgentOutput;
   /** Metadados especificos do provider anexados ao resultado da execucao. */

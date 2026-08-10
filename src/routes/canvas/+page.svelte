@@ -549,6 +549,7 @@
         // avaliar aqui congelaria undefined no restart (providers ainda vazios).
         resumeArgsFor: () => resumeArgsFor(node),
         exactResumeArgsFor: (agentSessionId: string) => exactResumeArgsFor(node)?.(agentSessionId) ?? null,
+        freshSessionArgsFor: () => freshSessionArgsFor(node),
         sessionStorageFor: () => sessionStorageFor(node),
         onAgentSessionFound: (id: string, agentSessionId: string) => updateNodePayload(id, { agentSessionId }),
         connections: connectionsFor(node.id),
@@ -556,11 +557,11 @@
         onRemoveConnection: removeConnection,
         onDelete: deleteNode,
         onResize: resizeNode,
-        onSessionCreated: async (id: string, sessionId: string) => {
+        onSessionCreated: async (id: string, sessionId: string, options: { resumed: boolean }) => {
           await updateNodePayload(id, { sessionId });
           await api(`/api/agent-room/workspaces/${activeWorkspace?.id}/roles/apply`, {
             method: 'POST',
-            body: JSON.stringify({ nodeId: id }),
+            body: JSON.stringify({ nodeId: id, mode: options.resumed ? 'resume' : 'fresh' }),
           }).catch(() => {});
         },
         onProviderChange: changeNodeProvider,
@@ -614,6 +615,10 @@
 
   function resumeArgsFor(node: CanvasNode): string[] | null {
     return providerForNode(node)?.tui?.resumeArgs ?? null;
+  }
+
+  function freshSessionArgsFor(node: CanvasNode): string[] | null {
+    return providerForNode(node)?.tui?.freshSessionArgs ?? null;
   }
 
   function sessionStorageFor(node: CanvasNode): string | null {

@@ -5,6 +5,31 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.5.2 - 2026-08-10
+
+### Fixed
+
+- Raised the packaged server request limit from the adapter's 512 KB default
+  so local dictation accepts recordings of approximately 15 minutes instead
+  of failing after only a few seconds.
+- Added a localized, actionable message when a recording exceeds the bounded
+  upload limit in either global or terminal dictation.
+- Restored Portal pages automatically when their saved local server starts
+  after the canvas, and made automation wait for a real page load instead of
+  running against Chromium's empty error document.
+- Reserved each new Claude conversation id before spawn, preventing concurrent
+  agents in the same workspace from swapping transcript ownership and sending
+  corrupted terminal redraws through agent-to-agent replies.
+- Preserved actionable Portal failure details through the CLI and rejected raw
+  TUI output whenever a structured provider transcript cannot be confirmed.
+- Stopped re-injecting roles when provider conversations resume. Restored
+  terminals now submit input only to agents with assigned unfinished tasks or
+  to the leader when unfinished work still needs an owner, including custom
+  Kanban stages.
+- Kept the packaged server responsive while macOS waits for workspace-folder
+  consent by moving the initial access check off the event loop; a denied or
+  interrupted check is retried instead of being cached as provisioned.
+
 ## 0.5.1 - 2026-08-10
 
 ### Fixed

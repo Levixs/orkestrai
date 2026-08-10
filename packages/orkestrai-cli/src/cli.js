@@ -134,7 +134,7 @@ async function bridge(config, method, path, body) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.error) {
-    throw new Error(payload.error || `Falha na ponte (HTTP ${response.status}).`);
+    throw new Error(payload.error || payload.data?.error || `Falha na ponte (HTTP ${response.status}).`);
   }
   return payload.data;
 }

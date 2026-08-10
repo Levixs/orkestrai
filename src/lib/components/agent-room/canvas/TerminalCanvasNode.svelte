@@ -25,6 +25,8 @@
     resumeArgsFor?: () => string[] | null;
     /** Avalia os args de resume exato por session-id NA HORA do respawn. */
     exactResumeArgsFor?: (agentSessionId: string) => string[] | null;
+    /** Template que reserva um id novo na CLI e elimina races entre agentes. */
+    freshSessionArgsFor?: () => string[] | null;
     sessionStorageFor?: () => string | null;
     onAgentSessionFound?: (id: string, agentSessionId: string) => void;
     /** Promise da pagina: providers carregados (para o respawn nao correr a race). */
@@ -34,7 +36,7 @@
     onRoleChange?: (id: string, role: string | null) => void;
     onDelete: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
-    onSessionCreated: (id: string, sessionId: string) => void | Promise<void>;
+    onSessionCreated: (id: string, sessionId: string, options: { resumed: boolean }) => void | Promise<void>;
     onToggleMaestro?: (id: string) => void;
     onOpenFile?: (path: string) => void;
     onCycleTheme?: (id: string) => void;
@@ -76,7 +78,9 @@
   }
 
   async function persistCreatedSession(sessionId: string) {
-    await data.onSessionCreated(id, sessionId);
+    const payload = data.payload as TerminalNodePayload & { agentSessionId?: string };
+    const resumed = forceRespawn || Boolean(payload.agentSessionId);
+    await data.onSessionCreated(id, sessionId, { resumed });
     // Mantem o terminal criador montado ate o payload persistido apontar para
     // a nova sessao; liberar antes reanexaria por um instante ao id antigo.
     forceRespawn = false;
@@ -139,7 +143,7 @@
           'content-type': 'application/json',
           ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
         },
-        body: JSON.stringify({ nodeId: id }),
+        body: JSON.stringify({ nodeId: id, mode: 'role' }),
       }).catch(() => {});
     }
   }
@@ -284,6 +288,9 @@
         genericArgs && genericArgs.length
           ? [...(data.payload.args ?? []), ...genericArgs]
           : (data.payload.args ?? []),
+      freshSessionArgs: !exactId && (!genericArgs || genericArgs.length === 0)
+        ? (data.freshSessionArgsFor?.() ?? undefined)
+        : undefined,
       cwd: data.workingDir,
       env: agentEnv,
     };
@@ -301,6 +308,7 @@
     return {
       command: payload.command ?? '',
       args: payload.args ?? [],
+      freshSessionArgs: data.freshSessionArgsFor?.() ?? undefined,
       cwd: data.workingDir,
       env: agentEnv,
     };

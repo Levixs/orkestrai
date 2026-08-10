@@ -127,6 +127,12 @@ const port = Number(process.env.PORT ?? 4173);
 // middleware de origem do Svelar bloqueia POSTs same-origin (http vs https).
 process.env.ORIGIN ??= `http://${host}:${port}`;
 
+// O adapter-node limita requests a 512 KB por padrao. O ditado converte o
+// audio para WAV PCM16 antes do upload (~32 KB/s), entao esse default rejeita
+// gravacoes com cerca de 16 segundos. 32 MB comporta aproximadamente 17 min
+// e ainda mantem um limite explicito para proteger a memoria do processo.
+process.env.BODY_SIZE_LIMIT ??= '32M';
+
 const { handler } = await import('../build/handler.js');
 
 // Migrações no boot: em userData novo (primeira execucao empacotada) o banco

@@ -182,6 +182,7 @@ describe('resume exato dos adapters', () => {
     // Sem id: comeca fresco — "claude --continue" sai com erro quando nao ha
     // conversa no diretorio (ex.: agente novo que nunca recebeu mensagem).
     expect(claudeAdapter.resumeArgs()).toEqual([]);
+    expect(claudeAdapter.freshSessionArgs?.('novo-uuid')).toEqual(['--session-id', 'novo-uuid']);
   });
 
   it('codex resume exato com id e resume --last sem id', () => {

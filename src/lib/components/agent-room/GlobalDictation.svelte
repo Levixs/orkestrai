@@ -151,6 +151,7 @@
           body: form,
         });
         const payload = await response.json().catch(() => ({}));
+        if (response.status === 413) throw new Error(m['voice.recording_too_long']());
         if (!response.ok || payload.error) throw new Error(payload.error || m['voice.dictation_error']());
         const text = String(payload.data?.text ?? '').trim();
         if (!text) toast.error(m['voice.nothing_transcribed']());

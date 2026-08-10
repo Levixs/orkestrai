@@ -13,6 +13,22 @@ import { nativeNotificationService, type NativeNotificationKind } from './Native
 import { defaultShell } from '../../infrastructure/workspace.js';
 import { upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
 
+export function resolveAgentReplyText(
+  transcriptText: string | null,
+  rawTerminalText: string,
+  provider: string | null | undefined,
+  targetTitle: string
+): string {
+  if (transcriptText) return transcriptText;
+  if (provider) {
+    throw new Error(
+      `A resposta de "${targetTitle}" chegou ao terminal, mas o transcript estruturado da sessão não pôde ser confirmado. ` +
+      'Recarregue esse terminal para reparar a associação da conversa e tente novamente.'
+    );
+  }
+  return sanitizeComposerText(rawTerminalText);
+}
+
 export type BridgeAgent = {
   nodeId: string;
   title: string;
@@ -165,7 +181,10 @@ export class BridgeService {
         }
       }
     }
-    replyText ??= sanitizeComposerText(reply.text);
+    // Usa o provider da sessao PTY real, não apenas o metadata do nó. Isso
+    // mantém shells explícitos utilizáveis e protege somente TUIs de agentes.
+    const activeProvider = target.sessionId ? ptySessionManager.get(target.sessionId)?.provider : null;
+    replyText = resolveAgentReplyText(replyText, reply.text, activeProvider, target.title);
 
     // A resposta chega ao agente de origem pelo RETORNO do comando (stdout da
     // CLI / resultado da tool MCP). NAO injetamos mais no composer de origem:

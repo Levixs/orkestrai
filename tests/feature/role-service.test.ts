@@ -76,4 +76,89 @@ describe('RoleService', () => {
     expect(scrollback).toContain('orkestrai task assign');
     ptySessionManager.kill(session.id);
   });
+
+  it('na retomada nao repete a role e acorda apenas o agente com tarefa aberta', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'retomada seletiva', workingDir: '/tmp' });
+    const agent = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Implementador',
+      payload: { command: '/bin/cat', role: 'Revisor' },
+    });
+    await roleService.save(workspace.id, { name: 'Revisor', prompt: 'revise tudo com cuidado' });
+    const openTask = await taskBoardService.create(workspace.id, {
+      title: 'Concluir integração',
+      description: 'Retomar do teste que ficou pela metade.',
+      assigneeNodeId: agent.id,
+      createdBy: 'preset',
+    });
+    const doneTask = await taskBoardService.create(workspace.id, {
+      title: 'Não repetir trabalho pronto',
+      assigneeNodeId: agent.id,
+      createdBy: 'preset',
+    });
+    await taskBoardService.update(workspace.id, doneTask.id, { status: 'done' });
+    const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    await workspaceRepository.updateNode(agent.id, {
+      payload: { command: '/bin/cat', sessionId: session.id, role: 'Revisor' },
+    });
+
+    const result = await roleService.applyToTerminal(workspace.id, agent.id, 'resume');
+    expect(result).toEqual({ applied: false, tasksDelivered: 1 });
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const { scrollback, detach } = ptySessionManager.attach(session.id, () => {});
+    detach();
+    expect(scrollback).toContain('[retomada do workspace]');
+    expect(scrollback).toContain(openTask.id.slice(0, 8));
+    expect(scrollback).toContain('Retomar do teste que ficou pela metade.');
+    expect(scrollback).not.toContain('[responsabilidade: Revisor]');
+    expect(scrollback).not.toContain(doneTask.title);
+    ptySessionManager.kill(session.id);
+  });
+
+  it('na retomada deixa terminal sem trabalho em silencio', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'retomada ociosa', workingDir: '/tmp' });
+    const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    const agent = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Sem fila',
+      payload: { command: '/bin/cat', sessionId: session.id, role: 'Revisor' },
+    });
+    await roleService.save(workspace.id, { name: 'Revisor', prompt: 'isso nao deve ser repetido' });
+
+    expect(await roleService.applyToTerminal(workspace.id, agent.id, 'resume'))
+      .toEqual({ applied: false, tasksDelivered: 0 });
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const { scrollback, detach } = ptySessionManager.attach(session.id, () => {});
+    detach();
+    expect(scrollback).not.toContain('isso nao deve ser repetido');
+    expect(scrollback).not.toContain('[retomada do workspace]');
+    ptySessionManager.kill(session.id);
+  });
+
+  it('ao trocar a role aplica apenas a nova responsabilidade, sem repetir a fila', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'troca de role', workingDir: '/tmp' });
+    const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    const leader = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Lider',
+      payload: { command: '/bin/cat', sessionId: session.id, role: 'Lider técnico', maestro: true },
+    });
+    await roleService.save(workspace.id, { name: 'Lider técnico', prompt: 'coordene o time' });
+    await taskBoardService.create(workspace.id, { title: 'Fila já existente', createdBy: 'preset' });
+
+    expect(await roleService.applyToTerminal(workspace.id, leader.id, 'role'))
+      .toEqual({ applied: true, tasksDelivered: 0 });
+
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const { scrollback, detach } = ptySessionManager.attach(session.id, () => {});
+    detach();
+    expect(scrollback).toContain('[responsabilidade: Lider técnico] coordene o time');
+    expect(scrollback).not.toContain('Fila já existente');
+    ptySessionManager.kill(session.id);
+  });
 });

@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
   import { ArrowRight, Globe, X } from '@lucide/svelte';
+  import { getCsrfToken } from '@beeblock/svelar/http';
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
   import * as m from '$lib/paraglide/messages.js';
@@ -18,22 +20,100 @@
 
   type WebviewElement = HTMLElement & {
     src: string;
+    loadURL: (url: string) => Promise<void>;
     executeJavaScript: (code: string) => Promise<unknown>;
     capturePage: () => Promise<{ toDataURL: () => string }>;
+  };
+
+  type WebviewLoadFailure = Event & {
+    errorCode?: number;
+    errorDescription?: string;
+    validatedURL?: string;
+    isMainFrame?: boolean;
   };
 
   let address = $state(data.payload.url ?? '');
   let frame: (WebviewElement | HTMLIFrameElement) | null = $state(null);
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let retryTimer: ReturnType<typeof setInterval> | null = null;
+  let portalReady = false;
+  let portalError = '';
+  const readyWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
   const isDesktop = typeof window !== 'undefined' && 'orkestraiDesktop' in window;
 
   async function postResult(commandId: string, ok: boolean, result?: unknown, error?: string) {
+    const csrf = getCsrfToken();
     await fetch(`/api/agent-room/workspaces/${data.workspaceId}/portal/${id}/commands/${commandId}/result`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+      },
       body: JSON.stringify({ ok, result, error }),
     }).catch(() => {});
+  }
+
+  function targetUrl() {
+    return address.trim() || String(data.payload.url ?? '').trim();
+  }
+
+  function clearRetry() {
+    if (retryTimer) clearInterval(retryTimer);
+    retryTimer = null;
+  }
+
+  function markReady() {
+    portalReady = true;
+    portalError = '';
+    clearRetry();
+    for (const waiter of readyWaiters) {
+      clearTimeout(waiter.timer);
+      waiter.resolve();
+    }
+    readyWaiters.clear();
+  }
+
+  function retryLoad() {
+    const url = targetUrl();
+    if (!url || !frame || !('loadURL' in frame)) return;
+    void frame.loadURL(url).catch((error) => {
+      portalError = error instanceof Error ? error.message : String(error);
+    });
+  }
+
+  function markUnavailable(detail: string) {
+    portalReady = false;
+    portalError = detail;
+    if (!retryTimer && targetUrl()) {
+      retryTimer = setInterval(retryLoad, 3_000);
+    }
+  }
+
+  function waitUntilReady(timeoutMs = 25_000): Promise<void> {
+    if (portalReady) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const waiter = {
+        resolve,
+        reject,
+        timer: setTimeout(() => {
+          readyWaiters.delete(waiter);
+          reject(new Error(`Portal indisponível em ${targetUrl() || 'URL vazia'}: ${portalError || 'a página não terminou de carregar'}.`));
+        }, timeoutMs),
+      };
+      readyWaiters.add(waiter);
+      retryLoad();
+    });
+  }
+
+  async function verifyLoadedPage(webview: WebviewElement) {
+    try {
+      const href = String(await webview.executeJavaScript('location.href') ?? '');
+      if (href && href !== 'about:blank' && !href.startsWith('chrome-error:')) markReady();
+      else if (targetUrl()) markUnavailable(href.startsWith('chrome-error:') ? 'o servidor ainda não respondeu' : 'a página ainda está vazia');
+    } catch {
+      markUnavailable('a página ainda não está pronta');
+    }
   }
 
   async function executeCommand(command: { id: string; action: string; args: Record<string, unknown> }) {
@@ -45,23 +125,32 @@
       switch (command.action) {
         case 'navigate': {
           const url = String(command.args.url ?? '');
+          portalReady = false;
           address = url;
-          frame.src = url;
           data.onUrlChange?.(id, url);
+          try {
+            await frame.loadURL(url);
+          } catch {
+            await waitUntilReady();
+          }
+          await waitUntilReady();
           await postResult(command.id, true, { navigated: url });
           break;
         }
         case 'eval': {
+          await waitUntilReady();
           const result = await frame.executeJavaScript(String(command.args.js ?? ''));
           await postResult(command.id, true, result);
           break;
         }
         case 'dom': {
+          await waitUntilReady();
           const html = await frame.executeJavaScript('document.documentElement.outerHTML');
           await postResult(command.id, true, String(html).slice(0, 50_000));
           break;
         }
         case 'screenshot': {
+          await waitUntilReady();
           const image = await frame.capturePage();
           await postResult(command.id, true, { dataUrl: image.toDataURL().slice(0, 200_000) });
           break;
@@ -95,18 +184,47 @@
     if (!url) return;
     if (!/^https?:\/\//.test(url)) url = `https://${url}`;
     address = url;
+    portalReady = false;
     data.onUrlChange?.(id, url);
+    if (frame && 'loadURL' in frame) retryLoad();
   }
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') navigate();
   }
 
-  import { onMount } from 'svelte';
+  $effect(() => {
+    const webview = frame;
+    if (!webview || !('executeJavaScript' in webview)) return;
+
+    const handleFinish = () => void verifyLoadedPage(webview);
+    const handleFailure = (event: Event) => {
+      const failure = event as WebviewLoadFailure;
+      if (failure.isMainFrame === false || failure.errorCode === -3) return;
+      markUnavailable(failure.errorDescription || `falha ao carregar ${failure.validatedURL || targetUrl()}`);
+    };
+    webview.addEventListener('did-finish-load', handleFinish);
+    webview.addEventListener('did-fail-load', handleFailure);
+
+    void verifyLoadedPage(webview);
+
+    return () => {
+      webview.removeEventListener('did-finish-load', handleFinish);
+      webview.removeEventListener('did-fail-load', handleFailure);
+    };
+  });
 
   onMount(() => {
     startPolling();
-    return stopPolling;
+    return () => {
+      stopPolling();
+      clearRetry();
+      for (const waiter of readyWaiters) {
+        clearTimeout(waiter.timer);
+        waiter.reject(new Error('Portal fechado antes de concluir o carregamento.'));
+      }
+      readyWaiters.clear();
+    };
   });
 </script>
 

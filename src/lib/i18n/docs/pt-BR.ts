@@ -241,6 +241,18 @@ export const DOCS_PT: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '10 ago 2026 · 0.5.2',
+      items: [
+        'Gravações longas de ditado agora chegam à transcrição, sem bater no limite padrão de 512 KB do servidor empacotado após poucos segundos.',
+        'Gravações acima de aproximadamente 15 minutos mostram uma mensagem de limite clara e traduzida no ditado global e no terminal.',
+        'Portais salvos tentam carregar novamente quando o dev server local inicia depois do canvas e aguardam a página real antes da automação.',
+        'Terminais Claude concorrentes reservam IDs de conversa distintos, evitando transcripts trocados e respostas corrompidas entre agentes.',
+        'Erros de Portal preservam o detalhe útil, e respostas de providers nunca voltam a usar o redraw bruto do terminal.',
+        'Retomar um workspace não injeta as roles novamente: só agentes com tarefas atribuídas ainda abertas, ou o líder com trabalho sem responsável, recebem um prompt de continuação.',
+        'O servidor continua respondendo enquanto o macOS aguarda a permissão da pasta do workspace, e um provisionamento interrompido é tentado novamente com segurança.',
+      ],
+    },
+    {
       date: '10 ago 2026 · 0.5.1',
       items: [
         'Os terminais agora descartam IDs locais de PTY obsoletos após reiniciar o app e retomam automaticamente a conversa preservada de cada provider.',

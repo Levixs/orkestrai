@@ -51,6 +51,8 @@ export type AgentProviderInfo = {
     resumeArgs?: string[] | null;
     /** Args exatos com o token abaixo no lugar do id real da conversa. */
     exactResumeArgs?: string[] | null;
+    /** Args de conversa nova com o token abaixo no lugar do id reservado. */
+    freshSessionArgs?: string[] | null;
   };
   /** Modelos disponiveis no provider (para o dialogo de criacao). */
   models?: AgentModelOption[];

@@ -28,8 +28,8 @@ function slugify(text: string): string {
  * Portateis: ficam em `.orkestrai/roles/<slug>/role.json` (+ AGENTS.md) no
  * working_dir do workspace, entao viajam com o repositório.
  *
- * Aplicacao: quando um terminal com role inicia uma sessão PTY, o prompt da
- * role e injetado como primeira mensagem ao agente (funciona em qualquer TUI).
+ * Aplicacao: uma sessão nova recebe a role como primeira mensagem. Uma sessão
+ * retomada já possui esse contexto e recebe somente trabalho ainda aberto.
  */
 export class RoleService {
   catalog(locale: unknown) {
@@ -160,16 +160,27 @@ export class RoleService {
   }
 
   /**
-   * Injeta o prompt da role na sessão PTY do terminal (primeira mensagem).
-   * Chamado pela UI quando um terminal com role cria sua sessão.
+   * Prepara uma sessão PTY nova ou retomada. Roles só entram em conversas
+   * novas; numa retomada, apenas agentes com trabalho aberto são acordados.
    */
-  async applyToTerminal(workspaceId: string, nodeId: string): Promise<{ applied: boolean; tasksDelivered: number }> {
+  async applyToTerminal(
+    workspaceId: string,
+    nodeId: string,
+    mode: 'fresh' | 'resume' | 'role' = 'fresh',
+  ): Promise<{ applied: boolean; tasksDelivered: number }> {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId || node.type !== 'terminal') {
       throw new Error('Terminal não encontrado neste workspace.');
     }
     const payload = node.payload as { role?: string | null; sessionId?: string; maestro?: boolean };
-    if (!payload.role && !payload.maestro) return { applied: false, tasksDelivered: 0 };
+    const shouldApplyRole = mode !== 'resume' && Boolean(payload.role);
+    const tasks = mode === 'role'
+      ? []
+      : (await taskBoardService.list(workspaceId)).filter((task) => {
+          if (task.status === 'done') return false;
+          return task.assigneeNodeId === nodeId || (payload.maestro && !task.assigneeNodeId);
+        });
+    if (!shouldApplyRole && tasks.length === 0) return { applied: false, tasksDelivered: 0 };
     if (!payload.sessionId) throw new Error('O terminal ainda não tem sessão PTY.');
 
     const session = ptySessionManager.get(payload.sessionId);
@@ -177,35 +188,34 @@ export class RoleService {
     await ptySessionManager.waitUntilIdle(payload.sessionId);
 
     let applied = false;
-    if (payload.role) {
+    if (shouldApplyRole && payload.role) {
       const role = await this.get(workspaceId, payload.role);
       if (!role) throw new Error(`Responsabilidade "${payload.role}" não encontrada.`);
       await ptySessionManager.writeWithSubmit(payload.sessionId, `[responsabilidade: ${role.name}] ${role.prompt.trim()}`);
       applied = true;
     }
 
-    let tasksDelivered = 0;
-    if (payload.maestro) {
-      const tasks = (await taskBoardService.list(workspaceId))
-        .filter((task) => !task.assigneeNodeId && task.status !== 'done');
-      if (tasks.length) {
-        const briefs = tasks.map((task) => {
-          const images = task.images.length ? task.images.map((image) => `- ${image}`).join('\n') : '(nenhuma)';
-          return [
-            `#${task.id.slice(0, 8)} — ${task.title}`,
-            `Descrição: ${task.description?.trim() || '(sem descrição)'}`,
-            `Imagens: ${images}`,
-            `Nota vinculada: ${task.noteTitle ? `${task.noteTitle} (${task.noteId})` : '(nenhuma)'}`,
-          ].join('\n');
-        }).join('\n\n');
-        await ptySessionManager.writeWithSubmit(
-          payload.sessionId,
-          `[fila inicial do Kanban] Existem ${tasks.length} tarefas sem responsável. Leia todos os dados abaixo e distribua cada trabalho com orkestrai task assign <id> "<Agente>" antes de enviar mensagens diretas.\n\n${briefs}`
-        );
-        tasksDelivered = tasks.length;
-      }
+    if (tasks.length) {
+      const briefs = tasks.map((task) => {
+        const images = task.images.length ? task.images.map((image) => `- ${image}`).join('\n') : '(nenhuma)';
+        const ownership = task.assigneeNodeId
+          ? `Responsável: ${task.assigneeTitle ?? node.title ?? nodeId}`
+          : 'Responsável: ainda não atribuído';
+        return [
+          `#${task.id.slice(0, 8)} — ${task.title}`,
+          `Etapa atual: ${task.status}`,
+          ownership,
+          `Descrição: ${task.description?.trim() || '(sem descrição)'}`,
+          `Imagens: ${images}`,
+          `Nota vinculada: ${task.noteTitle ? `${task.noteTitle} (${task.noteId})` : '(nenhuma)'}`,
+        ].join('\n');
+      }).join('\n\n');
+      const instruction = mode === 'resume'
+        ? `[retomada do workspace] Continue somente o trabalho aberto abaixo a partir do ponto em que parou. Consulte o estado atual com orkestrai task list e mantenha cada etapa atualizada.`
+        : `[fila inicial do Kanban] Revise o trabalho aberto abaixo. Tarefas sem responsável devem ser atribuídas com orkestrai task assign <id> "<Agente>" antes de mensagens diretas.`;
+      await ptySessionManager.writeWithSubmit(payload.sessionId, `${instruction}\n\n${briefs}`);
     }
-    return { applied, tasksDelivered };
+    return { applied, tasksDelivered: tasks.length };
   }
 
   private async requireRole(workspaceId: string, nameOrSlug: string): Promise<AgentRole> {

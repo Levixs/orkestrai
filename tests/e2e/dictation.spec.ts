@@ -1,6 +1,21 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('ditado por voz', () => {
+  test('aceita uploads maiores que o antigo limite de 512 KB', async ({ request }) => {
+    const response = await request.post('/api/agent-room/voice/transcribe', {
+      multipart: {
+        file: {
+          name: 'long-dictation.wav',
+          mimeType: 'audio/wav',
+          buffer: Buffer.alloc(600 * 1024),
+        },
+      },
+    });
+
+    expect(response.status()).not.toBe(413);
+    expect(await response.text()).not.toMatch(/content[- ]length|body_size_limit/i);
+  });
+
   test('atalho do ditado e configuravel e persiste', async ({ page, request }) => {
     // Isolamento: garante o atalho padrao antes de abrir a pagina (uma corrida
     // anterior que morreu no meio do teste deixaria outro atalho salvo).

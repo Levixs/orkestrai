@@ -715,6 +715,7 @@
   "voice.transcribing": "Transcribiendo...",
   "voice.nothing_transcribed": "No se transcribio nada. Intenta hablar mas cerca del microfono.",
   "voice.dictation_error": "Error en el dictado.",
+  "voice.recording_too_long": "La grabación es demasiado larga. Graba fragmentos de hasta 15 minutos.",
   "voice.model_status_error": "No se pudo verificar el modelo de voz local.",
   "voice.dictation_lang": "Idioma del dictado",
   "voice.stop_dictation": "Detener dictado ({hotkey})",

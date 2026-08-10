@@ -1,4 +1,5 @@
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
+import { randomUUID } from 'node:crypto';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.js';
 import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.js';
 import { bridgeService } from './BridgeService.js';
@@ -138,7 +139,7 @@ export class FlowService {
     const nodes = await workspaceRepository.listNodes(workspaceId, undefined, true);
     const target = nodes.find((node) => node.type === 'terminal' && (node.title ?? '').trim() === title.trim());
     if (!target) throw new Error(`Agente "${title}" nao encontrado no canvas.`);
-    const payload = (target.payload ?? {}) as { sessionId?: string; command?: string; args?: string[]; env?: Record<string, string> };
+    const payload = (target.payload ?? {}) as { sessionId?: string; agentSessionId?: string; provider?: string; command?: string; args?: string[]; env?: Record<string, string> };
     const existing = payload.sessionId ? ptySessionManager.get(payload.sessionId) : null;
     if (existing && !existing.exited) return;
     if (!payload.command) throw new Error(`O agente "${title}" nao tem comando configurado — recrie o terminal dele.`);
@@ -149,21 +150,32 @@ export class FlowService {
       if (floor?.path) cwd = floor.path;
     }
     const trackingStartedAt = Date.now();
+    const adapter = payload.provider && hasAgentAdapter(payload.provider) ? getAgentAdapter(payload.provider) : null;
+    const freshAgentSessionId = !payload.agentSessionId && adapter?.freshSessionArgs ? randomUUID() : null;
+    const conversationArgs = payload.agentSessionId
+      ? (adapter?.resumeArgs(payload.agentSessionId) ?? [])
+      : freshAgentSessionId
+        ? adapter!.freshSessionArgs!(freshAgentSessionId)
+        : [];
+    if (freshAgentSessionId) agentSessionTracker.claim(freshAgentSessionId);
     const session = ptySessionManager.create({
       command: payload.command,
-      args: payload.args ?? [],
+      args: [...(payload.args ?? []), ...conversationArgs],
       cwd,
       label: title,
       workspace: workspace?.name ?? null,
       provider: (payload as { provider?: string }).provider ?? null,
       env: { ...(payload.env ?? {}), ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
     });
-    await workspaceRepository.updateNode(target.id, { payload: { ...payload, sessionId: session.id } as never });
+    const activeAgentSessionId = payload.agentSessionId ?? freshAgentSessionId;
+    await workspaceRepository.updateNode(target.id, {
+      payload: { ...payload, sessionId: session.id, ...(activeAgentSessionId ? { agentSessionId: activeAgentSessionId } : {}) } as never,
+    });
     // Spawn server-side nao passa pelo pty-ws: registra o rastreio do
     // session-id da CLI aqui, senao o transcrito nunca e achado (ask caia no
     // fallback de tela crua).
-    const provider = (payload as { provider?: string }).provider;
-    if (provider && hasAgentAdapter(provider)) {
+    const provider = payload.provider;
+    if (provider && adapter && !activeAgentSessionId) {
       agentSessionTracker.watch(session.id, getAgentAdapter(provider).sessionStorage, cwd, trackingStartedAt, (agentSessionId) => {
         void workspaceRepository
           .updateNode(target.id, { payload: { ...payload, sessionId: session.id, agentSessionId } as never })

@@ -29,6 +29,9 @@ describe('orkestrai CLI', () => {
           res.end(JSON.stringify({ data: { to: 'Claude', reply: 'resposta do claude', timedOut: false } }));
         } else if (req.url === '/api/agent-room/bridge/task-columns') {
           res.end(JSON.stringify({ data: [{ key: 'review', name: 'Revisão', color: '#9675ff' }] }));
+        } else if (req.url === '/api/agent-room/bridge/portal' && JSON.parse(body || '{}').nodeId === 'broken') {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ data: { ok: false, error: 'Portal indisponível: servidor ainda não respondeu.' } }));
         } else if (req.url === '/api/agent-room/bridge/notes/n9' && req.method === 'GET') {
           res.end(JSON.stringify({ data: { nodeId: 'n9', title: 'nota', content: 'conteudo da nota' } }));
         } else {
@@ -65,6 +68,12 @@ describe('orkestrai CLI', () => {
     expect(code).toBe(0);
     expect(lines.join('\n')).toContain('resposta do claude');
     expect(requests.at(-1).body).toMatchObject({ to: 'Claude', message: 'como vai?' });
+  });
+
+  it('portal preserva o detalhe retornado pela ponte em erros HTTP 400', async () => {
+    await expect(run(['portal', 'broken', 'dom'], { cwd, out: () => {}, env: {} })).rejects.toThrow(
+      'Portal indisponível: servidor ainda não respondeu.'
+    );
   });
 
   it('note read imprime o conteudo da nota', async () => {

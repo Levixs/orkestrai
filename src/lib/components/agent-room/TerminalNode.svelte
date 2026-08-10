@@ -4,6 +4,7 @@
   import { FitAddon } from '@xterm/addon-fit';
   import { SearchAddon } from '@xterm/addon-search';
   import { Mic, Square, Volume2, VolumeX } from '@lucide/svelte';
+  import { getCsrfToken } from '@beeblock/svelar/http';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import * as Select from '$lib/components/ui/select';
   import HeaderIconButton from './canvas/HeaderIconButton.svelte';
@@ -28,6 +29,7 @@
   export type CreatePtyRequest = {
     command: string;
     args?: string[];
+    freshSessionArgs?: string[];
     cwd: string;
     env?: Record<string, string>;
   };
@@ -212,8 +214,14 @@
         const form = new FormData();
         form.append('file', wav, 'ditado.wav');
         if (dictateLang !== 'auto') form.append('language', dictateLang);
-        const response = await fetch('/api/agent-room/voice/transcribe', { method: 'POST', body: form });
+        const csrf = getCsrfToken();
+        const response = await fetch('/api/agent-room/voice/transcribe', {
+          method: 'POST',
+          headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
+          body: form,
+        });
         const payload = await response.json().catch(() => ({}));
+        if (response.status === 413) throw new Error(m['voice.recording_too_long']());
         if (!response.ok || payload.error) throw new Error(payload.error || `Erro ${response.status}`);
         const text = String(payload.data?.text ?? '').trim();
         if (text) {

@@ -75,6 +75,14 @@ export const claudeAdapter: AgentAdapter = {
     return agentSessionId ? ['--resume', agentSessionId] : [];
   },
 
+  /**
+   * Impede a corrida do rastreador quando varios Claude nascem juntos no
+   * mesmo cwd: cada processo cria exatamente o transcript que o no reservou.
+   */
+  freshSessionArgs(agentSessionId: string): string[] {
+    return ['--session-id', agentSessionId];
+  },
+
   interactiveCommand(options?: { model?: string; effort?: ModelEffort | null }): AgentCommandSpec {
     return {
       command: 'claude',

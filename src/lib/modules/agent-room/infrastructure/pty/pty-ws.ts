@@ -20,6 +20,7 @@
  *   S->C {type:'error', code?, message}
  */
 import { existsSync, statSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import type { WebSocket } from 'ws';
 import { ptySessionManager } from './PtySessionManager.ts';
 import { agentSessionTracker } from './AgentSessionTracker.ts';
@@ -27,7 +28,7 @@ import { agentSessionTracker } from './AgentSessionTracker.ts';
 export const PTY_WS_PATH = '/ws/agent-room/pty';
 
 type ClientMessage =
-  | { type: 'create'; command: string; args?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string }
+  | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string }
   | { type: 'attach'; sessionId: string }
   | { type: 'input'; sessionId: string; data: string }
   | { type: 'resize'; sessionId: string; cols: number; rows: number }
@@ -117,9 +118,19 @@ export function handlePtyConnection(socket: WebSocket): void {
             throw new Error('Informe o comando da sessão PTY.');
           }
           const trackingStartedAt = Date.now();
+          const freshSessionId = Array.isArray(message.freshSessionArgs) && message.freshSessionArgs.length
+            ? randomUUID()
+            : null;
+          const freshSessionArgs = freshSessionId
+            ? message.freshSessionArgs!.map((arg) => String(arg).replace('__ORKESTRAI_SESSION_ID__', freshSessionId))
+            : [];
+          if (freshSessionId) agentSessionTracker.claim(freshSessionId);
           const session = ptySessionManager.create({
             command: message.command.trim(),
-            args: Array.isArray(message.args) ? message.args.map(String) : [],
+            args: [
+              ...(Array.isArray(message.args) ? message.args.map(String) : []),
+              ...freshSessionArgs,
+            ],
             cwd: resolveCwd(message.cwd),
             cols: message.cols,
             rows: message.rows,
@@ -151,7 +162,7 @@ export function handlePtyConnection(socket: WebSocket): void {
           // Rastreia o session-id REAL da CLI para resume exato futuro.
           const provider = typeof message.provider === 'string' && message.provider.trim() ? message.provider : null;
           if (provider) {
-            agentSessionTracker.watch(session.id, message.sessionStorage, session.cwd, trackingStartedAt, (agentSessionId) => {
+            const reportAgentSession = (agentSessionId: string) => {
               // Broadcast global: o socket criador pode já ter sido fechado
               // (o no remonta em modo attach ao receber o sessionId).
               wsGlobal.__orkestraiBroadcast?.({
@@ -162,7 +173,9 @@ export function handlePtyConnection(socket: WebSocket): void {
                 provider,
               });
               send({ type: 'agentSession', sessionId: session.id, agentSessionId, provider });
-            });
+            };
+            if (freshSessionId) reportAgentSession(freshSessionId);
+            else agentSessionTracker.watch(session.id, message.sessionStorage, session.cwd, trackingStartedAt, reportAgentSession);
           }
           break;
         }

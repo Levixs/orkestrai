@@ -270,7 +270,8 @@ export class WorkspaceController extends Controller {
   async applyRole(event: any) {
     try {
       const body = await event.request.json().catch(() => ({}));
-      return this.json({ data: await roleService.applyToTerminal(event.params.id, String(body.nodeId ?? '')) });
+      const mode = body.mode === 'resume' || body.mode === 'role' ? body.mode : 'fresh';
+      return this.json({ data: await roleService.applyToTerminal(event.params.id, String(body.nodeId ?? ''), mode) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao aplicar responsabilidade.');
     }

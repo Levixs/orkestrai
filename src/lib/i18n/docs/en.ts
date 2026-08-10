@@ -237,6 +237,18 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
+      date: 'Aug 10, 2026 · 0.5.2',
+      items: [
+        'Long dictation recordings now reach transcription instead of hitting the packaged server’s 512 KB default request limit after a few seconds.',
+        'Recordings longer than approximately 15 minutes show a clear localized limit message in both global and terminal dictation.',
+        'Saved Portals automatically retry when their local dev server starts after the canvas and wait for the real page before running automation.',
+        'Concurrent Claude terminals reserve distinct conversation ids, preventing crossed transcripts and corrupted agent-to-agent replies.',
+        'Portal errors preserve their actionable detail, and provider replies never fall back to raw terminal redraw output.',
+        'Resuming a workspace no longer injects roles again: only agents with unfinished assigned tasks, or the leader with unassigned work, receive a continuation prompt.',
+        'The server remains responsive while macOS waits for workspace-folder permission, and interrupted provisioning is retried safely.',
+      ],
+    },
+    {
       date: 'Aug 10, 2026 · 0.5.1',
       items: [
         'Terminals now discard obsolete process-local PTY ids after an app restart and automatically resume each provider’s preserved conversation.',

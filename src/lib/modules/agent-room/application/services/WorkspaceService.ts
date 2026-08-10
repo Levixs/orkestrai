@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { constants as fsConstants, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Workspace } from '../../domain/types.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
@@ -54,7 +55,10 @@ export class WorkspaceService {
    */
   private async ensureProvisioned(workspace: Workspace) {
     if (this.provisionChecked.has(workspace.id)) return;
-    this.provisionChecked.add(workspace.id);
+    // Downloads/Documents/Desktop podem exigir consentimento TCC no macOS.
+    // A checagem assincrona deixa o servidor responder enquanto o dialogo do
+    // sistema aguarda o usuario; chamadas sync aqui congelavam todo o app.
+    await access(workspace.workingDir, fsConstants.R_OK | fsConstants.W_OK);
     const skillPath = resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md');
     const skillCurrent = existsSync(skillPath) && readFileSync(skillPath, 'utf8') === bridgeService.bridgeSkillContent();
     const hasConfig = existsSync(resolve(workspace.workingDir, '.orkestrai', 'workspace.json'));
@@ -62,9 +66,14 @@ export class WorkspaceService {
     // Bloco AGENTS.md (codex/kimi/opencode) entrou depois — workspaces antigos
     // so ganham os arquivos novos se o reparo verificar o marcador tambem.
     const hasAgentsMd = existsSync(agentsMd) && readFileSync(agentsMd, 'utf8').includes('<!-- orkestrai:begin -->');
-    if (skillCurrent && hasConfig && hasAgentsMd) return;
+    if (skillCurrent && hasConfig && hasAgentsMd) {
+      this.provisionChecked.add(workspace.id);
+      return;
+    }
     const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
-    if (token) bridgeService.provisionSkill(workspace, token);
+    if (!token) return;
+    bridgeService.provisionSkill(workspace, token);
+    this.provisionChecked.add(workspace.id);
   }
 
   async create(dto: CreateWorkspaceDto) {
