@@ -4,13 +4,13 @@
   import MarkdownView from '../MarkdownView.svelte';
   import * as m from '$lib/paraglide/messages.js';
 
-  const NOTE_COLORS: Record<string, { bg: string; fg: string; label: string }> = {
-    yellow: { bg: '#1f1e17', fg: '#e8ddc0', label: m['note.color_yellow']() },
-    blue: { bg: '#161b24', fg: '#c9d8f0', label: m['note.color_blue']() },
-    green: { bg: '#15201a', fg: '#c8ecd4', label: m['note.color_green']() },
-    purple: { bg: '#1d1726', fg: '#dccdf0', label: m['note.color_purple']() },
-    red: { bg: '#241616', fg: '#f0cccc', label: m['note.color_red']() },
-    neutral: { bg: '#1C1946', fg: '#c7c8d0', label: m['note.color_neutral']() },
+  const NOTE_COLORS: Record<string, { color: string; label: string }> = {
+    yellow: { color: '#d09a00', label: m['note.color_yellow']() },
+    blue: { color: '#3e78d8', label: m['note.color_blue']() },
+    green: { color: '#298457', label: m['note.color_green']() },
+    purple: { color: '#8357c5', label: m['note.color_purple']() },
+    red: { color: '#c84f57', label: m['note.color_red']() },
+    neutral: { color: '#777487', label: m['note.color_neutral']() },
   };
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
@@ -96,8 +96,8 @@
         <button
           class="swatch"
           class:active={((data.payload as { color?: string }).color ?? 'yellow') === name}
-          style:background={preset.bg}
-          style:border-color={preset.fg}
+          style:background={preset.color}
+          style:border-color="color-mix(in srgb, {preset.color} 70%, var(--app-text))"
           aria-label={preset.label}
           onclick={() => setColor(name)}
         ></button>
@@ -113,7 +113,7 @@
   {#if formatted}
     <div
       class="note-content note-preview nodrag nowheel"
-      style="--note-bg: {noteColor.bg}; --note-fg: {noteColor.fg}"
+      style="--note-color: {noteColor.color}"
       ondblclick={toggleFormatted}
       role="presentation"
     >
@@ -122,7 +122,7 @@
   {:else}
     <textarea
       class="note-content nodrag nowheel"
-      style="--note-bg: {noteColor.bg}; --note-fg: {noteColor.fg}"
+      style="--note-color: {noteColor.color}"
       bind:value={draft}
       oninput={handleInput}
       onpaste={handlePaste}
@@ -140,8 +140,8 @@
     border: none;
     outline: none;
     padding: 10px;
-    background: var(--note-bg, #1f1e17);
-    color: var(--note-fg, #e8ddc0);
+    background: color-mix(in srgb, var(--note-color, var(--app-warning)) 12%, var(--app-surface));
+    color: var(--app-text);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12px;
     line-height: 1.5;
@@ -169,7 +169,7 @@
   }
 
   .swatch.active {
-    outline: 1.5px solid rgba(255, 255, 255, 0.75);
+    outline: 1.5px solid var(--app-text);
     outline-offset: 1px;
   }
 
@@ -192,7 +192,7 @@
   }
 
   .note-preview :global(pre) {
-    background: rgba(0, 0, 0, 0.35);
+    background: var(--app-canvas);
     border-radius: 8px;
     padding: 8px;
     overflow-x: auto;
@@ -217,7 +217,7 @@
 
   .note-preview :global(th),
   .note-preview :global(td) {
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
     padding: 3px 7px;
     text-align: left;
   }
@@ -234,9 +234,9 @@
   }
 
   .note-preview :global(blockquote) {
-    border-left: 3px solid rgba(226, 185, 61, 0.5);
+    border-left: 3px solid var(--note-color, var(--app-warning));
     margin: 0.5em 0;
     padding-left: 0.8em;
-    color: #c9c0a3;
+    color: var(--app-text-soft);
   }
 </style>

@@ -32,7 +32,7 @@
   .md {
     font-size: 12.5px;
     line-height: 1.65;
-    color: #c9cad2;
+    color: var(--app-text-soft);
     overflow-wrap: break-word;
   }
 
@@ -47,7 +47,7 @@
   .md :global(h4) {
     font-family: 'Sora', 'Inter', sans-serif;
     font-weight: 600;
-    color: #e6e6eb;
+    color: var(--app-text);
     margin: 12px 0 6px;
     text-wrap: balance;
   }
@@ -72,13 +72,13 @@
   }
 
   .md :global(a) {
-    color: #7de5ff;
+    color: var(--app-secondary);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
 
   .md :global(a:hover) {
-    color: #aeefff;
+    color: color-mix(in srgb, var(--app-secondary) 75%, var(--app-text));
   }
 
   .md :global(ul),
@@ -100,7 +100,7 @@
     width: 13px;
     height: 13px;
     border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid var(--app-border-strong);
     background: transparent;
     vertical-align: -2px;
     margin-right: 6px;
@@ -109,8 +109,8 @@
   }
 
   .md :global(li input[type='checkbox']:checked) {
-    background: #5b8def;
-    border-color: #5b8def;
+    background: var(--app-accent);
+    border-color: var(--app-accent);
   }
 
   .md :global(li input[type='checkbox']:checked::after) {
@@ -121,7 +121,7 @@
     align-items: center;
     justify-content: center;
     font-size: 10px;
-    color: #fff;
+    color: var(--app-accent-contrast);
   }
 
   .md :global(li:has(input[type='checkbox'])) {
@@ -132,14 +132,14 @@
   .md :global(code) {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 0.9em;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--app-surface-raised);
     border-radius: 5px;
     padding: 1px 5px;
   }
 
   .md :global(pre) {
-    background: rgba(13, 11, 46, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--app-canvas);
+    border: 1px solid var(--app-border);
     border-radius: 10px;
     padding: 10px 12px;
     overflow-x: auto;
@@ -156,10 +156,10 @@
   .md :global(blockquote) {
     margin: 0 0 8px;
     padding: 4px 12px;
-    border-left: 3px solid rgba(91, 141, 239, 0.5);
-    background: rgba(91, 141, 239, 0.06);
+    border-left: 3px solid var(--app-accent);
+    background: color-mix(in srgb, var(--app-accent) 8%, transparent);
     border-radius: 0 8px 8px 0;
-    color: #a9aab3;
+    color: var(--app-text-soft);
   }
 
   .md :global(blockquote p) {
@@ -174,20 +174,20 @@
 
   .md :global(th),
   .md :global(td) {
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--app-border);
     padding: 4px 9px;
     text-align: left;
   }
 
   .md :global(th) {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-surface-raised);
     font-weight: 600;
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .md :global(hr) {
     border: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--app-border);
     margin: 10px 0;
   }
 
@@ -197,11 +197,11 @@
   }
 
   .md :global(strong) {
-    color: #e6e6eb;
+    color: var(--app-text);
     font-weight: 600;
   }
 
   .md :global(del) {
-    color: #6d6d78;
+    color: var(--app-text-muted);
   }
 </style>

@@ -88,28 +88,28 @@
   });
 </script>
 
-<aside class="flex h-full w-[380px] shrink-0 flex-col border-l border-white/10 bg-[#12102f] text-zinc-100 shadow-[-18px_0_50px_rgba(3,2,18,0.22)]" data-tour="preset-library">
-  <header class="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-4">
+<aside class="flex h-full w-[380px] shrink-0 flex-col border-l border-[var(--app-border)] bg-[var(--app-sidebar)] text-[var(--app-text)] shadow-[-18px_0_50px_rgba(3,2,18,0.22)]" data-tour="preset-library">
+  <header class="flex items-start justify-between gap-4 border-b border-[var(--app-border)] px-4 py-4">
     <div class="min-w-0">
-      <div class="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
+      <div class="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--app-secondary)]">
         <Sparkles size={12} />
         {m['preset.eyebrow']()}
       </div>
-      <h3 class="m-0 text-base font-semibold text-white">{m['preset.title']()}</h3>
-      <p class="mt-1 text-xs leading-5 text-zinc-400">{m['preset.subtitle']()}</p>
+      <h3 class="m-0 text-base font-semibold text-[var(--app-text)]">{m['preset.title']()}</h3>
+      <p class="mt-1 text-xs leading-5 text-[var(--app-text-muted)]">{m['preset.subtitle']()}</p>
     </div>
-    <Button variant="ghost" size="icon-sm" aria-label={m['preset.close']()} onclick={onClose} class="shrink-0 text-zinc-400 hover:text-white">
+    <Button variant="ghost" size="icon-sm" aria-label={m['preset.close']()} onclick={onClose} class="shrink-0 text-[var(--app-text-muted)] hover:text-[var(--app-text)]">
       <X size={15} />
     </Button>
   </header>
 
-  <div class="grid gap-2 border-b border-white/10 p-4">
+  <div class="grid gap-2 border-b border-[var(--app-border)] p-4">
     <label class="relative">
-      <Search class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-      <Input bind:value={query} aria-label={m['preset.search_aria']()} placeholder={m['preset.search_placeholder']()} class="border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-zinc-600" />
+      <Search class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]" size={14} />
+      <Input bind:value={query} aria-label={m['preset.search_aria']()} placeholder={m['preset.search_placeholder']()} class="border-[var(--app-border)] bg-[var(--app-surface-subtle)] pl-9 text-[var(--app-text)] placeholder:text-[var(--app-text-muted)]" />
     </label>
     <Select.Root type="single" value={category} onValueChange={(value: string) => (category = value as typeof category)}>
-      <Select.Trigger class="w-full border-white/10 bg-white/[0.04] text-zinc-200">
+      <Select.Trigger class="w-full border-[var(--app-border)] bg-[var(--app-surface-subtle)] text-[var(--app-text-soft)]">
         {categoryLabel(category)}
       </Select.Trigger>
       <Select.Content>
@@ -127,23 +127,23 @@
 
   <div class="flex-1 space-y-3 overflow-y-auto p-4">
     {#if errorMessage}
-      <p class="rounded-md border border-red-400/25 bg-red-400/10 px-3 py-2 text-xs text-red-200">{errorMessage}</p>
+      <p class="rounded-md border border-[color-mix(in_srgb,var(--app-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--app-danger)_10%,transparent)] px-3 py-2 text-xs text-[var(--app-danger)]">{errorMessage}</p>
     {/if}
     {#each filtered as preset (preset.id)}
-      <article class="rounded-md border border-white/10 bg-white/[0.035] p-3 transition-colors hover:border-cyan-300/30 hover:bg-white/[0.055]">
+      <article class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-3 transition-colors hover:border-[var(--app-border-strong)] hover:bg-[var(--app-surface-raised)]">
         <div class="flex items-start gap-3">
-          <span class="grid size-9 shrink-0 place-items-center rounded-md border border-white/10 bg-[var(--app-surface)] text-cyan-200">
+          <span class="grid size-9 shrink-0 place-items-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface-subtle)] text-[var(--app-secondary)]">
             <WorkspaceIcon name={preset.icon} size={17} />
           </span>
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
-              <h4 class="m-0 text-sm font-semibold text-white">{preset.name}</h4>
+              <h4 class="m-0 text-sm font-semibold text-[var(--app-text)]">{preset.name}</h4>
               <Badge variant={preset.builtin ? 'secondary' : 'outline'} class="h-5 rounded px-1.5 text-[9px] uppercase tracking-normal">
                 {preset.builtin ? m['preset.builtin']() : m['preset.custom']()}
               </Badge>
             </div>
-            <p class="mt-1 text-[11px] leading-4 text-zinc-400">{preset.description ?? m['preset.no_description']()}</p>
-            <p class="mt-2 text-[10px] font-medium text-zinc-500">{m['preset.agent_count']({ count: preset.agents })} · {categoryLabel(preset.category)}</p>
+            <p class="mt-1 text-[11px] leading-4 text-[var(--app-text-muted)]">{preset.description ?? m['preset.no_description']()}</p>
+            <p class="mt-2 text-[10px] font-medium text-[var(--app-text-muted)]">{m['preset.agent_count']({ count: preset.agents })} · {categoryLabel(preset.category)}</p>
           </div>
         </div>
         <div class="mt-3 grid {workspaceId ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'} gap-2">
@@ -159,7 +159,7 @@
         </div>
       </article>
     {:else}
-      <div class="grid min-h-40 place-items-center px-8 text-center text-xs leading-5 text-zinc-500">
+      <div class="grid min-h-40 place-items-center px-8 text-center text-xs leading-5 text-[var(--app-text-muted)]">
         <div><Library class="mx-auto mb-3" size={24} />{m['preset.empty']()}</div>
       </div>
     {/each}

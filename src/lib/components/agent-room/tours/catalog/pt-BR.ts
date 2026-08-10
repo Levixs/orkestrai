@@ -480,7 +480,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'record',
         title: 'Clique na bolinha de voz',
-        body: 'Use a bolinha colorida no topo direito ou Alt+Espaço para gravar. Clique novamente para parar; o texto entra exatamente no cursor do campo, sem enviar sozinho.',
+        body: 'Use a bolinha colorida ou Alt+Espaço para gravar. O primeiro clique preserva o campo focado. Ctrl+clique ou Command+clique abre os controles de posição; solte a bolinha para arrastá-la dentro do canvas visível.',
       },
       {
         id: 'fallback',
@@ -714,7 +714,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'create',
         title: 'Crie o membro Devin',
-        body: 'Volte ao canvas e selecione Devin na barra inferior. Escolha um modelo disponível na sua conta; o terminal inicia com acesso autônomo ao workspace.',
+        body: 'Volte ao canvas e selecione Devin na barra inferior. Pesquise ou role a lista limitada de modelos, escolha um disponível na sua conta e inicie com acesso autônomo ao workspace.',
       },
       {
         id: 'continue',
@@ -749,6 +749,29 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'organize-canvas',
+    icon: 'LayoutGrid',
+    title: 'Organizar o canvas',
+    tagline: 'Realinhe uma seleção ou todo o workspace sem sobreposições.',
+    steps: [
+      {
+        id: 'choose-scope',
+        title: 'Escolha o que será movido',
+        body: 'Selecione os nós que precisam de atenção. Com uma seleção, o Orkestrai move somente esses nós; sem seleção, organiza o canvas inteiro.',
+      },
+      {
+        id: 'run-layout',
+        title: 'Execute Organizar canvas',
+        body: 'Use a ação da barra, a paleta de comandos ou Command+Shift+T. O layout determinístico distribui os nós em linhas legíveis sem empilhá-los.',
+      },
+      {
+        id: 'keep-connections-clear',
+        title: 'Mantenha o workspace legível',
+        body: 'As conexões ficam atrás de todos os nós, inclusive em telas Windows com escalas diferentes. Depois, você ainda pode fazer ajustes manuais.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar a aparência',
@@ -757,7 +780,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'choose-theme',
         title: 'Escolha claro ou escuro',
-        body: 'Em Configurações → Aparência, compare Orkestrai Dark, Graphite, Midnight e Orkestrai Light. A prévia se aplica imediatamente em toda a interface.',
+        body: 'Em Configurações → Aparência, compare Orkestrai Dark, Graphite, Midnight e Orkestrai Light. A opção clara mantém contraste acessível em nós, painéis, ícones, marcas dos providers e hovers.',
       },
       {
         id: 'edit-tokens',

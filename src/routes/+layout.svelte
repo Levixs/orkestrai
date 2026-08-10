@@ -6,18 +6,22 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import UpdateNotifier from '$lib/components/agent-room/UpdateNotifier.svelte';
   import GlobalDictation from '$lib/components/agent-room/GlobalDictation.svelte';
+  import DesktopTitlebar from '$lib/components/agent-room/DesktopTitlebar.svelte';
   import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
   import { appSettingsStore } from '$lib/components/agent-room/app-settings.svelte.js';
   import { applyAppTheme } from '$lib/components/agent-room/app-themes.js';
 
   type DesktopMenuBridge = {
+    platform?: string;
     setMenuLocale?: (locale: string) => Promise<string>;
     onMenuAction?: (callback: (action: string) => void) => () => void;
+    setTitlebarTheme?: (theme: { background: string; foreground: string }) => Promise<boolean>;
   };
 
   const desktopMenu = typeof window !== 'undefined'
     ? (window as unknown as { orkestraiDesktop?: DesktopMenuBridge }).orkestraiDesktop
     : undefined;
+  const windowsDesktop = desktopMenu?.platform === 'win32';
 
   $effect(() => {
     void desktopMenu?.setMenuLocale?.(localeState.current);
@@ -33,7 +37,8 @@
   let localeReady = $state(false);
 
   $effect(() => {
-    applyAppTheme(appSettingsStore.values);
+    const theme = applyAppTheme(appSettingsStore.values);
+    void desktopMenu?.setTitlebarTheme?.({ background: theme.tokens.sidebar, foreground: theme.tokens.textSoft });
   });
 
   onMount(() => {
@@ -52,7 +57,7 @@
     };
     window.addEventListener('keydown', docsSearchShortcut);
 
-    const canvasActions = new Set(['new-workspace', 'presets', 'floors', 'roles', 'usage', 'ports', 'command-palette']);
+    const canvasActions = new Set(['new-workspace', 'presets', 'organize', 'floors', 'roles', 'usage', 'ports', 'command-palette']);
     const unsubscribeMenu = desktopMenu?.onMenuAction?.((action) => {
       if (action === 'canvas') location.assign('/canvas');
       else if (action === 'providers') location.assign('/providers');
@@ -117,7 +122,10 @@
        m.*() reavalia — i18n reativo garantido por construcao. -->
   {#if localeReady}
     {#key localeState.current}
-      {@render children()}
+      {#if windowsDesktop}<DesktopTitlebar />{/if}
+      <div class="app-content" class:desktop-content={windowsDesktop}>
+        {@render children()}
+      </div>
       <GlobalDictation />
     {/key}
   {/if}
@@ -131,5 +139,15 @@
     margin: 0;
     padding: 0;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  .app-content {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .app-content.desktop-content {
+    height: calc(100dvh - 36px);
+    overflow: auto;
   }
 </style>

@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld('orkestraiDesktop', {
   openExternal: (url) => ipcRenderer.invoke('orkestrai:open-external', url),
   /** Mantém o menu nativo no mesmo idioma selecionado dentro do app. */
   setMenuLocale: (locale) => ipcRenderer.invoke('orkestrai:menu-locale', locale),
+  /** Executa uma acao validada da barra customizada do Windows. */
+  runMenuCommand: (action) => ipcRenderer.invoke('orkestrai:menu-command', action),
+  setTitlebarTheme: (theme) => ipcRenderer.invoke('orkestrai:titlebar-theme', theme),
   /** Ações do menu nativo são executadas pelo renderer para reutilizar os fluxos do canvas. */
   onMenuAction: (callback) => {
     const listener = (_event, action) => callback(action);

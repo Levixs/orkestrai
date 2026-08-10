@@ -338,7 +338,7 @@
     border: none;
     outline: none;
     background: transparent;
-    color: #d5d5dc;
+    color: var(--app-text-soft);
     font-size: 11px;
   }
 
@@ -388,7 +388,7 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 11px;
     line-height: 1.5;
-    color: #c9d8f0;
+    color: var(--app-text-soft);
   }
 
   .hidden {
@@ -432,7 +432,7 @@
     border: none;
     border-radius: 5px;
     background: transparent;
-    color: #d5d5dc;
+    color: var(--app-text-soft);
     font-size: 12px;
     cursor: pointer;
     text-align: left;
@@ -461,7 +461,7 @@
   }
 
   .error {
-    color: #ffb3b6;
+    color: var(--app-danger);
     font-size: 11px;
     padding: 6px;
   }

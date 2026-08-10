@@ -75,9 +75,9 @@
     flex-direction: column;
     gap: 8px;
     padding: 14px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(91, 141, 239, 0.35);
-    background: rgba(26, 23, 66, 0.96);
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--app-accent) 42%, var(--app-border));
+    background: color-mix(in srgb, var(--app-surface-raised) 96%, transparent);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
   }
@@ -93,8 +93,8 @@
     font-size: 10.5px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #7de5ff;
+    letter-spacing: 0;
+    color: var(--app-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -106,13 +106,13 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     cursor: pointer;
   }
 
   .tour-close:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.08);
+    color: var(--app-text);
+    background: var(--app-surface-subtle);
   }
 
   .tour-progress {
@@ -124,20 +124,20 @@
     width: 16px;
     height: 4px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--app-border);
   }
 
   .tour-dot.done {
-    background: #3dd68c;
+    background: var(--app-success);
   }
 
   .tour-dot.current {
-    background: #5b8def;
+    background: var(--app-accent);
   }
 
   .tour-step-of {
     font-size: 10.5px;
-    color: #6d6d78;
+    color: var(--app-text-muted);
     font-variant-numeric: tabular-nums;
   }
 
@@ -146,7 +146,7 @@
     font-family: 'Sora', 'Inter', sans-serif;
     font-size: 15px;
     font-weight: 600;
-    color: #e6e6eb;
+    color: var(--app-text);
     text-wrap: balance;
   }
 
@@ -154,14 +154,14 @@
     margin: 0;
     font-size: 12px;
     line-height: 1.6;
-    color: #a9aab3;
+    color: var(--app-text-soft);
     text-wrap: pretty;
   }
 
   .tour-error {
     margin: 0;
     font-size: 11px;
-    color: #ff9c9f;
+    color: var(--app-danger);
   }
 
   .tour-actions {
@@ -180,20 +180,20 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    color: #3dd68c;
+    color: var(--app-success);
   }
 
   .tour-done h3 {
     margin: 0;
     font-size: 15px;
     font-weight: 600;
-    color: #e6e6eb;
+    color: var(--app-text);
   }
 
   .tour-done p {
     margin: 0;
     font-size: 12px;
-    color: #a9aab3;
+    color: var(--app-text-soft);
     line-height: 1.6;
   }
 

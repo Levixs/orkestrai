@@ -162,7 +162,7 @@
 
   .palette-list button.active,
   .palette-list button:hover {
-    background: #26262f;
+    background: var(--app-surface-raised);
   }
 
   .item-kind {

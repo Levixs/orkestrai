@@ -168,7 +168,7 @@
   {id}
   {selected}
   class="canvas-flow"
-  accent="#5b8def"
+  accent="var(--app-accent)"
   minWidth={420}
   minHeight={300}
   onResize={data.onResize}
@@ -324,22 +324,22 @@
     padding: 6px 8px;
     border-radius: 8px;
     border: 1px solid var(--app-border);
-    background: rgba(255, 255, 255, 0.03);
+    background: color-mix(in srgb, var(--app-surface-raised) 55%, transparent);
   }
 
   .flow-step.running {
-    border-color: rgba(125, 229, 255, 0.45);
+    border-color: color-mix(in srgb, var(--app-secondary) 55%, var(--app-border));
   }
 
   .flow-step.waiting {
-    border-color: rgba(255, 200, 87, 0.5);
+    border-color: color-mix(in srgb, var(--app-warning) 58%, var(--app-border));
   }
 
   .flow-step-num {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: rgba(91, 141, 239, 0.18);
+    background: color-mix(in srgb, var(--app-secondary) 16%, transparent);
     color: var(--app-secondary);
     font-size: 9.5px;
     font-weight: 600;
@@ -383,7 +383,7 @@
 
   .flow-mini-btn:hover {
     background: var(--app-border);
-    color: #fff;
+    color: var(--app-text);
   }
 
   .flow-mini-btn.danger:hover {
@@ -394,10 +394,10 @@
     grid-column: 1 / -1;
     width: 100%;
     resize: vertical;
-    background: rgba(13, 11, 46, 0.5);
+    background: var(--app-surface-subtle);
     border: 1px solid var(--app-border);
     border-radius: 6px;
-    color: #c9cad2;
+    color: var(--app-text-soft);
     font-size: 10.5px;
     font-family: inherit;
     padding: 5px 7px;
@@ -422,14 +422,14 @@
     padding: 16px 12px;
     text-align: center;
     color: var(--app-text-muted);
-    border: 1.5px dashed rgba(91, 141, 239, 0.3);
+    border: 1.5px dashed color-mix(in srgb, var(--app-accent) 42%, transparent);
     border-radius: 10px;
-    background: rgba(91, 141, 239, 0.04);
+    background: color-mix(in srgb, var(--app-accent) 7%, transparent);
   }
 
   .flow-empty strong {
     font-size: 11.5px;
-    color: #9d9ea8;
+    color: var(--app-text-soft);
     font-weight: 600;
   }
 
@@ -450,8 +450,8 @@
   }
 
   .flow-banner.error {
-    background: rgba(229, 72, 77, 0.1);
-    border: 1px solid rgba(229, 72, 77, 0.35);
+    background: color-mix(in srgb, var(--app-danger) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-danger) 42%, var(--app-border));
     color: var(--app-danger);
   }
 
@@ -472,7 +472,7 @@
     gap: 4px;
     padding: 4px 10px;
     border-radius: 7px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--app-border);
     background: transparent;
     color: var(--app-text-soft);
     font-size: 10.5px;
@@ -499,8 +499,8 @@
 
   .flow-iter input {
     width: 40px;
-    background: rgba(13, 11, 46, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--app-surface-subtle);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     color: var(--app-text);
     font-size: 11px;
@@ -517,8 +517,8 @@
   .flow-input {
     flex: 1;
     min-width: 0;
-    background: rgba(13, 11, 46, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--app-surface-subtle);
+    border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text);
     font-size: 11px;
@@ -541,8 +541,8 @@
   }
 
   .flow-run-btn {
-    background: #5b8def;
-    color: #fff;
+    background: var(--app-accent);
+    color: var(--app-accent-contrast);
   }
 
   .flow-run-btn:disabled {
@@ -551,15 +551,15 @@
   }
 
   .flow-approve-btn {
-    background: rgba(61, 214, 140, 0.18);
+    background: color-mix(in srgb, var(--app-success) 18%, transparent);
     color: var(--app-success);
-    border: 1px solid rgba(61, 214, 140, 0.4);
+    border: 1px solid color-mix(in srgb, var(--app-success) 45%, var(--app-border));
   }
 
   .flow-stop-btn {
-    background: rgba(229, 72, 77, 0.14);
+    background: color-mix(in srgb, var(--app-danger) 14%, transparent);
     color: var(--app-danger);
-    border: 1px solid rgba(229, 72, 77, 0.35);
+    border: 1px solid color-mix(in srgb, var(--app-danger) 42%, var(--app-border));
   }
 
   .flow-run-status {

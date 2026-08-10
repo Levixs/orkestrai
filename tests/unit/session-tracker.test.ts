@@ -135,6 +135,20 @@ describe('AgentSessionTracker', () => {
     expect(tracker.findLatestUnclaimedSessionId(claudeAdapter.sessionStorage, cwd)).toBe('sessao-retomavel');
   });
 
+  it('valida um id exato do Claude apenas quando o transcript e retomavel', () => {
+    const cwd = join(tmpdir(), 'projeto-claude-validacao-' + Date.now());
+    const { home, tracker } = isolatedTracker();
+    const claudeDir = join(home, '.claude', 'projects', `-${cwd.replace(/[/\\]/g, '-').replace(/^-/, '')}`);
+    mkdirSync(claudeDir, { recursive: true });
+    writeFileSync(join(claudeDir, 'reservada.jsonl'), `${JSON.stringify({ type: 'file-history-snapshot' })}\n`);
+    touch(join(claudeDir, 'valida.jsonl'), new Date());
+
+    expect(tracker.isAgentSessionResumable(claudeAdapter.sessionStorage, cwd, 'ausente')).toBe(false);
+    expect(tracker.isAgentSessionResumable(claudeAdapter.sessionStorage, cwd, 'reservada')).toBe(false);
+    expect(tracker.isAgentSessionResumable(claudeAdapter.sessionStorage, cwd, 'valida')).toBe(true);
+    expect(tracker.isAgentSessionResumable(codexAdapter.sessionStorage, cwd, 'qualquer')).toBeNull();
+  });
+
   it('encontra a sessao do Cursor apenas no projeto correspondente', () => {
     const since = Date.now() - 60_000;
     const cwd = join(tmpdir(), `cursor-workspace-${Date.now()}`);

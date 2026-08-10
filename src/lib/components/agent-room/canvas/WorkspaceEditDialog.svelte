@@ -331,9 +331,9 @@
   }
 
   .icon-option.selected {
-    color: #fff;
-    border-color: rgba(91, 141, 239, 0.6);
-    background: rgba(91, 141, 239, 0.18);
+    color: var(--app-accent-contrast);
+    border-color: var(--app-accent);
+    background: var(--app-accent);
   }
 
   .icon-legacy-hint {

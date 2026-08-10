@@ -4,6 +4,7 @@ import { workspaceService } from '$lib/modules/agent-room/application/services/W
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
 import { getAgentAdapter } from '$lib/modules/agent-room/application/adapters/registry.js';
+import { agentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.ts';
 
 describe('WorkspaceService.reloadNode', () => {
   useSvelarTest({ refreshDatabase: true });
@@ -51,6 +52,7 @@ describe('WorkspaceService.reloadNode', () => {
   });
 
   it('remove sessionId obsoleto no restart e preserva a conversa do provider', async () => {
+    vi.spyOn(agentSessionTracker, 'isAgentSessionResumable').mockReturnValue(true);
     const workspace = await workspaceRepository.createWorkspace({ name: 'restart', workingDir: '/tmp' });
     const node = await workspaceRepository.createNode({
       workspaceId: workspace.id,
@@ -73,6 +75,31 @@ describe('WorkspaceService.reloadNode', () => {
     const persisted = (await workspaceRepository.getNode(node.id))!.payload as Record<string, unknown>;
     expect(persisted.sessionId).toBeUndefined();
     expect(persisted.agentSessionId).toBe('conversa-real-123');
+  });
+
+  it('recupera conversa Claude ausente sem tentar resume nem reinjetar role', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'recovery', workingDir: '/tmp' });
+    const node = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Claude',
+      payload: {
+        command: 'claude',
+        provider: 'claude',
+        sessionId: 'pty-antiga',
+        agentSessionId: 'conversa-inexistente',
+        role: 'Lider',
+      },
+    });
+    vi.spyOn(agentSessionTracker, 'isAgentSessionResumable').mockReturnValue(false);
+
+    const listed = await workspaceService.listNodes(workspace.id);
+    const payload = listed.find((item) => item.id === node.id)!.payload as Record<string, unknown>;
+
+    expect(payload.sessionId).toBeUndefined();
+    expect(payload.agentSessionId).toBeUndefined();
+    expect(payload.resumeRecovery).toBe(true);
+    expect(payload.role).toBe('Lider');
   });
 
   it('troca o provider e preserva a identidade organizacional do terminal', async () => {

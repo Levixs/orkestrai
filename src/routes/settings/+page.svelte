@@ -325,16 +325,16 @@
     {#each [0, 1, 2] as index (index)}
       <section class="settings-section" aria-hidden="true">
         <div class="section-skeleton-head">
-          <Skeleton class="h-[30px] w-[30px] rounded-[9px] bg-white/8" />
+          <Skeleton class="h-[30px] w-[30px] rounded-[9px] bg-[var(--app-surface-raised)]" />
           <div class="section-skeleton-titles">
-            <Skeleton class="h-4 w-32 bg-white/8" />
-            <Skeleton class="h-3 w-52 bg-white/8" />
+            <Skeleton class="h-4 w-32 bg-[var(--app-surface-raised)]" />
+            <Skeleton class="h-3 w-52 bg-[var(--app-surface-raised)]" />
           </div>
         </div>
         <div class="grid-fields">
-          <Skeleton class="h-9 w-full bg-white/8" />
-          <Skeleton class="h-9 w-full bg-white/8" />
-          <Skeleton class="h-9 w-full bg-white/8" />
+          <Skeleton class="h-9 w-full bg-[var(--app-surface-raised)]" />
+          <Skeleton class="h-9 w-full bg-[var(--app-surface-raised)]" />
+          <Skeleton class="h-9 w-full bg-[var(--app-surface-raised)]" />
         </div>
       </section>
     {/each}

@@ -64,7 +64,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -341,6 +341,7 @@
     else if (action === 'roles' && activeWorkspace) toggleSidePanel('roles');
     else if (action === 'usage') toggleSidePanel('usage');
     else if (action === 'ports' && activeWorkspace) toggleSidePanel('ports');
+    else if (action === 'organize' && activeWorkspace) void organizeCanvas();
     else if (action === 'command-palette') showPalette = true;
   }
 
@@ -577,6 +578,9 @@
       position: { x: node.x, y: node.y },
       width: node.width,
       height: node.height,
+      // Camadas deterministicas evitam que SVGs de edges atravessem terminais
+      // em alguns compositores Chromium/Windows.
+      zIndex: node.type === 'group' ? 0 : 20 + Math.max(0, node.zIndex ?? 0),
       data: {
         title: node.title ?? '',
         workspaceId: activeWorkspace?.id ?? '',
@@ -591,7 +595,7 @@
         exactResumeArgsFor: (agentSessionId: string) => exactResumeArgsFor(node)?.(agentSessionId) ?? null,
         freshSessionArgsFor: () => freshSessionArgsFor(node),
         sessionStorageFor: () => sessionStorageFor(node),
-        onAgentSessionFound: (id: string, agentSessionId: string) => updateNodePayload(id, { agentSessionId }),
+        onAgentSessionFound: (id: string, agentSessionId: string) => updateNodePayload(id, { agentSessionId, resumeRecovery: false }),
         connections: connectionsFor(node.id),
         onJumpToNode: jumpToNode,
         onRemoveConnection: removeConnection,
@@ -717,6 +721,7 @@
       target: edge.targetNodeId,
       // Sempre a corda verlet — o estilo "circuit" (linhas retas) foi removido.
       type: 'orkestrai',
+      zIndex: 10,
       data: { onRemove: removeConnection },
     };
   }
@@ -1203,6 +1208,28 @@
       }));
   }
 
+  function organizationRects() {
+    const selected = selectedRects().filter((rect) => nodes.find((node) => node.id === rect.id)?.type !== 'group');
+    if (selected.length) return selected;
+    return nodes
+      .filter((node) => node.type !== 'group')
+      .map((node) => ({
+        id: node.id,
+        x: node.position.x,
+        y: node.position.y,
+        width: node.measured?.width ?? (node.width as number) ?? 560,
+        height: node.measured?.height ?? (node.height as number) ?? 360,
+      }));
+  }
+
+  async function organizeCanvas() {
+    const rects = organizationRects();
+    if (!rects.length) return;
+    snapshot();
+    await applyPositions(tidyRects(rects));
+    requestAnimationFrame(() => zoomApi?.fitView({ duration: 300 }));
+  }
+
   async function applyPositions(positions: Map<string, { x: number; y: number }>) {
     if (!activeWorkspace || !positions.size) return;
     nodes = nodes.map((node) => {
@@ -1264,7 +1291,7 @@
     { id: 'align-centerV', label: m['canvas.palette_center_v'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(alignRects(selectedRects(), 'centerV')) },
     { id: 'dist-h', label: m['canvas.palette_dist_h'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(distributeRects(selectedRects(), 'horizontal')) },
     { id: 'dist-v', label: m['canvas.palette_dist_v'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(distributeRects(selectedRects(), 'vertical')) },
-    { id: 'tidy', label: m['canvas.palette_tidy'](), hint: m['canvas.hint_selection'](), run: () => applyPositions(tidyRects(selectedRects())) },
+    { id: 'tidy', label: m['canvas.palette_tidy'](), hint: m['canvas.hint_selection'](), run: () => void organizeCanvas() },
     { id: 'group', label: m['canvas.palette_group'](), hint: m['canvas.hint_selection'](), run: () => groupSelection() },
     { id: 'zoom-sel', label: m['canvas.palette_zoom_sel'](), hint: m['canvas.hint_view'](), run: zoomToSelection },
   ]);
@@ -1310,7 +1337,7 @@
     }
     if (mod && event.shiftKey && event.key.toLowerCase() === 't') {
       event.preventDefault();
-      applyPositions(tidyRects(selectedRects()));
+      void organizeCanvas();
       return;
     }
     if (mod && (event.key === '+' || event.key === '=')) {
@@ -1554,7 +1581,7 @@
       <ul class="workspace-list collapsed">
         {#if !workspacesLoaded}
           {#each [0, 1] as index (index)}
-            <li class="ws-skeleton collapsed"><Skeleton class="h-6 w-6 bg-white/5" /></li>
+            <li class="ws-skeleton collapsed"><Skeleton class="h-6 w-6 bg-[var(--app-surface-raised)]" /></li>
           {/each}
         {:else}
         {#each visibleWorkspaces as workspace (workspace.id)}
@@ -1573,7 +1600,7 @@
       <ul class="workspace-list">
         {#if !workspacesLoaded}
           {#each [0, 1, 2] as index (index)}
-            <li class="ws-skeleton"><Skeleton class="h-7 w-full bg-white/5" /></li>
+            <li class="ws-skeleton"><Skeleton class="h-7 w-full bg-[var(--app-surface-raised)]" /></li>
           {/each}
         {:else}
         {#each visibleWorkspaces as workspace (workspace.id)}
@@ -1625,7 +1652,7 @@
         {nodeTypes}
         {edgeTypes}
         connectionMode={ConnectionMode.Loose}
-        zIndexMode="basic"
+        zIndexMode="manual"
         proOptions={{ hideAttribution: true }}
         minZoom={0.05}
         maxZoom={4}
@@ -1697,6 +1724,9 @@
               <Shapes size={15} class="tool-icon-svg" /> {m['canvas.label_shape']()}
             </ToolbarButton>
             <span class="toolbar-sep"></span>
+            <ToolbarButton label={m['tool.organize']()} onclick={() => void organizeCanvas()}>
+              <LayoutGrid size={15} class="tool-icon-svg" /> {m['canvas.label_organize']()}
+            </ToolbarButton>
             <ToolbarButton label={m['tool.presets']()} active={showPresetPanel} onclick={() => toggleSidePanel('presets')}>
               <LayoutTemplate size={15} class="tool-icon-svg" /> {m['canvas.label_presets']()}
             </ToolbarButton>
@@ -1861,7 +1891,7 @@
 <style>
   .canvas-page {
     display: flex;
-    height: 100vh;
+    height: 100%;
     background: var(--app-canvas);
     color: var(--app-text);
   }
@@ -2192,8 +2222,8 @@
      pinta o label de branco — aqui ele precisa ser invisivel. O wrapper nao
      recebe cliques (passa para a corda → pin); so o botao X e clicavel. */
   .canvas-area :global(.svelte-flow__edge-labels) {
-    /* zIndexMode=basic eleva a edge selecionada a z 1000 — a camada de
-       labels precisa ficar acima disso ou o X fica inalcancavel. */
+    /* Os paths ficam entre grupos e nodes; somente o controle de remocao
+       precisa atravessar a camada dos nodes. */
     z-index: 2000 !important;
   }
 

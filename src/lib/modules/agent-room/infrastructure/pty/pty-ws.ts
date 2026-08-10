@@ -174,8 +174,20 @@ export function handlePtyConnection(socket: WebSocket): void {
               });
               send({ type: 'agentSession', sessionId: session.id, agentSessionId, provider });
             };
-            if (freshSessionId) reportAgentSession(freshSessionId);
-            else agentSessionTracker.watch(session.id, message.sessionStorage, session.cwd, trackingStartedAt, reportAgentSession);
+            if (freshSessionId) {
+              const watchingExpected = agentSessionTracker.watchExpected(
+                session.id,
+                message.sessionStorage,
+                session.cwd,
+                freshSessionId,
+                reportAgentSession
+              );
+              // So Claude reserva um id antes de criar a conversa. Providers
+              // sem validacao exata mantem o contrato anterior.
+              if (!watchingExpected) reportAgentSession(freshSessionId);
+            } else {
+              agentSessionTracker.watch(session.id, message.sessionStorage, session.cwd, trackingStartedAt, reportAgentSession);
+            }
           }
           break;
         }

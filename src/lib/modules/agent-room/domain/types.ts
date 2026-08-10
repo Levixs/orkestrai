@@ -220,6 +220,8 @@ export type Workspace = {
 export type TerminalNodePayload = {
   sessionId?: string;
   agentSessionId?: string;
+  /** Conversa persistida sumiu: inicia limpo, mas sem reinjetar o role. */
+  resumeRecovery?: boolean;
   command?: string;
   args?: string[];
   env?: Record<string, string>;

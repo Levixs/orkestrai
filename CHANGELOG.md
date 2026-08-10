@@ -5,6 +5,37 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.8.1 - 2026-08-10
+
+### Added
+
+- Added a searchable, bounded, and scrollable model selector for providers with
+  large account catalogs, including Devin.
+- Added deterministic canvas organization for either the current node selection
+  or the whole workspace through the toolbar, command palette, and shortcut.
+- Added a styled Windows desktop title bar with File, Edit, View, Workspace,
+  Window, and Help menus while preserving native window controls.
+
+### Changed
+
+- Made the global voice orb pinnable and draggable within the visible canvas and
+  kept it clear of open panels such as Presets, Usage, Roles, and Ports.
+- Aligned Usage node progress colors with the panel's per-window green, yellow,
+  and red thresholds, and loaded an initial Skills search automatically.
+- Improved Orkestrai Light contrast across panels, canvas nodes, text, buttons,
+  icons, provider marks, hover states, and onboarding surfaces.
+
+### Fixed
+
+- Captured the focused editable field before the global microphone takes focus,
+  so dictation works on the first click without incorrectly requiring a leader.
+- Validated real provider transcripts before resuming saved conversations,
+  clearing stale Claude ids without re-injecting roles or activating idle agents.
+- Used Windows command shims instead of launching provider JavaScript files
+  directly, preserving CLI startup and workspace session recovery.
+- Kept connections behind every canvas node and corrected terminal selection
+  coordinates on Windows displays with DPI scaling.
+
 ## 0.8.0 - 2026-08-10
 
 ### Added

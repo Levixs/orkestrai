@@ -460,11 +460,11 @@
   }
 
   .log-output {
-    color: #b9b9c2;
+    color: var(--app-text-soft);
   }
 
   .log-error {
-    color: #ffb3b6;
+    color: var(--app-danger);
   }
 
   .log-system {
@@ -502,7 +502,7 @@
     padding: 4px 6px;
     border-radius: 6px;
     background: var(--app-border);
-    color: #d5d5dc;
+    color: var(--app-text-soft);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -532,7 +532,7 @@
     font-size: 11px;
     padding: 4px 6px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.03);
+    background: color-mix(in srgb, var(--app-surface-raised) 55%, transparent);
   }
 
   .member-title {
@@ -584,7 +584,7 @@
     border: none;
     border-radius: 6px;
     background: var(--app-accent);
-    color: #fff;
+    color: var(--app-accent-contrast);
     font-size: 11px;
     cursor: pointer;
   }
@@ -592,6 +592,6 @@
   .team-error {
     margin: 0;
     font-size: 10px;
-    color: #ffb3b6;
+    color: var(--app-danger);
   }
 </style>

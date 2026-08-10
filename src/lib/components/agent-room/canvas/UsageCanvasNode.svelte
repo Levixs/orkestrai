@@ -7,7 +7,7 @@
   import HeaderIconButton from './HeaderIconButton.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
-  import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
+  import { USAGE_REFRESH_INTERVAL_MS, usageSeverity } from '$lib/modules/agent-room/domain/usage.js';
   import {
     buildUsageRoutingReport,
     normalizeUsageRoutingPolicy,
@@ -92,6 +92,13 @@
     if (status === 'near_limit') return 'var(--app-warning)';
     if (status === 'exhausted') return 'var(--app-danger)';
     return 'var(--app-text-muted)';
+  }
+
+  function barColor(percent: number): string {
+    const severity = usageSeverity(percent);
+    if (severity === 'danger') return 'var(--app-danger)';
+    if (severity === 'warning') return 'var(--app-warning)';
+    return 'var(--app-success)';
   }
 
   function windowLabel(window: UsageWindow): string {
@@ -191,7 +198,7 @@
                     <strong>{window.usedPercent}%</strong>
                   </div>
                   <div class="bar" aria-label={`${windowLabel(window)} ${window.usedPercent}%`}>
-                    <span style:width={`${window.usedPercent}%`} style:background={statusColor(provider.status)}></span>
+                    <span style:width={`${window.usedPercent}%`} style:background={barColor(window.usedPercent)}></span>
                   </div>
                   {#if window.resetsAt}<small>{resetText(window.resetsAt)}</small>{/if}
                 </div>

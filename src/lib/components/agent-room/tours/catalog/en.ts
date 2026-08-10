@@ -476,7 +476,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'record',
         title: 'Click the voice orb',
-        body: 'Use the colored orb at the top right or Alt+Space to record. Click again to stop; text enters at the field cursor without submitting itself.',
+        body: 'Use the colored orb or Alt+Space to record. The first click preserves the focused field. Ctrl-click or Command-click opens position controls; unpin the orb to drag it inside the visible canvas.',
       },
       {
         id: 'fallback',
@@ -710,7 +710,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'create',
         title: 'Create the Devin member',
-        body: 'Return to the canvas and select Devin in the bottom toolbar. Choose any model available to your account; the terminal starts with autonomous workspace access.',
+        body: 'Return to the canvas and select Devin in the bottom toolbar. Search or scroll the bounded model list, choose one available to your account, and start with autonomous workspace access.',
       },
       {
         id: 'continue',
@@ -745,6 +745,29 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'organize-canvas',
+    icon: 'LayoutGrid',
+    title: 'Organize the canvas',
+    tagline: 'Realign a selection or the whole workspace without overlaps.',
+    steps: [
+      {
+        id: 'choose-scope',
+        title: 'Choose what moves',
+        body: 'Select the nodes that need attention. With a selection, Orkestrai moves only those nodes; with nothing selected, it organizes the entire canvas.',
+      },
+      {
+        id: 'run-layout',
+        title: 'Run Organize canvas',
+        body: 'Use the toolbar action, command palette, or Command+Shift+T. The deterministic layout arranges nodes into readable rows without stacking them.',
+      },
+      {
+        id: 'keep-connections-clear',
+        title: 'Keep the workspace readable',
+        body: 'Connections remain behind every node, including on Windows displays with different scale factors. You can still fine-tune positions manually afterward.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Customize the appearance',
@@ -753,7 +776,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'choose-theme',
         title: 'Choose light or dark',
-        body: 'Under Settings → Appearance, compare Orkestrai Dark, Graphite, Midnight, and Orkestrai Light. The preview applies immediately across the interface.',
+        body: 'Under Settings → Appearance, compare Orkestrai Dark, Graphite, Midnight, and Orkestrai Light. The light option keeps accessible contrast across nodes, panels, icons, provider marks, and hover states.',
       },
       {
         id: 'edit-tokens',

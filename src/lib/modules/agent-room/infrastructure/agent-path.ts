@@ -22,9 +22,23 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, extname, resolve, sep } from 'node:path';
+import { delimiter, extname, join, resolve, sep } from 'node:path';
 
 export const IS_WIN = process.platform === 'win32';
+
+export function fallbackCliLauncher(
+  platform: NodeJS.Platform,
+  env: Record<string, string>,
+  cliJs: string
+): string | undefined {
+  const launcherName = platform === 'win32' ? 'orkestrai.cmd' : 'orkestrai';
+  const searchDirs = [env.ORKESTRAI_SHIM_DIR, ...(env.PATH ?? '').split(delimiter)].filter(Boolean) as string[];
+  const launcher = searchDirs.map((dir) => join(dir, launcherName)).find((path) => existsSync(path));
+  if (launcher) return launcher;
+  // POSIX executa o .js pelo shebang. No Windows isso abriria o Windows Script
+  // Host; sem launcher e mais seguro deixar a variavel ausente.
+  return platform === 'win32' ? undefined : cliJs;
+}
 
 // Locais comuns de instalacao de CLIs. App aberto pelo Finder/Explorer recebe um
 // PATH minimo — sem isto os agentes falham com ENOENT mesmo instalados.
@@ -108,12 +122,14 @@ export function agentEnv(): Record<string, string> {
   const shimDir = env.ORKESTRAI_SHIM_DIR ? [env.ORKESTRAI_SHIM_DIR] : [];
   const merged = [...shimDir, ...current, ...windowsRegistryPathDirs(), ...EXTRA_PATH_DIRS, ...nvmBins()];
   env.PATH = [...new Set(merged.filter(Boolean))].join(delimiter);
-  // Fallback quando o shim (install-orkestrai-shim) nao rodou: garante o .js cru
-  // para os configs MCP. ORKESTRAI_CLI (launcher executavel direto) e definido
-  // pelo shim; aqui, sem launcher, so temos o .js — usado como ultimo recurso.
+  // ORKESTRAI_CLI_JS e argumento do runtime nos configs MCP. ORKESTRAI_CLI e
+  // executado diretamente pelos agentes e nunca pode apontar ao .js no Windows.
   const cliJs = resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
   if (!env.ORKESTRAI_CLI_JS) env.ORKESTRAI_CLI_JS = cliJs;
-  if (!env.ORKESTRAI_CLI) env.ORKESTRAI_CLI = cliJs;
+  if (!env.ORKESTRAI_CLI) {
+    const launcher = fallbackCliLauncher(process.platform, env, cliJs);
+    if (launcher) env.ORKESTRAI_CLI = launcher;
+  }
   return env;
 }
 

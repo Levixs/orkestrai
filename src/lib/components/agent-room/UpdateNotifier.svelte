@@ -130,22 +130,22 @@
     gap: 6px;
     padding: 10px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background: #1a1742;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-raised);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     min-width: 200px;
   }
 
   .update-progress-label {
     font-size: 11.5px;
-    color: #a9aab3;
+    color: var(--app-text-soft);
     font-variant-numeric: tabular-nums;
   }
 
   .update-progress-bar {
     height: 4px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--app-border);
     overflow: hidden;
   }
 
@@ -153,7 +153,7 @@
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: #5b8def;
+    background: var(--app-accent);
     transition: width 200ms ease;
   }
 </style>

@@ -511,7 +511,7 @@
     </div>
   {:else}
   {#if columnsOpen}
-    <div class="nodrag border-b border-white/10 bg-black/20 px-2.5 py-2">
+    <div class="nodrag border-b border-[var(--app-border)] bg-[var(--app-surface-subtle)] px-2.5 py-2">
       <div class="mb-2 flex justify-end text-[10px] tabular-nums text-muted-foreground">{COLUMNS.length}/10</div>
       <div class="space-y-1.5">
         {#each COLUMNS as column, index (column.id)}
@@ -526,7 +526,7 @@
             <input
               value={column.label}
               aria-label={m['tasks.column_name']()}
-              class="h-7 min-w-0 rounded border border-white/10 bg-white/5 px-2 text-xs text-foreground outline-none focus:border-primary"
+              class="h-7 min-w-0 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 text-xs text-foreground outline-none focus:border-primary"
               onchange={(event) => updateColumn(column, { name: (event.target as HTMLInputElement).value })}
             />
             <button class="inline-flex h-6 w-6 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30" aria-label={m['tasks.column_up']()} disabled={index === 0} onclick={() => updateColumn(column, { position: index - 1 })}><ChevronUp size={13} /></button>
@@ -545,7 +545,7 @@
           bind:value={newColumnName}
           aria-label={m['tasks.column_name']()}
           placeholder={m['tasks.column_name_placeholder']()}
-          class="h-7 min-w-0 rounded border border-white/10 bg-white/5 px-2 text-xs text-foreground outline-none focus:border-primary"
+          class="h-7 min-w-0 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-2 text-xs text-foreground outline-none focus:border-primary"
           disabled={COLUMNS.length >= 10}
           onkeydown={(event) => event.key === 'Enter' && addColumn()}
         />
@@ -809,7 +809,7 @@
     gap: 8px;
     padding: 7px 9px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--app-surface-subtle);
     border: 1px solid var(--app-border);
   }
 
@@ -842,7 +842,7 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--app-success);
-    background: rgba(142, 201, 142, 0.12);
+    background: color-mix(in srgb, var(--app-success) 12%, transparent);
     border-radius: 999px;
     padding: 2px 8px;
   }
@@ -859,8 +859,8 @@
     max-width: 110px;
     padding: 2px 7px;
     border-radius: 999px;
-    border: 1px solid rgba(125, 229, 255, 0.25);
-    background: rgba(125, 229, 255, 0.08);
+    border: 1px solid color-mix(in srgb, var(--app-secondary) 35%, var(--app-border));
+    background: color-mix(in srgb, var(--app-secondary) 9%, transparent);
     color: var(--app-secondary);
     font-size: 9.5px;
     cursor: pointer;
@@ -869,7 +869,7 @@
   }
 
   .tb-note-chip:hover {
-    background: rgba(125, 229, 255, 0.16);
+    background: color-mix(in srgb, var(--app-secondary) 17%, transparent);
   }
 
   .tb-note-chip-label {
@@ -903,7 +903,7 @@
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
-    border: 1px dashed rgba(255, 255, 255, 0.14);
+    border: 1px dashed var(--app-border-strong);
     background: transparent;
     color: var(--app-text-muted);
     font-size: 11.5px;
@@ -913,7 +913,7 @@
 
   .tb-add-open:hover {
     color: var(--app-text);
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: var(--app-text-muted);
   }
 
   .tb-composer {
@@ -922,17 +922,17 @@
     gap: 8px;
     padding: 10px;
     border-radius: 10px;
-    border: 1px solid rgba(91, 141, 239, 0.35);
-    background: rgba(91, 141, 239, 0.06);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 42%, var(--app-border));
+    background: color-mix(in srgb, var(--app-accent) 7%, var(--app-surface));
   }
 
   .tb-composer input,
   .tb-composer textarea,
   .tb-desc-edit {
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--app-border);
     border-radius: 7px;
-    background: rgba(13, 11, 46, 0.6);
+    background: var(--app-surface-subtle);
     color: var(--app-text);
     font-size: 12px;
     font-family: inherit;
@@ -944,7 +944,7 @@
   .tb-composer input:focus,
   .tb-composer textarea:focus,
   .tb-desc-edit:focus {
-    border-color: rgba(91, 141, 239, 0.55);
+    border-color: var(--app-accent);
   }
 
   .tb-staged {
@@ -959,7 +959,7 @@
     height: 40px;
     border-radius: 6px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
   }
 
   .tb-staged-thumb img {
@@ -1016,7 +1016,7 @@
     margin: 2px 6px 0;
     padding: 6px 8px;
     border-radius: 7px;
-    background: rgba(13, 11, 46, 0.45);
+    background: var(--app-surface-subtle);
     max-height: 130px;
     overflow-y: auto;
     cursor: text;
@@ -1051,7 +1051,7 @@
     gap: 8px;
     padding: 10px;
     overflow: auto;
-    background: #141419;
+    background: var(--app-canvas);
   }
 
   .tb-column {
@@ -1061,7 +1061,7 @@
     flex-direction: column;
     gap: 6px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.025);
+    background: var(--app-surface-subtle);
     border: 1px solid transparent;
     padding: 8px;
     transition: border-color 140ms ease, background 140ms ease;
@@ -1128,7 +1128,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: #1e1f26;
+    background: var(--app-surface);
     border: 1px solid var(--app-border);
     border-radius: 9px;
     padding: 7px 8px;
@@ -1137,7 +1137,7 @@
   }
 
   .tb-card:hover {
-    border-color: rgba(255, 255, 255, 0.16);
+    border-color: var(--app-border-strong);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   }
 
@@ -1166,7 +1166,7 @@
   }
 
   .tb-thumb-btn {
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     padding: 0;
     background: transparent;
@@ -1176,7 +1176,7 @@
   }
 
   .tb-thumb-btn:hover {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: var(--app-border-strong);
   }
 
   .tb-thumb {
@@ -1202,12 +1202,12 @@
     max-height: 62vh;
     border-radius: 10px;
     object-fit: contain;
-    background: #101018;
+    background: var(--app-canvas);
   }
 
   .tb-viewer-nav {
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
     background: var(--app-border);
     color: var(--app-text-soft);
     border-radius: 8px;
@@ -1216,7 +1216,7 @@
   }
 
   .tb-viewer-nav:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--app-surface-raised);
   }
 
   .tb-viewer-nav:disabled {
@@ -1278,7 +1278,7 @@
 
   .tb-board :global(.tb-assignee) {
     border: none;
-    background: rgba(142, 201, 142, 0.12);
+    background: color-mix(in srgb, var(--app-success) 12%, transparent);
     color: var(--app-success);
     font-size: 10px;
     border-radius: 6px;

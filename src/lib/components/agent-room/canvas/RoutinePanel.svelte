@@ -280,7 +280,7 @@
   }
 
   .history li.failed {
-    color: #ffb3b6;
+    color: var(--app-danger);
   }
 
   .empty {

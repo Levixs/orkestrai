@@ -214,7 +214,7 @@
     padding: 3px 6px;
     border: none;
     background: transparent;
-    color: #d5d5dc;
+    color: var(--app-text-soft);
     font-size: 11px;
     cursor: pointer;
     text-align: left;
@@ -276,7 +276,7 @@
   }
 
   .diff-del {
-    color: #e58a8d;
+    color: var(--app-danger);
     background: rgba(229, 72, 77, 0.08);
     display: block;
   }
@@ -301,7 +301,7 @@
     margin: 0;
     padding: 4px 10px;
     font-size: 11px;
-    color: #ffb3b6;
+    color: var(--app-danger);
     border-top: 1px solid var(--app-surface-raised);
   }
 </style>

@@ -109,7 +109,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--app-canvas);
     border-radius: 0 0 10px 10px;
   }
 
@@ -128,19 +128,19 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    border: 1.5px dashed rgba(125, 229, 255, 0.35);
+    border: 1.5px dashed color-mix(in srgb, var(--app-secondary) 42%, var(--app-border));
     border-radius: 8px;
     margin: 8px;
-    background: rgba(125, 229, 255, 0.04);
-    color: #9db4c8;
+    background: color-mix(in srgb, var(--app-secondary) 6%, var(--app-surface));
+    color: var(--app-text-soft);
     cursor: pointer;
     font-size: 12px;
     transition: background 0.15s ease, border-color 0.15s ease;
   }
 
   .image-empty:hover {
-    background: rgba(125, 229, 255, 0.1);
-    border-color: rgba(125, 229, 255, 0.6);
+    background: color-mix(in srgb, var(--app-secondary) 12%, var(--app-surface));
+    border-color: var(--app-secondary);
   }
 
   .image-empty .hint {

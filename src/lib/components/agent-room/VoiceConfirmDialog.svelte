@@ -220,6 +220,6 @@
   .download-error {
     margin: 6px 0 0;
     font-size: 12px;
-    color: #ff9c9f;
+    color: var(--app-danger, #e6545d);
   }
 </style>

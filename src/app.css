@@ -210,6 +210,14 @@ body:has(.agent-room-shell) {
   overflow: hidden;
 }
 
+/* Assets monocromaticos foram desenhados em branco para o tema escuro. */
+html:not(.dark) img[src$="/images/claude.svg"],
+html:not(.dark) img[src$="/images/codex.svg"],
+html:not(.dark) img[src$="/images/cli.svg"],
+html:not(.dark) img[src$="/images/loop.svg"] {
+  filter: invert(1);
+}
+
 .agent-room-shell {
   height: 100dvh;
   min-height: 0;

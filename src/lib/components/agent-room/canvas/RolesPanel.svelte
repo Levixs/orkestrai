@@ -183,7 +183,7 @@
   </p>
 
   <Tabs.Root bind:value={activeTab} class="w-full">
-    <Tabs.List class="grid w-full grid-cols-2 bg-white/[0.06]">
+    <Tabs.List class="grid w-full grid-cols-2 bg-[var(--app-surface-raised)]">
       <Tabs.Trigger value="workspace">{m['roles.tab_workspace']()}</Tabs.Trigger>
       <Tabs.Trigger value="catalog"><BookOpen size={13} />{m['roles.tab_catalog']()}</Tabs.Trigger>
     </Tabs.List>
@@ -192,11 +192,11 @@
   {#if activeTab === 'catalog'}
     <div class="grid gap-2" data-tour="role-catalog">
       <label class="relative">
-        <Search class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-        <Input bind:value={catalogQuery} aria-label={m['roles.catalog_search_aria']()} placeholder={m['roles.catalog_search']()} class="border-white/10 bg-white/[0.04] pl-9 text-white placeholder:text-zinc-600" />
+        <Search class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]" size={14} />
+        <Input bind:value={catalogQuery} aria-label={m['roles.catalog_search_aria']()} placeholder={m['roles.catalog_search']()} class="border-[var(--app-border)] bg-[var(--app-surface-subtle)] pl-9 text-[var(--app-text)] placeholder:text-[var(--app-text-muted)]" />
       </label>
       <Select.Root type="single" value={catalogCategory} onValueChange={(value: string) => (catalogCategory = value as typeof catalogCategory)}>
-        <Select.Trigger class="w-full border-white/10 bg-white/[0.04] text-zinc-200">{categoryLabel(catalogCategory)}</Select.Trigger>
+        <Select.Trigger class="w-full border-[var(--app-border)] bg-[var(--app-surface-subtle)] text-[var(--app-text-soft)]">{categoryLabel(catalogCategory)}</Select.Trigger>
         <Select.Content>
           <Select.Item value="all">{m['roles.category_all']()}</Select.Item>
           <Select.Item value="leadership">{m['roles.category_leadership']()}</Select.Item>
@@ -209,13 +209,13 @@
     <div class="grid gap-2">
       {#each filteredCatalog as role (role.id)}
         {@const installed = roles.some((current) => current.name === role.name)}
-        <article class="rounded-md border border-white/10 bg-white/[0.035] p-3 transition-colors hover:border-cyan-300/30">
+        <article class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-3 transition-colors hover:border-[var(--app-border-strong)]">
           <div class="flex items-start gap-2">
             <span class="mt-1 size-2.5 shrink-0 rounded-full" style:background={role.color}></span>
             <div class="min-w-0 flex-1">
-              <h4 class="m-0 text-xs font-semibold text-white">{role.name}</h4>
-              <p class="mt-1 text-[10px] leading-4 text-zinc-400">{role.description}</p>
-              <p class="mt-2 text-[9px] font-medium uppercase tracking-normal text-zinc-600">{categoryLabel(role.category)}</p>
+              <h4 class="m-0 text-xs font-semibold text-[var(--app-text)]">{role.name}</h4>
+              <p class="mt-1 text-[10px] leading-4 text-[var(--app-text-muted)]">{role.description}</p>
+              <p class="mt-2 text-[9px] font-medium uppercase tracking-normal text-[var(--app-text-muted)]">{categoryLabel(role.category)}</p>
             </div>
             <Button
               variant={installed ? 'secondary' : 'outline'}
@@ -229,7 +229,7 @@
           </div>
         </article>
       {:else}
-        <p class="py-8 text-center text-xs text-zinc-500">{m['roles.catalog_empty']()}</p>
+        <p class="py-8 text-center text-xs text-[var(--app-text-muted)]">{m['roles.catalog_empty']()}</p>
       {/each}
     </div>
   {:else}
@@ -402,7 +402,7 @@
   }
 
   .role-item.editing {
-    border-color: rgba(91, 141, 239, 0.5);
+    border-color: var(--app-accent);
   }
 
   .prompt-head {
@@ -414,7 +414,7 @@
 
   .prompt-tabs {
     display: inline-flex;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
     border-radius: 7px;
     overflow: hidden;
   }
@@ -429,7 +429,7 @@
   }
 
   .prompt-tabs button.active {
-    background: rgba(124, 77, 255, 0.2);
+    background: var(--app-accent-soft);
     color: var(--app-text);
   }
 
@@ -437,9 +437,9 @@
     min-height: 160px;
     max-height: 300px;
     overflow-y: auto;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--app-surface-subtle);
     padding: 10px 12px;
     font-size: 12px;
     line-height: 1.55;
@@ -485,7 +485,7 @@
     border-left: 3px solid var(--app-accent);
     margin: 8px 0;
     padding: 2px 10px;
-    color: #b7b8c4;
+    color: var(--app-text-soft);
   }
 
   .md-preview :global(a) { color: var(--app-secondary); }

@@ -116,9 +116,9 @@
   {#if loading && !ports.length}
     {#each [0, 1, 2] as index (index)}
       <section class="port-card port-skeleton" aria-hidden="true">
-        <Skeleton class="h-4 w-20 bg-white/8" />
-        <Skeleton class="h-3 w-full bg-white/8" />
-        <Skeleton class="h-3 w-2/3 bg-white/8" />
+        <Skeleton class="h-4 w-20 bg-[var(--app-surface-raised)]" />
+        <Skeleton class="h-3 w-full bg-[var(--app-surface-raised)]" />
+        <Skeleton class="h-3 w-2/3 bg-[var(--app-surface-raised)]" />
       </section>
     {/each}
   {:else if error && !ports.length}
@@ -289,7 +289,7 @@
   }
 
   .port-number strong {
-    color: #f1efff;
+    color: var(--app-text);
     font: 600 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
     font-variant-numeric: tabular-nums;
   }
@@ -299,7 +299,7 @@
     height: 7px;
     flex: 0 0 auto;
     border-radius: 50%;
-    background: #636373;
+    background: var(--app-text-muted);
   }
 
   .status-dot.listening {
@@ -313,15 +313,15 @@
   }
 
   .status-label.listening {
-    color: #73e7ad;
+    color: var(--app-success);
   }
 
   .protected-badge {
     gap: 4px;
     padding: 2px 6px;
-    border: 1px solid rgba(91, 190, 255, 0.24);
+    border: 1px solid color-mix(in srgb, var(--app-secondary) 32%, var(--app-border));
     border-radius: 999px;
-    color: #8bd4ff;
+    color: var(--app-secondary);
     font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
@@ -344,7 +344,7 @@
   .portal-row span,
   .process-row span {
     overflow: hidden;
-    color: #c9c8d5;
+    color: var(--app-text-soft);
     font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -369,7 +369,7 @@
     border: 1px solid rgba(229, 72, 77, 0.3);
     border-radius: 6px;
     background: rgba(229, 72, 77, 0.08);
-    color: #ff898d;
+    color: var(--app-danger);
   }
 
   :global(.kill-button:hover:not(:disabled)) {
@@ -379,7 +379,7 @@
 
   :global(.kill-button:focus-visible),
   .panel-state button:focus-visible {
-    outline: 2px solid #9f8cff;
+    outline: 2px solid var(--app-accent);
     outline-offset: 2px;
   }
 
@@ -395,7 +395,7 @@
     place-items: center;
     align-content: center;
     gap: 8px;
-    color: #6f7080;
+    color: var(--app-text-muted);
     text-align: center;
   }
 
@@ -410,11 +410,11 @@
   }
 
   .panel-state button {
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     padding: 5px 9px;
     background: var(--app-border);
-    color: #d8d6e4;
+    color: var(--app-text-soft);
     font: inherit;
     cursor: pointer;
   }

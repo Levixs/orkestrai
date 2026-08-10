@@ -78,8 +78,8 @@
   }
 
   async function persistCreatedSession(sessionId: string) {
-    const payload = data.payload as TerminalNodePayload & { agentSessionId?: string };
-    const resumed = forceRespawn || Boolean(payload.agentSessionId);
+    const payload = data.payload as TerminalNodePayload;
+    const resumed = forceRespawn || Boolean(payload.agentSessionId) || Boolean(payload.resumeRecovery);
     await data.onSessionCreated(id, sessionId, { resumed });
     // Mantem o terminal criador montado ate o payload persistido apontar para
     // a nova sessao; liberar antes reanexaria por um instante ao id antigo.
@@ -346,7 +346,7 @@
           >
             <span class="provider-state" class:available={provider.installed}></span>
             <span class="min-w-0 flex-1 truncate">{provider.displayName}</span>
-            {#if provider.id === currentProvider}<span class="text-[9px] text-zinc-500">{m['term.provider_current']()}</span>{/if}
+            {#if provider.id === currentProvider}<span class="text-[9px] text-[var(--app-text-muted)]">{m['term.provider_current']()}</span>{/if}
           </DropdownMenu.Item>
         {/each}
       </DropdownMenu.Content>
@@ -479,7 +479,7 @@
     padding: 4px 10px;
     font-size: 11px;
     color: var(--app-warning);
-    background: rgba(226, 185, 61, 0.08);
+    background: color-mix(in srgb, var(--app-warning) 10%, transparent);
   }
 
   .composer {
@@ -523,7 +523,7 @@
     height: 6px;
     flex: none;
     border-radius: 999px;
-    background: #5d5d68;
+    background: var(--app-text-muted);
   }
 
   .provider-state.available {
@@ -537,7 +537,7 @@
     right: 10px;
     z-index: 30;
     background: var(--app-surface-raised);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--app-border);
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);

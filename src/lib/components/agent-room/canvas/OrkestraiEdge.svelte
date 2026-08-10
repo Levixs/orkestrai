@@ -264,11 +264,11 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(35, 36, 43, 0.92);
+    border: 1px solid var(--app-border-strong);
+    background: color-mix(in srgb, var(--app-surface-raised) 94%, transparent);
     backdrop-filter: blur(4px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-    color: #b9bac4;
+    color: var(--app-text-soft);
     cursor: pointer;
     opacity: 0;
     pointer-events: none;

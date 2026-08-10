@@ -5,7 +5,7 @@
   import { Skeleton } from '$lib/components/ui/skeleton';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
-  import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
+  import { USAGE_REFRESH_INTERVAL_MS, usageSeverity } from '$lib/modules/agent-room/domain/usage.js';
   import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
 
   type Props = {
@@ -40,8 +40,9 @@
   }
 
   function barColor(percent: number): string {
-    if (percent >= 85) return 'var(--app-danger)';
-    if (percent >= 60) return 'var(--app-warning)';
+    const severity = usageSeverity(percent);
+    if (severity === 'danger') return 'var(--app-danger)';
+    if (severity === 'warning') return 'var(--app-warning)';
     return 'var(--app-success)';
   }
 
@@ -118,11 +119,11 @@
     {#each [0, 1, 2] as index (index)}
       <section class="usage-card usage-skeleton" aria-hidden="true">
         <div class="usage-card-header">
-          <Skeleton class="h-4 w-4 rounded-full bg-white/8" />
-          <Skeleton class="h-3.5 w-20 bg-white/8" />
+          <Skeleton class="h-4 w-4 rounded-full bg-[var(--app-surface-raised)]" />
+          <Skeleton class="h-3.5 w-20 bg-[var(--app-surface-raised)]" />
         </div>
-        <Skeleton class="h-2.5 w-full bg-white/8" />
-        <Skeleton class="h-2.5 w-3/4 bg-white/8" />
+        <Skeleton class="h-2.5 w-full bg-[var(--app-surface-raised)]" />
+        <Skeleton class="h-2.5 w-3/4 bg-[var(--app-surface-raised)]" />
       </section>
     {/each}
   {/if}

@@ -84,7 +84,7 @@ export const BUILTIN_APP_THEMES: AppTheme[] = [
     builtin: true,
     tokens: {
       page: '#f4f5f8', canvas: '#eef0f7', sidebar: '#ffffff', surface: '#ffffff', surfaceRaised: '#e7e9f1', surfaceSubtle: '#f6f7fa',
-      text: '#181822', textSoft: '#474957', textMuted: '#6d7080', border: '#d7d9e3', borderStrong: '#b8bbc9',
+      text: '#181822', textSoft: '#474957', textMuted: '#686b7a', border: '#d7d9e3', borderStrong: '#b8bbc9',
       accent: '#6543d8', accentSoft: '#e9e3ff', accentContrast: '#ffffff', secondary: '#087da4', success: '#16845b', warning: '#9a6500',
       danger: '#c53b45', grid: '#cdd1df', edge: '#8d84b8',
     },

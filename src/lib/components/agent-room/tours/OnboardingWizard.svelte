@@ -7,7 +7,7 @@
   import { Input } from '$lib/components/ui/input';
   import * as m from '$lib/paraglide/messages.js';
   import {
-    ArrowLeft, Cable, FolderPlus, GitBranch, Languages, Layers, LayoutTemplate, Mic, Palette, Pin, RadioTower, Repeat, Rocket, Search, Sparkles, Users, Workflow,
+    ArrowLeft, Cable, FolderPlus, GitBranch, Languages, Layers, LayoutGrid, LayoutTemplate, Mic, Palette, Pin, RadioTower, Repeat, Rocket, Search, Sparkles, Users, Workflow,
   } from '@lucide/svelte';
   import { toursCatalog, startTour } from './engine.svelte.js';
   import type { Tour } from './types.js';
@@ -26,7 +26,7 @@
 
   let { open, onClose, onCreateWorkspace, activeWorkspaceId }: Props = $props();
 
-  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutTemplate, Palette, Pin, RadioTower, Mic, Languages };
+  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, Palette, Pin, RadioTower, Mic, Languages };
 
   type WizardStep = 'language' | 'welcome' | 'workspace' | 'usecase';
   type UiLanguage = 'pt-BR' | 'en' | 'es';
@@ -240,8 +240,8 @@
     width: 52px;
     height: 52px;
     border-radius: 14px;
-    background: rgba(91, 141, 239, 0.14);
-    color: #7de5ff;
+    background: color-mix(in srgb, var(--app-secondary) 14%, transparent);
+    color: var(--app-secondary);
   }
 
   .wizard-title {
@@ -255,7 +255,7 @@
     margin: 0;
     font-size: 13px;
     line-height: 1.65;
-    color: #a9aab3;
+    color: var(--app-text-soft);
     max-width: 420px;
     text-wrap: pretty;
   }
@@ -282,10 +282,10 @@
     align-items: center;
     justify-content: center;
     gap: 9px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.035);
-    color: #e6e6eb;
+    background: var(--app-surface-subtle);
+    color: var(--app-text);
     font: inherit;
     font-size: 12px;
     cursor: pointer;
@@ -293,19 +293,19 @@
   }
 
   .language-option:hover:not(:disabled) {
-    border-color: rgba(124, 93, 255, 0.6);
-    background: rgba(124, 93, 255, 0.1);
+    border-color: var(--app-accent);
+    background: var(--app-accent-soft);
     transform: translateY(-1px);
   }
 
   .language-option:focus-visible {
-    outline: 2px solid rgba(124, 93, 255, 0.8);
+    outline: 2px solid var(--app-accent);
     outline-offset: 2px;
   }
 
   .language-option:disabled { opacity: 0.55; cursor: wait; }
-  .language-code { color: #a893ff; font-size: 17px; font-weight: 700; }
-  .language-saving { min-height: 18px; margin: 0; color: #8b8c96; font-size: 11px; }
+  .language-code { color: var(--app-accent); font-size: 17px; font-weight: 700; }
+  .language-saving { min-height: 18px; margin: 0; color: var(--app-text-muted); font-size: 11px; }
 
   .wizard-form {
     display: flex;
@@ -323,7 +323,7 @@
   .field-label {
     font-size: 12px;
     font-weight: 500;
-    color: #a9aab3;
+    color: var(--app-text-soft);
   }
 
   .dir-row {
@@ -334,7 +334,7 @@
   .wizard-error {
     margin: 0;
     font-size: 12px;
-    color: #ff9c9f;
+    color: var(--app-danger);
   }
 
   .tour-grid {
@@ -357,28 +357,28 @@
     gap: 10px;
     padding: 10px 12px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-subtle);
     cursor: pointer;
     text-align: left;
     transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
   }
 
   .tour-card:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--app-surface-raised);
     transform: translateY(-1px);
   }
 
   /* Anel de foco customizado: fica dentro do respiro do grid, nunca corta. */
   .tour-card:focus-visible {
-    outline: 2px solid rgba(124, 93, 255, 0.75);
+    outline: 2px solid var(--app-accent);
     outline-offset: 1px;
   }
 
   .tour-card.picked {
-    border-color: rgba(124, 93, 255, 0.65);
-    background: rgba(124, 93, 255, 0.12);
-    box-shadow: inset 0 0 0 1px rgba(124, 93, 255, 0.25);
+    border-color: var(--app-accent);
+    background: var(--app-accent-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-accent) 30%, transparent);
   }
 
   .tour-card-icon {
@@ -388,8 +388,8 @@
     width: 26px;
     height: 26px;
     border-radius: 8px;
-    background: rgba(91, 141, 239, 0.14);
-    color: #7de5ff;
+    background: color-mix(in srgb, var(--app-secondary) 14%, transparent);
+    color: var(--app-secondary);
     flex-shrink: 0;
     margin-top: 1px;
   }
@@ -404,13 +404,13 @@
   .tour-card-title {
     font-size: 12.5px;
     font-weight: 600;
-    color: #e6e6eb;
+    color: var(--app-text);
     text-wrap: balance;
   }
 
   .tour-card-tagline {
     font-size: 11px;
-    color: #8b8c96;
+    color: var(--app-text-muted);
     line-height: 1.45;
     text-wrap: pretty;
   }

@@ -8,6 +8,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Label } from '$lib/components/ui/label';
+  import ModelCombobox from './ModelCombobox.svelte';
   import { createAgentNodeSchema } from '$lib/modules/agent-room/contracts/schemas/schemas.js';
   import type { AgentProviderInfo } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
@@ -110,17 +111,16 @@
             <Form.Control>
               {#snippet children({ props })}
                 <Form.Label>{m['dlg.model']()}</Form.Label>
-                <Select.Root type="single" value={$formData!.model || '__default__'} onValueChange={(value) => ($formData!.model = value === '__default__' ? '' : value)}>
-                  <Select.Trigger {...props} class="w-full">
-                    {$formData!.model ? (modelOptions.find((option) => option.value === $formData!.model)?.label ?? $formData!.model) : m['dlg.provider_default']()}
-                  </Select.Trigger>
-                  <Select.Content>
-                    <Select.Item value="__default__" label={m['dlg.provider_default']()} />
-                    {#each modelOptions as option (option.value)}
-                      <Select.Item value={option.value} label={option.label} />
-                    {/each}
-                  </Select.Content>
-                </Select.Root>
+                <ModelCombobox
+                  fieldProps={props}
+                  value={String($formData!.model ?? '')}
+                  options={modelOptions}
+                  defaultLabel={m['dlg.provider_default']()}
+                  searchPlaceholder={m['dlg.search_models']()}
+                  emptyLabel={m['dlg.no_models']()}
+                  ariaLabel={m['dlg.model']()}
+                  onValueChange={(value) => ($formData!.model = value)}
+                />
               {/snippet}
             </Form.Control>
             <Form.FieldErrors />

@@ -123,7 +123,7 @@
   {#if loading}
     <div class="provider-list" aria-hidden="true">
       {#each [0, 1, 2, 3] as item (item)}
-        <Skeleton class="h-[132px] w-full rounded-lg bg-white/6" />
+        <Skeleton class="h-[132px] w-full rounded-lg bg-[var(--app-surface-raised)]" />
       {/each}
     </div>
   {:else if visibleProviders.length}

@@ -72,6 +72,24 @@ export class AgentSessionTracker {
     return this.findByStrategy(storage, cwd, 0, excludeIds, 'newest');
   }
 
+  /**
+   * Confirma se um id conhecido ja existe no armazenamento do provider e pode
+   * ser retomado. `null` significa que o formato ainda nao oferece validacao
+   * exata; nesse caso o chamador preserva o comportamento anterior.
+   */
+  isAgentSessionResumable(storage: string | undefined, cwd: string, agentSessionId: string): boolean | null {
+    if (storage !== 'claude-project-jsonl') return null;
+    try {
+      const slug = this.realCwd(cwd).replace(/[^a-zA-Z0-9]/g, '-');
+      const transcript = join(this.homeDir, '.claude', 'projects', slug, `${agentSessionId}.jsonl`);
+      if (!existsSync(transcript)) return false;
+      const stat = statSync(transcript);
+      return stat.isFile() && this.isResumableClaudeTranscript(transcript, agentSessionId, stat.size);
+    } catch {
+      return false;
+    }
+  }
+
   private findByStrategy(
     storage: string | undefined,
     cwd: string,
@@ -133,6 +151,38 @@ export class AgentSessionTracker {
     }, 3_000);
     timer.unref?.();
     this.watchers.set(ptySessionId, timer);
+  }
+
+  /**
+   * Observa um id reservado pelo proprio provider (Claude --session-id). O id
+   * so e publicado depois que a CLI gravar uma entrada real da conversa; um
+   * arquivo vazio/snapshot nao pode ser usado com --resume no proximo boot.
+   */
+  watchExpected(
+    ptySessionId: string,
+    storage: string | undefined,
+    cwd: string,
+    agentSessionId: string,
+    onFound: (agentSessionId: string) => void,
+    timeoutMs = 1_800_000
+  ): boolean {
+    if (storage !== 'claude-project-jsonl') return false;
+    this.unwatch(ptySessionId);
+    const started = Date.now();
+    const inspect = () => {
+      if (this.isAgentSessionResumable(storage, cwd, agentSessionId)) {
+        this.unwatch(ptySessionId);
+        this.claim(agentSessionId);
+        onFound(agentSessionId);
+        return;
+      }
+      if (Date.now() - started > timeoutMs) this.unwatch(ptySessionId);
+    };
+    const timer = setInterval(inspect, 3_000);
+    timer.unref?.();
+    this.watchers.set(ptySessionId, timer);
+    inspect();
+    return true;
   }
 
   unwatch(ptySessionId: string): void {

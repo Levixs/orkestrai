@@ -110,7 +110,7 @@
 
   let workspaces = $state<Workspace[]>([]);
   let workspaceId = $state('');
-  let query = $state('');
+  let query = $state('agent');
   let results = $state<SkillResult[]>([]);
   let installed = $state<InstalledSkill[]>([]);
   let searching = $state(false);
@@ -196,8 +196,8 @@
     const fromUrl = new URLSearchParams(location.search).get('workspace');
     workspaceId = fromUrl && workspaces.some((workspace) => workspace.id === fromUrl) ? fromUrl : (workspaces[0]?.id ?? '');
     await Promise.all([loadInstalled(), loadInstalledMcps()]);
-    // Catalogo de curadoria ja aparece antes da primeira busca.
-    await searchMcps();
+    // Skills e MCPs ja mostram opcoes no primeiro acesso.
+    await Promise.all([search(), searchMcps()]);
   });
 </script>
 <svelte:head>
@@ -291,10 +291,10 @@
           {#each [0, 1, 2, 3] as index (index)}
             <div class="item-row">
               <div class="item-info result-skeleton">
-                <Skeleton class="h-4 w-40 bg-white/8" />
-                <Skeleton class="h-3 w-56 bg-white/8" />
+                <Skeleton class="h-4 w-40 bg-[var(--app-surface-raised)]" />
+                <Skeleton class="h-3 w-56 bg-[var(--app-surface-raised)]" />
               </div>
-              <Skeleton class="h-8 w-20 bg-white/8" />
+              <Skeleton class="h-8 w-20 bg-[var(--app-surface-raised)]" />
             </div>
           {/each}
         </div>
@@ -376,10 +376,10 @@
           {#each [0, 1, 2, 3] as index (index)}
             <div class="item-row">
               <div class="item-info result-skeleton">
-                <Skeleton class="h-4 w-40 bg-white/8" />
-                <Skeleton class="h-3 w-56 bg-white/8" />
+                <Skeleton class="h-4 w-40 bg-[var(--app-surface-raised)]" />
+                <Skeleton class="h-3 w-56 bg-[var(--app-surface-raised)]" />
               </div>
-              <Skeleton class="h-8 w-20 bg-white/8" />
+              <Skeleton class="h-8 w-20 bg-[var(--app-surface-raised)]" />
             </div>
           {/each}
         </div>

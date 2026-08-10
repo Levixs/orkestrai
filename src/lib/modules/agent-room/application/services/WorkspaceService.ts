@@ -5,6 +5,7 @@ import type { Workspace } from '../../domain/types.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
+import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.ts';
 import { bridgeService } from './BridgeService.js';
 import type {
   CreateCanvasEdgeDto,
@@ -113,16 +114,36 @@ export class WorkspaceService {
   // -- Nos -----------------------------------------------------------------
 
   async listNodes(workspaceId: string) {
-    await this.get(workspaceId);
+    const workspace = await this.get(workspaceId);
     const nodes = await workspaceRepository.listNodes(workspaceId);
     return Promise.all(nodes.map(async (node) => {
       if (node.type !== 'terminal') return node;
       let payload = { ...((node.payload ?? {}) as Record<string, unknown>) };
       let changed = false;
       const storedSessionId = typeof payload.sessionId === 'string' ? payload.sessionId : null;
-      if (storedSessionId && !ptySessionManager.get(storedSessionId)) {
+      const storedPty = storedSessionId ? ptySessionManager.get(storedSessionId) : null;
+      if (storedSessionId && (!storedPty || storedPty.exited)) {
         delete payload.sessionId;
         changed = true;
+      }
+      const agentSessionId = typeof payload.agentSessionId === 'string' ? payload.agentSessionId : null;
+      const provider = typeof payload.provider === 'string' ? payload.provider : null;
+      if (agentSessionId && provider && (!storedPty || storedPty.exited)) {
+        let resumable: boolean | null = null;
+        try {
+          resumable = agentSessionTracker.isAgentSessionResumable(
+            getAgentAdapter(provider).sessionStorage,
+            workspace.workingDir,
+            agentSessionId,
+          );
+        } catch {
+          // Providers removidos ou desconhecidos nao devem impedir a abertura do workspace.
+        }
+        if (resumable === false) {
+          delete payload.agentSessionId;
+          payload.resumeRecovery = true;
+          changed = true;
+        }
       }
       const materialized = materializeInteractiveAgentCommand(payload);
       if (materialized.changed) {

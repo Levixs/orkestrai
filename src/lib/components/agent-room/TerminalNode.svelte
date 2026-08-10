@@ -17,6 +17,7 @@
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
+  import { terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
   import {
     LEADER_DICTATION_COMMAND,
     LEADER_DICTATION_STATE,
@@ -296,6 +297,11 @@
         terminalPaddingPx = Number(settings.terminalPadding ?? 6);
         terminal.options.fontSize = nextSize;
         terminal.options.fontFamily = nextFamily;
+        requestAnimationFrame(() => {
+          terminal.clearTextureAtlas();
+          fitAddon.fit();
+          terminal.refresh(0, terminal.rows - 1);
+        });
       } catch {
         // defaults
       }
@@ -307,6 +313,33 @@
     terminal.loadAddon(searchAddon);
     terminal.open(container);
     fitAddon.fit();
+
+    // O canvas aplica transform: scale() e alguns Chromiums no Windows usam as
+    // metricas nao escaladas do xterm para selecao. Recalcula a faixa pelo
+    // retangulo visual real, inclusive em DPI 125/150% e zoom do canvas.
+    const screen = terminal.element?.querySelector<HTMLElement>('.xterm-screen') ?? null;
+    let selectionStart: TerminalCell | null = null;
+    let selectionOrigin: { x: number; y: number } | null = null;
+    const selectionPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || !screen) return;
+      if (terminal.modes.mouseTrackingMode !== 'none' && !event.shiftKey) return;
+      selectionOrigin = { x: event.clientX, y: event.clientY };
+      selectionStart = terminalCellAtPoint(event, screen.getBoundingClientRect(), terminal.cols, terminal.rows, terminal.buffer.active.viewportY);
+    };
+    const selectionPointerMove = (event: PointerEvent) => {
+      if (!screen || !selectionStart || !selectionOrigin || (event.buttons & 1) === 0) return;
+      if (Math.hypot(event.clientX - selectionOrigin.x, event.clientY - selectionOrigin.y) < 3) return;
+      const end = terminalCellAtPoint(event, screen.getBoundingClientRect(), terminal.cols, terminal.rows, terminal.buffer.active.viewportY);
+      const range = terminalSelectionRange(selectionStart, end, terminal.cols);
+      terminal.select(range.column, range.row, range.length);
+    };
+    const selectionPointerUp = () => {
+      selectionStart = null;
+      selectionOrigin = null;
+    };
+    screen?.addEventListener('pointerdown', selectionPointerDown);
+    window.addEventListener('pointermove', selectionPointerMove);
+    window.addEventListener('pointerup', selectionPointerUp);
 
     // Cmd/Ctrl+clique em caminhos de arquivo (ex.: src/index.ts:42, ./a/b.js).
     if (onOpenPath) {
@@ -498,6 +531,13 @@
       if (id) send({ type: 'resize', sessionId: id, cols: terminal.cols, rows: terminal.rows });
     });
     resizeObserver.observe(container);
+    const refitForDisplayChange = () => {
+      terminal.clearTextureAtlas();
+      fitAddon.fit();
+      terminal.refresh(0, terminal.rows - 1);
+    };
+    window.addEventListener('resize', refitForDisplayChange);
+    window.visualViewport?.addEventListener('resize', refitForDisplayChange);
 
     $effect(() => {
       terminal.options.theme = TERMINAL_THEMES[themeName]?.theme ?? TERMINAL_THEMES.dark.theme;
@@ -505,6 +545,11 @@
 
     return () => {
       disposed = true;
+      screen?.removeEventListener('pointerdown', selectionPointerDown);
+      window.removeEventListener('pointermove', selectionPointerMove);
+      window.removeEventListener('pointerup', selectionPointerUp);
+      window.removeEventListener('resize', refitForDisplayChange);
+      window.visualViewport?.removeEventListener('resize', refitForDisplayChange);
       window.removeEventListener(LEADER_DICTATION_COMMAND, handleLeaderDictation);
       reportDictationState('idle');
       const activeRecorder = mediaRecorder;

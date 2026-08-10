@@ -103,12 +103,12 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'appearance',
       title: 'Themes and appearance',
-      body: `In Settings → Appearance, choose Orkestrai Dark, Graphite, Midnight, or Orkestrai Light. To personalize one, duplicate any theme and edit its semantic tokens for backgrounds, surfaces, text, borders, accent, states, grid, and connections; the preview appears immediately and Save persists it. Custom themes can be exported or imported as validated JSON without accepting arbitrary CSS.`,
+      body: `In Settings → Appearance, choose Orkestrai Dark, Graphite, Midnight, or Orkestrai Light. The light theme keeps readable contrast across panels, canvas nodes, icons, provider marks, buttons, and hover states. To personalize one, duplicate any theme and edit its semantic tokens; the preview appears immediately and Save persists it. Custom themes can be exported or imported as validated JSON without accepting arbitrary CSS.`,
     },
     {
       id: 'atalhos',
       title: 'Shortcuts',
-      body: `⌘P palette · ⌘K (or Ctrl+K) search documentation from any screen · ⌘2 Provider Center · ⌘⇧A next attention · ⌘⇧T tidy · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation · ⌘F search terminal · ⌘Z undo · Backspace delete. On desktop, the native Workspace menu opens Canvas, Provider Center, new workspace, Presets, Floors, Roles, Usage, and Ports; Edit, View, Window, and Help preserve platform actions on macOS, Windows, and Linux.`,
+      body: `⌘P palette · ⌘K (or Ctrl+K) search documentation from any screen · ⌘2 Provider Center · ⌘⇧A next attention · ⌘⇧T organize selected nodes, or the whole canvas when none are selected · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation · ⌘F search terminal · ⌘Z undo · Backspace delete. On Windows, the styled title bar provides File, Edit, View, Workspace, Window, and Help while preserving window controls; macOS and Linux keep their platform menus.`,
     },
   ],
   useCases: [
@@ -235,7 +235,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictate into any text field',
-      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The transcript is inserted at that field\'s cursor and does not require a leader. When no field is active on the canvas, the same control keeps the previous shortcut and sends text to the leader; without a field or leader, the app shows a toast.',
+      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Ctrl-click or Command-click the orb to pin, unpin, or reset it; when unpinned, drag it anywhere inside the visible canvas. With no active field, the same control sends text to the leader.',
       tags: ['Global dictation', 'text fields', 'local voice'],
     },
     {
@@ -247,7 +247,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'devin-local-agent',
       title: 'Use Devin as a local team member',
-      body: 'Install and authenticate the official Devin CLI, then create a Devin agent from the canvas. Orkestrai starts it with autonomous workspace access, provisions the native MCP bridge and skill, loads the models available to your account, and resumes the exact local conversation after an app restart.',
+      body: 'Install and authenticate the official Devin CLI, then create a Devin agent from the canvas. Search the account model list in the bounded, scrollable selector, choose one, and start with autonomous workspace access. Orkestrai provisions the native MCP bridge and skill and resumes the exact local conversation after an app restart.',
       tags: ['Devin CLI', 'local agent', 'exact resume'],
     },
     {
@@ -263,13 +263,31 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['Canvas usage', 'fallback', 'delegation'],
     },
     {
+      id: 'organize-canvas',
+      title: 'Reorganize a growing workspace',
+      body: 'Select the nodes you want to realign and choose Organize canvas from the toolbar or command palette. Orkestrai lays out only that selection; with nothing selected, it organizes the whole canvas into deterministic rows without moving nodes into each other. Connections stay behind every node.',
+      tags: ['Canvas layout', 'selection', 'connections'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adapt the app appearance to your work',
-      body: 'Choose one of three dark themes or the light theme under Settings → Appearance. Duplicate the closest option, adjust semantic color tokens with an immediate preview, and export the JSON to use the same theme in another installation.',
+      body: 'Choose one of three dark themes or the high-contrast light theme under Settings → Appearance. Duplicate the closest option, adjust semantic color tokens with an immediate preview, and export the JSON to use the same theme in another installation.',
       tags: ['Themes', 'semantic tokens', 'import/export'],
     },
   ],
   changelog: [
+    {
+      date: 'Aug 10, 2026 · 0.8.1',
+      items: [
+        'The global voice orb now targets the focused field on the first click, can be pinned or dragged, and moves away from open canvas panels.',
+        'Provider model selectors are searchable and scrollable, including Devin accounts with large model catalogs.',
+        'Orkestrai Light now has consistent contrast across panels, nodes, text, buttons, icons, provider marks, and hover states.',
+        'Organize canvas now aligns either selected nodes or the whole workspace, while connections consistently remain behind nodes.',
+        'Usage node severity colors match the Usage panel, and Skills loads useful initial results automatically.',
+        'Workspace recovery validates provider conversations before resume, avoiding stale session errors and unnecessary role reinjection.',
+        'Windows now uses the correct CLI launcher, DPI-aware terminal selection, and a styled desktop title bar and menu.',
+      ],
+    },
     {
       date: 'Aug 10, 2026 · 0.8.0',
       items: [

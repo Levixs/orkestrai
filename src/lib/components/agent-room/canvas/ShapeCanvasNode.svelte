@@ -572,7 +572,7 @@
   }
 
   .arrow-anchor {
-    fill: #fff;
+    fill: var(--app-surface);
     stroke: var(--accent, var(--app-accent));
     stroke-width: 2;
     cursor: grab;
@@ -616,7 +616,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--app-border-strong);
     background: var(--app-surface-raised);
     color: var(--app-text-muted);
     display: inline-flex;
@@ -637,7 +637,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--app-border-strong);
     background: var(--app-surface-raised);
     color: var(--app-text-muted);
     display: inline-flex;
@@ -650,7 +650,7 @@
   :global(.shape-settings:hover),
   .shape-settings.style-open {
     color: var(--app-accent);
-    border-color: rgba(124, 77, 255, 0.5);
+    border-color: var(--app-accent);
   }
 
   .style-panel {
@@ -658,7 +658,7 @@
     /* z 40: acima do canvas, ABAIXO dos dropdowns (bits-ui Select ~50). */
     z-index: 40;
     width: 264px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
     border-radius: 12px;
     background: var(--app-surface);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
@@ -744,7 +744,7 @@
     width: 16px;
     height: 16px;
     border-radius: 5px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid var(--app-border-strong);
     cursor: pointer;
     padding: 0;
   }
@@ -754,12 +754,12 @@
   }
 
   .swatch.active {
-    outline: 2px solid #fff;
+    outline: 2px solid var(--app-text);
     outline-offset: 1px;
   }
 
   .mini-toggle {
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--app-border);
     background: transparent;
     color: var(--app-text-muted);
     font-size: 10px;
@@ -769,8 +769,8 @@
   }
 
   .mini-toggle.active {
-    background: rgba(124, 77, 255, 0.2);
-    border-color: rgba(124, 77, 255, 0.5);
+    background: var(--app-accent-soft);
+    border-color: var(--app-accent);
     color: var(--app-text);
   }
 </style>

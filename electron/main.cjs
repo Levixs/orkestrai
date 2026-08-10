@@ -322,6 +322,11 @@ async function createWindow() {
     title: 'Orkestrai',
     icon: path.join(appRoot, 'electron', 'resources', 'icon.png'),
     backgroundColor: '#0D0B2E',
+    ...(process.platform === 'win32' ? {
+      titleBarStyle: 'hidden',
+      titleBarOverlay: { color: '#00000000', symbolColor: '#c7c8d0', height: 36 },
+      autoHideMenuBar: true,
+    } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -329,6 +334,7 @@ async function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+  if (process.platform === 'win32') mainWindow.setMenuBarVisibility(false);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -480,6 +486,44 @@ ipcMain.handle('orkestrai:menu-locale', (_event, locale) => {
   buildApplicationMenu();
   rebuildTrayMenu();
   return menuLocale;
+});
+
+const RENDERER_MENU_ACTIONS = new Set([
+  'canvas', 'providers', 'new-workspace', 'presets', 'organize', 'floors', 'roles', 'usage', 'ports',
+  'settings', 'command-palette', 'docs', 'changelog',
+]);
+
+ipcMain.handle('orkestrai:menu-command', (_event, action) => {
+  if (typeof action !== 'string' || !mainWindow) return false;
+  if (RENDERER_MENU_ACTIONS.has(action)) {
+    sendMenuAction(action);
+    return true;
+  }
+  const contents = mainWindow.webContents;
+  if (action === 'check-updates') void checkForUpdates();
+  else if (action === 'undo') contents.undo();
+  else if (action === 'redo') contents.redo();
+  else if (action === 'cut') contents.cut();
+  else if (action === 'copy') contents.copy();
+  else if (action === 'paste') contents.paste();
+  else if (action === 'select-all') contents.selectAll();
+  else if (action === 'reload') contents.reload();
+  else if (action === 'fullscreen') mainWindow.setFullScreen(!mainWindow.isFullScreen());
+  else if (action === 'minimize') mainWindow.minimize();
+  else if (action === 'toggle-maximize') mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+  else if (action === 'close') mainWindow.close();
+  else if (action === 'report-issue') void shell.openExternal('https://github.com/beeblock/orkestrai/issues/new');
+  else return false;
+  return true;
+});
+
+ipcMain.handle('orkestrai:titlebar-theme', (_event, theme) => {
+  if (process.platform !== 'win32' || !mainWindow || !theme || typeof theme !== 'object') return false;
+  const color = String(theme.background ?? '');
+  const symbolColor = String(theme.foreground ?? '');
+  if (!/^#[0-9a-f]{6}$/i.test(color) || !/^#[0-9a-f]{6}$/i.test(symbolColor)) return false;
+  mainWindow.setTitleBarOverlay({ color, symbolColor, height: 36 });
+  return true;
 });
 
 function showNativeNotification(title, body) {

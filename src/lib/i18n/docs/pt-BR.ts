@@ -107,12 +107,12 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'appearance',
       title: 'Temas e aparência',
-      body: `Em Configurações → Aparência, escolha Orkestrai Dark, Graphite, Midnight ou Orkestrai Light. Para personalizar, duplique qualquer tema e edite seus tokens semânticos de fundo, superfícies, texto, bordas, destaque, estados, grade e conexões; a prévia aparece imediatamente e Salvar persiste a escolha. Temas personalizados podem ser exportados ou importados como JSON validado, sem aceitar CSS arbitrário.`,
+      body: `Em Configurações → Aparência, escolha Orkestrai Dark, Graphite, Midnight ou Orkestrai Light. O tema claro mantém contraste legível em painéis, nós, ícones, marcas dos providers, botões e hovers. Para personalizar, duplique qualquer tema e edite seus tokens semânticos; a prévia aparece imediatamente e Salvar persiste a escolha. Temas personalizados podem ser exportados ou importados como JSON validado, sem aceitar CSS arbitrário.`,
     },
     {
       id: 'atalhos',
       title: 'Atalhos',
-      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘2 Central de Providers · ⌘⇧A próxima atenção · ⌘⇧T organizar · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. No desktop, o menu nativo Workspace abre Canvas, Central de Providers, novo workspace, Presets, Andares, Roles, Uso e Portas; Editar, Visualizar, Janela e Ajuda mantêm ações do sistema em macOS, Windows e Linux.`,
+      body: `⌘P paleta · ⌘K (ou Ctrl+K) buscar na documentação de qualquer tela · ⌘2 Central de Providers · ⌘⇧A próxima atenção · ⌘⇧T organizar os nós selecionados ou todo o canvas quando nada está selecionado · ⌘G agrupar · ⌘⇧G desagrupar · N nova nota · L conectar selecionados · Alt+1…9 focar terminal · Alt+Espaço ditado por voz · ⌘F buscar no terminal · ⌘Z desfazer · Backspace excluir. No Windows, a barra de título estilizada oferece Arquivo, Editar, Visualizar, Workspace, Janela e Ajuda sem perder os controles da janela; macOS e Linux mantêm seus menus de plataforma.`,
     },
   ],
   useCases: [
@@ -239,7 +239,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Ditar em qualquer campo de texto',
-      body: 'Clique primeiro em qualquer campo editável — título ou descrição do kanban, role, nota, formulário — e use a bolinha de voz global ou Alt+Espaço. A transcrição entra exatamente no cursor desse campo, sem exigir líder. Quando nenhum campo está ativo no canvas, o mesmo controle mantém o atalho anterior e envia o texto ao líder; sem campo e sem líder, o app avisa por toast.',
+      body: 'Clique em qualquer campo editável — título ou descrição do kanban, role, nota ou formulário — e use a bolinha de voz global ou Alt+Espaço. Já no primeiro clique, o campo é preservado e a transcrição entra exatamente no cursor, sem exigir líder. Use Ctrl+clique ou Command+clique na bolinha para fixar, soltar ou redefinir sua posição; solta, ela pode ser arrastada dentro do canvas. Sem campo ativo, o controle envia o texto ao líder.',
       tags: ['Ditado global', 'campos de texto', 'voz local'],
     },
     {
@@ -251,7 +251,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'devin-local-agent',
       title: 'Usar o Devin como membro local do time',
-      body: 'Instale e autentique a CLI oficial do Devin e crie um agente Devin pelo canvas. O Orkestrai inicia a sessão com acesso autônomo ao workspace, provisiona a ponte MCP e a skill nativas, carrega os modelos disponíveis na sua conta e retoma a conversa local exata depois de reiniciar o app.',
+      body: 'Instale e autentique a CLI oficial do Devin e crie um agente Devin pelo canvas. Pesquise a lista de modelos da conta no seletor limitado e rolável, escolha um e inicie com acesso autônomo ao workspace. O Orkestrai provisiona a ponte MCP e a skill nativas e retoma a conversa local exata depois de reiniciar o app.',
       tags: ['Devin CLI', 'agente local', 'retomada exata'],
     },
     {
@@ -267,13 +267,31 @@ export const DOCS_PT: DocsCatalog = {
       tags: ['Uso no canvas', 'fallback', 'delegação'],
     },
     {
+      id: 'organize-canvas',
+      title: 'Reorganizar um workspace que cresceu',
+      body: 'Selecione os nós que deseja realinhar e escolha Organizar canvas na barra ou na paleta de comandos. O Orkestrai organiza somente a seleção; sem nada selecionado, organiza todo o canvas em linhas determinísticas sem sobrepor nós. As conexões permanecem atrás de todos os nós.',
+      tags: ['Layout do canvas', 'seleção', 'conexões'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adaptar a aparência ao seu trabalho',
-      body: 'Escolha um dos três temas escuros ou o tema claro em Configurações → Aparência. Duplique o mais próximo da sua preferência, ajuste os tokens de cor com prévia imediata e exporte o JSON para usar o mesmo tema em outra instalação.',
+      body: 'Escolha um dos três temas escuros ou o tema claro de alto contraste em Configurações → Aparência. Duplique o mais próximo da sua preferência, ajuste os tokens de cor com prévia imediata e exporte o JSON para usar o mesmo tema em outra instalação.',
       tags: ['Temas', 'tokens semânticos', 'importar/exportar'],
     },
   ],
   changelog: [
+    {
+      date: '10 ago 2026 · 0.8.1',
+      items: [
+        'A bolinha de voz global agora reconhece o campo focado no primeiro clique, pode ser fixada ou arrastada e sai da frente dos painéis abertos.',
+        'Seletores de modelo agora têm pesquisa e rolagem, inclusive para contas Devin com catálogos grandes.',
+        'O Orkestrai Light ganhou contraste consistente em painéis, nós, textos, botões, ícones, marcas de providers e hovers.',
+        'Organizar canvas agora alinha os nós selecionados ou todo o workspace, com conexões sempre atrás dos nós.',
+        'As cores de severidade do nó Uso correspondem ao painel Uso, e Skills já carrega resultados iniciais úteis.',
+        'A recuperação do workspace valida a conversa do provider antes de retomar, evitando sessões obsoletas e reinjeção desnecessária de roles.',
+        'O Windows agora usa o launcher correto das CLIs, seleção de terminal ajustada ao DPI e uma barra de título e menu estilizados.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.8.0',
       items: [

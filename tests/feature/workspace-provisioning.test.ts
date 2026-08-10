@@ -23,7 +23,11 @@ describe('WorkspaceService — provisionamento da ponte', () => {
     expect(agentsMd).toContain('<!-- orkestrai:begin -->');
     expect(agentsMd).toContain('orkestrai ask');
     const opencode = JSON.parse(readFileSync(join(dir, 'opencode.json'), 'utf8'));
-    expect(opencode.mcp.orkestrai).toMatchObject({ type: 'local', command: ['orkestrai', 'mcp'] });
+    expect(opencode.mcp.orkestrai).toMatchObject({
+      type: 'local',
+      command: [process.execPath, join(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js'), 'mcp'],
+      enabled: true,
+    });
     for (const path of ['.mcp.json', '.cursor/mcp.json', '.cline/mcp.json', '.agents/mcp_config.json']) {
       const config = JSON.parse(readFileSync(join(dir, path), 'utf8'));
       expect(config.mcpServers.orkestrai.command).toBe(process.execPath);

@@ -241,7 +241,7 @@
     margin: 0;
     padding: 4px 10px;
     font-size: 11px;
-    color: #ffb3b6;
+    color: var(--app-danger);
     border-top: 1px solid var(--app-border);
   }
 </style>

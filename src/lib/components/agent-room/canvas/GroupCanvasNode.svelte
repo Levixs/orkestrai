@@ -60,9 +60,9 @@
   .canvas-group {
     width: 100%;
     height: 100%;
-    border: 1.5px dashed rgba(122, 165, 248, 0.5);
+    border: 1.5px dashed color-mix(in srgb, var(--app-secondary) 52%, transparent);
     border-radius: 16px;
-    background: rgba(122, 165, 248, 0.05);
+    background: color-mix(in srgb, var(--app-secondary) 7%, transparent);
     position: relative;
   }
 
@@ -80,7 +80,7 @@
     padding: 3px 10px;
     border-radius: 999px;
     background: var(--app-surface-raised);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--app-border);
     color: var(--app-text-soft);
     font-size: 11px;
     font-weight: 500;

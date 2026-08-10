@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Mic, Square } from '@lucide/svelte';
+  import { Mic, Move, Pin, PinOff, RotateCcw, Square } from '@lucide/svelte';
   import { toast } from '@beeblock/svelar/ui';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import * as Tooltip from '$lib/components/ui/tooltip';
@@ -28,11 +28,105 @@
   let mediaRecorder: MediaRecorder | null = null;
   let mediaStream: MediaStream | null = null;
   let audioChunks: Blob[] = [];
+  const PLACEMENT_KEY = 'orkestrai.dictation-placement';
+  const BUTTON_SIZE = 48;
+  const EDGE_GAP = 14;
+  let trigger = $state<HTMLButtonElement | null>(null);
+  let placement = $state({ x: 0, y: 56, pinned: true });
+  let placementReady = $state(false);
+  let placementMenuOpen = $state(false);
+  let drag = $state<{ pointerId: number; offsetX: number; offsetY: number; moved: boolean } | null>(null);
+  let suppressNextClick = false;
   const hotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
 
   const supported = typeof window !== 'undefined'
     && typeof MediaRecorder !== 'undefined'
     && Boolean(navigator.mediaDevices?.getUserMedia);
+
+  function availableRect() {
+    const canvas = document.querySelector<HTMLElement>('.canvas-area .svelte-flow');
+    const rect = canvas?.getBoundingClientRect();
+    if (rect && rect.width >= BUTTON_SIZE && rect.height >= BUTTON_SIZE) return rect;
+    return { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight, width: window.innerWidth, height: window.innerHeight };
+  }
+
+  function clampPlacement(next = placement) {
+    const rect = availableRect();
+    placement = {
+      ...next,
+      x: Math.max(rect.left + EDGE_GAP, Math.min(rect.right - BUTTON_SIZE - EDGE_GAP, next.x)),
+      y: Math.max(rect.top + EDGE_GAP, Math.min(rect.bottom - BUTTON_SIZE - EDGE_GAP, next.y)),
+    };
+  }
+
+  function defaultPlacement() {
+    const rect = availableRect();
+    return { x: rect.right - BUTTON_SIZE - EDGE_GAP, y: rect.top + 56, pinned: true };
+  }
+
+  function persistPlacement() {
+    localStorage.setItem(PLACEMENT_KEY, JSON.stringify(placement));
+  }
+
+  function resetPlacement() {
+    placement = defaultPlacement();
+    persistPlacement();
+    placementMenuOpen = false;
+  }
+
+  function togglePinned() {
+    placement = { ...placement, pinned: !placement.pinned };
+    persistPlacement();
+    placementMenuOpen = false;
+  }
+
+  function startDrag(event: PointerEvent) {
+    // Capture the active field before the button takes focus on the first click.
+    const activeEditable = editableFrom(document.activeElement);
+    if (activeEditable) {
+      target = activeEditable;
+      rememberSelection();
+    }
+    if (placement.pinned || event.button !== 0 || event.ctrlKey || event.metaKey) return;
+    drag = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - placement.x,
+      offsetY: event.clientY - placement.y,
+      moved: false,
+    };
+    trigger?.setPointerCapture(event.pointerId);
+  }
+
+  function moveDrag(event: PointerEvent) {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const moved = drag.moved || Math.hypot(event.movementX, event.movementY) > 2;
+    drag = { ...drag, moved };
+    clampPlacement({ ...placement, x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY });
+  }
+
+  function stopDrag(event: PointerEvent) {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    trigger?.releasePointerCapture(event.pointerId);
+    if (drag.moved) {
+      persistPlacement();
+      suppressNextClick = true;
+    }
+    drag = null;
+  }
+
+  function triggerClick(event: MouseEvent) {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      event.preventDefault();
+      return;
+    }
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      placementMenuOpen = !placementMenuOpen;
+      return;
+    }
+    toggle();
+  }
 
   function editableFrom(value: EventTarget | null): Editable | null {
     if (!(value instanceof HTMLElement)) return null;
@@ -44,6 +138,14 @@
     }
     if (element instanceof HTMLTextAreaElement && (element.disabled || element.readOnly)) return null;
     return element;
+  }
+
+  function editableUsable(element: Editable | null): element is Editable {
+    if (!element?.isConnected || element.closest('[aria-hidden="true"], [inert]')) return false;
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const style = getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden';
   }
 
   function rememberSelection() {
@@ -95,7 +197,7 @@
   function label(): string {
     if (status === 'recording') return m['dictation.stop']();
     if (status === 'transcribing') return m['dictation.transcribing']();
-    return target?.isConnected ? m['dictation.start_field']() : m['dictation.start']();
+    return editableUsable(target) ? m['dictation.start_field']() : m['dictation.start']();
   }
 
   async function toggleTextDictation() {
@@ -103,7 +205,7 @@
       mediaRecorder?.stop();
       return;
     }
-    if (status !== 'idle' || !target?.isConnected || checkingVoiceModels) return;
+    if (status !== 'idle' || !editableUsable(target) || checkingVoiceModels) return;
 
     checkingVoiceModels = true;
     try {
@@ -176,7 +278,8 @@
 
   function toggle() {
     if (!supported || status === 'transcribing') return;
-    if (source === 'leader' || (!target?.isConnected && source !== 'text')) {
+    if (source === 'leader' || (!editableUsable(target) && source !== 'text')) {
+      target = null;
       requestFallback();
       return;
     }
@@ -184,6 +287,33 @@
   }
 
   onMount(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PLACEMENT_KEY) ?? 'null') as Partial<typeof placement> | null;
+      placement = saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)
+        ? { x: Number(saved.x), y: Number(saved.y), pinned: saved.pinned !== false }
+        : defaultPlacement();
+    } catch {
+      placement = defaultPlacement();
+    }
+    clampPlacement();
+    placementReady = true;
+    let observedCanvas: HTMLElement | null = null;
+    const placementObserver = new ResizeObserver(() => clampPlacement());
+    const observeCanvas = () => {
+      const canvas = document.querySelector<HTMLElement>('.canvas-area .svelte-flow');
+      if (canvas === observedCanvas) return;
+      if (observedCanvas) placementObserver.unobserve(observedCanvas);
+      observedCanvas = canvas;
+      if (canvas) {
+        placementObserver.observe(canvas);
+        clampPlacement();
+      }
+    };
+    observeCanvas();
+    const canvasObserver = new MutationObserver(observeCanvas);
+    canvasObserver.observe(document.body, { childList: true, subtree: true });
+    const clampOnResize = () => clampPlacement();
+    window.addEventListener('resize', clampOnResize);
     const focusIn = (event: FocusEvent) => {
       const eventTarget = event.target instanceof HTMLElement ? event.target : null;
       if (eventTarget?.closest('[data-dictation-trigger]')) return;
@@ -213,33 +343,45 @@
     document.addEventListener('selectionchange', selectionChange);
     window.addEventListener('keydown', keyDown);
     window.addEventListener(LEADER_DICTATION_STATE, leaderState);
+    target = editableFrom(document.activeElement);
+    rememberSelection();
     return () => {
       document.removeEventListener('focusin', focusIn, true);
       document.removeEventListener('pointerdown', pointerDown, true);
       document.removeEventListener('selectionchange', selectionChange);
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener(LEADER_DICTATION_STATE, leaderState);
+      window.removeEventListener('resize', clampOnResize);
+      placementObserver.disconnect();
+      canvasObserver.disconnect();
       if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
       stopTracks();
     };
   });
 </script>
 
-{#if supported}
+{#if supported && placementReady}
   <Tooltip.Root>
     <Tooltip.Trigger>
       {#snippet child({ props })}
         <button
           {...props}
+          bind:this={trigger}
           type="button"
           data-dictation-trigger
-          class="fixed right-4 top-14 z-30 grid size-12 place-items-center rounded-full border-0 bg-[conic-gradient(from_25deg,#58d6ff,#9674ff,#f05fb4,#ffb45e,#61e5a7,#58d6ff)] p-[3px] text-white shadow-[0_8px_24px_rgba(5,4,26,0.48)] transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:scale-[1.03] hover:shadow-[0_10px_28px_rgba(5,4,26,0.58)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white disabled:cursor-wait"
+          class="dictation-trigger fixed z-30 grid size-12 place-items-center rounded-full border-0 p-[3px] text-white disabled:cursor-wait"
+          class:movable={!placement.pinned}
           class:animate-pulse={status === 'recording'}
           class:animate-spin={status === 'transcribing'}
+          style:left={`${placement.x}px`}
+          style:top={`${placement.y}px`}
           aria-label={label()}
           aria-pressed={status === 'recording'}
           disabled={status === 'transcribing'}
-          onclick={toggle}
+          onpointerdown={startDrag}
+          onpointermove={moveDrag}
+          onpointerup={stopDrag}
+          onclick={triggerClick}
         >
           <span class="grid size-full place-items-center rounded-full border border-white/15 bg-[#11102f]">
             {#if status === 'recording'}<Square size={14} fill="currentColor" />{:else}<Mic size={18} />{/if}
@@ -249,6 +391,80 @@
     </Tooltip.Trigger>
     <Tooltip.Content side="left">{label()}</Tooltip.Content>
   </Tooltip.Root>
+  {#if placementMenuOpen}
+    <div
+      class="placement-menu"
+      data-dictation-trigger
+      style:left={`${Math.max(EDGE_GAP, Math.min(window.innerWidth - 188, placement.x - 136))}px`}
+      style:top={`${Math.min(window.innerHeight - 92, placement.y + BUTTON_SIZE + 8)}px`}
+    >
+      <button type="button" onclick={togglePinned}>
+        {#if placement.pinned}<PinOff size={14} />{m['dictation.unpin']()}{:else}<Pin size={14} />{m['dictation.pin']()}{/if}
+      </button>
+      <button type="button" onclick={resetPlacement}><RotateCcw size={14} />{m['dictation.reset_position']()}</button>
+      {#if !placement.pinned}<span><Move size={13} />{m['dictation.drag_hint']()}</span>{/if}
+    </div>
+  {/if}
 {/if}
 
 <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => void toggleTextDictation()} onCancel={() => {}} />
+
+<style>
+  .dictation-trigger {
+    touch-action: none;
+    background: conic-gradient(from 25deg, #58d6ff, #9674ff, #f05fb4, #ffb45e, #61e5a7, #58d6ff);
+    box-shadow: 0 8px 24px rgba(5, 4, 26, 0.36);
+    transition: transform 150ms ease, box-shadow 150ms ease;
+  }
+
+  .dictation-trigger:hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 10px 28px rgba(5, 4, 26, 0.46);
+  }
+
+  .dictation-trigger.movable {
+    cursor: grab;
+  }
+
+  .dictation-trigger.movable:active {
+    cursor: grabbing;
+    transform: scale(0.98);
+  }
+
+  .placement-menu {
+    position: fixed;
+    z-index: 45;
+    width: 174px;
+    display: grid;
+    gap: 3px;
+    padding: 6px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-surface-raised);
+    color: var(--app-text);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--app-page) 32%, transparent);
+  }
+
+  .placement-menu button,
+  .placement-menu span {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 5px;
+    padding: 6px 8px;
+    background: transparent;
+    color: inherit;
+    font-size: 11px;
+    text-align: left;
+  }
+
+  .placement-menu button:hover {
+    background: var(--app-accent-soft);
+  }
+
+  .placement-menu span {
+    color: var(--app-text-muted);
+  }
+</style>
