@@ -5,6 +5,7 @@ import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/Pt
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
 import {
   CreateCanvasEdgeDto,
+  ChangeTerminalProviderDto,
   CreateCanvasNodeDto,
   CreateWorkspaceDto,
   UpdateCanvasEdgeDto,
@@ -13,6 +14,7 @@ import {
 } from '$lib/modules/agent-room/application/dto/WorkspaceDtos.js';
 import {
   CreateCanvasEdgeRequest,
+  ChangeTerminalProviderRequest,
   CreateCanvasNodeRequest,
   CreateWorkspaceRequest,
   UpdateCanvasEdgeRequest,
@@ -133,6 +135,19 @@ export class WorkspaceController extends Controller {
       return this.json({ data: await workspaceService.reloadNode(event.params.id, event.params.nodeId) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao recarregar terminal.');
+    }
+  }
+
+  async changeTerminalProvider(event: any) {
+    try {
+      const input = await ChangeTerminalProviderRequest.validate(event);
+      return this.json({
+        data: await workspaceService.changeTerminalProvider(
+          ChangeTerminalProviderDto.from(event.params.id, event.params.nodeId, input)
+        ),
+      });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao trocar provider do terminal.');
     }
   }
 

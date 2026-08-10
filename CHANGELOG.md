@@ -5,6 +5,38 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.5.0 - 2026-08-10
+
+### Added
+
+- Added global local dictation for every editable text field, including task
+  titles and descriptions, roles, notes, and forms. When no field is active on
+  the canvas, the voice control retains its leader-terminal shortcut.
+- Added in-place provider switching for terminal agents. The replacement starts
+  a clean provider conversation while preserving the node name, role, Maestro
+  status, floor, position, theme, and team connections.
+- Added automatic preset-role delivery when a terminal starts and initial
+  kanban queue delivery to the leader with complete title, description, images,
+  and linked-note context.
+- Added task titles, stages, and assignees to the ground and worktree summaries
+  in Floors.
+
+### Changed
+
+- Expanded every built-in preset role with a concrete mission, team context,
+  operating process, acceptance criteria, handoff requirements, and a
+  Kanban-first delegation protocol.
+- Classified native notifications as task completion, project completion,
+  attention, or information. Completing a task now emits its own explicit task
+  notification, while project completion is reserved for the whole project.
+- Required leaders to create and assign delegated work on the board before
+  sending direct agent messages.
+
+### Fixed
+
+- Matched the shape text editor to the rendered font size, weight, alignment,
+  and color so large text remains legible while editing.
+
 ## 0.4.0 - 2026-08-09
 
 ### Added

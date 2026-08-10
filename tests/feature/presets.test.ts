@@ -155,6 +155,16 @@ describe('PresetService', () => {
     expect(existsSync(join(dir, 'CLAUDE.md'))).toBe(true);
     expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
 
+    const roles = await roleService.list(applied.workspaceId);
+    expect(roles).toHaveLength(4);
+    expect(roles.every((role) => role.prompt.length > 700)).toBe(true);
+    expect(roles[0].prompt).toContain('Kanban');
+
+    const initialTasks = await taskBoardService.list(applied.workspaceId);
+    expect(initialTasks).toHaveLength(1);
+    expect(initialTasks[0].assigneeNodeId).toBeNull();
+    expect(initialTasks[0].description.length).toBeGreaterThan(40);
+
     const nodes = await workspaceRepository.listNodes(applied.workspaceId);
     const argsFor = (provider: string) => {
       const terminal = nodes.find(

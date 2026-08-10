@@ -27,7 +27,7 @@
     floor: Floor | null;
     floorId: string | null;
     agents: Array<{ id: string; title: string; provider: string | null; role: string | null; active: boolean; idle: boolean }>;
-    tasks: Array<{ id: string; title: string; status: 'todo' | 'doing' | 'done'; assigneeTitle: string | null }>;
+    tasks: Array<{ id: string; title: string; status: string; assigneeTitle: string | null }>;
     git: { branch: string; dirty: boolean; changedFiles: number; ahead: number; behind: number; lastCommitAt: string | null; lastCommitTitle: string | null; available: boolean };
   };
   type WorkspaceFloorOverview = { ground: FloorOverview; floors: FloorOverview[] };
@@ -153,10 +153,11 @@
     loadHooks();
   });
 
-  function taskStatus(status: 'todo' | 'doing' | 'done'): string {
+  function taskStatus(status: string): string {
     if (status === 'doing') return m['floor.task_doing']();
     if (status === 'done') return m['floor.task_done']();
-    return m['floor.task_todo']();
+    if (status === 'todo') return m['floor.task_todo']();
+    return status;
   }
 
   function activityLabel(value: string | null): string {
@@ -196,6 +197,23 @@
           <span class="text-zinc-300">{overview.ground.tasks.filter((task) => task.status === 'doing').length} {m['floor.in_progress']()}</span>
         </div>
       </div>
+      {#if overview.ground.tasks.length}
+        <div class="mt-2 grid gap-1.5 border-t border-white/[0.07] pt-2">
+          {#each overview.ground.tasks.slice(0, 4) as task (task.id)}
+            <div class="grid min-w-0 grid-cols-[12px_1fr_auto] items-start gap-x-1.5 text-[9px]">
+              {#if task.status === 'done'}<CheckCircle2 size={10} class="mt-0.5 text-emerald-400" />{:else}<CircleDot size={10} class="mt-0.5 {task.status === 'doing' ? 'text-cyan-300' : 'text-zinc-600'}" />{/if}
+              <span class="min-w-0 truncate text-zinc-300" title={task.title}>{task.title}</span>
+              <span class="shrink-0 text-zinc-600">{taskStatus(task.status)}</span>
+              <span class="col-start-2 col-end-4 truncate text-zinc-600" title={task.assigneeTitle ?? m['floor.unassigned']()}>
+                {m['floor.task_assignee']({ name: task.assigneeTitle ?? m['floor.unassigned']() })}
+              </span>
+            </div>
+          {/each}
+          {#if overview.ground.tasks.length > 4}
+            <span class="text-[9px] text-zinc-600">{m['floor.more_tasks']({ count: overview.ground.tasks.length - 4 })}</span>
+          {/if}
+        </div>
+      {/if}
       {#if overview.ground.git.available}
         <p class="mt-2 mb-0 truncate text-[9px] text-zinc-600" title={overview.ground.git.lastCommitTitle ?? ''}>
           {overview.ground.git.dirty ? m['floor.changed_files']({ count: overview.ground.git.changedFiles }) : m['floor.clean_worktree']()} · {activityLabel(overview.ground.git.lastCommitAt)}
@@ -231,13 +249,19 @@
 
         {#if item.tasks.length}
           <div class="mt-2 grid gap-1">
-            {#each item.tasks.slice(0, 3) as task (task.id)}
-              <div class="flex items-center gap-1.5 text-[9px] text-zinc-400">
-                {#if task.status === 'done'}<CheckCircle2 size={10} class="text-emerald-400" />{:else}<CircleDot size={10} class={task.status === 'doing' ? 'text-cyan-300' : 'text-zinc-600'} />{/if}
-                <span class="min-w-0 flex-1 truncate">{task.title}</span>
+            {#each item.tasks.slice(0, 4) as task (task.id)}
+              <div class="grid min-w-0 grid-cols-[12px_1fr_auto] items-start gap-x-1.5 text-[9px]">
+                {#if task.status === 'done'}<CheckCircle2 size={10} class="mt-0.5 text-emerald-400" />{:else}<CircleDot size={10} class="mt-0.5 {task.status === 'doing' ? 'text-cyan-300' : 'text-zinc-600'}" />{/if}
+                <span class="min-w-0 truncate text-zinc-300" title={task.title}>{task.title}</span>
                 <span class="shrink-0 text-zinc-600">{taskStatus(task.status)}</span>
+                <span class="col-start-2 col-end-4 truncate text-zinc-600" title={task.assigneeTitle ?? m['floor.unassigned']()}>
+                  {m['floor.task_assignee']({ name: task.assigneeTitle ?? m['floor.unassigned']() })}
+                </span>
               </div>
             {/each}
+            {#if item.tasks.length > 4}
+              <span class="text-[9px] text-zinc-600">{m['floor.more_tasks']({ count: item.tasks.length - 4 })}</span>
+            {/if}
           </div>
         {/if}
 

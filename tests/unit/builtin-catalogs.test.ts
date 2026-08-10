@@ -15,6 +15,7 @@ describe('builtin team catalogs', () => {
       const agents = preset.data.nodes.filter((node) => node.type === 'terminal');
       expect(agents.length).toBeGreaterThanOrEqual(4);
       expect(preset.data.roles).toHaveLength(agents.length);
+      expect(preset.data.roles.every((role) => role.prompt.length > 700)).toBe(true);
       expect(preset.data.skills.length).toBeGreaterThanOrEqual(2);
       expect(preset.data.tasks[0].description.length).toBeGreaterThan(40);
       expect(preset.data.nodes.some((node) => node.type === 'tasks')).toBe(true);

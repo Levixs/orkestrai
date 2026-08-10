@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { toast } from '@beeblock/svelar/ui';
+  import { getCsrfToken } from '@beeblock/svelar/http';
   import {
     Background,
     ConnectionMode,
@@ -53,8 +54,9 @@
     type LeaderDictationStateDetail,
     type LeaderDictationStatus,
   } from '$lib/components/agent-room/leader-dictation.js';
+  import { TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from '$lib/components/agent-room/text-dictation.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutTemplate, Mic, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, Square, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CodeXml, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -346,12 +348,6 @@
     toast.success(m['preset.applied']());
   }
 
-  function leaderDictationLabel(): string {
-    if (leaderDictationState === 'recording') return m['leader_dictation.stop']();
-    if (leaderDictationState === 'transcribing') return m['leader_dictation.transcribing']();
-    return m['leader_dictation.start']();
-  }
-
   function dispatchLeaderDictation(nodeId: string) {
     requestAnimationFrame(() => {
       window.dispatchEvent(new CustomEvent(LEADER_DICTATION_COMMAND, { detail: { nodeId } }));
@@ -401,6 +397,17 @@
   });
 
   onMount(() => {
+    const handleFallback = (event: Event) => {
+      const detail = (event as CustomEvent<TextDictationFallbackDetail>).detail;
+      if (!detail || !activeWorkspace) return;
+      detail.handled = true;
+      void toggleLeaderDictation();
+    };
+    window.addEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
+    return () => window.removeEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
+  });
+
+  onMount(() => {
     const listener = (event: Event) => handleDesktopMenuAction(String((event as CustomEvent).detail ?? ''));
     window.addEventListener('orkestrai:menu-action', listener);
     const pending = sessionStorage.getItem('orkestrai.menu-action');
@@ -417,9 +424,10 @@
   }
 
   async function api<T>(path: string, init?: RequestInit): Promise<T> {
+    const csrf = getCsrfToken();
     const response = await fetch(path, {
       ...init,
-      headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+      headers: { 'content-type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}), ...(init?.headers ?? {}) },
     });
     const payload = await response.json();
     if (!response.ok || payload.error) throw new Error(payload.error || m['canvas.error_api']());
@@ -473,6 +481,7 @@
       if (workspaceList.length) await selectWorkspace(workspaceList[0].id);
     }
     providers = status.providers ?? [];
+    nodes = nodes.map((node) => ({ ...node, data: { ...node.data, providers } }));
     providersReadyResolve();
     workspacesLoaded = true;
     // Indicador de workspaces ativos (sessoes PTY vivas em background).
@@ -533,6 +542,7 @@
         workspaceId: activeWorkspace?.id ?? '',
         workspaceName: activeWorkspace?.name ?? '',
         providersReady,
+        providers,
         workingDir: floorPath(node.floorId) ?? activeWorkspace?.workingDir ?? '.',
         payload: node.payload,
         // Closures: avaliadas na hora do respawn (providers ja carregados) —
@@ -546,7 +556,14 @@
         onRemoveConnection: removeConnection,
         onDelete: deleteNode,
         onResize: resizeNode,
-        onSessionCreated: (id: string, sessionId: string) => updateNodePayload(id, { sessionId }),
+        onSessionCreated: async (id: string, sessionId: string) => {
+          await updateNodePayload(id, { sessionId });
+          await api(`/api/agent-room/workspaces/${activeWorkspace?.id}/roles/apply`, {
+            method: 'POST',
+            body: JSON.stringify({ nodeId: id }),
+          }).catch(() => {});
+        },
+        onProviderChange: changeNodeProvider,
         onToggleMaestro: (id: string) => {
           const current = (nodes.find((node) => node.id === id)?.data?.payload ?? {}) as Record<string, unknown>;
           updateNodePayload(id, { maestro: !current.maestro });
@@ -607,6 +624,18 @@
     const payload = node.payload as { provider?: string; command?: string };
     return providers.find((item) => item.id === payload.provider) ??
       providers.find((item) => item.tui?.command === payload.command);
+  }
+
+  async function changeNodeProvider(id: string, provider: string) {
+    if (!activeWorkspace) return;
+    const updated = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes/${id}/provider`, {
+      method: 'PUT',
+      body: JSON.stringify({ provider }),
+    });
+    nodes = nodes.map((node) => node.id === id
+      ? { ...node, data: { ...node.data, payload: updated.payload } }
+      : node);
+    toast.success(m['term.provider_switched']({ provider: providerForNode(updated)?.displayName ?? provider }));
   }
 
   function connectionsFor(nodeId: string) {
@@ -1552,34 +1581,6 @@
         {#if appSettings.showMinimap !== 'false'}
           <MiniMap bgColor="#1C1946" maskColor="rgba(16, 16, 20, 0.72)" nodeColor="#3a3b46" />
         {/if}
-        <Panel position="top-right">
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              {#snippet child({ props })}
-                <button
-                  {...props}
-                  type="button"
-                  class="leader-dictation-orb"
-                  class:recording={leaderDictationState === 'recording'}
-                  class:transcribing={leaderDictationState === 'transcribing'}
-                  aria-label={leaderDictationLabel()}
-                  aria-pressed={leaderDictationState === 'recording'}
-                  disabled={leaderDictationState === 'transcribing'}
-                  onclick={toggleLeaderDictation}
-                >
-                  <span class="orb-core" aria-hidden="true">
-                    {#if leaderDictationState === 'recording'}
-                      <Square size={14} fill="currentColor" />
-                    {:else}
-                      <Mic size={18} />
-                    {/if}
-                  </span>
-                </button>
-              {/snippet}
-            </Tooltip.Trigger>
-            <Tooltip.Content side="left">{leaderDictationLabel()}</Tooltip.Content>
-          </Tooltip.Root>
-        </Panel>
         <Panel position="bottom-center">
           <div class="toolbar-wrap">
             {#if canScrollLeft}
@@ -2074,61 +2075,6 @@
     overflow: hidden;
   }
 
-  .leader-dictation-orb {
-    width: 48px;
-    height: 48px;
-    padding: 3px;
-    display: grid;
-    place-items: center;
-    border: none;
-    border-radius: 50%;
-    background: conic-gradient(from 25deg, #58d6ff, #9674ff, #f05fb4, #ffb45e, #61e5a7, #58d6ff);
-    color: #f7f6ff;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(5, 4, 26, 0.48), 0 0 14px rgba(88, 214, 255, 0.18);
-    transition: box-shadow 160ms ease, transform 160ms ease;
-  }
-
-  .leader-dictation-orb:hover:not(:disabled) {
-    transform: translateY(-1px) scale(1.03);
-    box-shadow: 0 10px 26px rgba(5, 4, 26, 0.54), 0 0 20px rgba(240, 95, 180, 0.3);
-  }
-
-  .leader-dictation-orb:focus-visible {
-    outline: 2px solid #ffffff;
-    outline-offset: 3px;
-  }
-
-  .leader-dictation-orb:disabled {
-    cursor: wait;
-  }
-
-  .leader-dictation-orb.recording {
-    animation: leader-orb-recording 1.25s ease-in-out infinite;
-  }
-
-  .leader-dictation-orb.transcribing {
-    animation: leader-orb-transcribing 900ms linear infinite;
-  }
-
-  .orb-core {
-    width: 100%;
-    height: 100%;
-    display: grid;
-    place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 50%;
-    background: #11102f;
-  }
-
-  @keyframes leader-orb-recording {
-    0%, 100% { box-shadow: 0 8px 24px rgba(5, 4, 26, 0.48), 0 0 10px rgba(240, 95, 180, 0.28); }
-    50% { box-shadow: 0 8px 24px rgba(5, 4, 26, 0.48), 0 0 25px rgba(240, 95, 180, 0.62); }
-  }
-
-  @keyframes leader-orb-transcribing {
-    to { transform: rotate(360deg); }
-  }
 
   .canvas-area :global(.svelte-flow__controls) {
     border-radius: 10px;
@@ -2346,12 +2292,4 @@
     font-size: 12px;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .leader-dictation-orb,
-    .leader-dictation-orb.recording,
-    .leader-dictation-orb.transcribing {
-      animation: none;
-      transition: none;
-    }
-  }
 </style>

@@ -80,7 +80,7 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   floor_create: { name: 'andar' },
   floor_preview: { floorId: 'f1' },
   floor_land: { floorId: 'f1' },
-  notify: { message: 'oi' },
+  notify: { message: 'oi', kind: 'project', title: 'Projeto Atlas' },
   recruit: { title: 'Novo' },
   dismiss: { agent: 'Velho' },
 };

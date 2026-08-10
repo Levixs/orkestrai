@@ -30,12 +30,13 @@ Descarga los instaladores más recientes desde
 - **Equipos listos:** inicia o amplía un workspace con presets de Producto,
   Campaña y lanzamiento, Brand y diseño, Contenido y SEO, React, Next.js,
   SvelteKit, Svelar, Laravel y Orkestrai Contributing. Los agentes comienzan en
-  el modo autónomo de acceso total del provider, sin solicitudes repetidas de permiso.
+  modo autónomo de acceso total, con roles operativos detallados y una tarea
+  inicial que el líder recibe y asigna, sin solicitudes repetidas de permiso.
 - **Flujos que corresponden al trabajo:** nombra, colorea y ordena hasta diez
   etapas del tablero. Líder y agentes descubren y actualizan el mismo proceso.
 - **Vistas operativas del equipo:** instala funciones especializadas desde un
-  catálogo de 12 roles y consulta agentes activos, tareas asignadas y el estado
-  Git de cada piso.
+  catálogo de 12 roles y consulta el título, etapa y responsable de cada tarea,
+  además del estado Git de cada piso.
 - **Puente nativo para agentes:** la CLI `orkestrai` y el servidor MCP incluidos
   exponen comandos tipados para mensajes, tareas, notas, portales, pisos, roles y
   notificaciones de escritorio.
@@ -43,15 +44,17 @@ Descarga los instaladores más recientes desde
   workspace, con indicadores de actividad y notificaciones nativas.
 - **Pisos Git:** aísla el trabajo en worktrees, inspecciona conflictos e integra
   cambios terminados desde el lienzo.
-- **Voz local:** dicta al líder y escucha respuestas en portugués de Brasil,
-  inglés de Estados Unidos o español latinoamericano. Los modelos STT y TTS se
-  ejecutan en la computadora del usuario.
+- **Voz local:** dicta en cualquier campo de texto o usa el atajo del canvas sin
+  foco para el líder y escucha respuestas en portugués de Brasil, inglés de
+  Estados Unidos o español latinoamericano. STT y TTS se ejecutan localmente.
 - **Controles operativos:** consulta el uso de los proveedores, administra
   puertos de portales locales, configura rutinas recurrentes e instala skills
   desde el marketplace.
 - **Central de Providers:** detecta localmente las siete CLIs compatibles, sigue
   la instalación adecuada al sistema y el inicio de sesión oficial, y consulta
   capacidades sin enviar credenciales de providers a Orkestrai.
+- **Providers reemplazables:** cambia un miembro de Claude a Codex, Kimi u otro
+  provider instalado conservando su rol, piso y conexiones.
 - **Continuidad de sesión:** cada terminal reanuda su propia conversación del
   proveedor después de cerrar y volver a abrir la aplicación.
 

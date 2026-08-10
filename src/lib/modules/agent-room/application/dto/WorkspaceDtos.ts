@@ -9,10 +9,23 @@ import type {
   CreateCanvasEdgeInput,
   CreateCanvasNodeInput,
   CreateWorkspaceInput,
+  ChangeTerminalProviderInput,
   UpdateCanvasEdgeInput,
   UpdateCanvasNodeInput,
   UpdateWorkspaceInput,
 } from '../../contracts/schemas/workspaceSchemas.js';
+
+export class ChangeTerminalProviderDto {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly nodeId: string,
+    public readonly provider: string
+  ) {}
+
+  static from(workspaceId: string, nodeId: string, input: ChangeTerminalProviderInput): ChangeTerminalProviderDto {
+    return new ChangeTerminalProviderDto(workspaceId, nodeId, input.provider);
+  }
+}
 
 export class CreateWorkspaceDto {
   constructor(

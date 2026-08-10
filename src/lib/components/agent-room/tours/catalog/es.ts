@@ -38,7 +38,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'first-task',
         title: 'Primera tarea para el líder',
-        body: 'Creo la tarea "Armar el equipo y empezar" asignada al líder. Cae directo en su terminal.',
+        body: 'Creo la tarea "Armar el equipo y empezar" asignada al líder. El briefing completo llega a su terminal; todo trabajo que delegue también debe existir con responsable en el tablero.',
         action: { kind: 'createTask', title: 'Armar el equipo y empezar (lee la nota Briefing)', assigneeTitle: 'Líder' },
         check: { kind: 'taskExists', titleIncludes: 'Armar el equipo' },
       },
@@ -465,25 +465,48 @@ export const TOURS_ES: Tour[] = [
   {
     id: 'leader-dictation',
     icon: 'Mic',
-    title: 'Dictar directo al líder',
-    tagline: 'Habla una orden sin buscar la ventana correcta en el canvas.',
+    title: 'Dictar en cualquier campo',
+    tagline: 'Habla donde estés escribiendo, sin depender de un líder.',
     steps: [
       {
-        id: 'leader',
-        title: 'Ten un líder en el workspace',
-        body: 'Creo un agente en Modo Maestro. La esfera de voz siempre resuelve a ese líder exacto, incluso cuando está en otro piso.',
-        action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
-        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
+        id: 'field',
+        title: 'Coloca el cursor',
+        body: 'Enfoca cualquier campo editable: título o descripción de tarea, rol, nota o formulario. El dictado sigue el último campo y su selección actual.',
       },
       {
         id: 'record',
         title: 'Haz clic en la esfera de voz',
-        body: 'Usa la esfera de colores arriba a la derecha para empezar a grabar. Es el mismo control del micrófono dentro de la ventana del líder, no un segundo dictado.',
+        body: 'Usa la esfera de colores arriba a la derecha o Alt+Espacio para grabar. Haz clic otra vez para detener; el texto entra en el cursor sin enviarse solo.',
       },
       {
-        id: 'deliver',
-        title: 'Detén y revisa la terminal del líder',
-        body: 'Haz clic de nuevo para detener. Después de la transcripción local, el texto entra directamente en la terminal del líder seleccionado, listo para revisar o enviar.',
+        id: 'fallback',
+        title: 'Usa el atajo del líder en el canvas',
+        body: 'Sin un campo activo, la esfera conserva el atajo anterior y envía la transcripción al líder Maestro. Creo uno para probar; sin campo ni líder, la app muestra un aviso.',
+        action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
+        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
+      },
+    ],
+  },
+  {
+    id: 'switch-agent-provider',
+    icon: 'Cable',
+    title: 'Cambiar el provider de un agente',
+    tagline: 'Cambia el modelo de ejecución sin desmontar el equipo.',
+    steps: [
+      {
+        id: 'open',
+        title: 'Abre el selector del encabezado',
+        body: 'Haz clic en ⇄ en el agente que quieres reemplazar. El menú lista los providers detectados en este dispositivo y marca el actual.',
+      },
+      {
+        id: 'choose',
+        title: 'Elige un provider instalado',
+        body: 'El cambio cierra la PTY y conversación anteriores e inicia una sesión limpia con el nuevo adapter y sus flags de acceso.',
+      },
+      {
+        id: 'preserve',
+        title: 'Continúa con el mismo miembro',
+        body: 'Nombre, rol, Modo Maestro, piso, posición y conexiones permanecen. Reaplica el contexto necesario en la nueva conversación y continúa desde el mismo tablero.',
       },
     ],
   },
@@ -529,7 +552,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'operate',
         title: 'Completa el equipo y sigue los pisos',
-        body: 'En Roles → Catálogo, instala funciones especializadas. En Pisos, sigue agentes activos, tareas y estado Git de cada worktree antes de revisar y aterrizar.',
+        body: 'Los roles extensos entran automáticamente en la primera sesión y el líder recibe la tarea inicial completa para asignar. En Pisos, sigue el título, etapa y responsable real de cada tarea antes de revisar y aterrizar.',
       },
     ],
   },

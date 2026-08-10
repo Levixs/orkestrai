@@ -269,6 +269,16 @@ async function startServer(port) {
     const text = String(chunk);
     process.stdout.write(`[server] ${text}`);
     for (const line of text.split(/\r?\n/)) {
+      const structuredMatch = line.match(/\[orkestrai:notify\] (\{.+\})/);
+      if (structuredMatch) {
+        try {
+          const payload = JSON.parse(structuredMatch[1]);
+          showNativeNotification(String(payload.title || 'Orkestrai'), String(payload.body || ''));
+          continue;
+        } catch {
+          // cai no formato legado abaixo
+        }
+      }
       const notifyMatch = line.match(/\[orkestrai:notify\] \[(.+?)\] (.+)/);
       if (notifyMatch) {
         showNativeNotification(`Orkestrai — ${notifyMatch[1]}`, notifyMatch[2]);

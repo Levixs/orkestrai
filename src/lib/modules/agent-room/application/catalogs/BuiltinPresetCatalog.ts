@@ -1,4 +1,5 @@
 import { specializedPresetCatalog } from './SpecializedPresetCatalog.js';
+import { completePresetRolePrompt } from './PresetRolePrompt.js';
 
 export type PresetLocale = 'pt-BR' | 'en' | 'es';
 
@@ -214,10 +215,10 @@ export function builtinPresetCatalog(locale: PresetLocale): BuiltinPresetRecipe[
   const frameworkPresets: BuiltinPresetRecipe[] = DEFINITIONS.map((definition) => {
     const stack = definition.stackLabels[locale];
     const roles = [
-      { name: copy.lead, color: '#7DE5FF', prompt: copy.prompts.lead(stack) },
-      { name: copy.engineer, color: '#B7F171', prompt: copy.prompts.engineer(stack) },
-      { name: copy.reviewer, color: '#FFC857', prompt: copy.prompts.reviewer(stack) },
-      { name: copy.qa, color: '#FF7A90', prompt: copy.prompts.qa(stack) },
+      { name: copy.lead, color: '#7DE5FF', prompt: completePresetRolePrompt(locale, copy.prompts.lead(stack), copy.instructions(stack), true) },
+      { name: copy.engineer, color: '#B7F171', prompt: completePresetRolePrompt(locale, copy.prompts.engineer(stack), copy.instructions(stack), false) },
+      { name: copy.reviewer, color: '#FFC857', prompt: completePresetRolePrompt(locale, copy.prompts.reviewer(stack), copy.instructions(stack), false) },
+      { name: copy.qa, color: '#FF7A90', prompt: completePresetRolePrompt(locale, copy.prompts.qa(stack), copy.instructions(stack), false) },
     ];
     const nodes = [
       { type: 'terminal', title: copy.lead, x: 80, y: 90, width: 520, height: 340, zIndex: 2, payload: { command: 'claude', args: [], provider: 'claude', role: copy.lead, maestro: true } },

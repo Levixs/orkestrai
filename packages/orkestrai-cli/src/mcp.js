@@ -38,7 +38,7 @@ const TOOLS = [
   { name: 'floor_create', description: 'Cria um andar (worktree isolada com branch propria).', inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] } },
   { name: 'floor_preview', description: 'Previa da aterrissagem (merge) com conflitos.', inputSchema: { type: 'object', properties: { floorId: { type: 'string' } }, required: ['floorId'] } },
   { name: 'floor_land', description: 'Aterrissa o andar (merge da branch).', inputSchema: { type: 'object', properties: { floorId: { type: 'string' } }, required: ['floorId'] } },
-  { name: 'notify', description: 'Notificacao nativa no desktop do usuario.', inputSchema: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } },
+  { name: 'notify', description: 'Notificacao nativa de atencao ou conclusao do projeto. task_done ja notifica tarefas.', inputSchema: { type: 'object', properties: { message: { type: 'string' }, kind: { type: 'string', enum: ['info', 'attention', 'project', 'task'] }, title: { type: 'string' } }, required: ['message'] } },
   { name: 'port', description: 'Devolve uma porta livre para subir servidores.', inputSchema: { type: 'object', properties: {} } },
   { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', description: 'Id de um provider registrado no Orkestrai.' }, role: { type: 'string' } }, required: ['title'] } },
   { name: 'dismiss', description: '(maestro) Dispensa um agente.', inputSchema: { type: 'object', properties: { agent: { type: 'string' } }, required: ['agent'] } },
@@ -94,7 +94,7 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
     case 'floor_land':
       return bridge('POST', `/api/agent-room/bridge/floors/${encodeURIComponent(args.floorId)}/land`, {});
     case 'notify':
-      return bridge('POST', '/api/agent-room/bridge/notify', { message: args.message });
+      return bridge('POST', '/api/agent-room/bridge/notify', { message: args.message, kind: args.kind, title: args.title });
     case 'port':
       return { port: await findFreePort() };
     case 'recruit': {

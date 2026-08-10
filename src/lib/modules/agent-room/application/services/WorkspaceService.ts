@@ -7,13 +7,14 @@ import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts
 import { bridgeService } from './BridgeService.js';
 import type {
   CreateCanvasEdgeDto,
+  ChangeTerminalProviderDto,
   CreateCanvasNodeDto,
   CreateWorkspaceDto,
   UpdateCanvasEdgeDto,
   UpdateCanvasNodeDto,
   UpdateWorkspaceDto,
 } from '../dto/WorkspaceDtos.js';
-import { materializeInteractiveAgentCommand } from '../adapters/registry.js';
+import { getAgentAdapter, materializeInteractiveAgentCommand } from '../adapters/registry.js';
 
 /**
  * Servico de aplicacao de workspaces e canvas: valida diretorios,
@@ -148,6 +149,36 @@ export class WorkspaceService {
     delete payload.sessionId;
     await workspaceRepository.updateNode(nodeId, { payload: payload as never });
     return { reloaded: true };
+  }
+
+  /** Troca o provider preservando a identidade visual e organizacional do nó. */
+  async changeTerminalProvider(dto: ChangeTerminalProviderDto) {
+    const node = await workspaceRepository.getNode(dto.nodeId);
+    if (!node || node.workspaceId !== dto.workspaceId || node.type !== 'terminal') {
+      throw new Error('Terminal não encontrado neste workspace.');
+    }
+    const adapter = getAgentAdapter(dto.provider);
+    const detection = await adapter.detect();
+    if (!detection.installed) throw new Error(`${adapter.displayName} não está disponível neste dispositivo.`);
+
+    const current = { ...((node.payload ?? {}) as Record<string, unknown>) };
+    const sessionId = typeof current.sessionId === 'string' ? current.sessionId : null;
+    if (sessionId) ptySessionManager.kill(sessionId);
+    const command = adapter.interactiveCommand();
+    const payload: Record<string, unknown> = {
+      ...current,
+      provider: adapter.id,
+      command: command.command,
+      args: [...command.args],
+      ...(command.env && Object.keys(command.env).length ? { env: { ...command.env } } : {}),
+    };
+    delete payload.sessionId;
+    delete payload.agentSessionId;
+    if (!command.env || Object.keys(command.env).length === 0) delete payload.env;
+
+    const updated = await workspaceRepository.updateNode(node.id, { payload: payload as never });
+    this.notifyStructureChanged(dto.workspaceId);
+    return updated;
   }
 
   async deleteNode(workspaceId: string, nodeId: string) {

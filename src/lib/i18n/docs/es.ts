@@ -18,7 +18,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: crear, nombrar, modelo y esfuerzo',
-      body: `La barra muestra automáticamente las CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity y Cline. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Abre la Central de Providers desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace para ver qué está disponible y seguir la configuración. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider ofrece esas opciones, además de Líder (Modo Maestro). Después: doble clic renombra el nodo; el sello asigna un rol; ◐ cambia el tema; ★ alterna el Modo Maestro.`,
+      body: `La barra muestra automáticamente las CLIs instaladas entre Claude, Codex, Kimi, OpenCode, Cursor, Antigravity y Cline. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Abre la Central de Providers desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace para ver qué está disponible. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después: doble clic renombra; el sello asigna un rol; ◐ cambia el tema; ★ alterna el Modo Maestro; y ⇄ cambia el provider sin eliminar al miembro, sus conexiones, rol, piso o posición. La conversación anterior se cierra y el nuevo provider comienza una sesión limpia.`,
     },
     {
       id: 'provider-center',
@@ -28,7 +28,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (papeles del equipo)',
-      body: `Los roles son instrucciones guardadas en .orkestrai/roles/<slug>/role.json, por lo que viajan con el repositorio. En el panel Roles, Catálogo ofrece funciones completas de liderazgo, producto, arquitectura, frontend, backend, Svelar, QA, seguridad, accesibilidad, documentación, release y rendimiento; instala con + y personaliza en En el workspace. Asigna desde el sello de la terminal: el rol se inyecta como primer mensaje del agente. El líder también puede reasignar roles con orkestrai reassign.`,
+      body: `Los roles son instrucciones guardadas en .orkestrai/roles/<slug>/role.json, por lo que viajan con el repositorio. En el panel Roles, Catálogo ofrece funciones completas de liderazgo, producto, arquitectura, frontend, backend, Svelar, QA, seguridad, accesibilidad, documentación, release y rendimiento; instala con + y personaliza en En el workspace. Asigna desde el sello de la terminal: el rol se inyecta automáticamente en la primera sesión del agente. Los presets incluyen protocolos completos de misión, contexto, proceso, criterios de aceptación, handoff y disciplina del tablero, no descripciones genéricas. El líder también puede reasignar roles con orkestrai reassign.`,
     },
     {
       id: 'times',
@@ -43,7 +43,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'tarefas',
       title: 'Tareas (kanban)',
-      body: `El nodo Tareas (+ Tareas en la barra inferior) es el tablero del workspace. Usa el icono de columnas del encabezado para nombrar, colorear, ordenar y crear hasta diez etapas que representen tu proceso — por ejemplo Ideas, Guion, Diseño, Aprobación y Publicado. El líder y el equipo ven esas etapas automáticamente y mantienen el estado real de cada entrega. "Agregar tarea" abre un composer completo con título, descripción markdown e imágenes de referencia desde la creación. Asignar una tarjeta despacha todo el briefing al agente. Por el puente, los agentes usan task columns para consultar etapas, task add --column para crear en la etapa correcta y task move para avanzar el trabajo. Cada tarea puede vincular una nota; el trabajo concluido se archiva sin perder historial. Las columnas estándar están protegidas y una etapa personalizada solo se elimina cuando está vacía.`,
+      body: `El nodo Tareas (+ Tareas en la barra inferior) es el tablero del workspace. Usa el icono de columnas para crear hasta diez etapas que representen tu proceso. El líder y el equipo ven esas etapas automáticamente y mantienen el estado real de cada entrega. "Agregar tarea" abre un composer con título, descripción markdown e imágenes. Asignar una tarjeta despacha todo el briefing al agente. Al iniciar, el líder recibe cada tarea sin responsable con título, descripción, imágenes y nota vinculada, y debe registrarla/asignarla en el tablero antes de delegar por mensaje. task done envía una notificación identificada como Tarea completada; Proyecto completado se reserva para el final real del proyecto. El trabajo concluido puede archivarse sin perder historial.`,
     },
     {
       id: 'imagens',
@@ -53,7 +53,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'presets',
       title: 'Presets de equipo',
-      body: `La Biblioteca de presets está en el icono de plantilla de la barra lateral y en Presets de la barra inferior. Además de Producto, React, Next.js, SvelteKit, Svelar y Laravel, incluye Campaña y lanzamiento, Brand y diseño, Contenido y SEO y Orkestrai Contributing. Cada receta trae líder, especialistas, roles, skills, briefing, tablero, tarea inicial y layout; el equipo de contribución también exige consenso entre Claude, Codex y Kimi. Los agentes de presets comienzan con las flags autónomas de acceso total definidas por el adapter del provider, evitando solicitudes repetidas de permiso. Usa Nuevo workspace para otra carpeta o + para sumar el equipo al canvas actual sin borrar nada. El formato v2 conserva contexto y skills portables, nunca sesiones PTY.`,
+      body: `La Biblioteca de presets está en el icono de plantilla de la barra lateral y en Presets de la barra inferior. Además de Producto, React, Next.js, SvelteKit, Svelar y Laravel, incluye Campaña y lanzamiento, Brand y diseño, Contenido y SEO y Orkestrai Contributing. Cada receta trae líder, especialistas, roles operativos extensos, skills, briefing, tablero, tarea inicial y layout; el equipo de contribución también exige consenso entre Claude, Codex y Kimi. Los agentes comienzan con acceso total autónomo y reciben su rol en la primera sesión. El líder recibe la tarea inicial completa y debe asignarla antes de delegar. Usa Nuevo workspace para otra carpeta o + para sumar el equipo al canvas actual.`,
     },
     {
       id: 'fluxos',
@@ -73,7 +73,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'andares',
       title: 'Pisos (worktrees)',
-      body: `Un piso es un git worktree del repositorio con branch propia. El panel Pisos muestra, para planta baja y cada worktree, agentes activos, tareas asignadas, archivos modificados, sincronización de la branch y último commit; así sabes qué hace cada frente antes de abrir su capa. Crea desde el panel o la CLI con orkestrai floor create/list/preview/land/remove. Aterrizar hace merge después de una vista previa de diff y conflictos. Los conflictos nunca se ocultan: el error lista archivos y la resolución se convierte en tarea explícita. Los hooks setup/run/teardown usan $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME y $ORKESTRAI_ROOT_PATH.`,
+      body: `Un piso es un git worktree del repositorio con branch propia. Para planta baja y cada worktree, el panel Pisos muestra agentes activos y una lista de tareas con título, etapa y responsable, además de archivos modificados, sincronización de la branch y último commit. Así sabes exactamente quién hace qué antes de abrir una capa. Crea desde el panel o la CLI con orkestrai floor create/list/preview/land/remove. Aterrizar hace merge después de una vista previa de diff y conflictos. Los conflictos nunca se ocultan: el error lista archivos y la resolución se convierte en tarea explícita.`,
     },
     {
       id: 'rotinas',
@@ -218,9 +218,15 @@ export const DOCS_ES: DocsCatalog = {
     },
     {
       id: 'leader-dictation',
-      title: 'Dictar una orden directo al líder',
-      body: 'Haz clic en la esfera de voz en la parte superior derecha del canvas para iniciar el mismo dictado del micrófono de la ventana del líder. Haz clic de nuevo para detener: la transcripción entra directamente en la terminal de ese líder, incluso si está en otro piso. Sin líder en el workspace, la app avisa con un toast.',
-      tags: ['Líder/Maestro', 'dictado', 'voz local'],
+      title: 'Dictar en cualquier campo de texto',
+      body: 'Enfoca cualquier campo editable — título o descripción del kanban, rol, nota o formulario — y usa la esfera de voz global o Alt+Espacio. La transcripción entra en el cursor de ese campo y no requiere líder. Cuando no hay un campo activo en el canvas, el control conserva el atajo anterior y envía el texto al líder; sin campo ni líder, la app avisa con un toast.',
+      tags: ['Dictado global', 'campos de texto', 'voz local'],
+    },
+    {
+      id: 'switch-agent-provider',
+      title: 'Cambiar el provider de un miembro del equipo',
+      body: 'Abre ⇄ en el encabezado del agente y elige otro provider instalado. Orkestrai cierra solo la PTY y la conversación anteriores, conserva nombre, rol, Modo Maestro, piso, posición y conexiones, e inicia el reemplazo en el mismo nodo.',
+      tags: ['Providers', 'cambio sin recrear', 'equipo preservado'],
     },
     {
       id: 'multilingual-spoken-replies',
@@ -230,6 +236,18 @@ export const DOCS_ES: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '10 ago 2026 · 0.5.0',
+      items: [
+        'El dictado local ahora escribe en el campo de texto activo de cualquier pantalla; sin campo activo en el canvas, todavía se envía al líder.',
+        'El provider de un agente puede cambiarse desde el encabezado sin perder nombre, rol, Modo Maestro, piso, posición ni conexiones.',
+        'Los roles de presets ahora incluyen misión, contexto, proceso, criterios de aceptación y handoff, y se aplican automáticamente al iniciar la PTY.',
+        'El líder recibe la fila inicial del kanban con título, descripción, imágenes y nota vinculada y debe asignar cada trabajo antes de delegar.',
+        'Las notificaciones distinguen Tarea completada, Proyecto completado y Atención para no confundir una entrega parcial con todo el proyecto.',
+        'Pisos muestra las tareas reales, sus etapas y responsables en cada worktree y en planta baja.',
+        'La edición de texto en formas respeta el tamaño, peso y alineación renderizados, incluso con fuentes grandes.',
+      ],
+    },
     {
       date: '09 ago 2026 · 0.4.0',
       items: [

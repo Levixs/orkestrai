@@ -533,6 +533,10 @@
     <input
       class="shape-label-input nodrag"
       bind:value={draft}
+      style:color={style.textColor}
+      style:font-size="{style.fontSize}px"
+      style:font-weight={style.fontWeight}
+      style:text-align={style.textAlign}
       onkeydown={handleLabelKeydown}
       onblur={commitLabel}
       autofocus
@@ -595,13 +599,14 @@
 
   .shape-label-input {
     position: absolute;
-    inset: 30% 10%;
+    inset: 8px 12px;
+    width: calc(100% - 24px);
+    min-width: 0;
+    padding: 0;
     border: none;
     outline: none;
     background: transparent;
-    text-align: center;
-    font-size: 12px;
-    color: inherit;
+    line-height: 1.2;
   }
 
   :global(.shape-delete) {

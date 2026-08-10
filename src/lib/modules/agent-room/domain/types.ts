@@ -217,6 +217,7 @@ export type Workspace = {
 /** Payload por tipo de no (serializado em payload_json). */
 export type TerminalNodePayload = {
   sessionId?: string;
+  agentSessionId?: string;
   command?: string;
   args?: string[];
   env?: Record<string, string>;

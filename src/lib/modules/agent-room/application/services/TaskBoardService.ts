@@ -3,6 +3,7 @@ import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { boardColumnService } from './BoardColumnService.js';
+import { nativeNotificationService } from './NativeNotificationService.js';
 
 export type BoardTask = {
   id: string;
@@ -246,9 +247,10 @@ export class TaskBoardService {
   async update(
     workspaceId: string,
     taskId: string,
-    input: { title?: string; description?: string | null; status?: string; assigneeNodeId?: string | null; imagePath?: string | null; noteId?: string | null }
+    input: { title?: string; description?: string | null; status?: string; assigneeNodeId?: string | null; imagePath?: string | null; noteId?: string | null; notifyCompletion?: boolean }
   ): Promise<BoardTask> {
     const task = await this.requireTask(workspaceId, taskId);
+    const wasDone = task.getAttribute('status') === 'done';
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (input.title !== undefined) {
       const title = input.title.trim();
@@ -279,7 +281,18 @@ export class TaskBoardService {
       await this.dispatch(workspaceId, taskId).catch(() => {});
     }
     notifyWorkspaceChanged(workspaceId);
-    return this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+    const updated = await this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+    if (input.notifyCompletion && !wasDone && updated.status === 'done') {
+      const workspace = await workspaceRepository.getWorkspace(workspaceId);
+      if (workspace) {
+        await nativeNotificationService.send(workspace, {
+          kind: 'task',
+          title: updated.title,
+          message: updated.assigneeTitle ? `@${updated.assigneeTitle}` : '',
+        });
+      }
+    }
+    return updated;
   }
 
   async remove(workspaceId: string, taskId: string): Promise<boolean> {

@@ -104,7 +104,7 @@ export class BridgeController extends Controller {
     try {
       const input = await BridgeNotifyRequest.validate(event);
       const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
-      return this.json({ data: await bridgeService.notify(workspace, input.message) });
+      return this.json({ data: await bridgeService.notify(workspace, input) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao notificar.');
     }
@@ -337,6 +337,7 @@ export class BridgeController extends Controller {
         description: input.description,
         assigneeNodeId: input.assignee !== undefined ? await this.assigneeNodeId(workspace.id, input.assignee) : undefined,
         noteId: await this.noteNodeId(workspace.id, input.note),
+        notifyCompletion: true,
       });
       return this.json({ data: task });
     } catch (error) {

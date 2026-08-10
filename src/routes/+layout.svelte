@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import UpdateNotifier from '$lib/components/agent-room/UpdateNotifier.svelte';
+  import GlobalDictation from '$lib/components/agent-room/GlobalDictation.svelte';
   import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
 
   type DesktopMenuBridge = {
@@ -108,6 +109,7 @@
   {#if localeReady}
     {#key localeState.current}
       {@render children()}
+      <GlobalDictation />
     {/key}
   {/if}
 </Tooltip.Provider>

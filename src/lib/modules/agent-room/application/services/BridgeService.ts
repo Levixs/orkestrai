@@ -9,6 +9,7 @@ import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pt
 import { lastReplyText } from '../../infrastructure/transcript/AgentTranscript.js';
 import { floorService } from './FloorService.js';
 import { getAgentAdapter, hasAgentAdapter, listAgentAdapters } from '../adapters/registry.js';
+import { nativeNotificationService, type NativeNotificationKind } from './NativeNotificationService.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
 import { upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
 
@@ -292,11 +293,11 @@ export class BridgeService {
       }));
   }
 
-  async notify(workspace: Workspace, message: string): Promise<{ notified: boolean }> {
-    // A entrega nativa (Electron Notification) entra na Fase 6; por ora fica
-    // registrada no log do servidor e retorna sucesso para a CLI.
-    console.log(`[orkestrai:notify] [${workspace.name}] ${message}`);
-    return { notified: true };
+  async notify(
+    workspace: Workspace,
+    input: { message: string; kind?: NativeNotificationKind; title?: string | null }
+  ): Promise<{ notified: boolean }> {
+    return nativeNotificationService.send(workspace, input);
   }
 
 
@@ -556,7 +557,8 @@ Se as tools \`orkestrai\` (list/ask/note_*/task_*/portal_*/floor_*/notify/port/r
 - \`orkestrai portal <nodeId> screenshot\` — captura a tela do portal.
 - \`orkestrai floor create "<nome>" [--clone]\` — cria um andar (worktree git com branch própria) para trabalho isolado.
 - \`orkestrai floor list\` / \`floor preview <id>\` / \`floor land <id>\` / \`floor remove <id>\` — gerencia andares; preview mostra conflitos ANTES do merge.
-- \`orkestrai notify "<mensagem>"\` — notificação NATIVA no desktop do usuário (use ao concluir ou ao precisar de atenção).
+- \`orkestrai notify "<mensagem>" --kind attention\` — notificação NATIVA quando precisar de atenção do usuário.
+- \`orkestrai notify "<resumo>" --kind project --title "<projeto>"\` — conclusão do PROJETO inteiro; use somente depois de confirmar que não há tarefas pendentes. \`task done\` já notifica a conclusão da tarefa automaticamente — nunca envie outro aviso para a mesma tarefa.
 - \`orkestrai port\` — devolve uma porta LIVRE para subir servidores; \`orkestrai port --check <porta>\` testa se uma porta está livre.
 - \`orkestrai fs read <path>\` / \`fs write <path> <conteúdo>\` / \`fs search <termo> [--content]\` — arquivos do workspace via ponte.
 - \`orkestrai run <taskId>\` — re-despacha a tarefa para o responsável (re-tentar/re-briefar).
@@ -584,10 +586,10 @@ PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagente
 2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider ${providerIds}] [--role <papel>]\`. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota já conecta ao time inteiro por padrão).
 4. Trabalho em código? Cada agente trabalha no PRÓPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente começar — NUNCA deixe vários agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (vê conflitos) e \`orkestrai floor land\`.
-5. Distribua o trabalho com \`orkestrai task add --assign\` (o quadro kanban aparece no canvas sozinho na primeira tarefa), notas com \`orkestrai note create\` e \`orkestrai ask\` (quem conversa fica conectado por aresta automaticamente). HANDOFF: cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.
+5. Distribua TODO trabalho com \`orkestrai task add --assign\` ANTES de usar \`orkestrai ask\` para o handoff (o quadro kanban aparece no canvas sozinho na primeira tarefa). É PROIBIDO delegar trabalho apenas por mensagem direta. Use notas com \`orkestrai note create\`; cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.
 6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time está construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrão 5173/3000 — outro workspace pode estar usando).
 7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silêncio ou pedir algo (uma nota, um id, um esclarecimento), VOCÊ resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCÊ MESMO é o último recurso, só depois de tentar desbloquear e o agente realmente não dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado é problema de coordenação do líder, não motivo para assumir o trabalho.
-8. AO CONCLUIR (ou quando precisar de atenção/aprovação do usuário), chame \`orkestrai notify "<resumo do que foi entregue>"\` — vira notificação nativa no desktop do usuário. NUNCA termine em silêncio.
+8. \`orkestrai task done\` já envia uma notificação nativa identificada como TAREFA CONCLUÍDA. Não duplique esse aviso. Quando precisar de atenção/aprovação, use \`orkestrai notify "<pedido>" --kind attention\`. Somente ao concluir o PROJETO inteiro, após conferir o quadro, use \`orkestrai notify "<resumo>" --kind project --title "<projeto>"\`.
 9. Ao finalizar uma frente, dispense o que não precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
 Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instruções). Skills novas são descobertas nas próximas sessões do agente.
@@ -665,7 +667,9 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
       '- `orkestrai task list/columns/add/move/done` — quadro do time; consulte `task columns` e respeite as etapas personalizadas pelo usuário.',
       '- `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.',
-      '- `orkestrai notify "<msg>"` — notificação nativa para o usuário ao concluir.',
+      '- `orkestrai task done <id>` — conclui a tarefa e já envia uma notificação identificada; não duplique com notify.',
+      '- `orkestrai notify "<msg>" --kind attention|project` — atenção ou conclusão do projeto inteiro (somente após conferir o quadro).',
+      '- Todo trabalho delegado precisa de uma task no Kanban ANTES da mensagem direta; nunca execute ou delegue trabalho sem rastreamento.',
       '- Sua identidade está no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` são opcionais. Se `orkestrai` não resolver no PATH, use `node "$ORKESTRAI_CLI" ...`.',
       '- Se as tools MCP `orkestrai` estiverem disponíveis, PREFIRA elas (chamadas tipadas); a CLI e o fallback.',
       '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md`, `.cline/skills/orkestrai/SKILL.md`, `.agents/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',

@@ -46,7 +46,7 @@ Uso:
   orkestrai role show [nome] | role write <nome> <prompt> | role edit <nome> <antigo> <novo>
   orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]
   orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
-  orkestrai notify <mensagem>
+  orkestrai notify <mensagem> [--kind info|attention|project|task] [--title <titulo>]
   orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--role <papel>] [--replace <agente>] [--json]
   orkestrai dismiss <agente> --from <maestro>
   orkestrai connect <de> <para> --from <maestro>
@@ -376,7 +376,7 @@ export async function run(argv, options = {}) {
     case 'notify': {
       const message = rest.join(' ');
       if (!message) throw new Error('Uso: orkestrai notify <mensagem>');
-      await bridge(config, 'POST', '/api/agent-room/bridge/notify', { message });
+      await bridge(config, 'POST', '/api/agent-room/bridge/notify', { message, kind: flags.kind, title: flags.title });
       out('Notificacao enviada.');
       return 0;
     }

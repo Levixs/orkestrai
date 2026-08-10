@@ -30,12 +30,12 @@ Download the latest installers from
 - **Ready-made teams:** start or expand a workspace with complete Product,
   Campaign and launch, Brand and design, Content and SEO, React, Next.js,
   SvelteKit, Svelar, Laravel, and Orkestrai Contributing presets. Their agents
-  start with the provider's autonomous full-access mode so the team can work
-  without repeated permission prompts.
+  start with autonomous full access, detailed operating roles, and an initial
+  task that the lead receives and assigns without repeated permission prompts.
 - **Workflows that fit the work:** name, color, and reorder up to ten board
   stages. Leads and agents discover and update the same stages automatically.
 - **Operational team views:** install specialized roles from a 12-role catalog
-  and inspect active agents, assigned tasks, and Git state across every floor.
+  and inspect each task title, stage, assignee, and Git state across every floor.
 - **Native agent bridge:** the bundled `orkestrai` CLI and MCP server expose
   typed commands for messages, tasks, notes, portals, floors, roles, and desktop
   notifications.
@@ -43,14 +43,16 @@ Download the latest installers from
   workspace, with activity indicators and native notifications.
 - **Git floors:** isolate work in Git worktrees, inspect conflicts, and land
   completed changes from the canvas.
-- **Local voice:** dictate to the leader and listen to replies in Brazilian
-  Portuguese, US English, or Latin American Spanish. STT and TTS models run on
-  the user's machine.
+- **Local voice:** dictate into any text field or use the no-focus canvas
+  shortcut for the leader, then listen to replies in Brazilian Portuguese, US
+  English, or Latin American Spanish. STT and TTS run on the user's machine.
 - **Operational controls:** inspect provider usage, manage local portal ports,
   configure recurring routines, and install skills from the marketplace.
 - **Provider Center:** detect all seven supported CLIs locally, follow OS-aware
   installation and official sign-in guidance, and inspect capabilities without
   sending provider credentials to Orkestrai.
+- **Replaceable providers:** switch a team member from Claude to Codex, Kimi, or
+  another installed provider while preserving its role, floor, and connections.
 - **Session continuity:** each terminal resumes its own provider conversation
   after the application is closed and reopened.
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { BadgeCheck, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { ArrowLeftRight, BadgeCheck, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
@@ -8,9 +8,10 @@
   import TerminalNode from '../TerminalNode.svelte';
   import VoiceConfirmDialog from '../VoiceConfirmDialog.svelte';
   import { getAppSettings } from '../app-settings.svelte.js';
+  import { getCsrfToken } from '@beeblock/svelar/http';
   import { voiceModelsReadyForUse } from '../voice-model-status.js';
   import { speakText } from '../voice-speech.js';
-  import type { TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
+  import type { AgentProviderInfo, TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
 
   export type MentionTarget = { id: string; title: string; type: string };
@@ -28,10 +29,12 @@
     onAgentSessionFound?: (id: string, agentSessionId: string) => void;
     /** Promise da pagina: providers carregados (para o respawn nao correr a race). */
     providersReady?: Promise<void>;
+    providers?: AgentProviderInfo[];
+    onProviderChange?: (id: string, provider: string) => Promise<void>;
     onRoleChange?: (id: string, role: string | null) => void;
     onDelete: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
-    onSessionCreated: (id: string, sessionId: string) => void;
+    onSessionCreated: (id: string, sessionId: string) => void | Promise<void>;
     onToggleMaestro?: (id: string) => void;
     onOpenFile?: (path: string) => void;
     onCycleTheme?: (id: string) => void;
@@ -87,6 +90,25 @@
   const currentRole = $derived((data.payload as TerminalNodePayload).role ?? null);
   /** Role exibida no header: curta (o nome completo fica no dropdown/aria). */
   const roleLabel = $derived(currentRole && currentRole.length > 24 ? `${currentRole.slice(0, 23).trimEnd()}…` : currentRole);
+  const currentProvider = $derived((data.payload as TerminalNodePayload).provider ?? null);
+  let switchingProvider = $state(false);
+  let providerError = $state('');
+
+  async function changeProvider(provider: string) {
+    if (!provider || provider === currentProvider || switchingProvider) return;
+    switchingProvider = true;
+    providerError = '';
+    try {
+      forceRespawn = false;
+      respawnAgentSessionId = null;
+      await data.onProviderChange?.(id, provider);
+    } catch {
+      providerError = m['term.provider_switch_error']();
+      setTimeout(() => (providerError = ''), 6_000);
+    } finally {
+      switchingProvider = false;
+    }
+  }
 
   async function loadRoles() {
     if (rolesLoaded) return;
@@ -106,7 +128,10 @@
     if (role && (data.payload as TerminalNodePayload).sessionId) {
       await fetch(`/api/agent-room/workspaces/${data.workspaceId}/roles/apply`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
+        },
         body: JSON.stringify({ nodeId: id }),
       }).catch(() => {});
     }
@@ -165,7 +190,10 @@
     prompt = '';
     await fetch(`/api/agent-room/workspaces/${data.workspaceId}/terminals/${id}/write`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
+      },
       body: JSON.stringify({ data: `${text}\r` }),
     }).catch(() => {});
   }
@@ -289,6 +317,25 @@
   {#snippet icon()}<SquareTerminal size={13} />{/snippet}
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger class="node-action-btn" aria-label={m['term.provider_switch']()} disabled={switchingProvider}>
+        <ArrowLeftRight size={13} />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content class="w-48">
+        <DropdownMenu.Label>{m['term.provider_switch']()}</DropdownMenu.Label>
+        <DropdownMenu.Separator />
+        {#each data.providers ?? [] as provider (provider.id)}
+          <DropdownMenu.Item
+            disabled={!provider.installed || provider.id === currentProvider}
+            onclick={() => changeProvider(provider.id)}
+          >
+            <span class="provider-state" class:available={provider.installed}></span>
+            <span class="min-w-0 flex-1 truncate">{provider.displayName}</span>
+            {#if provider.id === currentProvider}<span class="text-[9px] text-zinc-500">{m['term.provider_current']()}</span>{/if}
+          </DropdownMenu.Item>
+        {/each}
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
     <DropdownMenu.Root onOpenChange={(open: boolean) => open && loadRoles()}>
       <DropdownMenu.Trigger class={currentRole ? 'role-trigger has-role' : 'role-trigger'} aria-label={currentRole ? m['term.role_label']({ role: currentRole }) : m['term.role_assign']()}>
         <BadgeCheck size={13} />
@@ -383,6 +430,9 @@
   {#if voiceError}
     <p class="voice-error">{voiceError}</p>
   {/if}
+  {#if providerError}
+    <p class="voice-error">{providerError}</p>
+  {/if}
   <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => (voiceOn = true)} onCancel={() => {}} />
 
   <div class="composer nodrag">
@@ -454,6 +504,18 @@
   .composer-send:disabled {
     opacity: 0.3;
     cursor: default;
+  }
+
+  .provider-state {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: 999px;
+    background: #5d5d68;
+  }
+
+  .provider-state.available {
+    background: #3dd68c;
   }
 
   .mention-pop {

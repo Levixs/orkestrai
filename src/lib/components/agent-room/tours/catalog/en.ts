@@ -38,7 +38,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'first-task',
         title: 'First task for the leader',
-        body: 'I\'ll create the task "Assemble the team and start" assigned to the leader. It lands right in their terminal.',
+        body: 'I\'ll create the task "Assemble the team and start" assigned to the leader. The complete brief lands in their terminal; every work item they delegate must also exist with an assignee on the board.',
         action: { kind: 'createTask', title: 'Assemble the team and start (read the Briefing note)', assigneeTitle: 'Líder' },
         check: { kind: 'taskExists', titleIncludes: 'Assemble the team' },
       },
@@ -465,25 +465,48 @@ export const TOURS_EN: Tour[] = [
   {
     id: 'leader-dictation',
     icon: 'Mic',
-    title: 'Dictate straight to the leader',
-    tagline: 'Speak an instruction without finding the right canvas window.',
+    title: 'Dictate into any field',
+    tagline: 'Speak wherever you are writing, without requiring a leader.',
     steps: [
       {
-        id: 'leader',
-        title: 'Have a leader in the workspace',
-        body: 'I create an agent in Maestro Mode. The voice orb always resolves that exact leader, even when it is on another floor.',
-        action: { kind: 'createAgent', title: 'Voice Leader', provider: 'claude', leader: true },
-        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Voice Leader' },
+        id: 'field',
+        title: 'Place the cursor',
+        body: 'Focus any editable field: task title or description, role, note, or form. Dictation follows the last field and its current selection.',
       },
       {
         id: 'record',
         title: 'Click the voice orb',
-        body: 'Use the colored orb at the top right to start recording. It is the same microphone control inside the leader window, not a second dictation flow.',
+        body: 'Use the colored orb at the top right or Alt+Space to record. Click again to stop; text enters at the field cursor without submitting itself.',
       },
       {
-        id: 'deliver',
-        title: 'Stop and check the leader terminal',
-        body: 'Click again to stop. After local transcription, the text goes directly into the selected leader terminal, ready for you to review or send.',
+        id: 'fallback',
+        title: 'Use the leader shortcut on the canvas',
+        body: 'With no active field, the orb keeps its previous shortcut and sends the transcript to the Maestro leader. I create one to test; without a field or leader, the app shows a warning.',
+        action: { kind: 'createAgent', title: 'Voice Leader', provider: 'claude', leader: true },
+        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Voice Leader' },
+      },
+    ],
+  },
+  {
+    id: 'switch-agent-provider',
+    icon: 'Cable',
+    title: 'Change an agent provider',
+    tagline: 'Change the execution model without dismantling the team.',
+    steps: [
+      {
+        id: 'open',
+        title: 'Open the switcher in the header',
+        body: 'Click ⇄ on the agent you want to replace. The menu lists providers detected on this device and marks the current one.',
+      },
+      {
+        id: 'choose',
+        title: 'Choose an installed provider',
+        body: 'The switch closes the previous PTY and conversation, then starts a clean session with the new adapter and its access flags.',
+      },
+      {
+        id: 'preserve',
+        title: 'Continue with the same member',
+        body: 'Name, role, Maestro Mode, floor, position, and connections remain. Reapply any needed context in the new conversation and continue from the same board.',
       },
     ],
   },
@@ -529,7 +552,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'operate',
         title: 'Complete the team and track floors',
-        body: 'In Roles → Catalog, install specialist functions. In Floors, track active agents, tasks, and Git state for each worktree before reviewing and landing.',
+        body: 'Extensive roles enter automatically in the first session and the lead receives the complete initial task to assign. In Floors, track each task title, stage, and actual assignee before reviewing and landing.',
       },
     ],
   },

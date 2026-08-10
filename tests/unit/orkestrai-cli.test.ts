@@ -105,6 +105,13 @@ describe('orkestrai CLI', () => {
     expect(request.body.assignee).toBe('Claude');
   });
 
+  it('notify classifica atencao e conclusao de projeto sem ambiguidade', async () => {
+    const { out } = capture();
+    await run(['notify', 'Preciso de aprovacao', '--kind', 'attention', '--title', 'Checkout'], { env: {}, cwd, out });
+    const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/notify').at(-1);
+    expect(request.body).toEqual({ message: 'Preciso de aprovacao', kind: 'attention', title: 'Checkout' });
+  });
+
   it('task columns lista etapas e task add/move usam a etapa escolhida', async () => {
     const { lines, out } = capture();
     await run(['task', 'columns'], { env: {}, cwd, out });

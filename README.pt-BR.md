@@ -30,12 +30,13 @@ Baixe os instaladores mais recentes em
 - **Times prontos:** inicie ou amplie um workspace com presets de Produto,
   Campanha e lançamento, Brand e design, Conteúdo e SEO, React, Next.js,
   SvelteKit, Svelar, Laravel e Orkestrai Contributing. Os agentes iniciam no
-  modo autônomo de acesso total do provider, sem pedidos repetidos de permissão.
+  modo autônomo de acesso total, com roles operacionais detalhadas e uma tarefa
+  inicial que o líder recebe e atribui, sem pedidos repetidos de permissão.
 - **Fluxos que combinam com o trabalho:** nomeie, dê cores e ordene até dez etapas
   do quadro. Líder e agentes descobrem e atualizam o mesmo processo sozinhos.
 - **Visões operacionais do time:** instale funções especializadas por um
-  catálogo com 12 roles e acompanhe agentes ativos, tarefas atribuídas e o
-  estado Git de cada andar.
+  catálogo com 12 roles e acompanhe título, etapa e responsável de cada tarefa,
+  além do estado Git de cada andar.
 - **Ponte nativa para agentes:** a CLI `orkestrai` e o servidor MCP incluídos no
   app expõem comandos tipados para mensagens, tarefas, notas, portais, andares,
   roles e notificações desktop.
@@ -43,14 +44,16 @@ Baixe os instaladores mais recentes em
   workspace, com indicadores de atividade e notificações nativas.
 - **Andares Git:** isole o trabalho em worktrees, inspecione conflitos e integre
   alterações concluídas pelo canvas.
-- **Voz local:** dite para o líder e ouça respostas em português brasileiro,
-  inglês americano ou espanhol latino-americano. Os modelos de STT e TTS rodam
-  na máquina do usuário.
+- **Voz local:** dite em qualquer campo de texto ou use o atalho do canvas sem
+  foco para o líder e ouça respostas em português brasileiro, inglês americano
+  ou espanhol latino-americano. STT e TTS rodam na máquina do usuário.
 - **Controles operacionais:** acompanhe o usage dos providers, gerencie portas de
   portais locais, configure rotinas recorrentes e instale skills pelo marketplace.
 - **Central de Providers:** detecte localmente as sete CLIs compatíveis, siga a
   instalação adequada ao sistema e o login oficial, e veja capacidades sem
   enviar credenciais dos providers ao Orkestrai.
+- **Providers substituíveis:** troque um membro de Claude para Codex, Kimi ou
+  outro provider instalado preservando role, andar e conexões.
 - **Continuidade de sessão:** cada terminal retoma sua própria conversa do
   provider depois que o aplicativo é fechado e aberto novamente.
 

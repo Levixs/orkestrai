@@ -273,6 +273,19 @@ export class PtySessionManager {
     return this.queueWithSubmit(id, text, submitDelayMs).submitted;
   }
 
+  /** Aguarda o primeiro prompt do TUI estabilizar antes de injetar contexto. */
+  async waitUntilIdle(id: string, timeoutMs = 20_000): Promise<boolean> {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      const session = this.sessions.get(id);
+      if (!session || session.exited) return false;
+      if (!session.provider) return true;
+      if (session.waiting) return true;
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 200));
+    }
+    return false;
+  }
+
   queueWithSubmit(id: string, text: string, submitDelayMs = 200): ComposerDeliveryHandle {
     const session = this.requireSession(id);
     if (session.exited) {

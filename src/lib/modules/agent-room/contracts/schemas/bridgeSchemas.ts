@@ -34,6 +34,8 @@ export type BridgeNoteCreateInput = z.infer<typeof bridgeNoteCreateSchema>;
 export const bridgeNotifySchema = z.object({
   token: z.string().trim().min(1).nullish(),
   message: z.string().trim().min(1, 'Informe a mensagem da notificacao.'),
+  kind: z.enum(['info', 'attention', 'project', 'task']).default('info'),
+  title: z.string().trim().nullish(),
 });
 
 export type BridgeAskInput = z.infer<typeof bridgeAskSchema>;

@@ -42,7 +42,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'first-task',
         title: 'Primeira tarefa para o líder',
-        body: 'Crio a tarefa "Montar o time e começar" atribuída ao líder. Ela cai direto no terminal dele.',
+        body: 'Crio a tarefa "Montar o time e começar" atribuída ao líder. Ela cai completa no terminal dele; todo trabalho que ele delegar também deve existir e ter responsável no quadro.',
         action: { kind: 'createTask', title: 'Montar o time e começar (leia a nota Briefing)', assigneeTitle: 'Líder' },
         check: { kind: 'taskExists', titleIncludes: 'Montar o time' },
       },
@@ -469,25 +469,48 @@ export const TOURS_PT: Tour[] = [
   {
     id: 'leader-dictation',
     icon: 'Mic',
-    title: 'Ditar direto para o líder',
-    tagline: 'Fale uma ordem sem procurar a janela certa no canvas.',
+    title: 'Ditar em qualquer campo',
+    tagline: 'Fale onde estiver escrevendo, sem depender de um líder.',
     steps: [
       {
-        id: 'leader',
-        title: 'Tenha um líder no workspace',
-        body: 'Crio um agente em Modo Maestro. A bolinha de voz sempre resolve esse líder exato, mesmo quando ele está em outro andar.',
-        action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
-        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
+        id: 'field',
+        title: 'Posicione o cursor',
+        body: 'Clique em qualquer campo editável: título ou descrição de tarefa, role, nota ou formulário. O ditado acompanha o último campo e a seleção atual.',
       },
       {
         id: 'record',
         title: 'Clique na bolinha de voz',
-        body: 'Use a bolinha colorida no topo direito para começar a gravar. É o mesmo controle do microfone dentro da janela do líder, não um segundo ditado.',
+        body: 'Use a bolinha colorida no topo direito ou Alt+Espaço para gravar. Clique novamente para parar; o texto entra exatamente no cursor do campo, sem enviar sozinho.',
       },
       {
-        id: 'deliver',
-        title: 'Pare e confira o terminal do líder',
-        body: 'Clique novamente para parar. Depois da transcrição local, o texto entra diretamente no terminal do líder selecionado e fica pronto para você revisar ou enviar.',
+        id: 'fallback',
+        title: 'Use o atalho do líder no canvas',
+        body: 'Sem um campo ativo, a bolinha mantém o atalho antigo: envia a transcrição ao líder em Modo Maestro. Crio um líder para você testar; sem campo e sem líder, o app mostra um aviso.',
+        action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
+        check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
+      },
+    ],
+  },
+  {
+    id: 'switch-agent-provider',
+    icon: 'Cable',
+    title: 'Trocar o provider de um agente',
+    tagline: 'Mude o modelo de execução sem desmontar o time.',
+    steps: [
+      {
+        id: 'open',
+        title: 'Abra a troca no cabeçalho',
+        body: 'No agente que quer substituir, clique em ⇄. O menu lista os providers detectados neste dispositivo e marca o atual.',
+      },
+      {
+        id: 'choose',
+        title: 'Escolha um provider instalado',
+        body: 'A troca encerra a PTY e a conversa do provider anterior e inicia uma sessão limpa com o novo adapter e suas flags de acesso.',
+      },
+      {
+        id: 'preserve',
+        title: 'Continue com o mesmo membro',
+        body: 'Nome, role, Modo Maestro, andar, posição e conexões permanecem. Reaplique o contexto necessário na nova conversa e continue pelo mesmo quadro.',
       },
     ],
   },
@@ -533,7 +556,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'operate',
         title: 'Complete o time e acompanhe os andares',
-        body: 'Em Roles → Catálogo, instale funções especializadas. Em Andares, acompanhe agentes ativos, tarefas e estado Git de cada worktree antes de revisar e aterrissar.',
+        body: 'As roles extensas entram automaticamente na primeira sessão e o líder recebe a tarefa inicial completa para atribuir. Em Andares, acompanhe o título, a etapa e o responsável real de cada tarefa antes de revisar e aterrissar.',
       },
     ],
   },

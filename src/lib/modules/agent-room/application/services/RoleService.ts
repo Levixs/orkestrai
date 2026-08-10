@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { builtinRoleCatalog } from '../catalogs/BuiltinRoleCatalog.js';
+import { taskBoardService } from './TaskBoardService.js';
 
 export type AgentRole = {
   slug: string;
@@ -162,22 +163,49 @@ export class RoleService {
    * Injeta o prompt da role na sessão PTY do terminal (primeira mensagem).
    * Chamado pela UI quando um terminal com role cria sua sessão.
    */
-  async applyToTerminal(workspaceId: string, nodeId: string): Promise<{ applied: boolean }> {
+  async applyToTerminal(workspaceId: string, nodeId: string): Promise<{ applied: boolean; tasksDelivered: number }> {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId || node.type !== 'terminal') {
       throw new Error('Terminal não encontrado neste workspace.');
     }
-    const payload = node.payload as { role?: string | null; sessionId?: string };
-    if (!payload.role) return { applied: false };
-    const role = await this.get(workspaceId, payload.role);
-    if (!role) throw new Error(`Responsabilidade "${payload.role}" não encontrada.`);
+    const payload = node.payload as { role?: string | null; sessionId?: string; maestro?: boolean };
+    if (!payload.role && !payload.maestro) return { applied: false, tasksDelivered: 0 };
     if (!payload.sessionId) throw new Error('O terminal ainda não tem sessão PTY.');
 
     const session = ptySessionManager.get(payload.sessionId);
     if (!session || session.exited) throw new Error('Sessão PTY não está ativa.');
-    // Texto e Enter em writes separados (composer do Codex — ver writeWithSubmit).
-    await ptySessionManager.writeWithSubmit(payload.sessionId, `[responsabilidade: ${role.name}] ${role.prompt.trim()}`);
-    return { applied: true };
+    await ptySessionManager.waitUntilIdle(payload.sessionId);
+
+    let applied = false;
+    if (payload.role) {
+      const role = await this.get(workspaceId, payload.role);
+      if (!role) throw new Error(`Responsabilidade "${payload.role}" não encontrada.`);
+      await ptySessionManager.writeWithSubmit(payload.sessionId, `[responsabilidade: ${role.name}] ${role.prompt.trim()}`);
+      applied = true;
+    }
+
+    let tasksDelivered = 0;
+    if (payload.maestro) {
+      const tasks = (await taskBoardService.list(workspaceId))
+        .filter((task) => !task.assigneeNodeId && task.status !== 'done');
+      if (tasks.length) {
+        const briefs = tasks.map((task) => {
+          const images = task.images.length ? task.images.map((image) => `- ${image}`).join('\n') : '(nenhuma)';
+          return [
+            `#${task.id.slice(0, 8)} — ${task.title}`,
+            `Descrição: ${task.description?.trim() || '(sem descrição)'}`,
+            `Imagens: ${images}`,
+            `Nota vinculada: ${task.noteTitle ? `${task.noteTitle} (${task.noteId})` : '(nenhuma)'}`,
+          ].join('\n');
+        }).join('\n\n');
+        await ptySessionManager.writeWithSubmit(
+          payload.sessionId,
+          `[fila inicial do Kanban] Existem ${tasks.length} tarefas sem responsável. Leia todos os dados abaixo e distribua cada trabalho com orkestrai task assign <id> "<Agente>" antes de enviar mensagens diretas.\n\n${briefs}`
+        );
+        tasksDelivered = tasks.length;
+      }
+    }
+    return { applied, tasksDelivered };
   }
 
   private async requireRole(workspaceId: string, nameOrSlug: string): Promise<AgentRole> {

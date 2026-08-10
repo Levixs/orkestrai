@@ -3,16 +3,32 @@ import {
   createCanvasEdgeSchema,
   createCanvasNodeSchema,
   createWorkspaceSchema,
+  changeTerminalProviderSchema,
   updateCanvasEdgeSchema,
   updateCanvasNodeSchema,
   updateWorkspaceSchema,
   type CreateCanvasEdgeInput,
   type CreateCanvasNodeInput,
   type CreateWorkspaceInput,
+  type ChangeTerminalProviderInput,
   type UpdateCanvasEdgeInput,
   type UpdateCanvasNodeInput,
   type UpdateWorkspaceInput,
 } from '$lib/modules/agent-room/contracts/schemas/workspaceSchemas.js';
+
+export class ChangeTerminalProviderRequest extends FormRequest {
+  rules() {
+    return changeTerminalProviderSchema;
+  }
+
+  authorize(): boolean {
+    return true;
+  }
+
+  passedValidation(data: unknown): ChangeTerminalProviderInput {
+    return changeTerminalProviderSchema.parse(data);
+  }
+}
 
 export class CreateWorkspaceRequest extends FormRequest {
   rules() {

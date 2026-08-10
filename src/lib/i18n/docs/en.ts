@@ -18,7 +18,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `The toolbar automatically shows installed CLIs among Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Open Provider Center from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu to see what is available and follow setup guidance. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). After creation: double-click renames the node; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode.`,
+      body: `The toolbar automatically shows installed CLIs among Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, and Cline. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Open Provider Center from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu to see what is available and follow setup guidance. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). After creation: double-click renames; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode; and ⇄ changes provider without removing the member, connections, role, floor, or position. The previous conversation closes and the new provider starts a clean session.`,
     },
     {
       id: 'provider-center',
@@ -28,7 +28,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (team roles)',
-      body: `Roles are instruction sets saved in .orkestrai/roles/<slug>/role.json, so they travel with the repository. In the Roles panel, Catalog offers complete functions for leadership, product, architecture, frontend, backend, Svelar, QA, security, accessibility, documentation, release, and performance; install with + and customize under Workspace. Assign from the terminal-header badge: the role is injected as the agent's first message. The leader can also reassign roles with orkestrai reassign.`,
+      body: `Roles are instruction sets saved in .orkestrai/roles/<slug>/role.json, so they travel with the repository. In the Roles panel, Catalog offers complete functions for leadership, product, architecture, frontend, backend, Svelar, QA, security, accessibility, documentation, release, and performance; install with + and customize under Workspace. Assign from the terminal-header badge: the role is injected automatically into the agent's first session. Presets include full protocols for mission, context, process, acceptance criteria, handoff, and board discipline instead of generic descriptions. The leader can also reassign roles with orkestrai reassign.`,
     },
     {
       id: 'times',
@@ -43,7 +43,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'tarefas',
       title: 'Tasks (kanban)',
-      body: `The Tasks node (+ Tasks in the bottom bar) is the workspace board. Use the columns icon in its header to name, color, reorder, and create up to ten stages that match your process — for example Ideas, Script, Design, Approval, and Published. The lead and team see those stages automatically and keep each delivery's real state current. "Add task" opens a complete composer with title, markdown description, and reference images at creation time. Assigning a card dispatches the full brief to the agent. Through the bridge, agents use task columns to inspect stages, task add --column to start in the right place, and task move to advance work. Each task can link one note; completed work can be archived without losing history. Default columns are protected, and a custom stage can only be removed when empty.`,
+      body: `The Tasks node (+ Tasks in the bottom bar) is the workspace board. Use the columns icon in its header to name, color, reorder, and create up to ten stages that match your process. The lead and team see those stages automatically and keep each delivery's real state current. "Add task" opens a complete composer with title, markdown description, and reference images. Assigning a card dispatches the full brief to the agent. At startup, the leader receives every unassigned task with its title, description, images, and linked note and must record/assign work on the board before delegating by message. task done sends a notification labeled Task completed; Project completed is reserved for the real end of the project. Completed work can be archived without losing history.`,
     },
     {
       id: 'imagens',
@@ -53,7 +53,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'presets',
       title: 'Team presets',
-      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, roles, skills, brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Preset agents start with the provider adapter's autonomous full-access flags, avoiding repeated permission prompts. Use New workspace for another folder or + to add the team to the current canvas without deleting anything. Format v2 preserves context and portable skills, never PTY sessions.`,
+      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, extensive operational roles, skills, a brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Preset agents start with autonomous full-access flags and receive their role in the first session. The leader receives the complete initial task and must assign it before delegating. Use New workspace for another folder or + to add the team to the current canvas.`,
     },
     {
       id: 'fluxos',
@@ -73,7 +73,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'andares',
       title: 'Floors (worktrees)',
-      body: `A floor is a git worktree of the workspace repository with its own branch. The Floors panel shows, for ground and every worktree, active agents, assigned tasks, changed files, branch synchronization, and the latest commit, so you know what each stream is doing before opening its layer. Create it from the panel or CLI with orkestrai floor create/list/preview/land/remove. Landing merges the branch back after a diff and conflict preview. Conflicts are never hidden: the error lists files and resolution becomes an explicit task. Setup/run/teardown hooks use $ORKESTRAI_FLOOR_*, $ORKESTRAI_BRANCH_NAME, and $ORKESTRAI_ROOT_PATH.`,
+      body: `A floor is a git worktree of the workspace repository with its own branch. For ground and every worktree, the Floors panel shows active agents and a list of tasks with title, stage, and assignee, alongside changed files, branch synchronization, and the latest commit. You can see exactly who is doing what before opening a layer. Create from the panel or CLI with orkestrai floor create/list/preview/land/remove. Landing merges after a diff and conflict preview. Conflicts are never hidden: the error lists files and resolution becomes an explicit task.`,
     },
     {
       id: 'rotinas',
@@ -218,9 +218,15 @@ export const DOCS_EN: DocsCatalog = {
     },
     {
       id: 'leader-dictation',
-      title: 'Dictate an instruction straight to the leader',
-      body: 'Click the voice orb at the top right of the canvas to start the same dictation as the microphone in the leader window. Click again to stop: the transcript goes directly into that leader\'s terminal, even when it is on another floor. If the workspace has no leader, the app shows a toast.',
-      tags: ['Leader/Maestro', 'dictation', 'local voice'],
+      title: 'Dictate into any text field',
+      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The transcript is inserted at that field\'s cursor and does not require a leader. When no field is active on the canvas, the same control keeps the previous shortcut and sends text to the leader; without a field or leader, the app shows a toast.',
+      tags: ['Global dictation', 'text fields', 'local voice'],
+    },
+    {
+      id: 'switch-agent-provider',
+      title: 'Change a team member\'s provider',
+      body: 'Open ⇄ in the agent header and choose another installed provider. Orkestrai closes only the previous PTY and provider conversation, preserves name, role, Maestro Mode, floor, position, and connections, then starts the replacement in the same node.',
+      tags: ['Providers', 'change in place', 'team preserved'],
     },
     {
       id: 'multilingual-spoken-replies',
@@ -230,6 +236,18 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 10, 2026 · 0.5.0',
+      items: [
+        'Local dictation now writes into the active text field on any screen; with no active field on the canvas, it still sends to the leader.',
+        'An agent provider can be changed from the header without losing its name, role, Maestro Mode, floor, position, or connections.',
+        'Preset roles now include mission, context, process, acceptance criteria, and handoff, and are applied automatically when the PTY starts.',
+        'The leader receives the initial kanban queue with title, description, images, and linked note and must assign each item before delegating.',
+        'Notifications distinguish Task completed, Project completed, and Attention so partial delivery cannot look like the entire project finished.',
+        'Floors lists the real tasks, their stages, and assignees for every worktree and ground.',
+        'Shape text editing matches the rendered size, weight, and alignment, including large type.',
+      ],
+    },
     {
       date: 'Aug 09, 2026 · 0.4.0',
       items: [

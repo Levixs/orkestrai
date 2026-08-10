@@ -1,4 +1,5 @@
 import type { BuiltinPresetRecipe, PresetLocale } from './BuiltinPresetCatalog.js';
+import { completePresetRolePrompt } from './PresetRolePrompt.js';
 
 type AgentRecipe = {
   title: string;
@@ -219,7 +220,11 @@ function generalPreset(locale: PresetLocale, key: string, category: 'creative' |
       workspace: { name: copy.name, icon, instructions: copy.instructions, syncAgentInstructionFiles: true, hooks: {} },
       nodes,
       edges: [1, 2, 3, 4, 5, 6].map((targetIndex) => ({ sourceIndex: 0, targetIndex, style: 'cord' as const })),
-      roles: copy.agents.map((agent) => ({ name: agent.title, color: agent.color, prompt: agent.prompt })),
+      roles: copy.agents.map((agent, index) => ({
+        name: agent.title,
+        color: agent.color,
+        prompt: completePresetRolePrompt(locale, agent.prompt, copy.instructions, index === 0),
+      })),
       routines: [],
       tasks: [{ title: copy.task, description: copy.taskDescription, status: 'todo', assigneeTitle: null, noteTitle: copy.brief, images: [] }],
       mcpServers: [],
@@ -370,7 +375,11 @@ function contributingPreset(locale: PresetLocale): BuiltinPresetRecipe {
         { sourceIndex: 11, targetIndex: 1, style: 'cord' },
         { sourceIndex: 11, targetIndex: 2, style: 'cord' },
       ],
-      roles: copy.agents.map((agent) => ({ name: agent.title, color: agent.color, prompt: agent.prompt })),
+      roles: copy.agents.map((agent, index) => ({
+        name: agent.title,
+        color: agent.color,
+        prompt: completePresetRolePrompt(locale, agent.prompt, copy.instructions, index === 0),
+      })),
       routines: [],
       tasks: [{ title: copy.task, description: copy.taskDescription, status: 'todo', assigneeTitle: null, noteTitle: copy.consensus, images: [] }],
       mcpServers: [],

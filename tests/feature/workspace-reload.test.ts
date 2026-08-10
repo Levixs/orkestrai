@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useSvelarTest } from '@beeblock/svelar/testing';
 import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
+import { getAgentAdapter } from '$lib/modules/agent-room/application/adapters/registry.js';
 
 describe('WorkspaceService.reloadNode', () => {
   useSvelarTest({ refreshDatabase: true });
+  afterEach(() => vi.restoreAllMocks());
 
   it('mata a sessao PTY e limpa o sessionId, mantendo o agentSessionId (resume)', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'reload', workingDir: '/tmp' });
@@ -46,5 +48,45 @@ describe('WorkspaceService.reloadNode', () => {
 
     const persisted = (await workspaceRepository.getNode(node.id))!.payload as { args?: string[] };
     expect(persisted.args).toContain('--dangerously-skip-permissions');
+  });
+
+  it('troca o provider e preserva a identidade organizacional do terminal', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'troca provider', workingDir: '/tmp' });
+    const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    const node = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Arquiteto',
+      x: 345,
+      y: 678,
+      payload: {
+        command: 'claude',
+        args: ['--dangerously-skip-permissions'],
+        provider: 'claude',
+        sessionId: session.id,
+        agentSessionId: 'claude-session',
+        role: 'Arquiteto',
+        maestro: true,
+        floorId: 'floor-1',
+        theme: 'emerald',
+      },
+    });
+    vi.spyOn(getAgentAdapter('codex'), 'detect').mockResolvedValue({ installed: true, detail: 'test' });
+
+    const changed = await workspaceService.changeTerminalProvider({
+      workspaceId: workspace.id,
+      nodeId: node.id,
+      provider: 'codex',
+    });
+    const payload = changed!.payload as Record<string, unknown>;
+
+    expect(payload.provider).toBe('codex');
+    expect(payload.command).toBe('codex');
+    expect(payload.args).toContain('--dangerously-bypass-approvals-and-sandbox');
+    expect(payload.sessionId).toBeUndefined();
+    expect(payload.agentSessionId).toBeUndefined();
+    expect(payload).toMatchObject({ role: 'Arquiteto', maestro: true, floorId: 'floor-1', theme: 'emerald' });
+    expect(changed).toMatchObject({ title: 'Arquiteto', x: 345, y: 678 });
+    expect(ptySessionManager.get(session.id)?.exited).not.toBe(false);
   });
 });
