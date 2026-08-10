@@ -283,7 +283,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: '10 ago 2026 · 0.8.2',
       items: [
-        'Conversas entre Claude e Codex foram validadas nos dois sentidos com respostas reais e confirmação pelo transcript correto.',
+        'Orkestrai 0.8.2: conversas entre Claude e Codex foram validadas nos dois sentidos com respostas reais e confirmação pelo transcript correto.',
         'Sessões Codex usam o diretório real do workspace e sessões Kimi usam o hash exato do caminho, sem cruzar conversas entre projetos concorrentes.',
         'ask preserva mensagens sem aspas com várias palavras e timeout ou resposta não confirmada agora termina com erro explícito.',
         'task done entrega automaticamente um handoff ao líder sem misturar a mensagem com um rascunho humano em andamento.',
