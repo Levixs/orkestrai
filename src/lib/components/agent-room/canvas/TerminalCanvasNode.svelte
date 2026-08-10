@@ -75,6 +75,13 @@
     forceRespawn = true;
   }
 
+  async function persistCreatedSession(sessionId: string) {
+    await data.onSessionCreated(id, sessionId);
+    // Mantem o terminal criador montado ate o payload persistido apontar para
+    // a nova sessao; liberar antes reanexaria por um instante ao id antigo.
+    forceRespawn = false;
+  }
+
   // -- Recarregar terminal (reinicia a sessao COM o contexto) -------------------
   async function reloadTerminal() {
     await fetch(`/api/agent-room/workspaces/${data.workspaceId}/nodes/${id}/reload`, { method: 'POST' }).catch(() => {});
@@ -409,10 +416,7 @@
         nodeId={id}
         sessionLabel={data.title}
         workspaceName={data.workspaceName}
-        onSessionCreated={(sessionId) => {
-          forceRespawn = false;
-          data.onSessionCreated(id, sessionId);
-        }}
+        onSessionCreated={persistCreatedSession}
         onOpenPath={(path) => data.onOpenFile?.(path)}
         themeName={data.payload.theme ?? 'dark'}
         provider={data.payload.provider}

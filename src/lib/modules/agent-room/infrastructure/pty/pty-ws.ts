@@ -17,11 +17,11 @@
  *   S->C {type:'exit', sessionId, exitCode}
  *   S->C {type:'killed', sessionId}
  *   S->C {type:'list', sessions}
- *   S->C {type:'error', message}
+ *   S->C {type:'error', code?, message}
  */
 import { existsSync, statSync } from 'node:fs';
 import type { WebSocket } from 'ws';
-import { ptySessionManager, type PtySessionInfo } from './PtySessionManager.ts';
+import { ptySessionManager } from './PtySessionManager.ts';
 import { agentSessionTracker } from './AgentSessionTracker.ts';
 
 export const PTY_WS_PATH = '/ws/agent-room/pty';
@@ -167,7 +167,16 @@ export function handlePtyConnection(socket: WebSocket): void {
           break;
         }
         case 'attach': {
-          const info = requireSession(message.sessionId);
+          const info = ptySessionManager.get(message.sessionId);
+          if (!info) {
+            send({
+              type: 'error',
+              code: 'PTY_SESSION_NOT_FOUND',
+              sessionId: message.sessionId,
+              message: `Sessão PTY não encontrada: ${message.sessionId}`,
+            });
+            break;
+          }
           const scrollback = attachSession(message.sessionId);
           send({ type: 'attached', session: info, scrollback });
           break;
@@ -207,9 +216,4 @@ export function handlePtyConnection(socket: WebSocket): void {
     detachers.clear();
   });
 
-  function requireSession(sessionId: string): PtySessionInfo {
-    const info = ptySessionManager.get(sessionId);
-    if (!info) throw new Error(`Sessão PTY não encontrada: ${sessionId}`);
-    return info;
-  }
 }

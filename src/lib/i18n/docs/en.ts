@@ -237,6 +237,13 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
+      date: 'Aug 10, 2026 · 0.5.1',
+      items: [
+        'Terminals now discard obsolete process-local PTY ids after an app restart and automatically resume each provider’s preserved conversation.',
+        'Session recovery uses a stable WebSocket error code and waits for the replacement id to persist before reattaching.',
+      ],
+    },
+    {
       date: 'Aug 10, 2026 · 0.5.0',
       items: [
         'Local dictation now writes into the active text field on any screen; with no active field on the canvas, it still sends to the leader.',

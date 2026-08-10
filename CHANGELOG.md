@@ -5,6 +5,16 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.5.1 - 2026-08-10
+
+### Fixed
+
+- Restored every terminal automatically after an application restart by
+  discarding process-local PTY identifiers that no longer exist while
+  preserving each provider's real conversation identifier.
+- Added a stable WebSocket error code and removed the timing window that could
+  briefly reattach a recovering terminal to its obsolete PTY identifier.
+
 ## 0.5.0 - 2026-08-10
 
 ### Added

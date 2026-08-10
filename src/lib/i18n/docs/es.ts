@@ -237,6 +237,13 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '10 ago 2026 · 0.5.1',
+      items: [
+        'Las terminales ahora descartan IDs locales de PTY obsoletos después de reiniciar la aplicación y reanudan automáticamente la conversación conservada de cada provider.',
+        'La recuperación de sesión usa un código WebSocket estable y espera que el nuevo ID quede guardado antes de reconectar.',
+      ],
+    },
+    {
       date: '10 ago 2026 · 0.5.0',
       items: [
         'El dictado local ahora escribe en el campo de texto activo de cualquier pantalla; sin campo activo en el canvas, todavía se envía al líder.',

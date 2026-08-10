@@ -50,6 +50,31 @@ describe('WorkspaceService.reloadNode', () => {
     expect(persisted.args).toContain('--dangerously-skip-permissions');
   });
 
+  it('remove sessionId obsoleto no restart e preserva a conversa do provider', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'restart', workingDir: '/tmp' });
+    const node = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Claude',
+      payload: {
+        command: 'claude',
+        args: ['--dangerously-skip-permissions'],
+        provider: 'claude',
+        sessionId: 'pty-do-processo-anterior',
+        agentSessionId: 'conversa-real-123',
+      },
+    });
+
+    const listed = await workspaceService.listNodes(workspace.id);
+    const payload = listed.find((item) => item.id === node.id)!.payload as Record<string, unknown>;
+    expect(payload.sessionId).toBeUndefined();
+    expect(payload.agentSessionId).toBe('conversa-real-123');
+
+    const persisted = (await workspaceRepository.getNode(node.id))!.payload as Record<string, unknown>;
+    expect(persisted.sessionId).toBeUndefined();
+    expect(persisted.agentSessionId).toBe('conversa-real-123');
+  });
+
   it('troca o provider e preserva a identidade organizacional do terminal', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'troca provider', workingDir: '/tmp' });
     const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });

@@ -45,7 +45,7 @@
     sessionLabel?: string;
     workspaceName?: string;
     onExit?: (exitCode: number) => void;
-    onSessionCreated?: (sessionId: string) => void;
+    onSessionCreated?: (sessionId: string) => void | Promise<void>;
     /** Cmd/Ctrl+clique num caminho de arquivo detectado no output. */
     onOpenPath?: (path: string) => void;
     /** Sessao PTY nao existe mais (servidor reiniciou) — recriar/retomar. */
@@ -426,7 +426,16 @@
           exited = -1;
           break;
         case 'error':
-          if (sessionId && onRespawn && /Sessao PTY nao encontrada/i.test(String(message.message))) {
+          if (
+            sessionId
+            && onRespawn
+            && (
+              message.code === 'PTY_SESSION_NOT_FOUND'
+              || /sessao pty nao encontrada/i.test(
+                String(message.message).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              )
+            )
+          ) {
             statusMessage = '';
             onRespawn();
           } else {

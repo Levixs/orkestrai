@@ -37,7 +37,13 @@ test.describe('restauracao de sessao', () => {
     await page.reload();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
     await expect(page.locator('.canvas-terminal .xterm')).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator('.canvas-terminal')).not.toContainText('Sessao PTY nao encontrada');
+    await expect(page.locator('.canvas-terminal')).not.toContainText(/Sess[aã]o PTY n[aã]o encontrada/i);
+
+    await expect.poll(async () => {
+      const refreshed = await request.get(`/api/agent-room/workspaces/${created.id}/nodes`);
+      const currentNodes = (await refreshed.json()).data as Array<{ id: string; payload: Record<string, unknown> }>;
+      return currentNodes.find((node) => node.id === terminal.id)?.payload.sessionId;
+    }, { timeout: 15_000 }).not.toBe('sessao-morta-123');
 
     // Nova sessao funcional: recebe input
     const marker = `respawn-${Date.now()}`;

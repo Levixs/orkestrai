@@ -108,9 +108,20 @@ export class WorkspaceService {
     const nodes = await workspaceRepository.listNodes(workspaceId);
     return Promise.all(nodes.map(async (node) => {
       if (node.type !== 'terminal') return node;
-      const materialized = materializeInteractiveAgentCommand(node.payload as Record<string, unknown>);
-      if (!materialized.changed) return node;
-      return (await workspaceRepository.updateNode(node.id, { payload: materialized.payload as never })) ?? node;
+      let payload = { ...((node.payload ?? {}) as Record<string, unknown>) };
+      let changed = false;
+      const storedSessionId = typeof payload.sessionId === 'string' ? payload.sessionId : null;
+      if (storedSessionId && !ptySessionManager.get(storedSessionId)) {
+        delete payload.sessionId;
+        changed = true;
+      }
+      const materialized = materializeInteractiveAgentCommand(payload);
+      if (materialized.changed) {
+        payload = materialized.payload;
+        changed = true;
+      }
+      if (!changed) return node;
+      return (await workspaceRepository.updateNode(node.id, { payload: payload as never })) ?? node;
     }));
   }
 
