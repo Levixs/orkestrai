@@ -20,16 +20,24 @@ export function installOrkestraiShim() {
       : resolve('storage', 'bin');
     mkdirSync(shimDir, { recursive: true });
     const posixShim = resolve(shimDir, 'orkestrai');
+    const cmdShim = resolve(shimDir, 'orkestrai.cmd');
     const shellQuote = (value) => `'${value.replace(/'/g, `'"'"'`)}'`;
     const electronEnv = electronRuntime ? 'ELECTRON_RUN_AS_NODE=1 ' : '';
     writeFileSync(posixShim, `#!/bin/sh\n${electronEnv}exec ${shellQuote(runtime)} ${shellQuote(cliEntry)} "$@"\n`);
     chmodSync(posixShim, 0o755);
     writeFileSync(
-      resolve(shimDir, 'orkestrai.cmd'),
+      cmdShim,
       `@echo off\r\n${electronRuntime ? 'set "ELECTRON_RUN_AS_NODE=1"\r\n' : ''}"${runtime}" "${cliEntry}" %*\r\n`
     );
     process.env.ORKESTRAI_SHIM_DIR = shimDir;
-    process.env.ORKESTRAI_CLI = cliEntry;
+    // ORKESTRAI_CLI = launcher que o agente pode executar DIRETO (sem prefixo de
+    // runtime). No Windows apontar para o .js cru fazia o shell abri-lo pela
+    // associacao de arquivo (.js -> Windows Script Host, "Caractere invalido" no
+    // shebang `#!`); o launcher .cmd/sh invoca o runtime correto internamente.
+    process.env.ORKESTRAI_CLI = process.platform === 'win32' ? cmdShim : posixShim;
+    // ORKESTRAI_CLI_JS = caminho do .js cru, para quem o passa como ARGUMENTO de
+    // um runtime (configs MCP: `<electron/node> <js> mcp`).
+    process.env.ORKESTRAI_CLI_JS = cliEntry;
     process.env.ORKESTRAI_CLI_RUNTIME = runtime;
     process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON = electronRuntime ? '1' : '0';
     return shimDir;

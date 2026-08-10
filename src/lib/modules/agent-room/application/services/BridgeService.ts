@@ -552,7 +552,7 @@ description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com 
 
 Você está rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` dá acesso à ponte.
 Sua identidade já está no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem você é, então \`--from\` e \`--agent\` são opcionais.
-Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), chame a CLI DIRETO pelo node: \`node "$ORKESTRAI_CLI" ...\` (Linux/macOS), \`node %ORKESTRAI_CLI% ...\` (cmd.exe) ou \`node $env:ORKESTRAI_CLI ...\` (PowerShell) — o caminho completo da CLI está na variável de ambiente ORKESTRAI_CLI e funciona sempre, sem depender de PATH.
+Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), execute o launcher da variável ORKESTRAI_CLI DIRETO (SEM prefixar \`node\`): \`"$ORKESTRAI_CLI" ...\` (Linux/macOS), \`%ORKESTRAI_CLI% ...\` (cmd.exe) ou \`& $env:ORKESTRAI_CLI ...\` (PowerShell). ORKESTRAI_CLI aponta para um launcher autocontido que já chama o runtime certo — funciona sempre, sem depender de PATH. NUNCA rode o caminho \`...orkestrai.js\` cru no Windows: o shell o abre pelo Windows Script Host e falha ("Caractere inválido").
 Se as tools \`orkestrai\` (list/usage/ask/note_*/task_*/portal_*/floor_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
 - \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas e portais conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
@@ -697,7 +697,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai task done <id>` — conclui a tarefa e já envia uma notificação identificada; não duplique com notify.',
       '- `orkestrai notify "<msg>" --kind attention|project` — atenção ou conclusão do projeto inteiro (somente após conferir o quadro).',
       '- Todo trabalho delegado precisa de uma task no Kanban ANTES da mensagem direta; nunca execute ou delegue trabalho sem rastreamento.',
-      '- Sua identidade está no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` são opcionais. Se `orkestrai` não resolver no PATH, use `node "$ORKESTRAI_CLI" ...`.',
+      '- Sua identidade está no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` são opcionais. Se `orkestrai` não resolver no PATH, execute o launcher `"$ORKESTRAI_CLI" ...` DIRETO (sem `node`; no Windows `%ORKESTRAI_CLI%`/`& $env:ORKESTRAI_CLI`) — nunca rode o `...orkestrai.js` cru.',
       '- Se as tools MCP `orkestrai` estiverem disponíveis, PREFIRA elas (chamadas tipadas); a CLI e o fallback.',
       '- Detalhes completos: `.claude/skills/orkestrai/SKILL.md`, `.cline/skills/orkestrai/SKILL.md`, `.devin/skills/orkestrai/SKILL.md`, `.agents/skills/orkestrai/SKILL.md` ou `.orkestrai/SKILL.md`.',
       '<!-- orkestrai:end -->',
@@ -725,7 +725,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     if (!existsSync(dir)) return; // codex não instalado — não polui o HOME
     const path = resolve(dir, 'config.toml');
     const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
-    const cliEntry = process.env.ORKESTRAI_CLI ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
     const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
     const next = upsertCodexMcpConfig(current, {
       command: runtime,
@@ -744,7 +744,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     } catch {
       // Ausente ou invalido: cria o documento minimo.
     }
-    const cliEntry = process.env.ORKESTRAI_CLI ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
     const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
     const electronRuntime = process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron);
     const desired = {
@@ -767,7 +767,18 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     } catch {
       // não existe ou inválido — cria do zero
     }
-    const desired = { type: 'local', command: ['orkestrai', 'mcp'], enabled: true };
+    // Pina o runtime + .js absoluto (nunca o nome nu "orkestrai"): no Windows o
+    // nome nu podia resolver para orkestrai.js e o executor abri-lo pela
+    // associacao (.js -> Windows Script Host), quebrando o handshake MCP.
+    const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
+    const electronRuntime = process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron);
+    const desired = {
+      type: 'local',
+      command: [runtime, cliEntry, 'mcp'],
+      ...(electronRuntime ? { environment: { ELECTRON_RUN_AS_NODE: '1' } } : {}),
+      enabled: true,
+    };
     if (JSON.stringify(config.mcp?.orkestrai ?? null) === JSON.stringify(desired)) return;
     config.mcp = { ...(config.mcp ?? {}), orkestrai: desired };
     writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
