@@ -35,6 +35,7 @@ export const bridgeBoardTaskUpdateSchema = z.object({
   description: z.string().trim().nullish(),
   assignee: z.string().trim().nullish(),
   note: z.string().trim().nullish(),
+  from: z.string().trim().nullish(),
 });
 
 export const createBoardColumnSchema = z.object({

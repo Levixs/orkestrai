@@ -19,7 +19,7 @@ const PROTOCOL_VERSION = '2024-11-05';
 const TOOLS = [
   { name: 'list', description: 'Lista agentes do workspace (titulo, provider, sessao viva) e suas notas/portais conectados.', inputSchema: { type: 'object', properties: {} } },
   { name: 'usage', description: 'Consulta cotas dos providers e a recomendacao de roteamento configurada no no Usage do canvas.', inputSchema: { type: 'object', properties: {} } },
-  { name: 'ask', description: 'Envia mensagem a outro agente e aguarda a resposta.', inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Titulo do agente' }, message: { type: 'string' } }, required: ['agent', 'message'] } },
+  { name: 'ask', description: 'Envia mensagem a outro agente e aguarda resposta confirmada. So afirme que conversou quando replyConfirmed for true.', inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Titulo do agente' }, message: { type: 'string' } }, required: ['agent', 'message'] } },
   { name: 'note_read', description: 'Le uma nota pelo nodeId.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'note_write', description: 'Substitui o conteudo de uma nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, content: { type: 'string' } }, required: ['nodeId', 'content'] } },
   { name: 'note_edit', description: 'Edicao pontual: troca um trecho da nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, oldText: { type: 'string' }, newText: { type: 'string' } }, required: ['nodeId', 'oldText', 'newText'] } },
@@ -28,7 +28,7 @@ const TOOLS = [
   { name: 'task_columns', description: 'Lista as colunas e chaves validas do kanban.', inputSchema: { type: 'object', properties: {} } },
   { name: 'task_add', description: 'Cria tarefa; com assignee ja despacha para o agente.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string', description: 'Descricao em markdown (checklists, links)' }, assignee: { type: 'string' }, note: { type: 'string', description: 'Nota de spec (id ou titulo)' }, column: { type: 'string', description: 'Chave ou nome da coluna inicial' } }, required: ['title'] } },
   { name: 'task_move', description: 'Move uma tarefa para qualquer coluna do quadro.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, column: { type: 'string' } }, required: ['taskId', 'column'] } },
-  { name: 'task_done', description: 'Marca tarefa como concluida.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
+  { name: 'task_done', description: 'Marca tarefa como concluida e faz handoff automatico ao lider.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
   { name: 'task_history', description: 'Historico do quadro (concluidas + arquivadas).', inputSchema: { type: 'object', properties: {} } },
   { name: 'portal_create', description: 'Cria um portal (browser) no canvas.', inputSchema: { type: 'object', properties: { url: { type: 'string' }, title: { type: 'string' }, connect: { type: 'string' } }, required: ['url'] } },
   { name: 'portal_navigate', description: 'Abre URL no portal.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' } }, required: ['nodeId', 'url'] } },
@@ -73,7 +73,7 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
     case 'task_move':
       return bridge('PATCH', `/api/agent-room/bridge/tasks/${encodeURIComponent(args.taskId)}`, { status: args.column });
     case 'task_done':
-      return bridge('PATCH', `/api/agent-room/bridge/tasks/${encodeURIComponent(args.taskId)}`, { status: 'done' });
+      return bridge('PATCH', `/api/agent-room/bridge/tasks/${encodeURIComponent(args.taskId)}`, { status: 'done', from: selfAgent });
     case 'task_history':
       return bridge('GET', '/api/agent-room/bridge/tasks/history');
     case 'portal_create': {

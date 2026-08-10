@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, utimesSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -133,6 +134,50 @@ describe('AgentSessionTracker', () => {
     touch(join(claudeDir, 'sessao-retomavel.jsonl'), new Date(Date.now() - 5_000));
 
     expect(tracker.findLatestUnclaimedSessionId(claudeAdapter.sessionStorage, cwd)).toBe('sessao-retomavel');
+  });
+
+  it('vincula a sessao do Codex somente ao workspace do terminal', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), `codex-workspace-${Date.now()}`);
+    const otherCwd = join(tmpdir(), `codex-other-${Date.now()}`);
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(otherCwd, { recursive: true });
+    const { home, tracker } = isolatedTracker();
+    const sessionsDir = join(home, '.codex', 'sessions', '2026', '08', '10');
+    mkdirSync(sessionsDir, { recursive: true });
+
+    const otherId = '11111111-1111-4111-8111-111111111111';
+    const targetId = '22222222-2222-4222-8222-222222222222';
+    const otherPath = join(sessionsDir, `rollout-old-${otherId}.jsonl`);
+    const targetPath = join(sessionsDir, `rollout-new-${targetId}.jsonl`);
+    writeFileSync(otherPath, `${JSON.stringify({ type: 'session_meta', payload: { cwd: otherCwd } })}\n`);
+    writeFileSync(targetPath, `${JSON.stringify({ type: 'session_meta', payload: { cwd } })}\n`);
+    utimesSync(otherPath, new Date(Date.now() - 5_000), new Date(Date.now() - 5_000));
+    utimesSync(targetPath, new Date(), new Date());
+
+    expect(tracker.findAgentSessionId(codexAdapter.sessionStorage, cwd, since)).toBe(targetId);
+    expect(tracker.findAgentSessionId(codexAdapter.sessionStorage, otherCwd, since)).toBe(otherId);
+  });
+
+  it('vincula a sessao do Kimi pelo hash exato mesmo com pastas de mesmo nome', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), `kimi-a-${Date.now()}`, 'app');
+    const otherCwd = join(tmpdir(), `kimi-b-${Date.now()}`, 'app');
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(otherCwd, { recursive: true });
+    const { home, tracker } = isolatedTracker();
+    const sessionsRoot = join(home, '.kimi-code', 'sessions');
+    const sessionDir = (workspacePath: string, sessionId: string) => {
+      const hash = createHash('sha256').update(realpathSync(workspacePath)).digest('hex').slice(0, 12);
+      const path = join(sessionsRoot, `wd_app_${hash}`, sessionId);
+      mkdirSync(path, { recursive: true });
+      return path;
+    };
+    sessionDir(otherCwd, 'session_other');
+    sessionDir(cwd, 'session_target');
+
+    expect(tracker.findAgentSessionId(kimiAdapter.sessionStorage, cwd, since)).toBe('session_target');
+    expect(tracker.findAgentSessionId(kimiAdapter.sessionStorage, otherCwd, since)).toBe('session_other');
   });
 
   it('valida um id exato do Claude apenas quando o transcript e retomavel', () => {

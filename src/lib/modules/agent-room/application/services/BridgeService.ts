@@ -137,7 +137,7 @@ export class BridgeService {
   async ask(
     workspaceId: string,
     input: { to: string; message: string; from?: string | null; timeoutMs?: number; signal?: AbortSignal }
-  ): Promise<{ to: string; reply: string; timedOut: boolean }> {
+  ): Promise<{ to: string; reply: string; delivered: true; replyConfirmed: boolean; timedOut: boolean }> {
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.to);
     if (!target.sessionId || !target.sessionAlive) {
@@ -165,26 +165,27 @@ export class BridgeService {
     // (quebras de linha soltas disparavam submits parciais e até o editor
     // externo do Claude Code). Se o transcrito ainda não mudou (silencio cedo
     // demais: boot, trust screen, composer ecoando), espera ele encher.
-    let replyText = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
-    if (replyText && replyText === baseline) replyText = null;
-    if (!replyText) {
+    let transcriptText = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
+    if (transcriptText && transcriptText === baseline) transcriptText = null;
+    if (!transcriptText) {
       const node = await workspaceRepository.getNode(target.nodeId);
       const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
       // Só espera quando a sessão da CLI já foi identificada (transcrito
       // localizavel) — sem isso não há o que pollar e o fallback e imediato.
       if (payload.provider && payload.agentSessionId) {
         const deadline = Date.now() + 90_000;
-        while (!replyText && Date.now() < deadline) {
+        while (!transcriptText && Date.now() < deadline) {
           await new Promise((resolve) => setTimeout(resolve, 2_000));
           const attempt = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
-          if (attempt && attempt !== baseline) replyText = attempt;
+          if (attempt && attempt !== baseline) transcriptText = attempt;
         }
       }
     }
     // Usa o provider da sessao PTY real, não apenas o metadata do nó. Isso
     // mantém shells explícitos utilizáveis e protege somente TUIs de agentes.
     const activeProvider = target.sessionId ? ptySessionManager.get(target.sessionId)?.provider : null;
-    replyText = resolveAgentReplyText(replyText, reply.text, activeProvider, target.title);
+    const replyText = resolveAgentReplyText(transcriptText, reply.text, activeProvider, target.title);
+    const replyConfirmed = Boolean(transcriptText) || (!activeProvider && !reply.timedOut && Boolean(replyText));
 
     // A resposta chega ao agente de origem pelo RETORNO do comando (stdout da
     // CLI / resultado da tool MCP). NAO injetamos mais no composer de origem:
@@ -195,7 +196,13 @@ export class BridgeService {
     const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
     broadcast?.({ type: 'agentReply', workspaceId, to: target.nodeId, from: origin?.title ?? null, text: replyText });
 
-    return { to: target.title, reply: replyText, timedOut: reply.timedOut };
+    return {
+      to: target.title,
+      reply: replyText,
+      delivered: true,
+      replyConfirmed,
+      timedOut: reply.timedOut && !replyConfirmed,
+    };
   }
 
   /** Ultima resposta do agente pelo transcrito da CLI (null = indisponivel). */
@@ -557,7 +564,7 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/task_*/portal_*/floor_*/notify/
 
 - \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas e portais conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
 - \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage. Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\`. Não troque silenciosamente o provider de um terminal que já executa trabalho.
-- \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda a resposta.
+- \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda uma resposta confirmada. Só diga que falou/consultou o agente quando o comando terminar com sucesso e imprimir \`Resposta confirmada de ...\`. Timeout, erro ou \`Resposta nao confirmada\` significam que a conversa NÃO foi concluída — informe isso sem inventar resposta.
 - \`orkestrai note read <nodeId>\` — lê uma nota conectada a você.
 - \`orkestrai note create "<título>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
 - \`orkestrai note write <nodeId> "<conteúdo>"\` — substitui o conteúdo da nota.
@@ -611,7 +618,7 @@ Antes de propor o time e antes de cada nova rodada de delegação, consulte \`or
 5. Distribua TODO trabalho com \`orkestrai task add --assign\` ANTES de usar \`orkestrai ask\` para o handoff (o quadro kanban aparece no canvas sozinho na primeira tarefa). É PROIBIDO delegar trabalho apenas por mensagem direta. Use notas com \`orkestrai note create\`; cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.
 6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time está construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrão 5173/3000 — outro workspace pode estar usando).
 7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silêncio ou pedir algo (uma nota, um id, um esclarecimento), VOCÊ resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCÊ MESMO é o último recurso, só depois de tentar desbloquear e o agente realmente não dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado é problema de coordenação do líder, não motivo para assumir o trabalho.
-8. \`orkestrai task done\` já envia uma notificação nativa identificada como TAREFA CONCLUÍDA. Não duplique esse aviso. Quando precisar de atenção/aprovação, use \`orkestrai notify "<pedido>" --kind attention\`. Somente ao concluir o PROJETO inteiro, após conferir o quadro, use \`orkestrai notify "<resumo>" --kind project --title "<projeto>"\`.
+8. NUNCA afirme que consultou/falou com outro agente sem uma execução bem-sucedida de \`orkestrai ask\` e a confirmação explícita retornada pela ponte. \`orkestrai task done\` avisa o líder automaticamente, além da notificação nativa de TAREFA CONCLUÍDA. Não duplique esse aviso. Quando precisar de atenção/aprovação, use \`orkestrai notify "<pedido>" --kind attention\`. Somente ao concluir o PROJETO inteiro, após conferir o quadro, use \`orkestrai notify "<resumo>" --kind project --title "<projeto>"\`.
 9. Ao finalizar uma frente, dispense o que não precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
 Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instruções). Skills novas são descobertas nas próximas sessões do agente.
@@ -694,7 +701,8 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
       '- `orkestrai task list/columns/add/move/done` — quadro do time; consulte `task columns` e respeite as etapas personalizadas pelo usuário.',
       '- `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.',
-      '- `orkestrai task done <id>` — conclui a tarefa e já envia uma notificação identificada; não duplique com notify.',
+      '- `orkestrai ask "<Agente>" "<mensagem>"` — só afirme que falou/consultou alguém quando a ponte retornar uma resposta confirmada; timeout ou erro NÃO contam como conversa.',
+      '- `orkestrai task done <id>` — conclui a tarefa, avisa o líder e envia uma notificação identificada; não duplique com notify.',
       '- `orkestrai notify "<msg>" --kind attention|project` — atenção ou conclusão do projeto inteiro (somente após conferir o quadro).',
       '- Todo trabalho delegado precisa de uma task no Kanban ANTES da mensagem direta; nunca execute ou delegue trabalho sem rastreamento.',
       '- Sua identidade está no ambiente (ORKESTRAI_NODE_ID) — `--from`/`--agent` são opcionais. Se `orkestrai` não resolver no PATH, execute o launcher `"$ORKESTRAI_CLI" ...` DIRETO (sem `node`; no Windows `%ORKESTRAI_CLI%`/`& $env:ORKESTRAI_CLI`) — nunca rode o `...orkestrai.js` cru.',

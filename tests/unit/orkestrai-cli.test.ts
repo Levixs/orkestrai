@@ -36,7 +36,15 @@ describe('orkestrai CLI', () => {
             recommendedProvider: 'codex',
           } }));
         } else if (req.url === '/api/agent-room/bridge/ask') {
-          res.end(JSON.stringify({ data: { to: 'Claude', reply: 'resposta do claude', timedOut: false } }));
+          const request = JSON.parse(body || '{}');
+          const timedOut = request.to === 'SemResposta';
+          res.end(JSON.stringify({ data: {
+            to: request.to,
+            reply: timedOut ? '' : 'resposta do claude',
+            delivered: true,
+            replyConfirmed: !timedOut,
+            timedOut,
+          } }));
         } else if (req.url === '/api/agent-room/bridge/task-columns') {
           res.end(JSON.stringify({ data: [{ key: 'review', name: 'Revisão', color: '#9675ff' }] }));
         } else if (req.url === '/api/agent-room/bridge/portal' && JSON.parse(body || '{}').nodeId === 'broken') {
@@ -78,6 +86,18 @@ describe('orkestrai CLI', () => {
     expect(code).toBe(0);
     expect(lines.join('\n')).toContain('resposta do claude');
     expect(requests.at(-1).body).toMatchObject({ to: 'Claude', message: 'como vai?' });
+  });
+
+  it('ask preserva mensagens sem aspas e falha quando a resposta nao e confirmada', async () => {
+    const { lines, out } = capture();
+    const ok = await run(['ask', 'Claude', 'revise', 'este', 'diff'], { cwd, out, env: {} });
+    expect(ok).toBe(0);
+    expect(requests.at(-1).body.message).toBe('revise este diff');
+    expect(lines.join('\n')).toContain('Resposta confirmada de Claude');
+
+    const timedOut = await run(['ask', 'SemResposta', 'ping'], { cwd, out, env: {} });
+    expect(timedOut).toBe(2);
+    expect(lines.join('\n')).toContain('Resposta nao confirmada');
   });
 
   it('usage mostra status e recomendacao de roteamento', async () => {
@@ -132,6 +152,14 @@ describe('orkestrai CLI', () => {
     await run(['task', 'add', 'Revisar PR', '--assign', 'Claude'], { env: {}, cwd, out });
     const request = requests.find((entry) => entry.url === '/api/agent-room/bridge/tasks' && entry.method === 'POST');
     expect(request.body.assignee).toBe('Claude');
+  });
+
+  it('task done envia a identidade e mostra o handoff ao lider', async () => {
+    const { lines, out } = capture();
+    await run(['task', 'done', 't1'], { env: { ORKESTRAI_NODE_ID: 'codex-node' }, cwd, out });
+    const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/tasks/t1' && entry.method === 'PATCH').at(-1);
+    expect(request.body).toEqual({ status: 'done', from: 'codex-node' });
+    expect(lines.join('\n')).toContain('Tarefa marcada como concluida');
   });
 
   it('notify classifica atencao e conclusao de projeto sem ambiguidade', async () => {

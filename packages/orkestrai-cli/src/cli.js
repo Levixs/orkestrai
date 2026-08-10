@@ -248,7 +248,8 @@ export async function run(argv, options = {}) {
       return 0;
     }
     case 'ask': {
-      const [to, message] = rest;
+      const [to, ...messageParts] = rest;
+      const message = messageParts.join(' ').trim();
       if (!to || !message) throw new Error('Uso: orkestrai ask <agente> <mensagem> [--from <agente>] [--timeout ms]');
       const data = await bridge(config, 'POST', '/api/agent-room/bridge/ask', {
         to,
@@ -258,9 +259,15 @@ export async function run(argv, options = {}) {
         raw: flags.raw || undefined,
       });
       if (flags.json) out(JSON.stringify(data, null, 2));
-      else out(data.reply || '(sem resposta)');
-      if (data.timedOut) console.error('(aviso: resposta parcial — timeout ou interrupcao)');
-      return 0;
+      else if (flags.raw) out(data.sent ? `Mensagem enviada para ${data.to}.` : 'Mensagem nao enviada.');
+      else if (data.replyConfirmed ?? (!data.timedOut && Boolean(data.reply))) {
+        out(`Resposta confirmada de ${data.to}:`);
+        out(data.reply);
+      } else {
+        out(`Resposta nao confirmada de ${data.to}: timeout ou interrupcao. Nao trate esta tentativa como uma conversa concluida.`);
+      }
+      if (flags.raw) return data.sent ? 0 : 2;
+      return (data.replyConfirmed ?? (!data.timedOut && Boolean(data.reply))) ? 0 : 2;
     }
     case 'usage': {
       const data = await bridge(config, 'GET', '/api/agent-room/bridge/usage');
@@ -448,8 +455,11 @@ export async function run(argv, options = {}) {
       if (action === 'done') {
         const taskId = values[0];
         if (!taskId) throw new Error('Uso: orkestrai task done <taskId>');
-        await bridge(config, 'PATCH', `/api/agent-room/bridge/tasks/${taskId}`, { status: 'done' });
-        out('Tarefa marcada como concluida.');
+        const data = await bridge(config, 'PATCH', `/api/agent-room/bridge/tasks/${taskId}`, { status: 'done', from: flags.from });
+        const handoff = data.completionHandoff;
+        if (handoff?.status === 'queued') out(`Tarefa marcada como concluida. Lider ${handoff.leaderTitle} avisado.`);
+        else if (handoff?.status === 'leader_offline') out(`Tarefa marcada como concluida. Lider ${handoff.leaderTitle} esta offline; o quadro registra a conclusao.`);
+        else out('Tarefa marcada como concluida.');
         return 0;
       }
       if (action === 'assign') {

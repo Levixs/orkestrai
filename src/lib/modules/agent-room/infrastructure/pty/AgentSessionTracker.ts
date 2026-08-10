@@ -1,4 +1,5 @@
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
@@ -102,7 +103,7 @@ export class AgentSessionTracker {
         case 'claude-project-jsonl':
           return this.findClaudeSession(cwd, since, exclude, strategy);
         case 'codex-rollout-jsonl':
-          return this.findCodexSession(since, exclude, strategy);
+          return this.findCodexSession(cwd, since, exclude, strategy);
         case 'kimi-session-dir':
           return this.findKimiSession(cwd, since, exclude, strategy);
         case 'opencode-session-json':
@@ -246,8 +247,9 @@ export class AgentSessionTracker {
   }
 
   // ~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl
-  private findCodexSession(since: number, exclude: Set<string>, strategy: 'oldest' | 'newest'): string | null {
+  private findCodexSession(cwd: string, since: number, exclude: Set<string>, strategy: 'oldest' | 'newest'): string | null {
     const root = join(this.homeDir, '.codex', 'sessions');
+    const targetCwd = this.realCwd(cwd);
     const uuidOf = (name: string) =>
       name.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/)?.[1] ?? null;
     const pick = strategy === 'oldest' ? this.oldestFileRecursive : this.newestFileRecursive;
@@ -255,30 +257,48 @@ export class AgentSessionTracker {
       this,
       root,
       since,
-      (name: string) => {
+      (name: string, path: string) => {
         if (!name.startsWith('rollout-') || !name.endsWith('.jsonl')) return false;
         const id = uuidOf(name);
-        return id !== null && !exclude.has(id);
+        return id !== null && !exclude.has(id) && this.codexTranscriptMatchesCwd(path, targetCwd);
       },
       4
     );
     return found ? uuidOf(found) : null;
   }
 
+  /** O Codex guarda todas as sessoes numa arvore global. O session_meta do
+      rollout e a unica forma segura de nao vincular um terminal ao transcript
+      de outro workspace que esteja sendo usado ao mesmo tempo. */
+  private codexTranscriptMatchesCwd(path: string, targetCwd: string): boolean {
+    const fd = openSync(path, 'r');
+    try {
+      const buffer = Buffer.allocUnsafe(512 * 1024);
+      const bytesRead = readSync(fd, buffer, 0, buffer.length, 0);
+      const firstLine = buffer.toString('utf8', 0, bytesRead).split('\n', 1)[0] ?? '';
+      if (!firstLine) return false;
+      const entry = JSON.parse(firstLine) as { type?: unknown; payload?: { cwd?: unknown } };
+      return entry.type === 'session_meta' &&
+        typeof entry.payload?.cwd === 'string' &&
+        this.realCwd(entry.payload.cwd) === targetCwd;
+    } catch {
+      return false;
+    } finally {
+      closeSync(fd);
+    }
+  }
+
   // ~/.kimi-code/sessions/<wd_*>/session_<uuid>/
   private findKimiSession(cwd: string, since: number, exclude: Set<string>, strategy: 'oldest' | 'newest'): string | null {
     const root = join(this.homeDir, '.kimi-code', 'sessions');
     if (!existsSync(root)) return null;
-    const dirName = this.realCwd(cwd).split(/[/\\]/).filter(Boolean).at(-1) ?? '';
-    const candidates = readdirSync(root, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && entry.name.includes(dirName))
-      .map((entry) => join(root, entry.name));
+    const realCwd = this.realCwd(cwd);
+    const dirName = realCwd.split(/[/\\]/).filter(Boolean).at(-1) ?? '';
+    const workspaceHash = createHash('sha256').update(realCwd).digest('hex').slice(0, 12);
+    const candidate = join(root, `wd_${dirName}_${workspaceHash}`);
+    if (!existsSync(candidate)) return null;
     const pick = strategy === 'oldest' ? this.oldestDir : this.newestDir;
-    for (const candidate of candidates.length ? candidates : [root]) {
-      const found = pick.call(this, candidate, since, (name: string) => name.startsWith('session_') && !exclude.has(name));
-      if (found) return found;
-    }
-    return null;
+    return pick.call(this, candidate, since, (name: string) => name.startsWith('session_') && !exclude.has(name));
   }
 
   // ~/.local/share/opencode/project/<slug>/storage/session/info/<id>.json (aprox.)
@@ -433,7 +453,7 @@ export class AgentSessionTracker {
     return best?.name ?? null;
   }
 
-  private oldestFileRecursive(dir: string, since: number, match: (name: string) => boolean, maxDepth: number): string | null {
+  private oldestFileRecursive(dir: string, since: number, match: (name: string, path: string) => boolean, maxDepth: number): string | null {
     if (!existsSync(dir)) return null;
     let best: { path: string; mtime: number } | null = null;
     const walk = (current: string, depth: number) => {
@@ -448,7 +468,7 @@ export class AgentSessionTracker {
         const full = join(current, entry.name);
         if (entry.isDirectory()) {
           walk(full, depth + 1);
-        } else if (match(entry.name)) {
+        } else if (match(entry.name, full)) {
           try {
             const mtime = statSync(full).mtimeMs;
             if (mtime > since && (!best || mtime < best.mtime)) best = { path: full, mtime };
@@ -484,7 +504,7 @@ export class AgentSessionTracker {
     return best?.name ?? null;
   }
 
-  private newestFileRecursive(dir: string, since: number, match: (name: string) => boolean, maxDepth: number): string | null {
+  private newestFileRecursive(dir: string, since: number, match: (name: string, path: string) => boolean, maxDepth: number): string | null {
     if (!existsSync(dir)) return null;
     let best: { path: string; mtime: number } | null = null;
     const walk = (current: string, depth: number) => {
@@ -499,7 +519,7 @@ export class AgentSessionTracker {
         const full = join(current, entry.name);
         if (entry.isDirectory()) {
           walk(full, depth + 1);
-        } else if (match(entry.name)) {
+        } else if (match(entry.name, full)) {
           try {
             const mtime = statSync(full).mtimeMs;
             if (mtime > since && (!best || mtime > best.mtime)) best = { path: full, mtime };

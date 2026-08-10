@@ -43,7 +43,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'tarefas',
       title: 'Tareas (kanban)',
-      body: `El nodo Tareas (+ Tareas en la barra inferior) es el tablero del workspace. Usa el icono de columnas para crear hasta diez etapas que representen tu proceso. El líder y el equipo ven esas etapas automáticamente y mantienen el estado real de cada entrega. "Agregar tarea" abre un composer con título, descripción markdown e imágenes. Asignar una tarjeta despacha todo el briefing al agente. Al iniciar, el líder recibe cada tarea sin responsable con título, descripción, imágenes y nota vinculada, y debe registrarla/asignarla en el tablero antes de delegar por mensaje. task done envía una notificación identificada como Tarea completada; Proyecto completado se reserva para el final real del proyecto. El trabajo concluido puede archivarse sin perder historial.`,
+      body: `El nodo Tareas (+ Tareas en la barra inferior) es el tablero del workspace. Usa el icono de columnas para crear hasta diez etapas que representen tu proceso. El líder y el equipo ven esas etapas automáticamente y mantienen el estado real de cada entrega. "Agregar tarea" abre un composer con título, descripción markdown e imágenes. Asignar una tarjeta despacha todo el briefing al agente. Al iniciar, el líder recibe cada tarea sin responsable con título, descripción, imágenes y nota vinculada, y debe registrarla/asignarla en el tablero antes de delegar por mensaje. task done envía una notificación identificada como Tarea completada y entrega automáticamente el handoff al líder cuando su composer queda libre; Proyecto completado se reserva para el final real del proyecto. El trabajo concluido puede archivarse sin perder historial.`,
     },
     {
       id: 'imagens',
@@ -93,7 +93,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'cli',
       title: 'CLI orkestrai (el puente)',
-      body: `Los agentes usan la CLI orkestrai para actuar en el canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes y portals. usage devuelve las cuotas actuales y la recomendación configurada en el nodo Uso. task columns devuelve las etapas que definiste; task add --column y task move permiten que líder y equipo sigan cualquier proceso, no solo un kanban de software. Los agentes que hablan MCP reciben las mismas acciones como tools nativas vía orkestrai mcp. El provisionamiento del puente es automático y el token queda en .orkestrai/workspace.json.`,
+      body: `Los agentes usan la CLI orkestrai para actuar en el canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes y portals. ask conserva mensajes de varias palabras sin comillas, pero una conversación solo cuenta cuando el puente devuelve Respuesta confirmada; un timeout o una respuesta no confirmada termina con error. usage devuelve las cuotas actuales y la recomendación configurada en el nodo Uso. task columns devuelve las etapas que definiste; task add --column y task move permiten que líder y equipo sigan cualquier proceso, no solo un kanban de software. task done también avisa al líder automáticamente. Los agentes que hablan MCP reciben las mismas acciones como tools nativas vía orkestrai mcp. El provisionamiento del puente es automático y el token queda en .orkestrai/workspace.json.`,
     },
     {
       id: 'usage-routing',
@@ -115,7 +115,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'leader-team',
       title: 'Equipo de desarrollo con líder (zero-config)',
-      body: 'Crea un Claude y dile: "orquesta para mí la feature X". Él propone el equipo (ej.: 2 backend, 1 frontend, 1 reviewer), tú apruebas, y él recluta, conecta y distribuye vía kanban. Al final, despide los agentes que ya no necesita.',
+      body: 'Crea un Claude y dile: "orquesta para mí la feature X". Él propone el equipo, tú apruebas, y él recluta, conecta y distribuye mediante kanban. Cada consulta por ask solo cuenta tras la confirmación explícita del puente; cuando un agente usa task done, el líder recibe automáticamente el handoff para revisar y coordinar el siguiente paso.',
       tags: ['Líder/Maestro', 'recruit/dismiss', 'kanban'],
     },
     {
@@ -276,6 +276,15 @@ export const DOCS_ES: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '10 ago 2026 · 0.8.2',
+      items: [
+        'Las conversaciones entre Claude y Codex se validaron en ambos sentidos con respuestas reales confirmadas desde el transcript correcto.',
+        'Las sesiones Codex usan el directorio real del workspace y las sesiones Kimi usan el hash exacto de la ruta, sin cruzar conversaciones entre proyectos concurrentes.',
+        'ask conserva mensajes de varias palabras sin comillas, mientras timeouts y respuestas no confirmadas ahora fallan explícitamente.',
+        'task done entrega automáticamente el handoff al líder sin mezclar el mensaje con un borrador humano sin terminar.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.8.1',
       items: [

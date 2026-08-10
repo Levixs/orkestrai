@@ -102,6 +102,40 @@ describe('TaskBoardService', () => {
     ptySessionManager.kill(session.id);
   });
 
+  it('avisa o lider quando outro agente conclui uma tarefa', async () => {
+    const { workspace, leader, leaderSession } = await createWorkspaceWithLeader();
+    const workerSession = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    const worker = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Codex',
+      payload: { command: '/bin/cat', provider: null, sessionId: workerSession.id },
+    });
+    const task = await taskBoardService.create(workspace.id, {
+      title: 'Revisar autenticacao',
+      assigneeNodeId: worker.id,
+      createdBy: leader.id,
+    });
+
+    const completed = await taskBoardService.update(workspace.id, task.id, {
+      status: 'done',
+      notifyCompletion: true,
+      completedBy: worker.id,
+    });
+    expect(completed.completionHandoff).toMatchObject({ status: 'queued', leaderTitle: 'Lider' });
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const { scrollback, detach } = ptySessionManager.attach(leaderSession.id, () => {});
+    detach();
+    expect(scrollback).toContain('tarefa concluida');
+    expect(scrollback).toContain('Revisar autenticacao');
+    expect(scrollback).toContain('Codex');
+
+    ptySessionManager.kill(workerSession.id);
+    ptySessionManager.kill(leaderSession.id);
+    leader.id && expect(leader.id).toBeTruthy();
+  });
+
   it('criada com assignee ja nasce doing; titulo vazio falha', async () => {
     const { workspace, session } = await createWorkspaceWithTerminal();
     await expect(taskBoardService.create(workspace.id, { title: '  ' })).rejects.toThrow('título');

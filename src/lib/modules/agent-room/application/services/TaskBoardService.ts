@@ -25,6 +25,10 @@ export type BoardTask = {
   /** Nota de spec vinculada (UMA por tarefa; a mesma nota pode servir N tarefas). */
   noteId: string | null;
   noteTitle: string | null;
+  completionHandoff?: {
+    status: 'queued' | 'leader_offline' | 'no_leader' | 'not_needed';
+    leaderTitle: string | null;
+  };
 };
 
 function imagesOf(model: AgentBoardTask): string[] {
@@ -247,7 +251,7 @@ export class TaskBoardService {
   async update(
     workspaceId: string,
     taskId: string,
-    input: { title?: string; description?: string | null; status?: string; assigneeNodeId?: string | null; imagePath?: string | null; noteId?: string | null; notifyCompletion?: boolean }
+    input: { title?: string; description?: string | null; status?: string; assigneeNodeId?: string | null; imagePath?: string | null; noteId?: string | null; notifyCompletion?: boolean; completedBy?: string | null }
   ): Promise<BoardTask> {
     const task = await this.requireTask(workspaceId, taskId);
     const wasDone = task.getAttribute('status') === 'done';
@@ -282,6 +286,7 @@ export class TaskBoardService {
     }
     notifyWorkspaceChanged(workspaceId);
     const updated = await this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+    let completionHandoff: BoardTask['completionHandoff'];
     if (input.notifyCompletion && !wasDone && updated.status === 'done') {
       const workspace = await workspaceRepository.getWorkspace(workspaceId);
       if (workspace) {
@@ -291,8 +296,9 @@ export class TaskBoardService {
           message: updated.assigneeTitle ? `@${updated.assigneeTitle}` : '',
         });
       }
+      completionHandoff = await this.notifyLeaderCompletion(workspaceId, updated, input.completedBy ?? null);
     }
-    return updated;
+    return completionHandoff ? { ...updated, completionHandoff } : updated;
   }
 
   async remove(workspaceId: string, taskId: string): Promise<boolean> {
@@ -358,6 +364,46 @@ export class TaskBoardService {
       session.id,
       `[nova tarefa no quadro #${taskId.slice(0, 8)}]\n${taskBrief(task)}\n${hint}`,
     );
+  }
+
+  /**
+   * Task completion is an asynchronous handoff to the leader. The PTY delivery
+   * queue waits for any human draft instead of mixing both messages.
+   */
+  private async notifyLeaderCompletion(
+    workspaceId: string,
+    task: BoardTask,
+    completedBy: string | null,
+  ): Promise<NonNullable<BoardTask['completionHandoff']>> {
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    const leader = nodes.find(
+      (node) => node.type === 'terminal' && Boolean((node.payload as { maestro?: boolean }).maestro)
+    );
+    if (!leader) return { status: 'no_leader', leaderTitle: null };
+
+    const completer = nodes.find((node) =>
+      node.id === (task.assigneeNodeId ?? completedBy) ||
+      (completedBy != null && node.title?.toLowerCase() === completedBy.toLowerCase())
+    );
+    if (completer?.id === leader.id || completedBy === leader.id) {
+      return { status: 'not_needed', leaderTitle: leader.title ?? 'Lider' };
+    }
+
+    const sessionId = (leader.payload as { sessionId?: string }).sessionId;
+    const session = sessionId ? ptySessionManager.get(sessionId) : null;
+    if (!session || session.exited) {
+      return { status: 'leader_offline', leaderTitle: leader.title ?? 'Lider' };
+    }
+
+    const author = completer?.title ?? task.assigneeTitle ?? completedBy ?? 'agente';
+    const delivery = ptySessionManager.queueWithSubmit(
+      session.id,
+      `[tarefa concluida no quadro #${task.id.slice(0, 8)}] Titulo: ${task.title}. Concluida por: ${author}. ` +
+      'Verifique o resultado e o quadro agora; se estiver correto, integre o andar quando houver e distribua o proximo trabalho. ' +
+      'Use orkestrai task list e orkestrai ask para qualquer confirmacao necessaria.',
+    );
+    void delivery.submitted.catch(() => {});
+    return { status: 'queued', leaderTitle: leader.title ?? 'Lider' };
   }
 
   /**

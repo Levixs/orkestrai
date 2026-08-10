@@ -55,9 +55,39 @@ describe('BridgeService', () => {
 
     expect(result.to).toBe('Gato');
     expect(result.timedOut).toBe(false);
+    expect(result.delivered).toBe(true);
+    expect(result.replyConfirmed).toBe(true);
     expect(result.reply).toContain('ping-ponte');
     ptySessionManager.kill(session.id);
   });
+
+  it('ask funciona nos dois sentidos entre terminais Claude e Codex', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'duplex', workingDir: '/tmp' });
+    const claudeSession = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    const codexSession = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Claude',
+      payload: { command: '/bin/cat', sessionId: claudeSession.id, maestro: true },
+    });
+    await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Codex',
+      payload: { command: '/bin/cat', sessionId: codexSession.id },
+    });
+
+    const toCodex = await bridgeService.ask(workspace.id, { to: 'Codex', from: 'Claude', message: 'claude-para-codex', timeoutMs: 15_000 });
+    const toClaude = await bridgeService.ask(workspace.id, { to: 'Claude', from: 'Codex', message: 'codex-para-claude', timeoutMs: 15_000 });
+    expect(toCodex).toMatchObject({ delivered: true, replyConfirmed: true, timedOut: false });
+    expect(toCodex.reply).toContain('claude-para-codex');
+    expect(toClaude).toMatchObject({ delivered: true, replyConfirmed: true, timedOut: false });
+    expect(toClaude.reply).toContain('codex-para-claude');
+
+    ptySessionManager.kill(claudeSession.id);
+    ptySessionManager.kill(codexSession.id);
+  }, 20_000);
 
   it('ask falha claro para agente inexistente', async () => {
     const { workspace, session } = await createWorkspaceWithTerminal();

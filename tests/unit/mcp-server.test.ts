@@ -118,6 +118,10 @@ describe('servidor MCP (orkestrai mcp)', () => {
     expect(ask.body).toMatchObject({ to: 'Codex', message: 'oi', from: 'n1' });
     expect(ask.body.text).toBeUndefined();
 
+    send({ jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'task_done', arguments: { taskId: 't1' } } });
+    const taskDone = JSON.parse((await waitFor(6)).result.content[0].text);
+    expect(taskDone.body).toEqual({ status: 'done', from: 'n1' });
+
     // note_write/edit: REST por nodeId (PUT/PATCH /notes/:id)
     send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'note_write', arguments: { nodeId: 'n9', content: 'x' } } });
     const write = JSON.parse((await waitFor(2)).result.content[0].text);

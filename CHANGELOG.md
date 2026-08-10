@@ -5,6 +5,25 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.8.2 - 2026-08-10
+
+### Changed
+
+- Made `orkestrai ask` preserve unquoted multi-word messages and require an
+  explicitly confirmed provider reply before agents may report a consultation.
+- Made `orkestrai task done` hand completion back to the workspace leader
+  automatically without colliding with a human draft in the leader terminal.
+
+### Fixed
+
+- Matched Codex rollout sessions by their real workspace directory, preventing
+  concurrent Codex terminals in different workspaces from reading each other's
+  transcripts or confirming the wrong reply.
+- Matched Kimi sessions by the provider's exact workspace-path hash instead of
+  a shared final folder name such as `app`.
+- Made unconfirmed and timed-out bridge requests fail with a nonzero exit code
+  instead of appearing successful to the calling agent.
+
 ## 0.8.1 - 2026-08-10
 
 ### Added

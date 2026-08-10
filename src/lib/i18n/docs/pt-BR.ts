@@ -47,7 +47,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'tarefas',
       title: 'Tarefas (kanban)',
-      body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace. Use o ícone de colunas no cabeçalho para nomear, colorir, ordenar e criar até dez etapas que representem o seu processo — por exemplo Ideias, Roteiro, Design, Aprovação e Publicado. O líder e o time enxergam essas etapas automaticamente e mantêm o estado real de cada entrega. O botão "Adicionar tarefa" abre um composer completo com título, descrição em markdown e imagens de referência já na criação. Atribuir um cartão despacha todo esse briefing direto para o agente. Ao iniciar, o líder recebe todas as tarefas sem responsável com título, descrição, imagens e nota e deve registrar/atribuir no quadro antes de delegar por mensagem. task done envia uma notificação identificada como Tarefa concluída; Projeto concluído é reservado para o término real do projeto. Cada tarefa pode ter UMA nota vinculada; concluídas podem ser arquivadas sem perder o histórico.`,
+      body: `O nó Tarefas (+ Tarefas na barra inferior) é o quadro do workspace. Use o ícone de colunas no cabeçalho para nomear, colorir, ordenar e criar até dez etapas que representem o seu processo — por exemplo Ideias, Roteiro, Design, Aprovação e Publicado. O líder e o time enxergam essas etapas automaticamente e mantêm o estado real de cada entrega. O botão "Adicionar tarefa" abre um composer completo com título, descrição em markdown e imagens de referência já na criação. Atribuir um cartão despacha todo esse briefing direto para o agente. Ao iniciar, o líder recebe todas as tarefas sem responsável com título, descrição, imagens e nota e deve registrar/atribuir no quadro antes de delegar por mensagem. task done envia uma notificação identificada como Tarefa concluída e entrega automaticamente o handoff ao líder assim que o composer dele estiver livre; Projeto concluído é reservado para o término real do projeto. Cada tarefa pode ter UMA nota vinculada; concluídas podem ser arquivadas sem perder o histórico.`,
     },
     {
       id: 'imagens',
@@ -97,7 +97,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'cli',
       title: 'CLI orkestrai (a ponte)',
-      body: `Os agentes usam a CLI orkestrai para agir no canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes e portals. usage devolve as cotas atuais e a recomendação configurada no nó Uso. task columns devolve as etapas definidas por você; task add --column e task move permitem que líder e equipe respeitem qualquer processo, não apenas um kanban de software. Agentes que falam MCP recebem as mesmas ações como tools nativas via orkestrai mcp. O provisionamento da ponte é automático e o token fica em .orkestrai/workspace.json.`,
+      body: `Os agentes usam a CLI orkestrai para agir no canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes e portals. ask preserva mensagens com várias palavras mesmo sem aspas, mas uma conversa só conta quando a ponte devolve Resposta confirmada; timeout ou resposta não confirmada termina com erro. usage devolve as cotas atuais e a recomendação configurada no nó Uso. task columns devolve as etapas definidas por você; task add --column e task move permitem que líder e equipe respeitem qualquer processo, não apenas um kanban de software. task done também avisa o líder automaticamente. Agentes que falam MCP recebem as mesmas ações como tools nativas via orkestrai mcp. O provisionamento da ponte é automático e o token fica em .orkestrai/workspace.json.`,
     },
     {
       id: 'usage-routing',
@@ -119,7 +119,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'leader-team',
       title: 'Time de desenvolvimento com líder (zero-config)',
-      body: 'Crie um Claude e diga: “orquestra pra mim a feature X”. Ele propõe o time (ex.: 2 backend, 1 frontend, 1 reviewer), você aprova, e ele recruta, conecta e distribui via kanban. Ao final, dispensa os agentes que não precisa mais.',
+      body: 'Crie um Claude e diga: “orquestra pra mim a feature X”. Ele propõe o time, você aprova, e ele recruta, conecta e distribui via kanban. Cada consulta por ask só vale após confirmação explícita da ponte; quando um agente usa task done, o líder recebe o handoff automaticamente para revisar e coordenar o próximo passo.',
       tags: ['Líder/Maestro', 'recruit/dismiss', 'kanban'],
     },
     {
@@ -280,6 +280,15 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '10 ago 2026 · 0.8.2',
+      items: [
+        'Conversas entre Claude e Codex foram validadas nos dois sentidos com respostas reais e confirmação pelo transcript correto.',
+        'Sessões Codex usam o diretório real do workspace e sessões Kimi usam o hash exato do caminho, sem cruzar conversas entre projetos concorrentes.',
+        'ask preserva mensagens sem aspas com várias palavras e timeout ou resposta não confirmada agora termina com erro explícito.',
+        'task done entrega automaticamente um handoff ao líder sem misturar a mensagem com um rascunho humano em andamento.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.8.1',
       items: [

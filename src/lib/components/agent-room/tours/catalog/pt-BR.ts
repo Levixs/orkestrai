@@ -49,7 +49,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'talk',
         title: 'Dê a ordem',
-        body: 'No terminal do líder, diga: "leia a nota Briefing, proponha o time e comece". Ele recruta os agentes, conecta tudo e trabalha. Tour concluído quando o líder estiver no canvas.',
+        body: 'No terminal do líder, diga: "leia a nota Briefing, proponha o time e comece". Consultas entre agentes só contam após o ask confirmar a resposta; quando alguém conclui com task done, o líder recebe o handoff automaticamente.',
         check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder' },
       },
     ],

@@ -351,6 +351,7 @@ export class BridgeController extends Controller {
         assigneeNodeId: input.assignee !== undefined ? await this.assigneeNodeId(workspace.id, input.assignee) : undefined,
         noteId: await this.noteNodeId(workspace.id, input.note),
         notifyCompletion: true,
+        completedBy: input.from,
       });
       return this.json({ data: task });
     } catch (error) {

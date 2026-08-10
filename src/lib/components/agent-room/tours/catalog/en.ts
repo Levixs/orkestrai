@@ -45,7 +45,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'talk',
         title: 'Give the order',
-        body: 'In the leader\'s terminal, say: "read the Briefing note, propose the team and start". It recruits the agents, connects everything and works. The tour ends when the leader is on the canvas.',
+        body: 'In the leader\'s terminal, say: "read the Briefing note, propose the team and start". Agent consultations count only after ask confirms the reply; when someone finishes with task done, the leader receives the handoff automatically.',
         check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder' },
       },
     ],
