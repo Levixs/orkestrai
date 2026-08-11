@@ -87,7 +87,6 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) 138px;
     align-items: center;
-    border-bottom: 1px solid var(--app-border);
     background: var(--app-sidebar);
     color: var(--app-text-soft);
     user-select: none;

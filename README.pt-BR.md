@@ -30,8 +30,9 @@ Baixe os instaladores mais recentes em
 - **Times prontos:** inicie ou amplie um workspace com presets de Produto,
   Campanha e lançamento, Brand e design, Conteúdo e SEO, React, Next.js,
   SvelteKit, Svelar, Laravel e Orkestrai Contributing. Os agentes iniciam no
-  modo autônomo de acesso total, com roles operacionais detalhadas e uma tarefa
-  inicial que o líder recebe e atribui, sem pedidos repetidos de permissão.
+  modo autônomo de acesso total e com roles no nível nativo de system/developer
+  prompt, sem instruções longas bloqueando o terminal como texto colado. O líder
+  recebe e atribui a tarefa inicial completa sem pedidos repetidos de permissão.
 - **Fluxos que combinam com o trabalho:** nomeie, dê cores e ordene até dez etapas
   do quadro. Líder e agentes descobrem e atualizam o mesmo processo sozinhos.
 - **Visões operacionais do time:** instale funções especializadas por um
@@ -48,8 +49,9 @@ Baixe os instaladores mais recentes em
   foco para o líder e ouça respostas em português brasileiro, inglês americano
   ou espanhol latino-americano. STT e TTS rodam na máquina do usuário.
 - **Delegação por cota:** fixe o uso de Claude, Codex e Kimi no canvas, configure
-  origem, fallback e limite e deixe o líder consultar a mesma recomendação pela
-  CLI ou ponte MCP antes de atribuir trabalho novo.
+  origem, fallback, janela de 5 horas/semanal/mensal e limite e deixe o líder
+  consultar a mesma recomendação pela CLI ou ponte MCP antes de atribuir trabalho
+  novo.
 - **Aparência personalizada:** escolha entre três temas escuros e um claro ou
   duplique um deles e edite tokens semânticos com prévia e importação/exportação JSON.
 - **Controles operacionais:** gerencie portas de portais locais, configure rotinas

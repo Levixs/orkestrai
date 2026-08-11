@@ -83,6 +83,31 @@ describe('agent adapter registry', () => {
     expect(preserved.payload).toBe(custom);
   });
 
+  it('materializa roles no mecanismo nativo do provider sem coloca-las no composer', () => {
+    const role = {
+      name: 'Revisor',
+      prompt: 'Revise riscos e testes antes de aprovar.',
+      instructionFile: '/tmp/.orkestrai/roles/revisor/AGENTS.md',
+    };
+
+    const claude = materializeInteractiveAgentCommand({ provider: 'claude', args: [] }, role).payload;
+    expect(claude.initialRoleArgs).toEqual(['--append-system-prompt', role.prompt]);
+    expect(claude.roleConfiguredAtLaunch).toBe('Revisor');
+
+    const codex = materializeInteractiveAgentCommand({ provider: 'codex', args: [] }, role).payload;
+    expect(codex.initialRoleArgs).toEqual([
+      '-c',
+      `developer_instructions=${JSON.stringify(role.prompt)}`,
+    ]);
+
+    const kimi = materializeInteractiveAgentCommand({ provider: 'kimi', args: [] }, role).payload;
+    expect(kimi.initialRoleArgs).toEqual(['--agent-file', role.instructionFile]);
+
+    const fallback = materializeInteractiveAgentCommand({ provider: 'opencode', args: [] }, role).payload;
+    expect(fallback.initialRoleArgs).toBeUndefined();
+    expect(fallback.roleConfiguredAtLaunch).toBeUndefined();
+  });
+
   it('lanca erro claro para adapter desconhecido', () => {
     expect(hasAgentAdapter('nao-existe')).toBe(false);
     expect(() => getAgentAdapter('nao-existe')).toThrowError(/Adaptador de agente desconhecido: "nao-existe"/);

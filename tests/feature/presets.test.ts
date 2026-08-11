@@ -175,6 +175,18 @@ describe('PresetService', () => {
     expect(argsFor('claude')).toContain('--dangerously-skip-permissions');
     expect(argsFor('codex')).toContain('--dangerously-bypass-approvals-and-sandbox');
     expect(argsFor('kimi')).toContain('--auto');
+
+    const roleArgsFor = (provider: string) => {
+      const terminal = nodes.find(
+        (node) => node.type === 'terminal' && (node.payload as { provider?: string }).provider === provider
+      );
+      return (terminal?.payload as { initialRoleArgs?: string[] } | undefined)?.initialRoleArgs;
+    };
+    expect(roleArgsFor('claude')?.[0]).toBe('--append-system-prompt');
+    expect(roleArgsFor('codex')?.[0]).toBe('-c');
+    expect(roleArgsFor('codex')?.[1]).toContain('developer_instructions=');
+    expect(roleArgsFor('kimi')?.[0]).toBe('--agent-file');
+    expect(roleArgsFor('kimi')?.[1]).toContain('.orkestrai/roles/');
   });
 
   it('installs the Orkestrai contributing consensus team and its complete workflow', async () => {

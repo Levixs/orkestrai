@@ -32,7 +32,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (papéis do time)',
-      body: `Roles são conjuntos de instruções salvos em .orkestrai/roles/<slug>/role.json — viajam com o repositório. No painel Roles, a aba Catálogo oferece funções completas de liderança, produto, arquitetura, frontend, backend, Svelar, QA, segurança, acessibilidade, documentação, release e performance; instale com + e personalize na aba No workspace. Atribua pelo selo no cabeçalho do terminal: a role é injetada automaticamente na primeira sessão do agente. Os presets incluem protocolos completos de missão, contexto, processo, critérios de aceite, handoff e disciplina do quadro, em vez de descrições genéricas. O líder também pode reatribuir roles via orkestrai reassign.`,
+      body: `Roles são conjuntos de instruções salvos em .orkestrai/roles/<slug>/role.json — viajam com o repositório. No painel Roles, a aba Catálogo oferece funções completas de liderança, produto, arquitetura, frontend, backend, Svelar, QA, segurança, acessibilidade, documentação, release e performance; instale com + e personalize na aba No workspace. Nos presets, Claude recebe a role como system prompt, Codex como instrução de developer e Kimi pelo arquivo de agente antes da primeira mensagem; outros providers recebem apenas uma referência curta ao AGENTS.md da role, sem colar o prompt longo no terminal. O líder também pode reatribuir roles via orkestrai reassign.`,
     },
     {
       id: 'times',
@@ -57,7 +57,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'presets',
       title: 'Presets de equipe',
-      body: `A Biblioteca de presets fica no ícone de template da barra lateral e no botão Presets da barra inferior. Além dos times de Produto, React, Next.js, SvelteKit, Svelar e Laravel, ela traz Campanha e lançamento, Brand e design, Conteúdo e SEO e Orkestrai Contributing. Cada receita inclui líder, especialistas, roles operacionais extensas, skills, briefing, quadro, tarefa inicial e layout; o time de contribuição inclui ainda consenso obrigatório entre Claude, Codex e Kimi. Agentes de preset iniciam com as flags de acesso total autônomo do provider e recebem sua role na primeira sessão. O líder recebe a tarefa inicial completa e deve atribuí-la antes de delegar. Use Novo workspace para outra pasta ou + para somar o time ao canvas atual sem apagar nada.`,
+      body: `A Biblioteca de presets fica no ícone de template da barra lateral e no botão Presets da barra inferior. Além dos times de Produto, React, Next.js, SvelteKit, Svelar e Laravel, ela traz Campanha e lançamento, Brand e design, Conteúdo e SEO e Orkestrai Contributing. Cada receita inclui líder, especialistas, roles operacionais extensas, skills, briefing, quadro, tarefa inicial e layout; o time de contribuição inclui ainda consenso obrigatório entre Claude, Codex e Kimi. Agentes de preset iniciam com acesso total autônomo e recebem a role pelo mecanismo nativo da CLI, sem deixar o terminal preso em texto colado. O líder recebe a tarefa inicial completa e deve atribuí-la antes de delegar. Use Novo workspace para outra pasta ou + para somar o time ao canvas atual sem apagar nada.`,
     },
     {
       id: 'fluxos',
@@ -102,7 +102,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'usage-routing',
       title: 'Uso e roteamento por cota',
-      body: `Abra Uso na barra inferior e use Adicionar ao canvas para manter o consumo de Claude, Codex e Kimi visível no workspace. O nó atualiza a cada cinco minutos e permite escolher provider de origem, fallback e limite entre 50% e 100%. O líder consulta essa política pela CLI ou MCP antes de distribuir trabalho novo e pode recomendar o fallback quando a origem estiver perto do limite, esgotada ou indisponível. Uma tarefa já em execução nunca troca de terminal silenciosamente.`,
+      body: `Abra Uso na barra inferior e use Adicionar ao canvas para manter o consumo de Claude, Codex e Kimi visível no workspace. O nó atualiza a cada cinco minutos e permite escolher provider de origem, fallback, janela monitorada de 5 horas, semanal ou mensal e limite entre 50% e 100%. O app mostra somente as janelas realmente reportadas por cada provider e avisa quando a política escolhe uma indisponível. O líder consulta essa política pela CLI ou MCP antes de distribuir trabalho novo. Uma tarefa já em execução nunca troca de terminal silenciosamente.`,
     },
     {
       id: 'appearance',
@@ -263,7 +263,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'quota-aware-delegation',
       title: 'Distribuir trabalho sem estourar a cota',
-      body: 'Adicione o nó Uso ao canvas, defina Claude como origem, Codex como fallback e escolha o limite. Antes de delegar uma tarefa nova, o líder consulta orkestrai usage e recomenda o agente saudável quando a origem cruza esse limite; conversas e tarefas em andamento permanecem no provider atual.',
+      body: 'Adicione o nó Uso ao canvas, defina Claude como origem, Codex como fallback e escolha a janela de 5 horas, semanal ou mensal e o percentual. Antes de delegar uma tarefa nova, o líder consulta orkestrai usage e recomenda o agente saudável quando a origem cruza esse limite; conversas e tarefas em andamento permanecem no provider atual.',
       tags: ['Uso no canvas', 'fallback', 'delegação'],
     },
     {
@@ -280,6 +280,16 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '11 ago 2026 · 0.9.0',
+      items: [
+        'Presets agora configuram roles pelo mecanismo nativo de Claude, Codex e Kimi; outros providers recebem uma referência curta ao arquivo, sem prompts longos como texto colado no terminal.',
+        'Uso e roteamento permite escolher a janela de 5 horas, semanal ou mensal e informa quando o provider não reporta o período selecionado.',
+        'O coletor entende a resposta atual do Kimi e limites adicionais do Codex, mostrando cada janela reportada uma única vez no painel e no nó.',
+        'O toggle shadcn voltou a representar o estado visualmente, e o editor de workspace ganhou layout responsivo, rolagem limitada e rodapé estável.',
+        'No Windows, a linha abaixo da barra de título agora ocupa toda a largura da janela.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.8.3',
       items: [

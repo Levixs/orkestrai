@@ -30,8 +30,9 @@ Descarga los instaladores más recientes desde
 - **Equipos listos:** inicia o amplía un workspace con presets de Producto,
   Campaña y lanzamiento, Brand y diseño, Contenido y SEO, React, Next.js,
   SvelteKit, Svelar, Laravel y Orkestrai Contributing. Los agentes comienzan en
-  modo autónomo de acceso total, con roles operativos detallados y una tarea
-  inicial que el líder recibe y asigna, sin solicitudes repetidas de permiso.
+  modo autónomo de acceso total y con roles en el nivel nativo de system/developer
+  prompt, sin instrucciones largas bloqueando la terminal como texto pegado. El
+  líder recibe y asigna la tarea inicial completa sin solicitudes repetidas.
 - **Flujos que corresponden al trabajo:** nombra, colorea y ordena hasta diez
   etapas del tablero. Líder y agentes descubren y actualizan el mismo proceso.
 - **Vistas operativas del equipo:** instala funciones especializadas desde un
@@ -48,8 +49,9 @@ Descarga los instaladores más recientes desde
   foco para el líder y escucha respuestas en portugués de Brasil, inglés de
   Estados Unidos o español latinoamericano. STT y TTS se ejecutan localmente.
 - **Delegación según la cuota:** fija el uso de Claude, Codex y Kimi en el canvas,
-  configura origen, fallback y límite, y deja que el líder consulte la misma
-  recomendación por CLI o MCP antes de asignar trabajo nuevo.
+  configura origen, fallback, ventana de 5 horas/semanal/mensual y límite, y deja
+  que el líder consulte la misma recomendación por CLI o MCP antes de asignar
+  trabajo nuevo.
 - **Apariencia personalizada:** elige entre tres temas oscuros y uno claro, o
   duplica uno y edita tokens semánticos con vista previa e importación/exportación JSON.
 - **Controles operativos:** administra puertos de portales locales, configura

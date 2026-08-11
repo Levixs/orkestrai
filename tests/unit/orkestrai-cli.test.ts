@@ -28,10 +28,10 @@ describe('orkestrai CLI', () => {
         } else if (req.url === '/api/agent-room/bridge/usage') {
           res.end(JSON.stringify({ data: {
             providers: [
-              { provider: 'claude', plan: 'Pro', windows: [{ kind: '5h', label: '5 hours', usedPercent: 96, resetsAt: null }], error: null, fetchedAt: new Date(0).toISOString(), status: 'near_limit', peakUsedPercent: 96 },
-              { provider: 'codex', plan: null, windows: [{ kind: 'weekly', label: 'Weekly', usedPercent: 18, resetsAt: null }], error: null, fetchedAt: new Date(0).toISOString(), status: 'available', peakUsedPercent: 18 },
+              { provider: 'claude', plan: 'Pro', windows: [{ kind: '5h', label: '5 hours', usedPercent: 96, resetsAt: null }], error: null, fetchedAt: new Date(0).toISOString(), status: 'near_limit', monitoredUsedPercent: 96 },
+              { provider: 'codex', plan: null, windows: [{ kind: '5h', label: '5 hours', usedPercent: 18, resetsAt: null }], error: null, fetchedAt: new Date(0).toISOString(), status: 'available', monitoredUsedPercent: 18 },
             ],
-            policy: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', thresholdPercent: 90 },
+            policy: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', windowKind: '5h', thresholdPercent: 90 },
             shouldFallback: true,
             recommendedProvider: 'codex',
           } }));

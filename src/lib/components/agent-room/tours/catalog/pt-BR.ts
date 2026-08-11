@@ -744,7 +744,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'set-policy',
         title: 'Ajuste a política',
-        body: 'No nó, escolha a origem, um fallback diferente e o percentual que significa "perto do limite". A indicação muda com o snapshot atual das CLIs.',
+        body: 'No nó, escolha a origem, um fallback diferente, a janela de 5 horas, semanal ou mensal e o percentual que significa "perto do limite". Se o provider não reportar esse período, o nó pede outra janela.',
       },
       {
         id: 'leader-checks',

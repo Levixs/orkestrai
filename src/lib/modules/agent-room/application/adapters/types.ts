@@ -25,6 +25,13 @@ export type AgentCommandSpec = {
   promptDelivery?: 'stdin' | 'args';
 };
 
+/** Role persistida que um adapter pode instalar no nivel nativo do CLI. */
+export type AgentRoleLaunchContext = {
+  name: string;
+  prompt: string;
+  instructionFile: string;
+};
+
 /**
  * Resultado do parse do stream de saida da CLI.
  * `cliError` sinaliza erro reportado pela propria CLI no payload (ex.: is_error),
@@ -63,6 +70,11 @@ export interface AgentAdapter {
   buildCommand(request: AgentRunRequest): AgentCommandSpec;
   /** Monta o comando TUI interativo para rodar o agente num terminal PTY. */
   interactiveCommand(options?: { model?: string; effort?: ModelEffort | null }): AgentCommandSpec;
+  /**
+   * Args usados somente ao criar uma conversa nova. Providers com suporte
+   * nativo recebem a role como system/developer prompt, nunca no composer.
+   */
+  initialRoleArgs?(role: AgentRoleLaunchContext): string[];
   /** Args de resume: exato com session-id, ou a mais recente do diretorio sem id. */
   resumeArgs(agentSessionId?: string): string[] | null;
   /** Args para reservar um id conhecido ao criar uma conversa nova, quando a CLI suporta. */

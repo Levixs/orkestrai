@@ -2,6 +2,7 @@
   import { defaults, superForm } from 'sveltekit-superforms';
   import { zod } from 'sveltekit-superforms/adapters';
   import { z } from 'zod';
+  import { getCsrfToken } from '@beeblock/svelar/http';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import * as Form from '$lib/components/ui/form';
@@ -41,6 +42,14 @@
   let mcpArgs = $state('');
   let mcpError = $state('');
 
+  function mutationHeaders(json = false): Record<string, string> {
+    const token = getCsrfToken();
+    return {
+      ...(json ? { 'content-type': 'application/json' } : {}),
+      ...(token ? { 'X-CSRF-Token': token } : {}),
+    };
+  }
+
   async function loadMcps() {
     try {
       const response = await fetch(`/api/agent-room/workspaces/${workspace.id}/mcps`);
@@ -54,7 +63,7 @@
     mcpError = '';
     const response = await fetch(`/api/agent-room/workspaces/${workspace.id}/mcps`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: mutationHeaders(true),
       body: JSON.stringify({ name: mcpName, command: mcpCommand, args: mcpArgs }),
     });
     const payload = await response.json();
@@ -69,7 +78,10 @@
   }
 
   async function removeMcp(name: string) {
-    const response = await fetch(`/api/agent-room/workspaces/${workspace.id}/mcps?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+    const response = await fetch(`/api/agent-room/workspaces/${workspace.id}/mcps?name=${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+      headers: mutationHeaders(),
+    });
     const payload = await response.json();
     if (payload.data) mcps = payload.data;
   }
@@ -81,7 +93,7 @@
     try {
       const response = await fetch('/api/agent-room/presets', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: mutationHeaders(true),
         body: JSON.stringify({ workspaceId: workspace.id, name: workspace.name, icon: workspace.icon }),
       });
       const payload = await response.json();
@@ -155,190 +167,153 @@
 </script>
 
 <Dialog.Root open onOpenChange={(isOpen) => !isOpen && onClose()}>
-  <Dialog.Content class="sm:max-w-lg">
-    <Dialog.Header>
+  <Dialog.Content class="max-h-[min(90dvh,820px)] max-w-[calc(100%-1.5rem)]! grid-rows-[auto_minmax(0,1fr)] gap-0! overflow-hidden rounded-lg p-0! sm:max-w-2xl!">
+    <Dialog.Header class="border-b border-border/60 px-5 py-4 pr-12">
       <Dialog.Title>{m['dlg.edit_ws_title']()}</Dialog.Title>
-      <Dialog.Description>{m['dlg.edit_ws_desc']()}</Dialog.Description>
+      <Dialog.Description class="text-pretty">{m['dlg.edit_ws_desc']()}</Dialog.Description>
     </Dialog.Header>
 
-    <form method="POST" use:enhance class="space-y-4">
-      <Form.Field {form} name="name">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Form.Label>{m['dlg.name']()}</Form.Label>
-            <Input {...props} bind:value={$formData.name} />
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
+    <form method="POST" use:enhance class="grid min-h-0 grid-rows-[minmax(0,1fr)_auto]">
+      <div class="min-h-0 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <Form.Field {form} name="name">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Form.Label>{m['dlg.name']()}</Form.Label>
+                <Input {...props} bind:value={$formData.name} autocomplete="off" />
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
 
-      <Form.Field {form} name="workingDir">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Form.Label>{m['dlg.working_dir']()}</Form.Label>
-            <div class="flex gap-2">
-              <Input {...props} bind:value={$formData.workingDir} class="flex-1" />
-              {#if desktop}
-                <Tooltip.Root>
-                  <Tooltip.Trigger>
-                    {#snippet child({ props })}
-                      <Button {...props} type="button" variant="outline" size="icon" aria-label={m['dlg.pick_folder']()} onclick={pickDirectory}>
-                        <FolderOpen size={15} />
-                      </Button>
-                    {/snippet}
-                  </Tooltip.Trigger>
-                  <Tooltip.Content side="top">{m['dlg.pick_folder']()}</Tooltip.Content>
-                </Tooltip.Root>
-              {/if}
-            </div>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <div class="field">
-        <span class="text-sm font-medium leading-none">{m['dlg.ws_icon']()}</span>
-        <div class="icon-picker" role="radiogroup" aria-label={m['dlg.ws_icon']()}>
-          {#each WORKSPACE_ICONS as option (option.name)}
-            {@const OptionIcon = option.component}
-            <button
-              type="button"
-              class="icon-option"
-              class:selected={($formData.icon ?? null) === option.name}
-              role="radio"
-              aria-checked={($formData.icon ?? null) === option.name}
-              aria-label={option.name}
-              onclick={() => ($formData.icon = ($formData.icon ?? null) === option.name ? null : option.name)}
-            >
-              <OptionIcon size={15} />
-            </button>
-          {/each}
+          <Form.Field {form} name="workingDir">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Form.Label>{m['dlg.working_dir']()}</Form.Label>
+                <div class="flex min-w-0 gap-2">
+                  <Input {...props} bind:value={$formData.workingDir} autocomplete="off" class="min-w-0 flex-1" />
+                  {#if desktop}
+                    <Tooltip.Root>
+                      <Tooltip.Trigger>
+                        {#snippet child({ props })}
+                          <Button {...props} type="button" variant="outline" size="icon" aria-label={m['dlg.pick_folder']()} onclick={pickDirectory}>
+                            <FolderOpen size={15} aria-hidden="true" />
+                          </Button>
+                        {/snippet}
+                      </Tooltip.Trigger>
+                      <Tooltip.Content side="top">{m['dlg.pick_folder']()}</Tooltip.Content>
+                    </Tooltip.Root>
+                  {/if}
+                </div>
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
         </div>
-        {#if isLegacyEmojiIcon($formData.icon)}
-          <p class="icon-legacy-hint">{m['dlg.icon_legacy_hint']({ icon: $formData.icon ?? '' })}</p>
-        {/if}
-      </div>
 
-      <Form.Field {form} name="instructions">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Form.Label>{m['dlg.agent_instructions']()}</Form.Label>
-            <Textarea {...props} bind:value={$formData.instructions} rows={5} placeholder={m['ph.ws_instructions']()} />
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="syncAgentInstructionFiles">
-        <Form.Control>
-          {#snippet children({ props })}
-            <div class="flex items-center gap-2">
-              <Checkbox {...props} checked={$formData.syncAgentInstructionFiles} onCheckedChange={(value: boolean | 'indeterminate') => ($formData.syncAgentInstructionFiles = value === true)} />
-              <Form.Label>{m['dlg.sync_instruction_files']()}</Form.Label>
-            </div>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      {#if submitError}
-        <p class="text-sm text-destructive">{submitError}</p>
-      {/if}
-
-      <div class="rounded-lg border border-border/60 p-3 space-y-2">
-        <div class="flex items-center gap-2">
-          <Plug size={13} class="text-muted-foreground" />
-          <span class="text-sm font-medium">{m['dlg.mcp_title']()}</span>
-        </div>
-        <p class="text-xs text-muted-foreground">
-          {m['dlg.mcp_desc']()}
-        </p>
-        {#if mcps.length}
-          <ul class="space-y-1">
-            {#each mcps as server (server.name)}
-              <li class="flex items-center gap-2 text-xs rounded-md bg-muted/40 px-2 py-1.5">
-                <span class="font-medium">{server.name}</span>
-                <span class="text-muted-foreground truncate flex-1">{server.command} {server.args.join(' ')}</span>
-                {#if server.builtin}
-                  <span class="text-[10px] text-emerald-400">{m['dlg.mcp_builtin']()}</span>
-                {:else}
-                  <button type="button" class="text-muted-foreground hover:text-destructive" aria-label={m['dlg.mcp_remove']({ name: server.name })} onclick={() => removeMcp(server.name)}>
-                    <Trash2 size={12} />
-                  </button>
-                {/if}
-              </li>
+        <div class="space-y-2">
+          <span class="text-sm font-medium leading-none">{m['dlg.ws_icon']()}</span>
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(34px,1fr))] gap-1.5" role="radiogroup" aria-label={m['dlg.ws_icon']()}>
+            {#each WORKSPACE_ICONS as option (option.name)}
+              {@const OptionIcon = option.component}
+              <button
+                type="button"
+                class={($formData.icon ?? null) === option.name
+                  ? 'flex aspect-square items-center justify-center rounded-lg border border-[var(--app-accent)] bg-[var(--app-accent)] text-[var(--app-accent-contrast)] transition-[color,background-color,border-color] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+                  : 'flex aspect-square items-center justify-center rounded-lg border border-[var(--app-border)] bg-transparent text-[var(--app-text-muted)] transition-[color,background-color,border-color] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'}
+                role="radio"
+                aria-checked={($formData.icon ?? null) === option.name}
+                aria-label={option.name}
+                onclick={() => ($formData.icon = ($formData.icon ?? null) === option.name ? null : option.name)}
+              >
+                <OptionIcon size={15} aria-hidden="true" />
+              </button>
             {/each}
-          </ul>
-        {/if}
-        <div class="flex gap-2">
-          <Input bind:value={mcpName} placeholder={m['ph.mcp_name']()} class="w-28 h-8 text-xs" />
-          <Input bind:value={mcpCommand} placeholder={m['ph.mcp_command']()} class="w-40 h-8 text-xs" />
-          <Input bind:value={mcpArgs} placeholder={m['ph.mcp_args']()} class="flex-1 h-8 text-xs" />
-          <Button type="button" variant="outline" size="sm" disabled={!mcpName.trim() || !mcpCommand.trim()} onclick={addMcp}>
-            {m['dlg.add']()}
-          </Button>
+          </div>
+          {#if isLegacyEmojiIcon($formData.icon)}
+            <p class="m-0 text-[11px] text-[var(--app-text-muted)]">{m['dlg.icon_legacy_hint']({ icon: $formData.icon ?? '' })}</p>
+          {/if}
         </div>
-        {#if mcpError}
-          <p class="text-xs text-destructive">{mcpError}</p>
+
+        <Form.Field {form} name="instructions">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Form.Label>{m['dlg.agent_instructions']()}</Form.Label>
+              <Textarea {...props} bind:value={$formData.instructions} rows={5} autocomplete="off" placeholder={m['ph.ws_instructions']()} />
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+
+        <Form.Field {form} name="syncAgentInstructionFiles">
+          <Form.Control>
+            {#snippet children({ props })}
+              <div class="flex items-center gap-2">
+                <Checkbox {...props} checked={$formData.syncAgentInstructionFiles} onCheckedChange={(value: boolean | 'indeterminate') => ($formData.syncAgentInstructionFiles = value === true)} />
+                <Form.Label>{m['dlg.sync_instruction_files']()}</Form.Label>
+              </div>
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+
+        {#if submitError}
+          <p class="text-sm text-destructive" aria-live="polite">{submitError}</p>
         {/if}
+
+        <section class="space-y-2 border-t border-border/60 pt-4">
+          <div class="flex items-center gap-2">
+            <Plug size={13} class="text-muted-foreground" aria-hidden="true" />
+            <h3 class="text-sm font-medium">{m['dlg.mcp_title']()}</h3>
+          </div>
+          <p class="text-pretty text-xs text-muted-foreground">{m['dlg.mcp_desc']()}</p>
+          {#if mcps.length}
+            <ul class="space-y-1">
+              {#each mcps as server (server.name)}
+                <li class="flex min-w-0 items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs">
+                  <span class="shrink-0 font-medium">{server.name}</span>
+                  <span class="min-w-0 flex-1 truncate text-muted-foreground">{server.command} {server.args.join(' ')}</span>
+                  {#if server.builtin}
+                    <span class="shrink-0 text-[10px] text-emerald-500">{m['dlg.mcp_builtin']()}</span>
+                  {:else}
+                    <button type="button" class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" aria-label={m['dlg.mcp_remove']({ name: server.name })} onclick={() => removeMcp(server.name)}>
+                      <Trash2 size={12} aria-hidden="true" />
+                    </button>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          <div class="grid gap-2 sm:grid-cols-2">
+            <Input name="mcp-name" aria-label={m['ph.mcp_name']()} bind:value={mcpName} autocomplete="off" placeholder={m['ph.mcp_name']()} class="h-8 min-w-0 text-xs" />
+            <Input name="mcp-command" aria-label={m['ph.mcp_command']()} bind:value={mcpCommand} autocomplete="off" placeholder={m['ph.mcp_command']()} class="h-8 min-w-0 text-xs" />
+            <Input name="mcp-args" aria-label={m['ph.mcp_args']()} bind:value={mcpArgs} autocomplete="off" placeholder={m['ph.mcp_args']()} class="h-8 min-w-0 text-xs sm:col-span-2" />
+            <Button type="button" variant="outline" size="sm" class="sm:col-start-2 sm:justify-self-end" disabled={!mcpName.trim() || !mcpCommand.trim()} onclick={addMcp}>
+              {m['dlg.add']()}
+            </Button>
+          </div>
+          {#if mcpError}
+            <p class="text-xs text-destructive" aria-live="polite">{mcpError}</p>
+          {/if}
+        </section>
+
+        <section class="space-y-2 border-t border-border/60 pt-4">
+          <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-pretty text-xs text-muted-foreground">{m['dlg.preset_hint']()}</p>
+            <Button type="button" variant="outline" size="sm" class="shrink-0" disabled={presetState === 'saving'} onclick={saveAsPreset}>
+              {presetState === 'saving' ? m['dlg.saving']() : m['dlg.save_as_preset']()}
+            </Button>
+          </div>
+          {#if presetMessage}
+            <p class="text-xs {presetState === 'error' ? 'text-destructive' : 'text-emerald-500'}" aria-live="polite">{presetMessage}</p>
+          {/if}
+        </section>
       </div>
 
-      <div class="rounded-lg border border-border/60 p-3 space-y-2">
-        <div class="flex items-center justify-between gap-3">
-          <p class="text-xs text-muted-foreground">
-            {m['dlg.preset_hint']()}
-          </p>
-          <Button type="button" variant="outline" size="sm" disabled={presetState === 'saving'} onclick={saveAsPreset}>
-            {presetState === 'saving' ? m['dlg.saving']() : m['dlg.save_as_preset']()}
-          </Button>
-        </div>
-        {#if presetMessage}
-          <p class="text-xs {presetState === 'error' ? 'text-destructive' : 'text-emerald-400'}">{presetMessage}</p>
-        {/if}
-      </div>
-
-      <Dialog.Footer>
+      <Dialog.Footer class="m-0! rounded-none rounded-b-lg border-t border-border/60 px-5 py-3">
         <Button type="button" variant="outline" onclick={onClose}>{m['dlg.cancel']()}</Button>
         <Button type="submit">{m['dlg.save']()}</Button>
       </Dialog.Footer>
     </form>
   </Dialog.Content>
 </Dialog.Root>
-
-<style>
-  .icon-picker {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 6px;
-  }
-
-  .icon-option {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    aspect-ratio: 1;
-    border-radius: 8px;
-    border: 1px solid var(--app-border);
-    background: transparent;
-    color: var(--app-text-muted);
-    cursor: pointer;
-    transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
-  }
-
-  .icon-option:hover {
-    color: var(--app-text);
-    background: var(--app-border);
-  }
-
-  .icon-option.selected {
-    color: var(--app-accent-contrast);
-    border-color: var(--app-accent);
-    background: var(--app-accent);
-  }
-
-  .icon-legacy-hint {
-    margin: 4px 0 0;
-    font-size: 11px;
-    color: var(--app-text-muted);
-  }
-</style>

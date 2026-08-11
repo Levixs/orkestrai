@@ -94,6 +94,10 @@ export const claudeAdapter: AgentAdapter = {
     };
   },
 
+  initialRoleArgs(role) {
+    return ['--append-system-prompt', role.prompt];
+  },
+
   parseOutput(stdout: string): ParsedAgentOutput {
     const parsedOutput = parseJsonLinesOutput(stdout);
     const content = parsedOutput.content;

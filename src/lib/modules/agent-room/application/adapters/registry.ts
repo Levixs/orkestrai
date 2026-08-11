@@ -1,4 +1,4 @@
-import type { AgentAdapter } from './types.js';
+import type { AgentAdapter, AgentRoleLaunchContext } from './types.js';
 import { claudeAdapter } from './ClaudeAdapter.js';
 import { codexAdapter } from './CodexAdapter.js';
 import { kimiAdapter } from './KimiAdapter.js';
@@ -42,31 +42,52 @@ export function listAgentAdapters(): AgentAdapter[] {
  * effort ou outras opcoes salvas pelo usuario.
  */
 export function materializeInteractiveAgentCommand(
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  role: AgentRoleLaunchContext | null = null,
 ): { payload: Record<string, unknown>; changed: boolean } {
   const provider = typeof payload.provider === 'string' ? payload.provider : null;
   if (!provider || !hasAgentAdapter(provider)) return { payload, changed: false };
-  if (Array.isArray(payload.args) && payload.args.length > 0) return { payload, changed: false };
-
-  const spec = getAgentAdapter(provider).interactiveCommand();
+  const adapter = getAgentAdapter(provider);
+  const spec = adapter.interactiveCommand();
   const storedEnv = payload.env && typeof payload.env === 'object' && !Array.isArray(payload.env)
     ? payload.env as Record<string, string>
     : {};
   const env = { ...(spec.env ?? {}), ...storedEnv };
+  const currentArgs = Array.isArray(payload.args) ? payload.args : [];
+  const args = currentArgs.length ? currentArgs : [...spec.args];
   const nextPayload: Record<string, unknown> = {
     ...payload,
     command: spec.command,
-    args: [...spec.args],
+    args,
     ...(Object.keys(env).length ? { env } : {}),
   };
-  const currentArgs = Array.isArray(payload.args) ? payload.args : [];
   const commandChanged = payload.command !== spec.command;
-  const argsChanged = JSON.stringify(currentArgs) !== JSON.stringify(spec.args);
+  const argsChanged = currentArgs.length === 0 && JSON.stringify(currentArgs) !== JSON.stringify(spec.args);
   const envChanged = spec.env
     ? Object.entries(spec.env).some(([key, value]) => storedEnv[key] !== value)
     : false;
 
-  return { payload: nextPayload, changed: commandChanged || argsChanged || envChanged };
+  let roleChanged = false;
+  const initialRoleArgs = role?.prompt.trim() && adapter.initialRoleArgs
+    ? adapter.initialRoleArgs(role)
+    : [];
+  if (initialRoleArgs.length) {
+    if (
+      JSON.stringify(payload.initialRoleArgs ?? []) !== JSON.stringify(initialRoleArgs)
+      || payload.roleConfiguredAtLaunch !== role!.name
+    ) {
+      nextPayload.initialRoleArgs = initialRoleArgs;
+      nextPayload.roleConfiguredAtLaunch = role!.name;
+      roleChanged = true;
+    }
+  } else if (payload.initialRoleArgs !== undefined || payload.roleConfiguredAtLaunch !== undefined) {
+    delete nextPayload.initialRoleArgs;
+    delete nextPayload.roleConfiguredAtLaunch;
+    roleChanged = true;
+  }
+
+  const changed = commandChanged || argsChanged || envChanged || roleChanged;
+  return changed ? { payload: nextPayload, changed: true } : { payload, changed: false };
 }
 
 registerAgentAdapter(claudeAdapter);

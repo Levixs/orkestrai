@@ -28,7 +28,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (papeles del equipo)',
-      body: `Los roles son instrucciones guardadas en .orkestrai/roles/<slug>/role.json, por lo que viajan con el repositorio. En el panel Roles, Catálogo ofrece funciones completas de liderazgo, producto, arquitectura, frontend, backend, Svelar, QA, seguridad, accesibilidad, documentación, release y rendimiento; instala con + y personaliza en En el workspace. Asigna desde el sello de la terminal: el rol se inyecta automáticamente en la primera sesión del agente. Los presets incluyen protocolos completos de misión, contexto, proceso, criterios de aceptación, handoff y disciplina del tablero, no descripciones genéricas. El líder también puede reasignar roles con orkestrai reassign.`,
+      body: `Los roles son instrucciones guardadas en .orkestrai/roles/<slug>/role.json, por lo que viajan con el repositorio. En el panel Roles, Catálogo ofrece funciones completas de liderazgo, producto, arquitectura, frontend, backend, Svelar, QA, seguridad, accesibilidad, documentación, release y rendimiento; instala con + y personaliza en En el workspace. En presets, Claude recibe el rol como system prompt, Codex como instrucciones de developer y Kimi mediante su archivo de agente antes del primer mensaje; los demás providers reciben solo una referencia breve al AGENTS.md del rol, sin pegar el prompt largo en la terminal. El líder también puede reasignar roles con orkestrai reassign.`,
     },
     {
       id: 'times',
@@ -53,7 +53,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'presets',
       title: 'Presets de equipo',
-      body: `La Biblioteca de presets está en el icono de plantilla de la barra lateral y en Presets de la barra inferior. Además de Producto, React, Next.js, SvelteKit, Svelar y Laravel, incluye Campaña y lanzamiento, Brand y diseño, Contenido y SEO y Orkestrai Contributing. Cada receta trae líder, especialistas, roles operativos extensos, skills, briefing, tablero, tarea inicial y layout; el equipo de contribución también exige consenso entre Claude, Codex y Kimi. Los agentes comienzan con acceso total autónomo y reciben su rol en la primera sesión. El líder recibe la tarea inicial completa y debe asignarla antes de delegar. Usa Nuevo workspace para otra carpeta o + para sumar el equipo al canvas actual.`,
+      body: `La Biblioteca de presets está en el icono de plantilla de la barra lateral y en Presets de la barra inferior. Además de Producto, React, Next.js, SvelteKit, Svelar y Laravel, incluye Campaña y lanzamiento, Brand y diseño, Contenido y SEO y Orkestrai Contributing. Cada receta trae líder, especialistas, roles operativos extensos, skills, briefing, tablero, tarea inicial y layout; el equipo de contribución también exige consenso entre Claude, Codex y Kimi. Los agentes comienzan con acceso total autónomo y reciben el rol mediante el mecanismo nativo de la CLI, sin dejar la terminal bloqueada por texto pegado. El líder recibe la tarea inicial completa y debe asignarla antes de delegar. Usa Nuevo workspace para otra carpeta o + para sumar el equipo al canvas actual.`,
     },
     {
       id: 'fluxos',
@@ -98,7 +98,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'usage-routing',
       title: 'Uso y ruteo según la cuota',
-      body: `Abre Uso en la barra inferior y usa Agregar al canvas para mantener visible el consumo de Claude, Codex y Kimi en el workspace. El nodo se actualiza cada cinco minutos y permite elegir provider de origen, fallback y límite entre 50% y 100%. El líder consulta esta política por CLI o MCP antes de distribuir trabajo nuevo y puede recomendar el fallback cuando el origen está cerca del límite, agotado o no disponible. Una tarea ya en curso nunca cambia de terminal silenciosamente.`,
+      body: `Abre Uso en la barra inferior y usa Agregar al canvas para mantener visible el consumo de Claude, Codex y Kimi en el workspace. El nodo se actualiza cada cinco minutos y permite elegir provider de origen, fallback, ventana monitoreada de 5 horas, semanal o mensual y límite entre 50% y 100%. La app muestra solo las ventanas que cada provider realmente reporta y avisa cuando la política elige una no disponible. El líder consulta esta política por CLI o MCP antes de distribuir trabajo nuevo. Una tarea ya en curso nunca cambia de terminal silenciosamente.`,
     },
     {
       id: 'appearance',
@@ -259,7 +259,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'quota-aware-delegation',
       title: 'Distribuir trabajo sin agotar la cuota',
-      body: 'Agrega el nodo Uso al canvas, define Claude como origen, Codex como fallback y elige el límite. Antes de delegar trabajo nuevo, el líder consulta orkestrai usage y recomienda el agente saludable cuando el origen cruza ese límite; las conversaciones y tareas en curso permanecen en su provider actual.',
+      body: 'Agrega el nodo Uso al canvas, define Claude como origen y Codex como fallback y elige la ventana de 5 horas, semanal o mensual y su porcentaje. Antes de delegar trabajo nuevo, el líder consulta orkestrai usage y recomienda el agente saludable cuando el origen cruza ese límite; las conversaciones y tareas en curso permanecen en su provider actual.',
       tags: ['Uso en el canvas', 'fallback', 'delegación'],
     },
     {
@@ -276,6 +276,16 @@ export const DOCS_ES: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '11 ago 2026 · 0.9.0',
+      items: [
+        'Los presets ahora configuran roles mediante los mecanismos nativos de Claude, Codex y Kimi; los demás providers reciben una referencia breve al archivo en lugar de texto largo pegado en la terminal.',
+        'El enrutamiento por uso permite monitorear la ventana de 5 horas, semanal o mensual y explica cuando un provider no reporta el período elegido.',
+        'El colector entiende la respuesta actual de Kimi y los límites adicionales de Codex, mostrando una vez cada ventana reportada en el panel y el nodo.',
+        'El toggle shadcn vuelve a representar visualmente su estado y el editor de workspace tiene layout adaptable, desplazamiento limitado y pie estable.',
+        'En Windows, la línea debajo de la barra de título ahora ocupa todo el ancho de la ventana.',
+      ],
+    },
     {
       date: '10 ago 2026 · 0.8.3',
       items: [

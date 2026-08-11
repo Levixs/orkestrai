@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { builtinRoleCatalog } from '../catalogs/BuiltinRoleCatalog.js';
+import type { AgentRoleLaunchContext } from '../adapters/types.js';
 import { taskBoardService } from './TaskBoardService.js';
 
 export type AgentRole = {
@@ -81,6 +82,17 @@ export class RoleService {
     const normalized = nameOrSlug.toLowerCase();
     const roles = await this.list(workspaceId);
     return roles.find((role) => role.slug === normalized || role.name.toLowerCase() === normalized) ?? null;
+  }
+
+  /** Resolve os dados que o adapter precisa para instalar a role no launch. */
+  async launchContext(workspaceId: string, nameOrSlug: string): Promise<AgentRoleLaunchContext | null> {
+    const role = await this.get(workspaceId, nameOrSlug);
+    if (!role?.prompt.trim()) return null;
+    return {
+      name: role.name,
+      prompt: role.prompt.trim(),
+      instructionFile: resolve(await this.rolesDir(workspaceId), role.slug, 'AGENTS.md'),
+    };
   }
 
   async save(workspaceId: string, input: { name: string; color?: string; prompt: string }): Promise<AgentRole> {
@@ -172,8 +184,21 @@ export class RoleService {
     if (!node || node.workspaceId !== workspaceId || node.type !== 'terminal') {
       throw new Error('Terminal não encontrado neste workspace.');
     }
-    const payload = node.payload as { role?: string | null; sessionId?: string; maestro?: boolean };
-    const shouldApplyRole = mode !== 'resume' && Boolean(payload.role);
+    const payload = node.payload as {
+      role?: string | null;
+      roleConfiguredAtLaunch?: string;
+      sessionId?: string;
+      maestro?: boolean;
+    };
+    const role = payload.role && mode !== 'resume' ? await this.get(workspaceId, payload.role) : null;
+    if (payload.role && mode !== 'resume' && !role) {
+      throw new Error(`Responsabilidade "${payload.role}" não encontrada.`);
+    }
+    const configuredAtLaunch = Boolean(
+      role
+      && payload.roleConfiguredAtLaunch?.toLowerCase() === role.name.toLowerCase()
+    );
+    const shouldApplyRole = mode !== 'resume' && Boolean(role) && !(mode === 'fresh' && configuredAtLaunch);
     const tasks = mode === 'role'
       ? []
       : (await taskBoardService.list(workspaceId)).filter((task) => {
@@ -188,10 +213,13 @@ export class RoleService {
     await ptySessionManager.waitUntilIdle(payload.sessionId);
 
     let applied = false;
-    if (shouldApplyRole && payload.role) {
-      const role = await this.get(workspaceId, payload.role);
-      if (!role) throw new Error(`Responsabilidade "${payload.role}" não encontrada.`);
-      await ptySessionManager.writeWithSubmit(payload.sessionId, `[responsabilidade: ${role.name}] ${role.prompt.trim()}`);
+    if (shouldApplyRole && role) {
+      // Providers sem system/developer prompt nativo recebem apenas uma
+      // referencia curta. O prompt completo permanece no arquivo versionavel.
+      await ptySessionManager.writeWithSubmit(
+        payload.sessionId,
+        `[responsabilidade: ${role.name}] Leia e siga .orkestrai/roles/${role.slug}/AGENTS.md como sua funcao permanente neste workspace.`,
+      );
       applied = true;
     }
 

@@ -30,8 +30,9 @@ Download the latest installers from
 - **Ready-made teams:** start or expand a workspace with complete Product,
   Campaign and launch, Brand and design, Content and SEO, React, Next.js,
   SvelteKit, Svelar, Laravel, and Orkestrai Contributing presets. Their agents
-  start with autonomous full access, detailed operating roles, and an initial
-  task that the lead receives and assigns without repeated permission prompts.
+  start with autonomous full access and native system/developer-level roles,
+  without long instructions blocking the terminal as pasted text. The lead
+  receives and assigns the complete initial task without repeated prompts.
 - **Workflows that fit the work:** name, color, and reorder up to ten board
   stages. Leads and agents discover and update the same stages automatically.
 - **Operational team views:** install specialized roles from a 12-role catalog
@@ -48,8 +49,9 @@ Download the latest installers from
   English, or Latin American Spanish. Terminal dictation can optionally submit
   with Enter; regular text fields remain insert-only. STT and TTS run locally.
 - **Quota-aware delegation:** pin Claude, Codex, and Kimi usage to the canvas,
-  configure a source, fallback, and threshold, and let the leader consult the
-  same recommendation through the CLI or MCP before assigning new work.
+  configure a source, fallback, 5-hour/weekly/monthly window, and threshold,
+  and let the leader consult the same recommendation through the CLI or MCP
+  before assigning new work.
 - **Custom appearance:** choose from three dark themes and one light theme, or
   duplicate one and edit semantic tokens with live preview and JSON import/export.
 - **Operational controls:** manage local portal ports, configure recurring

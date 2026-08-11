@@ -38,6 +38,16 @@ function windowOf(kind: UsageWindowKind, usedPercent: number, resetsAt: string |
   return { kind, label: WINDOW_LABELS[kind], usedPercent: Math.max(0, Math.min(100, Math.round(usedPercent))), resetsAt };
 }
 
+/** Mantem uma unica barra por periodo, usando a cota mais pressionada. */
+function mergeWindow(windows: UsageWindow[], next: UsageWindow): void {
+  const index = windows.findIndex((window) => window.kind === next.kind);
+  if (index < 0) {
+    windows.push(next);
+    return;
+  }
+  if (next.usedPercent > windows[index].usedPercent) windows[index] = next;
+}
+
 function kindFromSeconds(seconds: number): UsageWindowKind {
   if (seconds <= 5.5 * 3600) return '5h';
   if (seconds <= 8 * 24 * 3600) return 'weekly';
@@ -131,13 +141,28 @@ export class UsageService {
       'chatgpt-account-id': String(auth?.tokens?.account_id ?? ''),
     });
     const windows: UsageWindow[] = [];
-    const rateLimit = data?.rate_limit as Record<string, unknown> | null;
-    for (const key of ['primary_window', 'secondary_window'] as const) {
-      const win = rateLimit?.[key] as { used_percent?: number; limit_window_seconds?: number; reset_at?: number } | null;
-      if (!win) continue;
-      const seconds = Number(win.limit_window_seconds ?? 0);
-      const kind = kindFromSeconds(seconds);
-      windows.push(windowOf(kind, Number(win.used_percent ?? 0), win.reset_at ? new Date(win.reset_at * 1000).toISOString() : null));
+    const rateLimits = [data?.rate_limit];
+    const additional = Array.isArray(data?.additional_rate_limits)
+      ? data.additional_rate_limits as Array<{ rate_limit?: unknown }>
+      : [];
+    rateLimits.push(...additional.map((entry) => entry.rate_limit));
+    for (const rateLimit of rateLimits) {
+      for (const key of ['primary_window', 'secondary_window'] as const) {
+        const win = (rateLimit as Record<string, unknown> | null)?.[key] as {
+          used_percent?: number;
+          limit_window_seconds?: number;
+          reset_at?: number;
+        } | null;
+        if (!win) continue;
+        const seconds = Number(win.limit_window_seconds ?? 0);
+        if (!Number.isFinite(seconds) || seconds <= 0) continue;
+        const kind = kindFromSeconds(seconds);
+        mergeWindow(windows, windowOf(
+          kind,
+          Number(win.used_percent ?? 0),
+          win.reset_at ? new Date(win.reset_at * 1000).toISOString() : null,
+        ));
+      }
     }
     const plan = typeof data?.plan_type === 'string' ? (data.plan_type as string) : null;
     return {
@@ -215,14 +240,17 @@ export class UsageService {
     const limits = Array.isArray(data?.limits) ? (data.limits as Array<Record<string, unknown>>) : [];
     for (const entry of limits) {
       const win = entry?.window as { duration?: number; timeUnit?: string } | undefined;
-      const detail = entry?.detail as { limit?: string; used?: string; resetTime?: string } | undefined;
+      const detail = entry?.detail as { limit?: string; used?: string; remaining?: string; resetTime?: string } | undefined;
       if (!win || !detail) continue;
       const minutes = Number(win.duration ?? 0) * (String(win.timeUnit).includes('HOUR') ? 60 : 1);
+      if (!Number.isFinite(minutes) || minutes <= 0 || (detail.used === undefined && detail.remaining === undefined)) continue;
       const kind = kindFromSeconds(minutes * 60);
-      windows.push(windowOf(kind, percentOf(detail.used, detail.limit), detail.resetTime ?? null));
+      mergeWindow(windows, windowOf(kind, percentOfUsage(detail), detail.resetTime ?? null));
     }
-    const weekly = data?.usage as { limit?: string; used?: string; resetTime?: string } | undefined;
-    if (weekly) windows.push(windowOf('weekly', percentOf(weekly.used, weekly.limit), weekly.resetTime ?? null));
+    const weekly = data?.usage as { limit?: string; used?: string; remaining?: string; resetTime?: string } | undefined;
+    if (weekly && (weekly.used !== undefined || weekly.remaining !== undefined)) {
+      mergeWindow(windows, windowOf('weekly', percentOfUsage(weekly), weekly.resetTime ?? null));
+    }
 
     const level = (data?.user as { membership?: { level?: string } } | undefined)?.membership?.level ?? null;
     const plan = level ? level.replace(/^LEVEL_/, '').charAt(0).toUpperCase() + level.replace(/^LEVEL_/, '').slice(1).toLowerCase() : null;
@@ -248,10 +276,12 @@ export class UsageService {
   }
 }
 
-function percentOf(used: string | undefined, limit: string | undefined): number {
-  const usedNum = Number(used ?? 0);
-  const limitNum = Number(limit ?? 0);
+function percentOfUsage(value: { used?: string; remaining?: string; limit?: string }): number {
+  const limitNum = Number(value.limit ?? 0);
   if (!limitNum) return 0;
+  const usedNum = value.used === undefined
+    ? Math.max(0, limitNum - Number(value.remaining ?? limitNum))
+    : Number(value.used);
   return (usedNum / limitNum) * 100;
 }
 

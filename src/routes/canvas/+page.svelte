@@ -1061,7 +1061,7 @@
         title: m['usage.node_title'](),
         ...position,
         ...nodeSize(rect, 380, 300, 560, 440),
-        payload: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', thresholdPercent: 90 },
+        payload: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', windowKind: 'weekly', thresholdPercent: 90 },
         floorId: visibleFloorId,
       }),
     });

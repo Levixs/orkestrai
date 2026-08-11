@@ -81,6 +81,10 @@ export const kimiAdapter: AgentAdapter = {
     };
   },
 
+  initialRoleArgs(role) {
+    return ['--agent-file', role.instructionFile];
+  },
+
   parseOutput(stdout: string): ParsedAgentOutput {
     const texts: string[] = [];
     const events: unknown[] = [];

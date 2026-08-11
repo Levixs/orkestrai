@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
   import { Gauge, RefreshCw, Route, TriangleAlert, X } from '@lucide/svelte';
+  import * as Select from '$lib/components/ui/select';
   import { Switch } from '$lib/components/ui/switch';
   import NodeShell from './NodeShell.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
@@ -13,7 +14,7 @@
     normalizeUsageRoutingPolicy,
     type ProviderUsageStatus,
   } from '$lib/modules/agent-room/domain/usage-routing.js';
-  import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
+  import type { ProviderUsage, UsageWindow, UsageWindowKind } from '$lib/modules/agent-room/application/services/UsageService.js';
   import type { UsageNodePayload } from '$lib/modules/agent-room/domain/types.js';
 
   export type UsageNodeData = {
@@ -102,10 +103,13 @@
   }
 
   function windowLabel(window: UsageWindow): string {
-    if (window.kind === '5h') return m['usage.window_5h']();
-    if (window.kind === 'weekly') return m['usage.window_weekly']();
-    if (window.kind === 'monthly') return m['usage.window_monthly']();
-    return window.label;
+    return windowKindLabel(window.kind);
+  }
+
+  function windowKindLabel(kind: UsageWindowKind): string {
+    if (kind === '5h') return m['usage.window_5h']();
+    if (kind === 'weekly') return m['usage.window_weekly']();
+    return m['usage.window_monthly']();
   }
 
   function resetText(resetsAt: string | null): string {
@@ -213,24 +217,49 @@
       <header>
         <div class="routing-title"><Route size={13} aria-hidden="true" /><strong>{m['usage.routing_title']()}</strong></div>
         <label class="routing-toggle">
-          <span>{m['usage.routing_enabled']()}</span>
-          <Switch checked={policy.enabled} onCheckedChange={(enabled: boolean) => persist({ enabled })} />
+          <span>{policy.enabled ? m['usage.routing_enabled']() : m['usage.routing_disabled']()}</span>
+          <Switch
+            checked={policy.enabled}
+            aria-label={policy.enabled ? m['usage.routing_enabled']() : m['usage.routing_disabled']()}
+            onCheckedChange={(enabled: boolean) => persist({ enabled })}
+          />
         </label>
       </header>
 
       <div class="routing-fields" class:disabled={!policy.enabled}>
         <label>
           <span>{m['usage.routing_source']()}</span>
-          <select value={policy.sourceProvider} onchange={(event) => changeSource(event.currentTarget.value)}>
-            {#each PROVIDERS as provider (provider.id)}<option value={provider.id}>{provider.name}</option>{/each}
-          </select>
+          <Select.Root type="single" value={policy.sourceProvider} disabled={!policy.enabled} onValueChange={changeSource}>
+            <Select.Trigger size="sm" class="routing-select">{providerName(policy.sourceProvider)}</Select.Trigger>
+            <Select.Content>
+              {#each PROVIDERS as provider (provider.id)}<Select.Item value={provider.id}>{provider.name}</Select.Item>{/each}
+            </Select.Content>
+          </Select.Root>
         </label>
-        <span class="route-arrow" aria-hidden="true">→</span>
         <label>
           <span>{m['usage.routing_fallback']()}</span>
-          <select value={policy.fallbackProvider} onchange={(event) => changeFallback(event.currentTarget.value)}>
-            {#each PROVIDERS as provider (provider.id)}<option value={provider.id}>{provider.name}</option>{/each}
-          </select>
+          <Select.Root type="single" value={policy.fallbackProvider} disabled={!policy.enabled} onValueChange={changeFallback}>
+            <Select.Trigger size="sm" class="routing-select">{providerName(policy.fallbackProvider)}</Select.Trigger>
+            <Select.Content>
+              {#each PROVIDERS as provider (provider.id)}<Select.Item value={provider.id}>{provider.name}</Select.Item>{/each}
+            </Select.Content>
+          </Select.Root>
+        </label>
+        <label>
+          <span>{m['usage.routing_window']()}</span>
+          <Select.Root
+            type="single"
+            value={policy.windowKind}
+            disabled={!policy.enabled}
+            onValueChange={(value: string) => persist({ windowKind: value as UsageWindowKind })}
+          >
+            <Select.Trigger size="sm" class="routing-select">{windowKindLabel(policy.windowKind)}</Select.Trigger>
+            <Select.Content>
+              <Select.Item value="5h">{m['usage.window_5h']()}</Select.Item>
+              <Select.Item value="weekly">{m['usage.window_weekly']()}</Select.Item>
+              <Select.Item value="monthly">{m['usage.window_monthly']()}</Select.Item>
+            </Select.Content>
+          </Select.Root>
         </label>
         <label class="threshold-field">
           <span>{m['usage.routing_threshold']({ percent: policy.thresholdPercent })}</span>
@@ -247,9 +276,14 @@
       </div>
 
       {#if policy.enabled}
-        <p class:recommendation={report.shouldFallback} class="routing-result">
+        {@const sourceReport = report.providers.find((provider) => provider.provider === policy.sourceProvider)}
+        <p class:recommendation={report.shouldFallback || sourceReport?.status === 'near_limit' || sourceReport?.status === 'exhausted'} class="routing-result">
           {#if report.shouldFallback}
             {m['usage.routing_recommendation']({ source: providerName(policy.sourceProvider), fallback: providerName(report.recommendedProvider ?? policy.fallbackProvider) })}
+          {:else if sourceReport?.status === 'unavailable'}
+            {m['usage.routing_window_unavailable']({ source: providerName(policy.sourceProvider), window: windowKindLabel(policy.windowKind) })}
+          {:else if sourceReport?.status === 'near_limit' || sourceReport?.status === 'exhausted'}
+            {m['usage.routing_no_fallback']({ source: providerName(policy.sourceProvider), fallback: providerName(policy.fallbackProvider), window: windowKindLabel(policy.windowKind) })}
           {:else}
             {m['usage.routing_healthy']({ source: providerName(policy.sourceProvider) })}
           {/if}
@@ -407,7 +441,7 @@
 
   .routing-fields {
     display: grid;
-    grid-template-columns: minmax(92px, 1fr) auto minmax(92px, 1fr) minmax(140px, 1.25fr);
+    grid-template-columns: repeat(3, minmax(92px, 1fr)) minmax(140px, 1.25fr);
     gap: 8px;
   }
 
@@ -431,22 +465,13 @@
     color: var(--app-text-muted);
   }
 
-  .routing-fields select {
+  :global(.routing-select) {
     width: 100%;
     min-width: 0;
-    height: 27px;
-    border: 1px solid var(--app-border);
-    border-radius: 6px;
+    border-color: var(--app-border);
     background: var(--app-surface-subtle);
     color: var(--app-text);
-    padding: 0 6px;
     font-size: 10px;
-  }
-
-  .route-arrow {
-    align-self: end;
-    padding-bottom: 6px;
-    color: var(--app-text-muted);
   }
 
   .threshold-field input {
@@ -510,7 +535,7 @@
 
   @media (max-width: 520px) {
     .routing-fields {
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: 1fr 1fr;
     }
 
     .threshold-field {

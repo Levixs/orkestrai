@@ -8,7 +8,7 @@ import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/Pt
 describe('RoleService', () => {
   useSvelarTest({ refreshDatabase: true });
 
-  it('aplica a role submetendo texto e Enter em writes separados (composer do Codex)', async () => {
+  it('aplica em providers sem suporte nativo apenas uma referencia curta ao arquivo da role', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'roles', workingDir: '/tmp' });
     const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
     const terminal = await workspaceRepository.createNode({
@@ -25,7 +25,35 @@ describe('RoleService', () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     const { scrollback, detach } = ptySessionManager.attach(session.id, () => {});
     detach();
-    expect(scrollback).toContain('[responsabilidade: Revisor] so aponte problemas');
+    expect(scrollback).toContain('[responsabilidade: Revisor] Leia e siga .orkestrai/roles/revisor/AGENTS.md');
+    expect(scrollback).not.toContain('so aponte problemas, nao edite codigo');
+    ptySessionManager.kill(session.id);
+  });
+
+  it('nao cola a role quando ela ja foi configurada nativamente no launch', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'role nativa', workingDir: '/tmp' });
+    const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
+    const terminal = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Agente',
+      payload: {
+        command: '/bin/cat',
+        sessionId: session.id,
+        role: 'Revisor',
+        roleConfiguredAtLaunch: 'Revisor',
+      },
+    });
+    await roleService.save(workspace.id, { name: 'Revisor', prompt: 'prompt longo que nao pode ir ao composer' });
+
+    expect(await roleService.applyToTerminal(workspace.id, terminal.id, 'fresh'))
+      .toEqual({ applied: false, tasksDelivered: 0 });
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const { scrollback, detach } = ptySessionManager.attach(session.id, () => {});
+    detach();
+    expect(scrollback).not.toContain('prompt longo');
+    expect(scrollback).not.toContain('[responsabilidade: Revisor]');
     ptySessionManager.kill(session.id);
   });
 
@@ -157,7 +185,8 @@ describe('RoleService', () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     const { scrollback, detach } = ptySessionManager.attach(session.id, () => {});
     detach();
-    expect(scrollback).toContain('[responsabilidade: Lider técnico] coordene o time');
+    expect(scrollback).toContain('[responsabilidade: Lider técnico] Leia e siga .orkestrai/roles/lider-tecnico/AGENTS.md');
+    expect(scrollback).not.toContain('coordene o time');
     expect(scrollback).not.toContain('Fila já existente');
     ptySessionManager.kill(session.id);
   });

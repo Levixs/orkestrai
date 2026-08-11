@@ -5,6 +5,33 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.9.0 - 2026-08-11
+
+### Added
+
+- Added an explicit 5-hour, weekly, or monthly window selector to quota-aware
+  routing, with a clear unavailable state when a provider does not report the
+  selected period.
+
+### Changed
+
+- Installed preset roles through each provider's native instruction mechanism:
+  Claude system prompts, Codex developer instructions, and Kimi agent files.
+  Other providers now receive a short reference to the versioned role file
+  instead of a long terminal paste.
+
+### Fixed
+
+- Parsed Kimi's current remaining-quota response and Codex additional rate
+  limits so every reported 5-hour, weekly, or monthly window appears in both
+  Usage surfaces without duplicate bars.
+- Fixed the generated shadcn switch state selectors so enabled and disabled
+  states are visually distinct and accessible.
+- Rebuilt the workspace editor with bounded scrolling, responsive fields, a
+  stable footer, and CSRF-protected MCP and preset actions.
+- Moved the Windows title-bar divider below the native caption overlay so it
+  spans the complete window width.
+
 ## 0.8.3 - 2026-08-10
 
 ### Added

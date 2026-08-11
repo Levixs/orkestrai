@@ -81,6 +81,12 @@ export const codexAdapter: AgentAdapter = {
     };
   },
 
+  initialRoleArgs(role) {
+    // O valor e TOML; JSON.stringify produz uma string TOML basica valida e
+    // preserva aspas/newlines sem expor a role como mensagem do usuario.
+    return ['-c', `developer_instructions=${JSON.stringify(role.prompt)}`];
+  },
+
   parseOutput(stdout: string): ParsedAgentOutput {
     return parseJsonLinesOutput(stdout);
   },

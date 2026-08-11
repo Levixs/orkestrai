@@ -7,6 +7,7 @@ import { workspaceRepository } from '../../infrastructure/repositories/Workspace
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.ts';
 import { bridgeService } from './BridgeService.js';
+import { roleService } from './RoleService.js';
 import type {
   CreateCanvasEdgeDto,
   ChangeTerminalProviderDto,
@@ -145,7 +146,9 @@ export class WorkspaceService {
           changed = true;
         }
       }
-      const materialized = materializeInteractiveAgentCommand(payload);
+      const roleName = typeof payload.role === 'string' ? payload.role : null;
+      const role = roleName ? await roleService.launchContext(workspaceId, roleName).catch(() => null) : null;
+      const materialized = materializeInteractiveAgentCommand(payload, role);
       if (materialized.changed) {
         payload = materialized.payload;
         changed = true;
@@ -206,7 +209,7 @@ export class WorkspaceService {
     const sessionId = typeof current.sessionId === 'string' ? current.sessionId : null;
     if (sessionId) ptySessionManager.kill(sessionId);
     const command = adapter.interactiveCommand();
-    const payload: Record<string, unknown> = {
+    let payload: Record<string, unknown> = {
       ...current,
       provider: adapter.id,
       command: command.command,
@@ -216,6 +219,9 @@ export class WorkspaceService {
     delete payload.sessionId;
     delete payload.agentSessionId;
     if (!command.env || Object.keys(command.env).length === 0) delete payload.env;
+    const roleName = typeof payload.role === 'string' ? payload.role : null;
+    const role = roleName ? await roleService.launchContext(dto.workspaceId, roleName).catch(() => null) : null;
+    payload = materializeInteractiveAgentCommand(payload, role).payload;
 
     const updated = await workspaceRepository.updateNode(node.id, { payload: payload as never });
     this.notifyStructureChanged(dto.workspaceId);

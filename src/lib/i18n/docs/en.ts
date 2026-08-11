@@ -28,7 +28,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (team roles)',
-      body: `Roles are instruction sets saved in .orkestrai/roles/<slug>/role.json, so they travel with the repository. In the Roles panel, Catalog offers complete functions for leadership, product, architecture, frontend, backend, Svelar, QA, security, accessibility, documentation, release, and performance; install with + and customize under Workspace. Assign from the terminal-header badge: the role is injected automatically into the agent's first session. Presets include full protocols for mission, context, process, acceptance criteria, handoff, and board discipline instead of generic descriptions. The leader can also reassign roles with orkestrai reassign.`,
+      body: `Roles are instruction sets saved in .orkestrai/roles/<slug>/role.json, so they travel with the repository. In the Roles panel, Catalog offers complete functions for leadership, product, architecture, frontend, backend, Svelar, QA, security, accessibility, documentation, release, and performance; install with + and customize under Workspace. In presets, Claude receives the role as a system prompt, Codex as developer instructions, and Kimi through its agent file before the first message; other providers receive only a short reference to the role AGENTS.md instead of a long terminal paste. The leader can also reassign roles with orkestrai reassign.`,
     },
     {
       id: 'times',
@@ -53,7 +53,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'presets',
       title: 'Team presets',
-      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, extensive operational roles, skills, a brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Preset agents start with autonomous full-access flags and receive their role in the first session. The leader receives the complete initial task and must assign it before delegating. Use New workspace for another folder or + to add the team to the current canvas.`,
+      body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, extensive operational roles, skills, a brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Preset agents start with autonomous full access and receive roles through the CLI's native instruction mechanism without leaving the terminal blocked by pasted text. The leader receives the complete initial task and must assign it before delegating. Use New workspace for another folder or + to add the team to the current canvas.`,
     },
     {
       id: 'fluxos',
@@ -98,7 +98,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'usage-routing',
       title: 'Usage and quota-aware routing',
-      body: `Open Usage in the bottom toolbar and use Add to canvas to keep Claude, Codex, and Kimi consumption visible in the workspace. The node refreshes every five minutes and lets you choose a source provider, fallback, and threshold from 50% to 100%. The leader checks this policy through CLI or MCP before distributing new work and can recommend the fallback when the source is near its limit, exhausted, or unavailable. A task already in progress is never moved to another terminal silently.`,
+      body: `Open Usage in the bottom toolbar and use Add to canvas to keep Claude, Codex, and Kimi consumption visible in the workspace. The node refreshes every five minutes and lets you choose a source provider, fallback, monitored 5-hour, weekly, or monthly window, and a threshold from 50% to 100%. The app shows only windows each provider actually reports and warns when the selected policy window is unavailable. The leader checks this policy through CLI or MCP before distributing new work. A task already in progress is never moved to another terminal silently.`,
     },
     {
       id: 'appearance',
@@ -259,7 +259,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'quota-aware-delegation',
       title: 'Delegate work without exhausting a quota',
-      body: 'Add the Usage node to the canvas, set Claude as the source, Codex as the fallback, and choose a threshold. Before delegating new work, the leader checks orkestrai usage and recommends the healthy agent when the source crosses that threshold; conversations and tasks already in progress stay on their current provider.',
+      body: 'Add the Usage node to the canvas, set Claude as the source and Codex as the fallback, then choose the 5-hour, weekly, or monthly window and its percentage. Before delegating new work, the leader checks orkestrai usage and recommends the healthy agent when the source crosses that threshold; conversations and tasks already in progress stay on their current provider.',
       tags: ['Canvas usage', 'fallback', 'delegation'],
     },
     {
@@ -276,6 +276,16 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 11, 2026 · 0.9.0',
+      items: [
+        'Presets now configure roles through the native Claude, Codex, and Kimi mechanisms; other providers receive a short file reference instead of long terminal pasted text.',
+        'Usage routing can monitor the 5-hour, weekly, or monthly window and explains when a provider does not report the selected period.',
+        'The collector understands the current Kimi response and Codex additional limits, showing each reported window once in the panel and node.',
+        'The shadcn toggle visually reflects its state again, and the workspace editor has responsive layout, bounded scrolling, and a stable footer.',
+        'On Windows, the divider below the desktop title bar now spans the complete window width.',
+      ],
+    },
     {
       date: 'Aug 10, 2026 · 0.8.3',
       items: [

@@ -307,7 +307,7 @@
     if (forceRespawn || (payload.provider && payload.agentSessionId)) return respawnRequest;
     return {
       command: payload.command ?? '',
-      args: payload.args ?? [],
+      args: [...(payload.args ?? []), ...(payload.initialRoleArgs ?? [])],
       freshSessionArgs: data.freshSessionArgsFor?.() ?? undefined,
       cwd: data.workingDir,
       env: agentEnv,

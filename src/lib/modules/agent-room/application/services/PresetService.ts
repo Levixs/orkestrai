@@ -65,7 +65,13 @@ export type PresetData = {
 };
 
 /** Campos de runtime que NUNCA viajam num preset. */
-const RUNTIME_PAYLOAD_KEYS = ['sessionId', 'agentSessionId', 'lastDictatedAt'];
+const RUNTIME_PAYLOAD_KEYS = [
+  'sessionId',
+  'agentSessionId',
+  'lastDictatedAt',
+  'initialRoleArgs',
+  'roleConfiguredAtLaunch',
+];
 
 function sanitizePayload(payload: unknown): Record<string, unknown> {
   const clean = { ...((payload ?? {}) as Record<string, unknown>) };
@@ -73,11 +79,12 @@ function sanitizePayload(payload: unknown): Record<string, unknown> {
   return clean;
 }
 
-function presetNodePayload(node: PresetData['nodes'][number]): Record<string, unknown> {
+async function presetNodePayload(workspaceId: string, node: PresetData['nodes'][number]): Promise<Record<string, unknown>> {
   const payload = sanitizePayload(node.payload);
-  return node.type === 'terminal'
-    ? materializeInteractiveAgentCommand(payload).payload
-    : payload;
+  if (node.type !== 'terminal') return payload;
+  const roleName = typeof payload.role === 'string' ? payload.role : null;
+  const role = roleName ? await roleService.launchContext(workspaceId, roleName) : null;
+  return materializeInteractiveAgentCommand(payload, role).payload;
 }
 
 function mapSummary(model: AgentPreset): PresetSummary {
@@ -277,6 +284,14 @@ export class PresetService {
 
     const columnsApplied = await boardColumnService.install(workspaceId, preset.taskColumns ?? [], creatingWorkspace);
 
+    // Roles precisam existir antes dos terminais: Kimi recebe o AGENTS.md da
+    // role no launch e os outros adapters materializam suas instrucoes nativas.
+    let rolesApplied = 0;
+    for (const role of preset.roles) {
+      await roleService.save(workspaceId, role);
+      rolesApplied += 1;
+    }
+
     // Nos + arestas (por indice, como o import de workspace).
     const nodeIds: string[] = [];
     for (const node of preset.nodes) {
@@ -289,7 +304,7 @@ export class PresetService {
         width: node.width ?? 560,
         height: node.height ?? 360,
         zIndex: node.zIndex ?? 0,
-        payload: presetNodePayload(node) as never,
+        payload: await presetNodePayload(workspaceId, node) as never,
       });
       nodeIds.push(created.id);
     }
@@ -298,13 +313,6 @@ export class PresetService {
       const targetId = nodeIds[edge.targetIndex];
       if (!source || !targetId) continue;
       await workspaceRepository.createEdge({ workspaceId, sourceNodeId: source, targetNodeId: targetId, style: edge.style });
-    }
-
-    // Roles (biblioteca .orkestrai/roles do projeto de destino).
-    let rolesApplied = 0;
-    for (const role of preset.roles) {
-      await roleService.save(workspaceId, role);
-      rolesApplied += 1;
     }
 
     // Rotinas: o alvo e resolvido por TITULO do agente instanciado agora.

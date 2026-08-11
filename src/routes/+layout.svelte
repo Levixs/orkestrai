@@ -148,6 +148,7 @@
 
   .app-content.desktop-content {
     height: calc(100dvh - 36px);
+    border-top: 1px solid var(--app-border);
     overflow: auto;
   }
 </style>

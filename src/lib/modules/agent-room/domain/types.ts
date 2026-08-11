@@ -227,6 +227,10 @@ export type TerminalNodePayload = {
   env?: Record<string, string>;
   provider?: AgentProviderId;
   role?: string | null;
+  /** Args nativos da role, usados somente ao criar uma conversa nova. */
+  initialRoleArgs?: string[];
+  /** Nome da role representada por initialRoleArgs (permite reparo idempotente). */
+  roleConfiguredAtLaunch?: string;
   /** Modo Maestro: pode recrutar/dispensar/conectar outros agentes via ponte. */
   maestro?: boolean;
   /** Tema do terminal (dark, dracula, nord, solarized, light). */
@@ -242,6 +246,7 @@ export type UsageNodePayload = {
   enabled?: boolean;
   sourceProvider?: string;
   fallbackProvider?: string;
+  windowKind?: '5h' | 'weekly' | 'monthly';
   thresholdPercent?: number;
 };
 

@@ -200,7 +200,7 @@ async function runAction(action: TourAction): Promise<void> {
             ...nextPosition(),
             width: 560,
             height: 440,
-            payload: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', thresholdPercent: 90 },
+            payload: { enabled: true, sourceProvider: 'claude', fallbackProvider: 'codex', windowKind: 'weekly', thresholdPercent: 90 },
           }),
         });
         break;

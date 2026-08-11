@@ -16,6 +16,7 @@ describe('usage routing', () => {
       enabled: true,
       sourceProvider: 'claude',
       fallbackProvider: 'codex',
+      windowKind: '5h',
       thresholdPercent: 90,
     });
     expect(report.shouldFallback).toBe(true);
@@ -33,8 +34,37 @@ describe('usage routing', () => {
       enabled: true,
       sourceProvider: 'claude',
       fallbackProvider: 'kimi',
+      windowKind: 'weekly',
       thresholdPercent: 50,
     });
+  });
+
+  it('avalia somente a janela escolhida pela politica', () => {
+    const providers: ProviderUsage[] = [
+      {
+        ...usage('claude', 95),
+        windows: [
+          { kind: '5h', label: '5 hours', usedPercent: 95, resetsAt: null },
+          { kind: 'weekly', label: 'Weekly', usedPercent: 30, resetsAt: null },
+        ],
+      },
+      {
+        ...usage('codex', 10),
+        windows: [
+          { kind: '5h', label: '5 hours', usedPercent: 10, resetsAt: null },
+          { kind: 'weekly', label: 'Weekly', usedPercent: 10, resetsAt: null },
+        ],
+      },
+    ];
+
+    expect(buildUsageRoutingReport(providers, { windowKind: 'weekly' }).shouldFallback).toBe(false);
+    expect(buildUsageRoutingReport(providers, { windowKind: '5h' }).shouldFallback).toBe(true);
+  });
+
+  it('marca o provider indisponivel quando ele nao reporta a janela escolhida', () => {
+    const report = buildUsageRoutingReport([usage('claude', 20)], { windowKind: 'monthly' });
+    expect(report.providers[0].status).toBe('unavailable');
+    expect(report.providers[0].monitoredUsedPercent).toBeNull();
   });
 
   it('nunca mantem origem e fallback iguais', () => {

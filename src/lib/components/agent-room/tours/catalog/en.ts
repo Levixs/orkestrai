@@ -740,7 +740,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'set-policy',
         title: 'Adjust the policy',
-        body: 'In the node, choose the source, a different fallback, and the percentage that means "near the limit". The recommendation follows the current CLI snapshot.',
+        body: 'In the node, choose the source, a different fallback, the 5-hour, weekly, or monthly window, and the percentage that means "near the limit". If the provider does not report that period, the node asks for another window.',
       },
       {
         id: 'leader-checks',

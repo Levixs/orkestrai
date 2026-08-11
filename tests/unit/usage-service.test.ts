@@ -38,9 +38,9 @@ const CODEX_USAGE = {
 
 const KIMI_USAGE = {
   user: { membership: { level: 'LEVEL_ALLEGRO' } },
-  usage: { limit: '100', used: '39', resetTime: '2026-08-04T10:00:00Z' },
+  usage: { limit: '100', remaining: '61', resetTime: '2026-08-04T10:00:00Z' },
   limits: [
-    { window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { limit: '100', used: '7', resetTime: '2026-08-02T15:00:00Z' } },
+    { window: { duration: 300, timeUnit: 'TIME_UNIT_MINUTE' }, detail: { limit: '100', remaining: '93', resetTime: '2026-08-02T15:00:00Z' } },
   ],
 };
 
@@ -88,7 +88,30 @@ describe('UsageService', () => {
     expect(usage.windows[0].resetsAt).toBe(new Date(1785600000 * 1000).toISOString());
   });
 
-  it('kimi: janela de 300min vira 5h, usage vira semanal, level vira plano', async () => {
+  it('codex: incorpora e deduplica janelas dos limites adicionais', async () => {
+    const home = homeWith({ '.codex/auth.json': JSON.stringify({ tokens: { access_token: 'tok', account_id: 'acc' } }) });
+    const response = {
+      ...CODEX_USAGE,
+      rate_limit: {
+        primary_window: { used_percent: 20, limit_window_seconds: 604800, reset_at: 1786200000 },
+      },
+      additional_rate_limits: [{
+        limit_name: 'Codex fast',
+        rate_limit: {
+          primary_window: { used_percent: 64, limit_window_seconds: 18000, reset_at: 1785600000 },
+          secondary_window: { used_percent: 35, limit_window_seconds: 604800, reset_at: 1786200000 },
+        },
+      }],
+    };
+    const service = new UsageService(fakeFetch({ 'https://chatgpt.com/backend-api/wham/usage': response }), home);
+
+    const usage = await service.getUsage('codex');
+    expect(usage.windows).toHaveLength(2);
+    expect(usage.windows.find((window) => window.kind === '5h')?.usedPercent).toBe(64);
+    expect(usage.windows.find((window) => window.kind === 'weekly')?.usedPercent).toBe(35);
+  });
+
+  it('kimi: calcula uso por remaining nas janelas de 5h e semanal', async () => {
     const home = homeWith({ '.kimi-code/credentials/kimi-code.json': JSON.stringify({ access_token: 'tok' }) });
     const service = new UsageService(fakeFetch({ 'https://api.kimi.com/coding/v1/usages': KIMI_USAGE }), home);
 

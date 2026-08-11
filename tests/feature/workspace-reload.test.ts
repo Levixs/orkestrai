@@ -5,6 +5,7 @@ import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repo
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
 import { getAgentAdapter } from '$lib/modules/agent-room/application/adapters/registry.js';
 import { agentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.ts';
+import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
 
 describe('WorkspaceService.reloadNode', () => {
   useSvelarTest({ refreshDatabase: true });
@@ -77,8 +78,9 @@ describe('WorkspaceService.reloadNode', () => {
     expect(persisted.agentSessionId).toBe('conversa-real-123');
   });
 
-  it('recupera conversa Claude ausente sem tentar resume nem reinjetar role', async () => {
+  it('recupera conversa Claude ausente como sessao nova com a role nativa', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'recovery', workingDir: '/tmp' });
+    await roleService.save(workspace.id, { name: 'Lider', prompt: 'Coordene o time.' });
     const node = await workspaceRepository.createNode({
       workspaceId: workspace.id,
       type: 'terminal',
@@ -100,6 +102,8 @@ describe('WorkspaceService.reloadNode', () => {
     expect(payload.agentSessionId).toBeUndefined();
     expect(payload.resumeRecovery).toBe(true);
     expect(payload.role).toBe('Lider');
+    expect(payload.initialRoleArgs).toEqual(['--append-system-prompt', 'Coordene o time.']);
+    expect(payload.roleConfiguredAtLaunch).toBe('Lider');
   });
 
   it('troca o provider e preserva a identidade organizacional do terminal', async () => {
