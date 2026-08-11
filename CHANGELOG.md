@@ -12,6 +12,9 @@ pt-BR, English, and Spanish translations.
 - Generated valid YAML frontmatter for Kimi role agent files and lazily repaired
   legacy or missing instruction files before launching a terminal, preventing
   Kimi from exiting with an `Invalid agent file` error.
+- Added a visible, clickable pinned or movable badge to the global voice orb
+  and exposed its platform-specific position shortcut in the tooltip instead
+  of hiding the controls behind an undocumented modifier click.
 
 ## 0.9.0 - 2026-08-11
 

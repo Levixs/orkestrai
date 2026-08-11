@@ -476,7 +476,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'record',
         title: 'Click the voice orb',
-        body: 'Use the colored orb or Alt+Space to record. The first click preserves the focused field. Ctrl-click or Command-click opens position controls; unpin the orb to drag it inside the visible canvas.',
+        body: 'Use the colored orb or Alt+Space to record. The first click preserves the focused field. Its small clickable badge shows whether it is pinned or movable and opens position controls directly; the tooltip also displays the Ctrl-click or Command-click shortcut. Unpin the orb to drag it inside the visible canvas.',
       },
       {
         id: 'auto-submit',

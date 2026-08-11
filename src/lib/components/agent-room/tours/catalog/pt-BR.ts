@@ -480,7 +480,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'record',
         title: 'Clique na bolinha de voz',
-        body: 'Use a bolinha colorida ou Alt+Espaço para gravar. O primeiro clique preserva o campo focado. Ctrl+clique ou Command+clique abre os controles de posição; solte a bolinha para arrastá-la dentro do canvas visível.',
+        body: 'Use a bolinha colorida ou Alt+Espaço para gravar. O primeiro clique preserva o campo focado. O pequeno badge clicável mostra se ela está fixada ou livre e abre diretamente os controles de posição; o tooltip também exibe o atalho Ctrl+clique ou Command+clique. Desafixe a bolinha para arrastá-la dentro do canvas visível.',
       },
       {
         id: 'auto-submit',

@@ -235,7 +235,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictar en cualquier campo de texto',
-      body: 'Enfoca cualquier campo editable — título o descripción del kanban, rol, nota o formulario — y usa la esfera de voz global o Alt+Espacio. Desde el primer clic, el campo se conserva y la transcripción entra en el cursor sin requerir líder. En Configuración → Dictado por voz, puedes activar el envío automático: en terminales, la transcripción también presiona Enter; los campos comunes siguen recibiendo solo el texto. Usa Ctrl+clic o Command+clic para controlar la posición de la esfera. Sin campo activo, el control envía el texto al líder.',
+      body: 'Enfoca cualquier campo editable — título o descripción del kanban, rol, nota o formulario — y usa la esfera de voz global o Alt+Espacio. Desde el primer clic, el campo se conserva y la transcripción entra en el cursor sin requerir líder. En Configuración → Dictado por voz, puedes activar el envío automático: en terminales, la transcripción también presiona Enter; los campos comunes siguen recibiendo solo el texto. El indicador clicable muestra si la esfera está fijada o libre y abre directamente los controles de posición; el tooltip también presenta el atajo Ctrl+clic o Command+clic. Sin campo activo, el control envía el texto al líder.',
       tags: ['Dictado global', 'campos de texto', 'voz local'],
     },
     {
@@ -280,6 +280,7 @@ export const DOCS_ES: DocsCatalog = {
       date: '11 ago 2026 · 0.9.1',
       items: [
         'Los archivos de role de Kimi ahora incluyen el frontmatter obligatorio del perfil, y los archivos antiguos o ausentes se reparan antes de iniciar la terminal en vez de cerrar la PTY con un error de agent file inválido.',
+        'La esfera de voz global ahora tiene un indicador clicable de posición fijada o libre que abre directamente los controles, y el tooltip también indica el atajo correcto de la plataforma.',
       ],
     },
     {

@@ -3,6 +3,7 @@
   import { Mic, Move, Pin, PinOff, RotateCcw, Square } from '@lucide/svelte';
   import { toast } from '@beeblock/svelar/ui';
   import { getCsrfToken } from '@beeblock/svelar/http';
+  import * as Kbd from '$lib/components/ui/kbd';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import VoiceConfirmDialog from './VoiceConfirmDialog.svelte';
   import { blobToWav16k } from './audio-pcm.js';
@@ -35,6 +36,7 @@
   let placement = $state({ x: 0, y: 56, pinned: true });
   let placementReady = $state(false);
   let placementMenuOpen = $state(false);
+  let placementModifier = $state('Ctrl');
   let drag = $state<{ pointerId: number; offsetX: number; offsetY: number; moved: boolean } | null>(null);
   let suppressNextClick = false;
   const hotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
@@ -200,6 +202,14 @@
     return editableUsable(target) ? m['dictation.start_field']() : m['dictation.start']();
   }
 
+  function placementStatus(): string {
+    return placement.pinned ? m['dictation.position_pinned']() : m['dictation.position_unpinned']();
+  }
+
+  function placementShortcut(): string {
+    return `${placementModifier} + ${m['dictation.position_controls_hint']()}`;
+  }
+
   async function toggleTextDictation() {
     if (status === 'recording' && source === 'text') {
       mediaRecorder?.stop();
@@ -287,6 +297,7 @@
   }
 
   onMount(() => {
+    placementModifier = navigator.platform.includes('Mac') ? '⌘' : 'Ctrl';
     try {
       const saved = JSON.parse(localStorage.getItem(PLACEMENT_KEY) ?? 'null') as Partial<typeof placement> | null;
       placement = saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)
@@ -361,47 +372,86 @@
 </script>
 
 {#if supported && placementReady}
-  <Tooltip.Root>
-    <Tooltip.Trigger>
-      {#snippet child({ props })}
-        <button
-          {...props}
-          bind:this={trigger}
-          type="button"
-          data-dictation-trigger
-          class="dictation-trigger fixed z-30 grid size-12 place-items-center rounded-full border-0 p-[3px] text-white disabled:cursor-wait"
-          class:movable={!placement.pinned}
-          class:animate-pulse={status === 'recording'}
-          class:animate-spin={status === 'transcribing'}
-          style:left={`${placement.x}px`}
-          style:top={`${placement.y}px`}
-          aria-label={label()}
-          aria-pressed={status === 'recording'}
-          disabled={status === 'transcribing'}
-          onpointerdown={startDrag}
-          onpointermove={moveDrag}
-          onpointerup={stopDrag}
-          onclick={triggerClick}
-        >
-          <span class="grid size-full place-items-center rounded-full border border-white/15 bg-[#11102f]">
-            {#if status === 'recording'}<Square size={14} fill="currentColor" />{:else}<Mic size={18} />{/if}
-          </span>
-        </button>
-      {/snippet}
-    </Tooltip.Trigger>
-    <Tooltip.Content side="left">{label()}</Tooltip.Content>
-  </Tooltip.Root>
+  <div
+    class="fixed z-30 size-12"
+    data-dictation-trigger
+    style:left={`${placement.x}px`}
+    style:top={`${placement.y}px`}
+  >
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <button
+            {...props}
+            bind:this={trigger}
+            type="button"
+            class="dictation-trigger absolute inset-0 grid size-12 place-items-center rounded-full border-0 p-[3px] text-white disabled:cursor-wait"
+            class:movable={!placement.pinned}
+            class:animate-pulse={status === 'recording'}
+            class:animate-spin={status === 'transcribing'}
+            aria-label={`${label()}. ${placementStatus()}. ${placementShortcut()}`}
+            aria-pressed={status === 'recording'}
+            disabled={status === 'transcribing'}
+            onpointerdown={startDrag}
+            onpointermove={moveDrag}
+            onpointerup={stopDrag}
+            onclick={triggerClick}
+          >
+            <span class="grid size-full place-items-center rounded-full border border-white/15 bg-[#11102f]">
+              {#if status === 'recording'}<Square size={14} fill="currentColor" />{:else}<Mic size={18} />{/if}
+            </span>
+          </button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content side="left" sideOffset={10} class="flex w-60 flex-col items-stretch gap-1.5 p-2.5">
+        <span class="font-medium">{label()}</span>
+        <span class="flex items-center gap-1.5 text-[11px] opacity-75">
+          {#if placement.pinned}<Pin size={12} fill="currentColor" />{:else}<Move size={12} />{/if}
+          {placementStatus()}
+        </span>
+        <span class="flex items-center gap-1.5 border-t border-background/15 pt-1.5 text-[11px] opacity-80">
+          <Kbd.Root>{placementModifier}</Kbd.Root>
+          <span>+ {m['dictation.position_controls_hint']()}</span>
+        </span>
+      </Tooltip.Content>
+    </Tooltip.Root>
+
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <button
+            {...props}
+            type="button"
+            class={`placement-trigger absolute -right-1 -bottom-1 z-10 grid size-6 cursor-pointer place-items-center rounded-full border-2 border-[var(--app-page)] bg-[var(--app-surface-raised)] shadow-sm transition-[color,transform,background-color] duration-150 hover:scale-105 hover:bg-[var(--app-accent-soft)] active:scale-95 ${placement.pinned ? 'text-[var(--app-accent)]' : 'text-[var(--app-success)]'}`}
+            aria-label={`${placementStatus()}. ${m['dictation.position_menu']()}`}
+            aria-haspopup="menu"
+            aria-expanded={placementMenuOpen}
+            aria-controls="dictation-placement-menu"
+            onclick={() => (placementMenuOpen = !placementMenuOpen)}
+          >
+            {#if placement.pinned}<Pin size={10} fill="currentColor" />{:else}<Move size={11} />{/if}
+          </button>
+        {/snippet}
+      </Tooltip.Trigger>
+      <Tooltip.Content side="left" sideOffset={8}>
+        {placementStatus()} · {m['dictation.position_controls_hint']()}
+      </Tooltip.Content>
+    </Tooltip.Root>
+  </div>
   {#if placementMenuOpen}
     <div
+      id="dictation-placement-menu"
       class="placement-menu"
       data-dictation-trigger
+      role="menu"
+      aria-label={m['dictation.position_menu']()}
       style:left={`${Math.max(EDGE_GAP, Math.min(window.innerWidth - 188, placement.x - 136))}px`}
       style:top={`${Math.min(window.innerHeight - 92, placement.y + BUTTON_SIZE + 8)}px`}
     >
-      <button type="button" onclick={togglePinned}>
+      <button type="button" role="menuitem" onclick={togglePinned}>
         {#if placement.pinned}<PinOff size={14} />{m['dictation.unpin']()}{:else}<Pin size={14} />{m['dictation.pin']()}{/if}
       </button>
-      <button type="button" onclick={resetPlacement}><RotateCcw size={14} />{m['dictation.reset_position']()}</button>
+      <button type="button" role="menuitem" onclick={resetPlacement}><RotateCcw size={14} />{m['dictation.reset_position']()}</button>
       {#if !placement.pinned}<span><Move size={13} />{m['dictation.drag_hint']()}</span>{/if}
     </div>
   {/if}

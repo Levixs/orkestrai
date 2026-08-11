@@ -1,6 +1,28 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('ditado por voz', () => {
+  test('deixa os controles de posição visíveis e acessíveis pelo badge', async ({ page }) => {
+    await page.addInitScript(() => localStorage.removeItem('orkestrai.dictation-placement'));
+    await page.goto('/canvas');
+
+    const orb = page.locator('.dictation-trigger');
+    const placementBadge = page.locator('.placement-trigger');
+    await expect(orb).toBeVisible();
+    await expect(placementBadge).toBeVisible();
+    await expect(placementBadge).toHaveAttribute('aria-label', /Posição fixada|Position pinned|Posición fijada/);
+
+    await orb.hover();
+    await expect(page.getByText(/clique para abrir os controles de posição|click for position controls|clic para abrir los controles de posición/).first()).toBeVisible();
+
+    await placementBadge.click();
+    await page.getByRole('menuitem', { name: /Desafixar posição|Unpin position|Desfijar posición/ }).click();
+    await expect(placementBadge).toHaveAttribute('aria-label', /Posição livre|Free position|Posición libre/);
+
+    await placementBadge.click();
+    await page.getByRole('menuitem', { name: /Restaurar posição|Reset position|Restablecer posición/ }).click();
+    await expect(placementBadge).toHaveAttribute('aria-label', /Posição fixada|Position pinned|Posición fijada/);
+  });
+
   test('aceita uploads maiores que o antigo limite de 512 KB', async ({ request }) => {
     const response = await request.post('/api/agent-room/voice/transcribe', {
       multipart: {

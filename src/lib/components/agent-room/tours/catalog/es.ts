@@ -476,7 +476,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'record',
         title: 'Haz clic en la esfera de voz',
-        body: 'Usa la esfera de colores o Alt+Espacio para grabar. El primer clic conserva el campo enfocado. Ctrl+clic o Command+clic abre los controles de posición; suelta la esfera para arrastrarla dentro del canvas visible.',
+        body: 'Usa la esfera de colores o Alt+Espacio para grabar. El primer clic conserva el campo enfocado. Su pequeño indicador clicable muestra si está fijada o libre y abre directamente los controles de posición; el tooltip también presenta el atajo Ctrl+clic o Command+clic. Desfija la esfera para arrastrarla dentro del canvas visible.',
       },
       {
         id: 'auto-submit',

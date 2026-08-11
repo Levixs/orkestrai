@@ -235,7 +235,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictate into any text field',
-      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Under Settings → Voice dictation, you can enable automatic sending: terminals also receive Enter after the transcript, while regular fields still only receive text. Ctrl-click or Command-click the orb to control its position. With no active field, the same control sends text to the leader.',
+      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Under Settings → Voice dictation, you can enable automatic sending: terminals also receive Enter after the transcript, while regular fields still only receive text. The clickable badge shows whether the orb is pinned or movable and opens its position controls directly; the tooltip also displays the Ctrl-click or Command-click shortcut. With no active field, the same control sends text to the leader.',
       tags: ['Global dictation', 'text fields', 'local voice'],
     },
     {
@@ -280,6 +280,7 @@ export const DOCS_EN: DocsCatalog = {
       date: 'Aug 11, 2026 · 0.9.1',
       items: [
         'Kimi role files now include the required agent-profile frontmatter, and legacy or missing files are repaired before terminal launch instead of ending the PTY with an invalid-agent error.',
+        'The global voice orb now has a clickable pinned or movable badge that opens position controls directly, while its tooltip also shows the correct platform shortcut.',
       ],
     },
     {

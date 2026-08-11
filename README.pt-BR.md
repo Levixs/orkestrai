@@ -48,7 +48,9 @@ Baixe os instaladores mais recentes em
   alterações concluídas pelo canvas.
 - **Voz local:** dite em qualquer campo de texto ou use o atalho do canvas sem
   foco para o líder e ouça respostas em português brasileiro, inglês americano
-  ou espanhol latino-americano. STT e TTS rodam na máquina do usuário.
+  ou espanhol latino-americano. O badge da bolinha mostra se ela está fixada ou
+  livre e abre diretamente os controles de posição; o tooltip também revela o
+  atalho da plataforma. STT e TTS rodam na máquina do usuário.
 - **Delegação por cota:** fixe o uso de Claude, Codex e Kimi no canvas, configure
   origem, fallback, janela de 5 horas/semanal/mensal e limite e deixe o líder
   consultar a mesma recomendação pela CLI ou ponte MCP antes de atribuir trabalho

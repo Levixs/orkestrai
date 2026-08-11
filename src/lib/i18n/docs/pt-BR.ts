@@ -239,7 +239,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Ditar em qualquer campo de texto',
-      body: 'Clique em qualquer campo editável — título ou descrição do kanban, role, nota ou formulário — e use a bolinha de voz global ou Alt+Espaço. Já no primeiro clique, o campo é preservado e a transcrição entra exatamente no cursor, sem exigir líder. Em Configurações → Ditado por voz, você pode ativar o envio automático: em terminais, a transcrição também pressiona Enter; campos comuns continuam apenas recebendo o texto. Use Ctrl+clique ou Command+clique na bolinha para controlar sua posição. Sem campo ativo, o controle envia o texto ao líder.',
+      body: 'Clique em qualquer campo editável — título ou descrição do kanban, role, nota ou formulário — e use a bolinha de voz global ou Alt+Espaço. Já no primeiro clique, o campo é preservado e a transcrição entra exatamente no cursor, sem exigir líder. Em Configurações → Ditado por voz, você pode ativar o envio automático: em terminais, a transcrição também pressiona Enter; campos comuns continuam apenas recebendo o texto. O badge clicável mostra se a bolinha está fixada ou livre e abre diretamente os controles de posição; o tooltip também exibe o atalho Ctrl+clique ou Command+clique. Sem campo ativo, o controle envia o texto ao líder.',
       tags: ['Ditado global', 'campos de texto', 'voz local'],
     },
     {
@@ -284,6 +284,7 @@ export const DOCS_PT: DocsCatalog = {
       date: '11 ago 2026 · 0.9.1',
       items: [
         'Arquivos de role do Kimi agora incluem o frontmatter obrigatório do perfil, e arquivos antigos ou ausentes são reparados antes de iniciar o terminal em vez de encerrar a PTY com erro de agent file inválido.',
+        'A bolinha de voz global agora tem um badge clicável de posição fixada ou livre que abre diretamente os controles, e o tooltip também informa o atalho correto da plataforma.',
       ],
     },
     {

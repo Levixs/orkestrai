@@ -48,7 +48,9 @@ Descarga los instaladores más recientes desde
   cambios terminados desde el lienzo.
 - **Voz local:** dicta en cualquier campo de texto o usa el atajo del canvas sin
   foco para el líder y escucha respuestas en portugués de Brasil, inglés de
-  Estados Unidos o español latinoamericano. STT y TTS se ejecutan localmente.
+  Estados Unidos o español latinoamericano. El indicador de la esfera muestra si
+  está fijada o libre y abre directamente los controles de posición; el tooltip
+  también presenta el atajo de la plataforma. STT y TTS se ejecutan localmente.
 - **Delegación según la cuota:** fija el uso de Claude, Codex y Kimi en el canvas,
   configura origen, fallback, ventana de 5 horas/semanal/mensual y límite, y deja
   que el líder consulte la misma recomendación por CLI o MCP antes de asignar
