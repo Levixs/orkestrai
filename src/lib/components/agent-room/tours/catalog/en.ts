@@ -485,8 +485,8 @@ export const TOURS_EN: Tour[] = [
       },
       {
         id: 'fallback',
-        title: 'Use the leader shortcut on the canvas',
-        body: 'With no active field, the orb keeps its previous shortcut and sends the transcript to the Maestro leader. I create one to test; without a field or leader, the app shows a warning.',
+        title: 'Use the leader shortcut in either view',
+        body: 'With no active field, the orb sends the transcript to the Maestro leader in Canvas or Terminals mode. I create one to test; without a field or leader, the app shows a warning. On macOS, Fn/Globe by itself is reserved by the system, so configure a key combination or F1–F12.',
         action: { kind: 'createAgent', title: 'Voice Leader', provider: 'claude', leader: true },
         check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Voice Leader' },
       },
@@ -787,6 +787,16 @@ export const TOURS_EN: Tour[] = [
         id: 'choose-item',
         title: 'Choose where to work',
         body: 'Expand a workspace or use search to open a terminal, board, note, portal, file, flow, or Usage in the full work area.',
+      },
+      {
+        id: 'terminal-options',
+        title: 'Keep terminal options organized',
+        body: 'Open the ellipsis menu in the header to change provider or role, visually choose 1 of 10 ANSI themes, reload, toggle Maestro Mode, or remove the terminal.',
+      },
+      {
+        id: 'dictate-to-leader',
+        title: 'Dictate without returning to Canvas',
+        body: 'With no text field active, the voice orb finds the selected workspace leader, opens that terminal, and starts the same dictation flow used in Canvas.',
       },
       {
         id: 'return-canvas',

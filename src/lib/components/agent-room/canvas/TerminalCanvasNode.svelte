@@ -1,16 +1,16 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowLeftRight, BadgeCheck, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { ArrowLeftRight, BadgeCheck, Ellipsis, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
-  import IconAction from './IconAction.svelte';
   import TerminalNode from '../TerminalNode.svelte';
   import VoiceConfirmDialog from '../VoiceConfirmDialog.svelte';
   import { getAppSettings } from '../app-settings.svelte.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { voiceModelsReadyForUse } from '../voice-model-status.js';
   import { speakText } from '../voice-speech.js';
+  import { normalizeTerminalTheme, TERMINAL_THEMES, TERMINAL_THEME_ORDER, type TerminalThemeName } from '../terminal-themes.js';
   import type { AgentProviderInfo, TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
 
@@ -39,7 +39,7 @@
     onSessionCreated: (id: string, sessionId: string, options: { resumed: boolean }) => void | Promise<void>;
     onToggleMaestro?: (id: string) => void;
     onOpenFile?: (path: string) => void;
-    onCycleTheme?: (id: string) => void;
+    onThemeChange?: (id: string, theme: TerminalThemeName) => void;
     onPayloadChange?: (id: string, partial: Record<string, unknown>) => void;
     onRename?: (id: string, title: string) => void;
     /** Nome do workspace (notificacao de fim de sessao). */
@@ -102,6 +102,7 @@
   /** Role exibida no header: curta (o nome completo fica no dropdown/aria). */
   const roleLabel = $derived(currentRole && currentRole.length > 24 ? `${currentRole.slice(0, 23).trimEnd()}…` : currentRole);
   const currentProvider = $derived((data.payload as TerminalNodePayload).provider ?? null);
+  const currentTheme = $derived(normalizeTerminalTheme((data.payload as TerminalNodePayload).theme));
   let switchingProvider = $state(false);
   let providerError = $state('');
 
@@ -332,59 +333,110 @@
   {#snippet icon()}<SquareTerminal size={13} />{/snippet}
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger class="node-action-btn" aria-label={m['term.provider_switch']()} disabled={switchingProvider}>
-        <ArrowLeftRight size={13} />
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content class="w-48">
-        <DropdownMenu.Label>{m['term.provider_switch']()}</DropdownMenu.Label>
-        <DropdownMenu.Separator />
-        {#each data.providers ?? [] as provider (provider.id)}
-          <DropdownMenu.Item
-            disabled={!provider.installed || provider.id === currentProvider}
-            onclick={() => changeProvider(provider.id)}
-          >
-            <span class="provider-state" class:available={provider.installed}></span>
-            <span class="min-w-0 flex-1 truncate">{provider.displayName}</span>
-            {#if provider.id === currentProvider}<span class="text-[9px] text-[var(--app-text-muted)]">{m['term.provider_current']()}</span>{/if}
-          </DropdownMenu.Item>
-        {/each}
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+    {#if currentRole}
+      <span class="terminal-status-chip" title={m['term.role_label']({ role: currentRole })} aria-label={m['term.role_label']({ role: currentRole })}>
+        <BadgeCheck size={12} />
+        <span>{roleLabel}</span>
+      </span>
+    {/if}
+    {#if data.payload.maestro}
+      <span class="terminal-leader-state" title={m['term.maestro_active']()} aria-label={m['term.maestro_active']()}>
+        <Star size={12} fill="currentColor" />
+      </span>
+    {/if}
     <DropdownMenu.Root onOpenChange={(open: boolean) => open && loadRoles()}>
-      <DropdownMenu.Trigger class={currentRole ? 'role-trigger has-role' : 'role-trigger'} aria-label={currentRole ? m['term.role_label']({ role: currentRole }) : m['term.role_assign']()}>
-        <BadgeCheck size={13} />
-        {#if roleLabel}
-          <span class="role-name">{roleLabel}</span>
-        {/if}
+      <DropdownMenu.Trigger
+        class="node-action-btn"
+        aria-label={m['term.actions']()}
+        title={m['term.actions']()}
+        disabled={switchingProvider}
+        data-testid="terminal-actions-menu"
+      >
+        <Ellipsis size={15} />
       </DropdownMenu.Trigger>
-      <DropdownMenu.Content class="w-44">
-        <DropdownMenu.Item onclick={() => assignRole(null)}>{m['term.role_none']()}</DropdownMenu.Item>
+      <DropdownMenu.Content align="end" class="w-56">
+        <DropdownMenu.Label class="truncate">{data.title}</DropdownMenu.Label>
         <DropdownMenu.Separator />
-        {#each roles as role (role.slug)}
-          <DropdownMenu.Item onclick={() => assignRole(role.name)}>
-            <span class="role-dot" style:background={role.color}></span>
-            {role.name}
-          </DropdownMenu.Item>
-        {:else}
-          <DropdownMenu.Item disabled>{m['term.role_empty']()}</DropdownMenu.Item>
-        {/each}
+        <DropdownMenu.Sub>
+          <DropdownMenu.SubTrigger>
+            <ArrowLeftRight size={14} />
+            {m['term.provider_switch']()}
+          </DropdownMenu.SubTrigger>
+          <DropdownMenu.SubContent sideOffset={6} class="w-52">
+            {#each data.providers ?? [] as provider (provider.id)}
+              <DropdownMenu.Item
+                disabled={!provider.installed || provider.id === currentProvider}
+                onclick={() => changeProvider(provider.id)}
+              >
+                <span class="provider-state" class:available={provider.installed}></span>
+                <span class="min-w-0 flex-1 truncate">{provider.displayName}</span>
+                {#if provider.id === currentProvider}<span class="text-[9px] text-[var(--app-text-muted)]">{m['term.provider_current']()}</span>{/if}
+              </DropdownMenu.Item>
+            {/each}
+          </DropdownMenu.SubContent>
+        </DropdownMenu.Sub>
+        <DropdownMenu.Sub>
+          <DropdownMenu.SubTrigger>
+            <BadgeCheck size={14} />
+            {m['term.role_assign']()}
+          </DropdownMenu.SubTrigger>
+          <DropdownMenu.SubContent sideOffset={6} class="max-h-72 w-52">
+            <DropdownMenu.RadioGroup
+              value={currentRole ?? '__none__'}
+              onValueChange={(value: string) => assignRole(value === '__none__' ? null : value)}
+            >
+              <DropdownMenu.RadioItem value="__none__">{m['term.role_none']()}</DropdownMenu.RadioItem>
+              <DropdownMenu.Separator />
+              {#each roles as role (role.slug)}
+                <DropdownMenu.RadioItem value={role.name}>
+                  <span class="role-dot" style:background={role.color}></span>
+                  <span class="min-w-0 truncate">{role.name}</span>
+                </DropdownMenu.RadioItem>
+              {:else}
+                <DropdownMenu.Item disabled>{m['term.role_empty']()}</DropdownMenu.Item>
+              {/each}
+            </DropdownMenu.RadioGroup>
+          </DropdownMenu.SubContent>
+        </DropdownMenu.Sub>
+        <DropdownMenu.Sub>
+          <DropdownMenu.SubTrigger>
+            <SwatchBook size={14} />
+            {m['term.theme']()}
+          </DropdownMenu.SubTrigger>
+          <DropdownMenu.SubContent sideOffset={6} class="max-h-80 w-52">
+            <DropdownMenu.RadioGroup
+              value={currentTheme}
+              onValueChange={(value: string) => data.onThemeChange?.(id, value as TerminalThemeName)}
+            >
+              {#each TERMINAL_THEME_ORDER as theme (theme)}
+                <DropdownMenu.RadioItem value={theme}>
+                  <span class="theme-swatch" aria-hidden="true">
+                    <span style:background={TERMINAL_THEMES[theme].theme.background}></span>
+                    <span style:background={TERMINAL_THEMES[theme].theme.blue}></span>
+                    <span style:background={TERMINAL_THEMES[theme].theme.green}></span>
+                  </span>
+                  <span class="min-w-0 truncate">{TERMINAL_THEMES[theme].label()}</span>
+                </DropdownMenu.RadioItem>
+              {/each}
+            </DropdownMenu.RadioGroup>
+          </DropdownMenu.SubContent>
+        </DropdownMenu.Sub>
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item onclick={reloadTerminal}>
+          <RotateCcw size={14} />
+          {m['term.reload']()}
+        </DropdownMenu.Item>
+        <DropdownMenu.Item onclick={() => data.onToggleMaestro?.(id)}>
+          <Star size={14} fill={data.payload.maestro ? 'currentColor' : 'none'} />
+          {data.payload.maestro ? m['term.maestro_disable']() : m['term.maestro_enable']()}
+        </DropdownMenu.Item>
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item variant="destructive" onclick={() => data.onDelete(id)}>
+          <X size={14} />
+          {m['term.remove_terminal']()}
+        </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
-    <IconAction label={m['term.cycle_theme']()} onclick={() => data.onCycleTheme?.(id)}>
-      <SwatchBook size={13} /></IconAction>
-    <IconAction label={m['term.reload_tooltip']()} onclick={reloadTerminal}>
-      <RotateCcw size={13} /></IconAction>
-    <button
-      class="node-action-btn"
-      class:active={data.payload.maestro}
-      aria-label={data.payload.maestro ? m['term.maestro_active']() : m['term.maestro_enable']()}
-      onclick={() => data.onToggleMaestro?.(id)}
-    >
-      <Star size={13} fill={data.payload.maestro ? 'currentColor' : 'none'} />
-    </button>
-    <IconAction label={m['term.remove_terminal']()} danger onclick={() => data.onDelete(id)}>
-      <X size={13} /></IconAction>
   {/snippet}
 
   {#if mentionOpen && filteredMentions.length}
@@ -407,7 +459,7 @@
         sessionLabel={data.title}
         workspaceName={data.workspaceName}
         onOpenPath={(path) => data.onOpenFile?.(path)}
-        themeName={data.payload.theme ?? 'dark'}
+        themeName={currentTheme}
         provider={data.payload.provider}
         sessionStorage={data.sessionStorageFor?.() ?? undefined}
         onRespawn={resolveRespawn}
@@ -426,7 +478,7 @@
         workspaceName={data.workspaceName}
         onSessionCreated={persistCreatedSession}
         onOpenPath={(path) => data.onOpenFile?.(path)}
-        themeName={data.payload.theme ?? 'dark'}
+        themeName={currentTheme}
         provider={data.payload.provider}
         sessionStorage={data.sessionStorageFor?.() ?? undefined}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
@@ -570,34 +622,46 @@
     padding: 1px 5px;
   }
 
-  .role-trigger {
+  .terminal-status-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    border: none;
-    background: transparent;
-    color: var(--app-text-muted);
-    cursor: pointer;
-    padding: 3px;
-    border-radius: 6px;
-  }
-
-  .role-trigger:hover {
-    background: var(--app-border);
-    color: var(--app-text);
-  }
-
-  .role-trigger.has-role {
+    min-width: 0;
+    max-width: 112px;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid color-mix(in srgb, var(--app-success) 30%, var(--app-border));
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--app-success) 8%, transparent);
     color: var(--app-success);
+    font-size: 10px;
   }
 
-  .role-name {
-    display: inline-block;
-    font-size: 10px;
-    max-width: 90px;
+  .terminal-status-chip span {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .terminal-leader-state {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    color: var(--app-warning);
+  }
+
+  .theme-swatch {
+    display: inline-grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 24px;
+    height: 14px;
+    flex: none;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+    border-radius: 3px;
   }
 
   .role-dot {

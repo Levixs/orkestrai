@@ -63,7 +63,7 @@ test.describe('polimento do canvas', () => {
     await cleanup(request, workspaceName);
   });
 
-  test('tema do terminal alterna e persiste', async ({ page, request }) => {
+  test('menu compacto do terminal escolhe e persiste um tema', async ({ page, request }) => {
     const workspaceName = `E2E theme ${Date.now()}`;
     await createWorkspaceIn(page, workspaceName);
 
@@ -71,14 +71,16 @@ test.describe('polimento do canvas', () => {
     const terminal = page.locator('.canvas-terminal');
     await expect(terminal).toBeVisible();
 
-    await terminal.getByRole('button', { name: 'Trocar tema' }).click();
+    await terminal.getByRole('button', { name: /Opções do terminal|Terminal options|Opciones de la terminal/ }).click();
+    await page.getByRole('menuitem', { name: /Tema do terminal|Terminal theme|Tema de la terminal/ }).hover();
+    await page.getByRole('menuitemradio', { name: 'Tokyo Night' }).click();
 
     const list = await request.get('/api/agent-room/workspaces');
     const workspaces = (await list.json()).data as Array<{ id: string; name: string }>;
     const created = workspaces.find((workspace) => workspace.name === workspaceName)!;
     const nodesResponse = await request.get(`/api/agent-room/workspaces/${created.id}/nodes`);
     const nodes = (await nodesResponse.json()).data as Array<{ payload: { theme?: string } }>;
-    expect(nodes[0].payload.theme).toBe('dracula');
+    expect(nodes[0].payload.theme).toBe('tokyo-night');
 
     await cleanup(request, workspaceName);
   });

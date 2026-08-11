@@ -213,6 +213,7 @@
 
   .node-title {
     flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -239,6 +240,8 @@
     display: inline-flex;
     align-items: center;
     gap: 2px;
+    flex: none;
+    min-width: 0;
   }
 
   .connections-badge {

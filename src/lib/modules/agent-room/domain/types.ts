@@ -233,7 +233,7 @@ export type TerminalNodePayload = {
   roleConfiguredAtLaunch?: string;
   /** Modo Maestro: pode recrutar/dispensar/conectar outros agentes via ponte. */
   maestro?: boolean;
-  /** Tema do terminal (dark, dracula, nord, solarized, light). */
+  /** Identificador de um tema xterm embutido. */
   theme?: string;
 };
 

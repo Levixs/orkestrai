@@ -26,7 +26,8 @@ Baixe os instaladores mais recentes em
   mostram a colaboração entre os agentes enquanto ela acontece.
 - **Modo de trabalho focado:** alterne de Canvas para Terminais para navegar por
   todos os workspaces e abrir terminais, quadros, notas, portais, arquivos,
-  fluxos e uso na área inteira sem duplicar sessões.
+  fluxos e uso na área inteira sem duplicar sessões. A bolinha global de voz
+  acompanha o workspace ativo e envia o ditado sem foco ao líder nos dois modos.
 - **Modo Maestro:** defina um líder que pode propor um time, recrutar agentes,
   delegar briefings completos, coordenar o trabalho e dispensar agentes quando
   não forem mais necessários.
@@ -49,7 +50,7 @@ Baixe os instaladores mais recentes em
   workspace, com indicadores de atividade e notificações nativas.
 - **Andares Git:** isole o trabalho em worktrees, inspecione conflitos e integre
   alterações concluídas pelo canvas.
-- **Voz local:** dite em qualquer campo de texto ou use o atalho do canvas sem
+- **Voz local:** dite em qualquer campo de texto ou use o atalho do workspace sem
   foco para o líder e ouça respostas em português brasileiro, inglês americano
   ou espanhol latino-americano. O badge da bolinha mostra se ela está fixada ou
   livre e abre diretamente os controles de posição; o tooltip também revela o
@@ -60,6 +61,8 @@ Baixe os instaladores mais recentes em
   novo.
 - **Aparência personalizada:** escolha entre três temas escuros e um claro ou
   duplique um deles e edite tokens semânticos com prévia e importação/exportação JSON.
+- **Terminais legíveis:** escolha uma entre 10 paletas ANSI completas no menu
+  compacto do terminal, junto aos controles de provider, role, recarga e Maestro.
 - **Controles operacionais:** gerencie portas de portais locais, configure rotinas
   recorrentes e instale skills pelo marketplace.
 - **Central de Providers:** detecte localmente as oito CLIs compatíveis, siga a

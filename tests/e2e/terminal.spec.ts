@@ -41,6 +41,22 @@ test.describe('terminais PTY', () => {
           payload: { command: process.platform === 'win32' ? 'powershell.exe' : '/bin/sh', args: [] },
         },
       });
+      const leaderResponse = await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+        data: {
+          type: 'terminal',
+          title: 'Lider de voz E2E',
+          x: 520,
+          y: 460,
+          width: 480,
+          height: 320,
+          payload: {
+            command: process.platform === 'win32' ? 'powershell.exe' : '/bin/sh',
+            args: [],
+            maestro: true,
+          },
+        },
+      });
+      const leader = (await leaderResponse.json()).data as { id: string };
 
       await page.goto(`/terminal?workspace=${workspace.id}&node=${note.id}`);
       const tree = page.getByTestId('terminal-workspace-tree');
@@ -61,9 +77,18 @@ test.describe('terminais PTY', () => {
       await page.keyboard.press('Enter');
       await expect(terminal.locator('.terminal-container')).toContainText(marker, { timeout: 10_000 });
 
+      const fallbackHandled = await page.evaluate(() => {
+        const detail = { handled: false };
+        window.dispatchEvent(new CustomEvent('orkestrai:text-dictation-fallback', { detail }));
+        return detail.handled;
+      });
+      expect(fallbackHandled).toBe(true);
+      await expect(page).toHaveURL(new RegExp(`/terminal\\?workspace=${workspace.id}.*node=${leader.id}`));
+      await expect(page.getByTestId('terminal-workspace-header')).toContainText('Lider de voz E2E');
+
       await page.getByTestId('terminal-open-canvas').click();
       await expect(page).toHaveURL(new RegExp(`/canvas\\?workspace=${workspace.id}.*node=`));
-      await expect(page.locator('.canvas-terminal')).toBeVisible();
+      await expect(page.locator('.canvas-terminal.selected')).toContainText('Lider de voz E2E');
     } finally {
       await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
     }

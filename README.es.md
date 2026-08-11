@@ -26,7 +26,8 @@ Descarga los instaladores más recientes desde
   conexiones muestran la colaboración entre agentes mientras ocurre.
 - **Vista de trabajo enfocada:** cambia de Canvas a Terminales para navegar por
   todos los workspaces y abrir terminales, tableros, notas, portales, archivos,
-  flujos y uso en toda el área de trabajo sin duplicar sesiones.
+  flujos y uso en toda el área de trabajo sin duplicar sesiones. La esfera global
+  de voz sigue el workspace activo y dirige el dictado sin foco a su líder en ambas vistas.
 - **Modo Maestro:** asigna un líder que puede proponer un equipo, reclutar
   agentes, delegar briefings completos, coordinar el trabajo y retirar agentes
   cuando ya no sean necesarios.
@@ -49,7 +50,7 @@ Descarga los instaladores más recientes desde
   workspace, con indicadores de actividad y notificaciones nativas.
 - **Pisos Git:** aísla el trabajo en worktrees, inspecciona conflictos e integra
   cambios terminados desde el lienzo.
-- **Voz local:** dicta en cualquier campo de texto o usa el atajo del canvas sin
+- **Voz local:** dicta en cualquier campo de texto o usa el atajo del workspace sin
   foco para el líder y escucha respuestas en portugués de Brasil, inglés de
   Estados Unidos o español latinoamericano. El indicador de la esfera muestra si
   está fijada o libre y abre directamente los controles de posición; el tooltip
@@ -60,6 +61,8 @@ Descarga los instaladores más recientes desde
   trabajo nuevo.
 - **Apariencia personalizada:** elige entre tres temas oscuros y uno claro, o
   duplica uno y edita tokens semánticos con vista previa e importación/exportación JSON.
+- **Terminales legibles:** elige 1 de 10 paletas ANSI completas desde el menú
+  compacto de la terminal, junto a los controles de provider, rol, recarga y Maestro.
 - **Controles operativos:** administra puertos de portales locales, configura
   rutinas recurrentes e instala skills desde el marketplace.
 - **Central de Providers:** detecta localmente las ocho CLIs compatibles, sigue

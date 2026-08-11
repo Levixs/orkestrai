@@ -584,6 +584,7 @@
 
 <div
   class="terminal-node"
+  style:background={TERMINAL_THEMES[themeName]?.theme.background ?? TERMINAL_THEMES.dark.theme.background}
   tabindex="0"
   onkeydown={handleDictateHotkey}
   onclick={() => xtermInstance?.focus()}

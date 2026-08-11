@@ -378,11 +378,11 @@
         <span class="field-label">{m['settings.theme']()}</span>
         <Select.Root type="single" value={settings.terminalTheme} onValueChange={(value: string) => (settings = { ...settings, terminalTheme: value })}>
           <Select.Trigger data-slot="select-trigger">
-            {TERMINAL_THEMES[settings.terminalTheme as keyof typeof TERMINAL_THEMES]?.label ?? settings.terminalTheme}
+            {TERMINAL_THEMES[settings.terminalTheme as keyof typeof TERMINAL_THEMES]?.label() ?? settings.terminalTheme}
           </Select.Trigger>
           <Select.Content>
             {#each TERMINAL_THEME_ORDER as theme}
-              <Select.Item value={theme}>{TERMINAL_THEMES[theme].label}</Select.Item>
+              <Select.Item value={theme}>{TERMINAL_THEMES[theme].label()}</Select.Item>
             {/each}
           </Select.Content>
         </Select.Root>

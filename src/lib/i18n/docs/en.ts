@@ -18,7 +18,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model and effort only when that provider offers them, plus Leader (Maestro Mode). After creation: double-click renames; the badge assigns a role; ◐ changes the theme; ★ toggles Maestro Mode; and ⇄ changes provider without removing the member, connections, role, floor, or position. The previous conversation closes and the new provider starts a clean session.`,
+      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider switching, roles, a visual choice of 10 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
     },
     {
       id: 'provider-center',
@@ -235,7 +235,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictate into any text field',
-      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Under Settings → Voice dictation, you can enable automatic sending: terminals also receive Enter after the transcript, while regular fields still only receive text. The clickable badge shows whether the orb is pinned or movable and opens its position controls directly; the tooltip also displays the Ctrl-click or Command-click shortcut. With no active field, the same control sends text to the leader.',
+      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Under Settings → Voice dictation, you can enable automatic sending: terminals also receive Enter after the transcript, while regular fields still only receive text. The clickable badge shows whether the orb is pinned or movable and opens its position controls directly; the tooltip also displays the Ctrl-click or Command-click shortcut. With no active field, the same control finds the workspace leader in both Canvas and Terminals mode. On macOS, Fn/Globe by itself belongs to the system; choose a key combination or an F1–F12 key.',
       tags: ['Global dictation', 'text fields', 'local voice'],
     },
     {
@@ -271,7 +271,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'focused-workspace-view',
       title: 'Work in one terminal or artifact without distractions',
-      body: 'Use the Canvas/Terminals switch in the upper-left corner to open the workspace explorer. Search for and choose a terminal, board, note, portal, file, flow, or usage node to give it the full work area. It is the same persisted canvas artifact, so sessions, content, and edits stay synchronized. When you return to Canvas, Orkestrai preserves the workspace and centers the selected node.',
+      body: 'Use the Canvas/Terminals switch in the upper-left corner to open the workspace explorer. Search for and choose a terminal, board, note, portal, file, flow, or usage node to give it the full work area. It is the same persisted canvas artifact, so sessions, content, and edits stay synchronized. In terminals, the options menu keeps provider, role, 10 ANSI themes, reload, Maestro Mode, and removal organized without crowding the header. The voice orb also uses the active workspace leader in this view. When you return to Canvas, Orkestrai preserves the workspace and centers the selected node.',
       tags: ['Terminals mode', 'workspace explorer', 'focus'],
     },
     {
@@ -286,6 +286,9 @@ export const DOCS_EN: DocsCatalog = {
       date: 'Aug 11, 2026 · 0.10.0',
       items: [
         'The new Terminals mode provides a searchable explorer across all workspaces and opens terminals, boards, notes, portals, files, flows, and usage in the full work area while preserving the selected node when returning to the canvas.',
+        'The voice orb now finds and opens the active workspace leader in Terminals mode instead of incorrectly reporting that a workspace or leader is missing.',
+        'The terminal header now uses a compact options menu for provider, role, theme, reload, Maestro Mode, and removal, without overlapping controls on narrow nodes.',
+        'Terminals now offer 10 complete ANSI palettes with visual named selection; Settings explains why macOS cannot use Fn/Globe alone as an app shortcut.',
       ],
     },
     {

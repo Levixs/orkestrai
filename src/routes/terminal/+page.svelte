@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { getCsrfToken } from '@beeblock/svelar/http';
+  import { toast } from '@beeblock/svelar/ui';
   import {
     ChevronDown,
     ChevronRight,
@@ -24,6 +25,13 @@
   import { Button } from '$lib/components/ui/button';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import FocusedCanvasNode from '$lib/components/agent-room/FocusedCanvasNode.svelte';
+  import {
+    LEADER_DICTATION_COMMAND,
+    LEADER_DICTATION_STATE,
+    type LeaderDictationStateDetail,
+    type LeaderDictationStatus,
+  } from '$lib/components/agent-room/leader-dictation.js';
+  import { TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from '$lib/components/agent-room/text-dictation.js';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
   import type {
@@ -64,6 +72,8 @@
   let query = $state('');
   let loading = $state(true);
   let errorMessage = $state('');
+  let leaderDictationState = $state<LeaderDictationStatus>('idle');
+  let leaderDictationNodeId = $state<string | null>(null);
 
   const selectedWorkspace = $derived(workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ?? null);
   const selectedNode = $derived(
@@ -136,6 +146,10 @@
   }
 
   function selectNode(workspaceId: string, nodeId: string) {
+    if (selectedWorkspaceId !== workspaceId) {
+      leaderDictationState = 'idle';
+      leaderDictationNodeId = null;
+    }
     selectedWorkspaceId = workspaceId;
     selectedNodeId = nodeId;
     if (!expandedWorkspaceIds.includes(workspaceId)) expandedWorkspaceIds = [...expandedWorkspaceIds, workspaceId];
@@ -202,6 +216,74 @@
       location.assign(selectedWorkspaceId ? `/canvas?workspace=${selectedWorkspaceId}${selectedNodeId ? `&node=${selectedNodeId}` : ''}` : '/canvas');
     }
   }
+
+  function dispatchLeaderDictation(nodeId: string) {
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent(LEADER_DICTATION_COMMAND, { detail: { nodeId } }));
+    });
+  }
+
+  async function toggleLeaderDictation() {
+    const workspaceId = selectedWorkspaceId;
+    if (!workspaceId || leaderDictationState === 'transcribing') return;
+    if (leaderDictationState === 'recording' && leaderDictationNodeId) {
+      dispatchLeaderDictation(leaderDictationNodeId);
+      return;
+    }
+
+    let workspaceNodes: CanvasNode[];
+    try {
+      workspaceNodes = await api<CanvasNode[]>(`/api/agent-room/workspaces/${workspaceId}/nodes`);
+      nodesByWorkspace = { ...nodesByWorkspace, [workspaceId]: workspaceNodes };
+    } catch {
+      toast.error(m['leader_dictation.error']());
+      return;
+    }
+
+    const leader = workspaceNodes.find(
+      (node) => node.type === 'terminal' && Boolean((node.payload as TerminalNodePayload).maestro)
+    );
+    if (!leader) {
+      leaderDictationState = 'idle';
+      leaderDictationNodeId = null;
+      toast.error(m['leader_dictation.no_leader']());
+      return;
+    }
+
+    leaderDictationNodeId = leader.id;
+    if (selectedNodeId !== leader.id) {
+      selectNode(workspaceId, leader.id);
+      await tick();
+    }
+    dispatchLeaderDictation(leader.id);
+  }
+
+  onMount(() => {
+    const handleDictationState = (event: Event) => {
+      const detail = (event as CustomEvent<LeaderDictationStateDetail>).detail;
+      if (!detail) return;
+      if (detail.nodeId !== leaderDictationNodeId) {
+        const source = selectedWorkspaceId
+          ? (nodesByWorkspace[selectedWorkspaceId] ?? []).find((node) => node.id === detail.nodeId)
+          : null;
+        if (source?.type !== 'terminal' || !(source.payload as TerminalNodePayload).maestro) return;
+        leaderDictationNodeId = detail.nodeId;
+      }
+      leaderDictationState = detail.status;
+    };
+    const handleFallback = (event: Event) => {
+      const detail = (event as CustomEvent<TextDictationFallbackDetail>).detail;
+      if (!detail || !selectedWorkspaceId) return;
+      detail.handled = true;
+      void toggleLeaderDictation();
+    };
+    window.addEventListener(LEADER_DICTATION_STATE, handleDictationState);
+    window.addEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
+    return () => {
+      window.removeEventListener(LEADER_DICTATION_STATE, handleDictationState);
+      window.removeEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
+    };
+  });
 
   onMount(() => {
     let destroyed = false;
@@ -377,7 +459,7 @@
   </aside>
 
   <section class="grid min-h-0 min-w-0 grid-rows-[44px_minmax(0,1fr)]">
-    <header class="flex min-w-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3">
+    <header class="flex min-w-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3" data-testid="terminal-workspace-header">
       {#if selectedWorkspace && selectedNode}
         <WorkspaceIcon name={selectedWorkspace.icon} size={15} />
         <span class="truncate text-xs font-medium">{selectedWorkspace.name}</span>

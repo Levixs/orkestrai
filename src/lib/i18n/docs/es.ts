@@ -18,7 +18,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: crear, nombrar, modelo y esfuerzo',
-      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después: doble clic renombra; el sello asigna un rol; ◐ cambia el tema; ★ alterna el Modo Maestro; y ⇄ cambia el provider sin eliminar al miembro, sus conexiones, rol, piso o posición. La conversación anterior se cierra y el nuevo provider comienza una sesión limpia.`,
+      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después, el menú compacto del encabezado reúne cambio de provider, rol, una selección visual de 10 temas ANSI, recarga con contexto, Modo Maestro y eliminación; el título sigue siendo editable con doble clic. Cambiar el provider conserva conexiones, rol, piso y posición, cierra la conversación anterior e inicia una sesión limpia.`,
     },
     {
       id: 'provider-center',
@@ -235,7 +235,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictar en cualquier campo de texto',
-      body: 'Enfoca cualquier campo editable — título o descripción del kanban, rol, nota o formulario — y usa la esfera de voz global o Alt+Espacio. Desde el primer clic, el campo se conserva y la transcripción entra en el cursor sin requerir líder. En Configuración → Dictado por voz, puedes activar el envío automático: en terminales, la transcripción también presiona Enter; los campos comunes siguen recibiendo solo el texto. El indicador clicable muestra si la esfera está fijada o libre y abre directamente los controles de posición; el tooltip también presenta el atajo Ctrl+clic o Command+clic. Sin campo activo, el control envía el texto al líder.',
+      body: 'Enfoca cualquier campo editable — título o descripción del kanban, rol, nota o formulario — y usa la esfera de voz global o Alt+Espacio. Desde el primer clic, el campo se conserva y la transcripción entra en el cursor sin requerir líder. En Configuración → Dictado por voz, puedes activar el envío automático: en terminales, la transcripción también presiona Enter; los campos comunes siguen recibiendo solo el texto. El indicador clicable muestra si la esfera está fijada o libre y abre directamente los controles de posición; el tooltip también presenta el atajo Ctrl+clic o Command+clic. Sin campo activo, el control encuentra al líder del workspace tanto en Canvas como en modo Terminales. En macOS, Fn/Globe por sí sola pertenece al sistema; elige una combinación o una tecla F1–F12.',
       tags: ['Dictado global', 'campos de texto', 'voz local'],
     },
     {
@@ -271,7 +271,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'focused-workspace-view',
       title: 'Trabajar en una terminal o artefacto sin distracciones',
-      body: 'Usa el selector Canvas/Terminales en la esquina superior izquierda para abrir el explorador de workspaces. Busca y elige una terminal, tablero, nota, portal, archivo, flujo o nodo de uso para ocupar toda el área de trabajo. Es el mismo artefacto persistido del canvas, por lo que las sesiones, el contenido y los cambios siguen sincronizados. Al volver al Canvas, Orkestrai conserva el workspace y centra el nodo seleccionado.',
+      body: 'Usa el selector Canvas/Terminales en la esquina superior izquierda para abrir el explorador de workspaces. Busca y elige una terminal, tablero, nota, portal, archivo, flujo o nodo de uso para ocupar toda el área de trabajo. Es el mismo artefacto persistido del canvas, por lo que las sesiones, el contenido y los cambios siguen sincronizados. En las terminales, el menú de opciones mantiene provider, rol, 10 temas ANSI, recarga, Modo Maestro y eliminación organizados sin saturar el encabezado. La esfera de voz también usa al líder del workspace activo en esta vista. Al volver al Canvas, Orkestrai conserva el workspace y centra el nodo seleccionado.',
       tags: ['Modo Terminales', 'explorador de workspaces', 'foco'],
     },
     {
@@ -286,6 +286,9 @@ export const DOCS_ES: DocsCatalog = {
       date: '11 ago 2026 · 0.10.0',
       items: [
         'El nuevo modo Terminales ofrece un explorador con búsqueda para todos los workspaces y abre terminales, tableros, notas, portales, archivos, flujos y uso en toda el área, conservando el nodo seleccionado al volver al canvas.',
+        'La esfera de voz ahora encuentra y abre al líder del workspace activo también en modo Terminales, sin indicar incorrectamente que falta un workspace o líder.',
+        'El encabezado de la terminal ahora usa un menú compacto para provider, rol, tema, recarga, Modo Maestro y eliminación, sin controles superpuestos en nodos estrechos.',
+        'Las terminales ahora ofrecen 10 paletas ANSI completas con selección visual por nombre; Configuración explica por qué macOS no permite usar Fn/Globe por sí sola como atajo de la app.',
       ],
     },
     {

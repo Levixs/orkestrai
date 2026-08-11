@@ -485,8 +485,8 @@ export const TOURS_ES: Tour[] = [
       },
       {
         id: 'fallback',
-        title: 'Usa el atajo del líder en el canvas',
-        body: 'Sin un campo activo, la esfera conserva el atajo anterior y envía la transcripción al líder Maestro. Creo uno para probar; sin campo ni líder, la app muestra un aviso.',
+        title: 'Usa el atajo del líder en cualquier vista',
+        body: 'Sin un campo activo, la esfera envía la transcripción al líder Maestro en Canvas o Terminales. Creo uno para probar; sin campo ni líder, la app muestra un aviso. En macOS, Fn/Globe por sí sola está reservada por el sistema, así que configura una combinación o F1–F12.',
         action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
         check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
       },
@@ -787,6 +787,16 @@ export const TOURS_ES: Tour[] = [
         id: 'choose-item',
         title: 'Elige dónde trabajar',
         body: 'Expande un workspace o usa la búsqueda para abrir una terminal, tablero, nota, portal, archivo, flujo o Uso en toda el área de trabajo.',
+      },
+      {
+        id: 'terminal-options',
+        title: 'Mantén organizadas las opciones',
+        body: 'Abre el menú de puntos suspensivos del encabezado para cambiar provider o rol, elegir visualmente 1 de 10 temas ANSI, recargar, alternar el Modo Maestro o eliminar la terminal.',
+      },
+      {
+        id: 'dictate-to-leader',
+        title: 'Dicta sin volver al Canvas',
+        body: 'Sin un campo de texto activo, la esfera de voz encuentra al líder del workspace seleccionado, abre su terminal e inicia el mismo flujo de dictado del Canvas.',
       },
       {
         id: 'return-canvas',

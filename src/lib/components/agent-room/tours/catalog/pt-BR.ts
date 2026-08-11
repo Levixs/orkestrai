@@ -489,8 +489,8 @@ export const TOURS_PT: Tour[] = [
       },
       {
         id: 'fallback',
-        title: 'Use o atalho do líder no canvas',
-        body: 'Sem um campo ativo, a bolinha mantém o atalho antigo: envia a transcrição ao líder em Modo Maestro. Crio um líder para você testar; sem campo e sem líder, o app mostra um aviso.',
+        title: 'Use o atalho do líder em qualquer modo',
+        body: 'Sem um campo ativo, a bolinha envia a transcrição ao líder em Modo Maestro no Canvas ou em Terminais. Crio um líder para você testar; sem campo e sem líder, o app mostra um aviso. No macOS, Fn/Globe isolada é reservada pelo sistema, então configure um combo ou F1–F12.',
         action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
         check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
       },
@@ -791,6 +791,16 @@ export const TOURS_PT: Tour[] = [
         id: 'choose-item',
         title: 'Escolha onde trabalhar',
         body: 'Expanda um workspace ou use a pesquisa para abrir um terminal, quadro, nota, portal, arquivo, fluxo ou Uso ocupando toda a área disponível.',
+      },
+      {
+        id: 'terminal-options',
+        title: 'Organize as opções do terminal',
+        body: 'Abra o menu de reticências no cabeçalho para trocar provider, role ou escolher visualmente um dos 10 temas ANSI, além de recarregar, alternar Modo Maestro ou remover o terminal.',
+      },
+      {
+        id: 'dictate-to-leader',
+        title: 'Dite sem voltar ao canvas',
+        body: 'Sem um campo de texto ativo, a bolinha de voz encontra o líder do workspace selecionado, abre o terminal dele e inicia o mesmo fluxo de ditado do Canvas.',
       },
       {
         id: 'return-canvas',

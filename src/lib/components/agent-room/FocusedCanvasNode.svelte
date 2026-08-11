@@ -14,7 +14,7 @@
   import FlowCanvasNode from './canvas/FlowCanvasNode.svelte';
   import ImageCanvasNode from './canvas/ImageCanvasNode.svelte';
   import UsageCanvasNode from './canvas/UsageCanvasNode.svelte';
-  import { nextTerminalTheme } from './terminal-themes.js';
+  import type { TerminalThemeName } from './terminal-themes.js';
   import type {
     AgentProviderInfo,
     CanvasEdge,
@@ -224,7 +224,7 @@
         },
         onProviderChange: changeProvider,
         onToggleMaestro: (id: string) => patchPayload(id, { maestro: !payload.maestro }),
-        onCycleTheme: (id: string) => patchPayload(id, { theme: nextTerminalTheme(payload.theme) }),
+        onThemeChange: (id: string, theme: TerminalThemeName) => patchPayload(id, { theme }),
         onContentChange: (id: string, content: string) => patchPayload(id, { content }),
         onColorChange: (id: string, color: string) => patchPayload(id, { color }),
         onRoleChange: (id: string, role: string | null) => patchPayload(id, { role }),
@@ -283,6 +283,5 @@
   .focused-node-host :global(.node-header) {
     border-radius: 5px 5px 0 0;
     cursor: default;
-    padding-right: 68px;
   }
 </style>

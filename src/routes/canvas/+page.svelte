@@ -50,7 +50,7 @@
   import AgentToolbarMenu from '$lib/components/agent-room/canvas/AgentToolbarMenu.svelte';
   import CommandPalette, { type PaletteAction } from '$lib/components/agent-room/canvas/CommandPalette.svelte';
   import { alignRects, boundingBox, distributeRects, tidyRects, type AlignMode } from '$lib/components/agent-room/canvas/layout.js';
-  import { nextTerminalTheme } from '$lib/components/agent-room/terminal-themes.js';
+  import type { TerminalThemeName } from '$lib/components/agent-room/terminal-themes.js';
   import {
     LEADER_DICTATION_COMMAND,
     LEADER_DICTATION_STATE,
@@ -624,10 +624,7 @@
           const current = (nodes.find((node) => node.id === id)?.data?.payload ?? {}) as Record<string, unknown>;
           updateNodePayload(id, { maestro: !current.maestro });
         },
-        onCycleTheme: (id: string) => {
-          const current = (nodes.find((node) => node.id === id)?.data?.payload ?? {}) as Record<string, unknown>;
-          updateNodePayload(id, { theme: nextTerminalTheme(current.theme as string | undefined) });
-        },
+        onThemeChange: (id: string, theme: TerminalThemeName) => updateNodePayload(id, { theme }),
         onContentChange: (id: string, content: string) => updateNodePayload(id, { content }),
         onColorChange: (id: string, color: string) => updateNodePayload(id, { color }),
         onRoleChange: (id: string, role: string | null) => updateNodePayload(id, { role }),

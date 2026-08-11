@@ -12,6 +12,21 @@ pt-BR, English, and Spanish translations.
 - Added a focused Terminals workspace view with a searchable cross-workspace
   explorer for live terminals, task boards, notes, portals, files, flows, and
   usage. Switching back to the canvas preserves the active workspace and node.
+- Added five terminal palettes for a total of ten named themes, each with a
+  complete ANSI color set and a visual swatch selector.
+
+### Changed
+
+- Consolidated provider, role, theme, reload, Maestro Mode, and removal into a
+  compact terminal header menu so actions remain usable on narrow nodes.
+
+### Fixed
+
+- Made the global voice orb resolve and open the active workspace leader in
+  Terminals mode before starting dictation, instead of reporting that no
+  workspace or leader exists.
+- Clarified in voice settings that macOS reserves the standalone Fn/Globe key;
+  app shortcuts must use a capturable combination or an F1-F12 key.
 
 ## 0.9.1 - 2026-08-11
 

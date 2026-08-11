@@ -26,7 +26,9 @@ Download the latest installers from
   agents as it happens.
 - **Focused workspace view:** switch from Canvas to Terminals to browse every
   workspace and open its live terminals, boards, notes, portals, files, flows,
-  and usage in the full work area without duplicating sessions.
+  and usage in the full work area without duplicating sessions. The global
+  voice orb follows the active workspace and routes no-focus dictation to its
+  leader in either view.
 - **Maestro mode:** assign a leader that can propose a team, recruit agents,
   delegate complete task briefings, coordinate work, and dismiss agents when the
   work is done.
@@ -48,7 +50,7 @@ Download the latest installers from
   workspace, with activity indicators and native notifications.
 - **Git floors:** isolate work in Git worktrees, inspect conflicts, and land
   completed changes from the canvas.
-- **Local voice:** dictate into any text field or use the no-focus canvas
+- **Local voice:** dictate into any text field or use the no-focus workspace
   shortcut for the leader, then listen to replies in Brazilian Portuguese, US
   English, or Latin American Spanish. Terminal dictation can optionally submit
   with Enter; regular text fields remain insert-only. The voice orb's pin badge
@@ -60,6 +62,8 @@ Download the latest installers from
   before assigning new work.
 - **Custom appearance:** choose from three dark themes and one light theme, or
   duplicate one and edit semantic tokens with live preview and JSON import/export.
+- **Readable terminals:** choose 1 of 10 complete ANSI palettes from the compact
+  terminal options menu, alongside provider, role, reload, and Maestro controls.
 - **Operational controls:** manage local portal ports, configure recurring
   routines, and install skills from the marketplace.
 - **Provider Center:** detect all eight supported CLIs locally, follow OS-aware

@@ -22,7 +22,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: criar, nomear, modelo & esforço',
-      body: `O menu Agentes na barra inferior lista Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin sem lotar o canvas. Fixe até quatro favoritos para mantê-los ao lado do menu; a ordem escolhida persiste entre workspaces e reinícios, e um agente fixado indisponível continua salvo sem ocupar a barra. Você não precisa conhecer terminal nem usar todos: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Agentes que precisam de configuração levam à Central de Providers, também disponível pelo ícone de cabo na barra lateral, Cmd/Ctrl+2 ou pelo menu nativo Workspace. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Depois de criado: duplo-clique renomeia; o selo atribui uma role; ◐ troca o tema; ★ liga/desliga o Modo Maestro; e ⇄ troca o provider sem remover o membro, suas conexões, role, andar ou posição. A conversa antiga é encerrada e o novo provider começa uma sessão limpa.`,
+      body: `O menu Agentes na barra inferior lista Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin sem lotar o canvas. Fixe até quatro favoritos para mantê-los ao lado do menu; a ordem escolhida persiste entre workspaces e reinícios, e um agente fixado indisponível continua salvo sem ocupar a barra. Você não precisa conhecer terminal nem usar todos: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Agentes que precisam de configuração levam à Central de Providers, também disponível pelo ícone de cabo na barra lateral, Cmd/Ctrl+2 ou pelo menu nativo Workspace. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Depois de criado, o menu compacto no cabeçalho reúne troca de provider, role, uma seleção visual de 10 temas ANSI, recarga com contexto, Modo Maestro e remoção; o título continua editável com duplo-clique. Trocar o provider preserva conexões, role, andar e posição, encerra a conversa anterior e inicia uma sessão limpa.`,
     },
     {
       id: 'provider-center',
@@ -239,7 +239,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Ditar em qualquer campo de texto',
-      body: 'Clique em qualquer campo editável — título ou descrição do kanban, role, nota ou formulário — e use a bolinha de voz global ou Alt+Espaço. Já no primeiro clique, o campo é preservado e a transcrição entra exatamente no cursor, sem exigir líder. Em Configurações → Ditado por voz, você pode ativar o envio automático: em terminais, a transcrição também pressiona Enter; campos comuns continuam apenas recebendo o texto. O badge clicável mostra se a bolinha está fixada ou livre e abre diretamente os controles de posição; o tooltip também exibe o atalho Ctrl+clique ou Command+clique. Sem campo ativo, o controle envia o texto ao líder.',
+      body: 'Clique em qualquer campo editável — título ou descrição do kanban, role, nota ou formulário — e use a bolinha de voz global ou Alt+Espaço. Já no primeiro clique, o campo é preservado e a transcrição entra exatamente no cursor, sem exigir líder. Em Configurações → Ditado por voz, você pode ativar o envio automático: em terminais, a transcrição também pressiona Enter; campos comuns continuam apenas recebendo o texto. O badge clicável mostra se a bolinha está fixada ou livre e abre diretamente os controles de posição; o tooltip também exibe o atalho Ctrl+clique ou Command+clique. Sem campo ativo, o controle encontra o líder do workspace tanto no Canvas quanto no modo Terminais. No macOS, Fn/Globe isolada pertence ao sistema; escolha um combo ou uma tecla F1–F12.',
       tags: ['Ditado global', 'campos de texto', 'voz local'],
     },
     {
@@ -275,7 +275,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'focused-workspace-view',
       title: 'Trabalhar em um terminal ou artefato sem distrações',
-      body: 'Use o seletor Canvas/Terminais no canto superior esquerdo para abrir o explorer de workspaces. Pesquise e escolha um terminal, quadro, nota, portal, arquivo, fluxo ou nó de uso para trabalhar com ele ocupando toda a área disponível. É o mesmo artefato persistido do canvas: sessões, conteúdo e alterações continuam sincronizados. Ao voltar ao Canvas, o Orkestrai preserva o workspace e centraliza o nó selecionado.',
+      body: 'Use o seletor Canvas/Terminais no canto superior esquerdo para abrir o explorer de workspaces. Pesquise e escolha um terminal, quadro, nota, portal, arquivo, fluxo ou nó de uso para trabalhar com ele ocupando toda a área disponível. É o mesmo artefato persistido do canvas: sessões, conteúdo e alterações continuam sincronizados. Nos terminais, o menu de opções mantém provider, role, 10 temas ANSI, recarga, Modo Maestro e remoção organizados sem apertar o cabeçalho. A bolinha de voz usa o líder do workspace ativo também nesta visualização. Ao voltar ao Canvas, o Orkestrai preserva o workspace e centraliza o nó selecionado.',
       tags: ['Modo Terminais', 'explorer de workspaces', 'foco'],
     },
     {
@@ -290,6 +290,9 @@ export const DOCS_PT: DocsCatalog = {
       date: '11 ago 2026 · 0.10.0',
       items: [
         'O novo modo Terminais oferece um explorer pesquisável de todos os workspaces e abre terminais, quadros, notas, portais, arquivos, fluxos e uso na área inteira, preservando o nó ao voltar ao canvas.',
+        'A bolinha de voz agora encontra e abre o líder do workspace ativo também no modo Terminais, sem exibir incorretamente o erro de workspace ou líder ausente.',
+        'O cabeçalho do terminal ganhou um menu compacto para provider, role, tema, recarga, Modo Maestro e remoção, sem controles sobrepostos em nós estreitos.',
+        'Os terminais agora oferecem 10 temas com paletas ANSI completas e seleção visual pelo nome; a configuração explica por que Fn/Globe isolada não pode ser usada como atalho no macOS.',
       ],
     },
     {
