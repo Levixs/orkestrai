@@ -7,7 +7,7 @@
  *
  * Protocolo (frames JSON texto):
  *   C->S {type:'create', command, args?, cwd, cols?, rows?, env?}
- *   C->S {type:'attach', sessionId}
+ *   C->S {type:'attach', sessionId, cols?, rows?}
  *   C->S {type:'input', sessionId, data}
  *   C->S {type:'resize', sessionId, cols, rows}
  *   C->S {type:'kill', sessionId}
@@ -29,7 +29,7 @@ export const PTY_WS_PATH = '/ws/agent-room/pty';
 
 type ClientMessage =
   | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string }
-  | { type: 'attach'; sessionId: string }
+  | { type: 'attach'; sessionId: string; cols?: number; rows?: number }
   | { type: 'input'; sessionId: string; data: string }
   | { type: 'resize'; sessionId: string; cols: number; rows: number }
   | { type: 'kill'; sessionId: string }
@@ -202,8 +202,13 @@ export function handlePtyConnection(socket: WebSocket): void {
             });
             break;
           }
+          if (message.cols !== undefined || message.rows !== undefined) {
+            const cols = Math.max(2, Math.min(500, Number(message.cols) || info.cols));
+            const rows = Math.max(2, Math.min(200, Number(message.rows) || info.rows));
+            ptySessionManager.resize(message.sessionId, cols, rows);
+          }
           const scrollback = attachSession(message.sessionId);
-          send({ type: 'attached', session: info, scrollback });
+          send({ type: 'attached', session: ptySessionManager.get(message.sessionId), scrollback });
           break;
         }
         case 'input': {

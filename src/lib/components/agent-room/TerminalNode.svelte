@@ -300,24 +300,6 @@
     });
     xtermInstance = terminal;
 
-    (async () => {
-      try {
-        const settings = await getAppSettings(true);
-        const nextSize = Number(settings.terminalFontSize) || 13;
-        const nextFamily = settings.terminalFontFamily || fontFamily;
-        terminalPaddingPx = Number(settings.terminalPadding ?? 6);
-        terminal.options.fontSize = nextSize;
-        terminal.options.fontFamily = nextFamily;
-        requestAnimationFrame(() => {
-          terminal.clearTextureAtlas();
-          fitAddon.fit();
-          terminal.refresh(0, terminal.rows - 1);
-        });
-      } catch {
-        // defaults
-      }
-    })();
-
     const fitAddon = new FitAddon();
     searchAddon = new SearchAddon();
     terminal.loadAddon(fitAddon);
@@ -387,6 +369,7 @@
     let reconnectAttempts = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
+    let resizeFrame: number | null = null;
 
     const handleLeaderDictation = (event: Event) => {
       const detail = (event as CustomEvent<LeaderDictationCommandDetail>).detail;
@@ -399,9 +382,42 @@
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
     };
 
+    let createdSessionId: string | undefined;
+    const currentSessionId = () => createdSessionId ?? sessionId;
+
+    const fitAndReportSize = () => {
+      if (disposed) return;
+      fitAddon.fit();
+      const id = currentSessionId();
+      if (id) send({ type: 'resize', sessionId: id, cols: terminal.cols, rows: terminal.rows });
+      terminal.refresh(0, terminal.rows - 1);
+    };
+
+    const scheduleFitAndReportSize = () => {
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null;
+        fitAndReportSize();
+      });
+    };
+
+    (async () => {
+      try {
+        const settings = await getAppSettings(true);
+        terminalPaddingPx = Number(settings.terminalPadding ?? 6);
+        terminal.options.fontSize = Number(settings.terminalFontSize) || 13;
+        terminal.options.fontFamily = settings.terminalFontFamily || fontFamily;
+        terminal.clearTextureAtlas();
+        scheduleFitAndReportSize();
+      } catch {
+        // defaults
+      }
+    })();
+
     const handleOpen = () => {
       if (sessionId) {
-        send({ type: 'attach', sessionId });
+        fitAddon.fit();
+        send({ type: 'attach', sessionId, cols: terminal.cols, rows: terminal.rows });
       } else if (createRequest) {
         send({
           type: 'create',
@@ -418,9 +434,6 @@
       }
     };
 
-    let createdSessionId: string | undefined;
-    const currentSessionId = () => createdSessionId ?? sessionId;
-
     const handleMessage = (event: MessageEvent) => {
       const message = JSON.parse(String(event.data));
       switch (message.type) {
@@ -430,6 +443,7 @@
           if (message.scrollback) terminal.write(message.scrollback);
           statusMessage = '';
           reconnectAttempts = 0;
+          scheduleFitAndReportSize();
           break;
         case 'attached':
           if (message.scrollback) terminal.write(message.scrollback);
@@ -437,6 +451,7 @@
           reconnectAttempts = 0;
           waiting = Boolean(message.session?.waiting);
           if (message.session?.exited) exited = message.session.exitCode ?? 0;
+          scheduleFitAndReportSize();
           break;
         case 'output':
           terminal.write(message.data);
@@ -533,16 +548,11 @@
     });
     sendInput = (data) => send({ type: 'input', sessionId: currentSessionId(), data });
 
-    const resizeObserver = new ResizeObserver(() => {
-      fitAddon.fit();
-      const id = currentSessionId();
-      if (id) send({ type: 'resize', sessionId: id, cols: terminal.cols, rows: terminal.rows });
-    });
+    const resizeObserver = new ResizeObserver(scheduleFitAndReportSize);
     resizeObserver.observe(container);
     const refitForDisplayChange = () => {
       terminal.clearTextureAtlas();
-      fitAddon.fit();
-      terminal.refresh(0, terminal.rows - 1);
+      scheduleFitAndReportSize();
     };
     window.addEventListener('resize', refitForDisplayChange);
     window.visualViewport?.addEventListener('resize', refitForDisplayChange);
@@ -572,6 +582,7 @@
       stopRecTimer();
       if (speakTimer) clearTimeout(speakTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
       captureAfterDictation = false;
       pendingDictation = false;
       resizeObserver.disconnect();

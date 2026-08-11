@@ -25,6 +25,9 @@ pt-BR, English, and Spanish translations.
 - Made the global voice orb resolve and open the active workspace leader in
   Terminals mode before starting dictation, instead of reporting that no
   workspace or leader exists.
+- Resized existing PTY sessions to the full focused viewport when opening them
+  in Terminals mode, preventing agent chats from staying compressed and garbled
+  at their smaller canvas dimensions.
 - Replaced the overlapping icons in the Terminals header's locate-on-canvas
   action with one clear, optically centered icon.
 - Clarified in voice settings that macOS reserves the standalone Fn/Globe key;

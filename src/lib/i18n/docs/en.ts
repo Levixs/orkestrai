@@ -287,6 +287,7 @@ export const DOCS_EN: DocsCatalog = {
       items: [
         'The new Terminals mode provides a searchable explorer across all workspaces and opens terminals, boards, notes, portals, files, flows, and usage in the full work area while preserving the selected node when returning to the canvas.',
         'The voice orb now finds and opens the active workspace leader in Terminals mode instead of incorrectly reporting that a workspace or leader is missing.',
+        'Existing PTY sessions now fill the focused Terminals viewport instead of retaining their small Canvas dimensions and rendering agent chats as compressed or garbled.',
         'The terminal header now uses a compact options menu for provider, role, theme, reload, Maestro Mode, and removal, without overlapping controls on narrow nodes.',
         'The locate-on-canvas action now uses one centered icon instead of overlapping symbols in the Terminals header.',
         'Terminals now offer 10 complete ANSI palettes with visual named selection; Settings explains why macOS cannot use Fn/Globe alone as an app shortcut.',
