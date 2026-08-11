@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { useSvelarTest } from '@beeblock/svelar/testing';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
@@ -7,6 +10,38 @@ import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/Pt
 
 describe('RoleService', () => {
   useSvelarTest({ refreshDatabase: true });
+
+  it('gera frontmatter valido para Kimi e repara arquivos antigos no launch', async () => {
+    const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-role-'));
+    const workspace = await workspaceRepository.createWorkspace({ name: 'role Kimi', workingDir });
+    await roleService.save(workspace.id, {
+      name: 'Revisor de Arquitetura',
+      prompt: 'Revise limites de modulo e riscos de acoplamento.',
+    });
+    const instructionFile = join(
+      workingDir,
+      '.orkestrai',
+      'roles',
+      'revisor-de-arquitetura',
+      'AGENTS.md',
+    );
+
+    expect(readFileSync(instructionFile, 'utf8')).toBe([
+      '---',
+      'name: revisor-de-arquitetura',
+      'description: "Orkestrai workspace role: Revisor de Arquitetura"',
+      '---',
+      '',
+      'Revise limites de modulo e riscos de acoplamento.',
+      '',
+    ].join('\n'));
+
+    writeFileSync(instructionFile, 'formato legado sem frontmatter\n');
+    expect((await roleService.launchContext(workspace.id, 'Revisor de Arquitetura'))?.instructionFile)
+      .toBe(instructionFile);
+    expect(readFileSync(instructionFile, 'utf8')).toContain('\ndescription: "Orkestrai workspace role: Revisor de Arquitetura"\n');
+    expect(readFileSync(instructionFile, 'utf8')).not.toContain('formato legado');
+  });
 
   it('aplica em providers sem suporte nativo apenas uma referencia curta ao arquivo da role', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'roles', workingDir: '/tmp' });

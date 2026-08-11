@@ -277,6 +277,12 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '11 ago 2026 · 0.9.1',
+      items: [
+        'Los archivos de role de Kimi ahora incluyen el frontmatter obligatorio del perfil, y los archivos antiguos o ausentes se reparan antes de iniciar la terminal en vez de cerrar la PTY con un error de agent file inválido.',
+      ],
+    },
+    {
       date: '11 ago 2026 · 0.9.0',
       items: [
         'Los presets ahora configuran roles mediante los mecanismos nativos de Claude, Codex y Kimi; los demás providers reciben una referencia breve al archivo en lugar de texto largo pegado en la terminal.',

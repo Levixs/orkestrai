@@ -31,8 +31,9 @@ Baixe os instaladores mais recentes em
   Campanha e lançamento, Brand e design, Conteúdo e SEO, React, Next.js,
   SvelteKit, Svelar, Laravel e Orkestrai Contributing. Os agentes iniciam no
   modo autônomo de acesso total e com roles no nível nativo de system/developer
-  prompt, sem instruções longas bloqueando o terminal como texto colado. O líder
-  recebe e atribui a tarefa inicial completa sem pedidos repetidos de permissão.
+  prompt, com frontmatter válido no arquivo de agente Kimi e sem instruções
+  longas bloqueando o terminal como texto colado. O líder recebe e atribui a
+  tarefa inicial completa sem pedidos repetidos de permissão.
 - **Fluxos que combinam com o trabalho:** nomeie, dê cores e ordene até dez etapas
   do quadro. Líder e agentes descobrem e atualizam o mesmo processo sozinhos.
 - **Visões operacionais do time:** instale funções especializadas por um

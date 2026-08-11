@@ -24,13 +24,26 @@ function slugify(text: string): string {
   );
 }
 
+function instructionFileContents(role: AgentRole): string {
+  return [
+    '---',
+    `name: ${role.slug}`,
+    `description: ${JSON.stringify(`Orkestrai workspace role: ${role.name}`)}`,
+    '---',
+    '',
+    role.prompt.trim(),
+    '',
+  ].join('\n');
+}
+
 /**
  * Responsabilidades (roles) de agentes: nome, cor e conjunto de instruções.
  * Portateis: ficam em `.orkestrai/roles/<slug>/role.json` (+ AGENTS.md) no
  * working_dir do workspace, entao viajam com o repositório.
  *
- * Aplicacao: uma sessão nova recebe a role como primeira mensagem. Uma sessão
- * retomada já possui esse contexto e recebe somente trabalho ainda aberto.
+ * Aplicacao: uma sessão nova recebe a role pelo mecanismo nativo do provider
+ * ou por referência a este arquivo. Uma sessão retomada já possui esse contexto
+ * e recebe somente trabalho ainda aberto.
  */
 export class RoleService {
   catalog(locale: unknown) {
@@ -91,8 +104,19 @@ export class RoleService {
     return {
       name: role.name,
       prompt: role.prompt.trim(),
-      instructionFile: resolve(await this.rolesDir(workspaceId), role.slug, 'AGENTS.md'),
+      instructionFile: await this.ensureInstructionFile(workspaceId, role),
     };
+  }
+
+  private async ensureInstructionFile(workspaceId: string, role: AgentRole): Promise<string> {
+    const dir = resolve(await this.rolesDir(workspaceId), role.slug);
+    const file = resolve(dir, 'AGENTS.md');
+    const expected = instructionFileContents(role);
+    mkdirSync(dir, { recursive: true });
+    if (!existsSync(file) || readFileSync(file, 'utf8') !== expected) {
+      writeFileSync(file, expected);
+    }
+    return file;
   }
 
   async save(workspaceId: string, input: { name: string; color?: string; prompt: string }): Promise<AgentRole> {
@@ -109,7 +133,9 @@ export class RoleService {
     mkdirSync(dir, { recursive: true });
     writeFileSync(resolve(dir, 'role.json'), JSON.stringify(role, null, 2));
     if (role.prompt.trim()) {
-      writeFileSync(resolve(dir, 'AGENTS.md'), `${role.prompt.trim()}\n`);
+      await this.ensureInstructionFile(workspaceId, role);
+    } else {
+      rmSync(resolve(dir, 'AGENTS.md'), { force: true });
     }
     return role;
   }

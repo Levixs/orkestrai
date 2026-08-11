@@ -31,8 +31,9 @@ Download the latest installers from
   Campaign and launch, Brand and design, Content and SEO, React, Next.js,
   SvelteKit, Svelar, Laravel, and Orkestrai Contributing presets. Their agents
   start with autonomous full access and native system/developer-level roles,
-  without long instructions blocking the terminal as pasted text. The lead
-  receives and assigns the complete initial task without repeated prompts.
+  with validated Kimi agent-file frontmatter and without long instructions
+  blocking the terminal as pasted text. The lead receives and assigns the
+  complete initial task without repeated prompts.
 - **Workflows that fit the work:** name, color, and reorder up to ten board
   stages. Leads and agents discover and update the same stages automatically.
 - **Operational team views:** install specialized roles from a 12-role catalog

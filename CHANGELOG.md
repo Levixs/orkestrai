@@ -5,6 +5,14 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.9.1 - 2026-08-11
+
+### Fixed
+
+- Generated valid YAML frontmatter for Kimi role agent files and lazily repaired
+  legacy or missing instruction files before launching a terminal, preventing
+  Kimi from exiting with an `Invalid agent file` error.
+
 ## 0.9.0 - 2026-08-11
 
 ### Added

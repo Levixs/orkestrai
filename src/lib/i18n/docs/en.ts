@@ -277,6 +277,12 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
+      date: 'Aug 11, 2026 · 0.9.1',
+      items: [
+        'Kimi role files now include the required agent-profile frontmatter, and legacy or missing files are repaired before terminal launch instead of ending the PTY with an invalid-agent error.',
+      ],
+    },
+    {
       date: 'Aug 11, 2026 · 0.9.0',
       items: [
         'Presets now configure roles through the native Claude, Codex, and Kimi mechanisms; other providers receive a short file reference instead of long terminal pasted text.',
