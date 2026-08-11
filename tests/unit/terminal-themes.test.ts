@@ -13,6 +13,7 @@ describe('terminal themes', () => {
 
     for (const name of TERMINAL_THEME_ORDER) {
       const theme = TERMINAL_THEMES[name].theme;
+      expect(TERMINAL_THEMES[name].label.length).toBeGreaterThan(0);
       expect(theme.background).toMatch(/^#[0-9a-f]{6}$/i);
       expect(theme.foreground).toMatch(/^#[0-9a-f]{6}$/i);
       expect(theme.cursor).toMatch(/^#[0-9a-f]{6}$/i);

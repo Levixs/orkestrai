@@ -11,6 +11,7 @@
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
+  import { terminalThemeLabel } from '$lib/components/agent-room/terminal-theme-label.js';
   import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
   import { appSettingsStore, getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
@@ -378,11 +379,11 @@
         <span class="field-label">{m['settings.theme']()}</span>
         <Select.Root type="single" value={settings.terminalTheme} onValueChange={(value: string) => (settings = { ...settings, terminalTheme: value })}>
           <Select.Trigger data-slot="select-trigger">
-            {TERMINAL_THEMES[settings.terminalTheme as keyof typeof TERMINAL_THEMES]?.label() ?? settings.terminalTheme}
+            {terminalThemeLabel(settings.terminalTheme)}
           </Select.Trigger>
           <Select.Content>
             {#each TERMINAL_THEME_ORDER as theme}
-              <Select.Item value={theme}>{TERMINAL_THEMES[theme].label()}</Select.Item>
+              <Select.Item value={theme}>{terminalThemeLabel(theme)}</Select.Item>
             {/each}
           </Select.Content>
         </Select.Root>

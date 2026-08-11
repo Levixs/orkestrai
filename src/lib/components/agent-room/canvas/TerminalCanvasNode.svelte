@@ -10,6 +10,7 @@
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { voiceModelsReadyForUse } from '../voice-model-status.js';
   import { speakText } from '../voice-speech.js';
+  import { terminalThemeLabel } from '../terminal-theme-label.js';
   import { normalizeTerminalTheme, TERMINAL_THEMES, TERMINAL_THEME_ORDER, type TerminalThemeName } from '../terminal-themes.js';
   import type { AgentProviderInfo, TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
@@ -415,7 +416,7 @@
                     <span style:background={TERMINAL_THEMES[theme].theme.blue}></span>
                     <span style:background={TERMINAL_THEMES[theme].theme.green}></span>
                   </span>
-                  <span class="min-w-0 truncate">{TERMINAL_THEMES[theme].label()}</span>
+                  <span class="min-w-0 truncate">{terminalThemeLabel(theme)}</span>
                 </DropdownMenu.RadioItem>
               {/each}
             </DropdownMenu.RadioGroup>

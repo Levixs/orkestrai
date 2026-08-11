@@ -1,5 +1,4 @@
 import type { ITheme } from '@xterm/xterm';
-import * as m from '$lib/paraglide/messages.js';
 
 /** Temas xterm persistidos por terminal em payload.theme. */
 export type TerminalThemeName =
@@ -15,13 +14,13 @@ export type TerminalThemeName =
   | 'github-light';
 
 export type TerminalThemeDefinition = {
-  label: () => string;
+  label: string;
   theme: ITheme;
 };
 
 export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition> = {
   dark: {
-    label: () => m['terminal_theme.midnight'](),
+    label: 'Midnight',
     theme: {
       background: '#090820', foreground: '#e6e6eb', cursor: '#e6e6eb', selectionBackground: '#35334f',
       black: '#18172d', red: '#ff6b7a', green: '#61e5a7', yellow: '#ffc857', blue: '#58a6ff', magenta: '#d68cff', cyan: '#58d6ff', white: '#d9d9e3',
@@ -29,7 +28,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   dracula: {
-    label: () => 'Dracula',
+    label: 'Dracula',
     theme: {
       background: '#282a36', foreground: '#f8f8f2', cursor: '#f8f8f2', selectionBackground: '#44475a',
       black: '#21222c', red: '#ff5555', green: '#50fa7b', yellow: '#f1fa8c', blue: '#bd93f9', magenta: '#ff79c6', cyan: '#8be9fd', white: '#f8f8f2',
@@ -37,7 +36,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   nord: {
-    label: () => 'Nord',
+    label: 'Nord',
     theme: {
       background: '#2e3440', foreground: '#d8dee9', cursor: '#88c0d0', selectionBackground: '#434c5e',
       black: '#3b4252', red: '#bf616a', green: '#a3be8c', yellow: '#ebcb8b', blue: '#81a1c1', magenta: '#b48ead', cyan: '#88c0d0', white: '#e5e9f0',
@@ -45,7 +44,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   solarized: {
-    label: () => 'Solarized Dark',
+    label: 'Solarized Dark',
     theme: {
       background: '#002b36', foreground: '#839496', cursor: '#93a1a1', selectionBackground: '#073642',
       black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900', blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#eee8d5',
@@ -53,7 +52,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   light: {
-    label: () => m['terminal_theme.paper'](),
+    label: 'Paper',
     theme: {
       background: '#f7f7f4', foreground: '#202126', cursor: '#202126', selectionBackground: '#c9d4e3',
       black: '#202126', red: '#b4232f', green: '#237a49', yellow: '#8a6100', blue: '#175cd3', magenta: '#8f3db5', cyan: '#087f8c', white: '#e7e7e2',
@@ -61,7 +60,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   'tokyo-night': {
-    label: () => 'Tokyo Night',
+    label: 'Tokyo Night',
     theme: {
       background: '#1a1b26', foreground: '#c0caf5', cursor: '#c0caf5', selectionBackground: '#33467c',
       black: '#15161e', red: '#f7768e', green: '#9ece6a', yellow: '#e0af68', blue: '#7aa2f7', magenta: '#bb9af7', cyan: '#7dcfff', white: '#a9b1d6',
@@ -69,7 +68,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   catppuccin: {
-    label: () => 'Catppuccin Mocha',
+    label: 'Catppuccin Mocha',
     theme: {
       background: '#1e1e2e', foreground: '#cdd6f4', cursor: '#f5e0dc', selectionBackground: '#45475a',
       black: '#45475a', red: '#f38ba8', green: '#a6e3a1', yellow: '#f9e2af', blue: '#89b4fa', magenta: '#f5c2e7', cyan: '#94e2d5', white: '#bac2de',
@@ -77,7 +76,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   gruvbox: {
-    label: () => 'Gruvbox Dark',
+    label: 'Gruvbox Dark',
     theme: {
       background: '#282828', foreground: '#ebdbb2', cursor: '#ebdbb2', selectionBackground: '#504945',
       black: '#282828', red: '#cc241d', green: '#98971a', yellow: '#d79921', blue: '#458588', magenta: '#b16286', cyan: '#689d6a', white: '#a89984',
@@ -85,7 +84,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   'one-dark': {
-    label: () => 'One Dark',
+    label: 'One Dark',
     theme: {
       background: '#282c34', foreground: '#abb2bf', cursor: '#528bff', selectionBackground: '#3e4451',
       black: '#282c34', red: '#e06c75', green: '#98c379', yellow: '#e5c07b', blue: '#61afef', magenta: '#c678dd', cyan: '#56b6c2', white: '#abb2bf',
@@ -93,7 +92,7 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
     },
   },
   'github-light': {
-    label: () => 'GitHub Light',
+    label: 'GitHub Light',
     theme: {
       background: '#ffffff', foreground: '#24292f', cursor: '#0969da', selectionBackground: '#add6ff',
       black: '#24292f', red: '#cf222e', green: '#116329', yellow: '#4d2d00', blue: '#0969da', magenta: '#8250df', cyan: '#1b7c83', white: '#d0d7de',
