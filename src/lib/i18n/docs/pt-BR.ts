@@ -292,6 +292,7 @@ export const DOCS_PT: DocsCatalog = {
         'O novo modo Terminais oferece um explorer pesquisável de todos os workspaces e abre terminais, quadros, notas, portais, arquivos, fluxos e uso na área inteira, preservando o nó ao voltar ao canvas.',
         'A bolinha de voz agora encontra e abre o líder do workspace ativo também no modo Terminais, sem exibir incorretamente o erro de workspace ou líder ausente.',
         'O cabeçalho do terminal ganhou um menu compacto para provider, role, tema, recarga, Modo Maestro e remoção, sem controles sobrepostos em nós estreitos.',
+        'O botão para localizar o item no Canvas agora usa um único ícone centralizado, sem símbolos sobrepostos no cabeçalho do modo Terminais.',
         'Os terminais agora oferecem 10 temas com paletas ANSI completas e seleção visual pelo nome; a configuração explica por que Fn/Globe isolada não pode ser usada como atalho no macOS.',
       ],
     },

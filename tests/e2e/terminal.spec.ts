@@ -86,7 +86,9 @@ test.describe('terminais PTY', () => {
       await expect(page).toHaveURL(new RegExp(`/terminal\\?workspace=${workspace.id}.*node=${leader.id}`));
       await expect(page.getByTestId('terminal-workspace-header')).toContainText('Lider de voz E2E');
 
-      await page.getByTestId('terminal-open-canvas').click();
+      const openCanvas = page.getByTestId('terminal-open-canvas');
+      await expect(openCanvas.locator('svg')).toHaveCount(1);
+      await openCanvas.click();
       await expect(page).toHaveURL(new RegExp(`/canvas\\?workspace=${workspace.id}.*node=`));
       await expect(page.locator('.canvas-terminal.selected')).toContainText('Lider de voz E2E');
     } finally {

@@ -5,13 +5,13 @@
   import {
     ChevronDown,
     ChevronRight,
-    ExternalLink,
     FileCode2,
     FolderTree,
     Gauge,
     GitCompareArrows,
     Globe2,
     Image as ImageIcon,
+    LocateFixed,
     Network,
     Repeat2,
     Search,
@@ -474,8 +474,7 @@
           href={`/canvas?workspace=${selectedWorkspace.id}&node=${selectedNode.id}`}
           data-testid="terminal-open-canvas"
         >
-          <Network size={14} />
-          <ExternalLink size={8} class="-ml-1 -mt-2" />
+          <LocateFixed size={15} strokeWidth={1.8} />
         </Button>
       {:else}
         <span class="text-xs text-[var(--app-text-muted)]">{m['terminal_browser.title']()}</span>

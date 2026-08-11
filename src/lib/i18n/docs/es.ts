@@ -288,6 +288,7 @@ export const DOCS_ES: DocsCatalog = {
         'El nuevo modo Terminales ofrece un explorador con búsqueda para todos los workspaces y abre terminales, tableros, notas, portales, archivos, flujos y uso en toda el área, conservando el nodo seleccionado al volver al canvas.',
         'La esfera de voz ahora encuentra y abre al líder del workspace activo también en modo Terminales, sin indicar incorrectamente que falta un workspace o líder.',
         'El encabezado de la terminal ahora usa un menú compacto para provider, rol, tema, recarga, Modo Maestro y eliminación, sin controles superpuestos en nodos estrechos.',
+        'La acción para localizar el elemento en el Canvas ahora usa un único ícono centrado, sin símbolos superpuestos en el encabezado del modo Terminales.',
         'Las terminales ahora ofrecen 10 paletas ANSI completas con selección visual por nombre; Configuración explica por qué macOS no permite usar Fn/Globe por sí sola como atajo de la app.',
       ],
     },

@@ -25,6 +25,8 @@ pt-BR, English, and Spanish translations.
 - Made the global voice orb resolve and open the active workspace leader in
   Terminals mode before starting dictation, instead of reporting that no
   workspace or leader exists.
+- Replaced the overlapping icons in the Terminals header's locate-on-canvas
+  action with one clear, optically centered icon.
 - Clarified in voice settings that macOS reserves the standalone Fn/Globe key;
   app shortcuts must use a capturable combination or an F1-F12 key.
 
