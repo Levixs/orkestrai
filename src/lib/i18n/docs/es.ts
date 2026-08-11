@@ -285,7 +285,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: '11 ago 2026 · 0.10.0',
       items: [
-        'El nuevo modo Terminales ofrece un explorador con búsqueda para todos los workspaces y abre terminales, tableros, notas, portales, archivos, flujos y uso en toda el área, conservando el nodo seleccionado al volver al canvas.',
+        'Orkestrai 0.10.0 incorpora el modo Terminales, con un explorador con búsqueda para todos los workspaces que abre terminales, tableros, notas, portales, archivos, flujos y uso en toda el área, conservando el nodo seleccionado al volver al canvas.',
         'La esfera de voz ahora encuentra y abre al líder del workspace activo también en modo Terminales, sin indicar incorrectamente que falta un workspace o líder.',
         'Las sesiones PTY existentes ahora ocupan toda el área enfocada en modo Terminales, sin conservar las dimensiones pequeñas del nodo en el Canvas ni mostrar el chat comprimido o corrupto.',
         'El encabezado de la terminal ahora usa un menú compacto para provider, rol, tema, recarga, Modo Maestro y eliminación, sin controles superpuestos en nodos estrechos.',
