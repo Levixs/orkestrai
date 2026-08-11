@@ -1,30 +1,72 @@
 import { expect, test } from '@playwright/test';
+import { selectAgentTool } from './helpers.js';
 
 test.describe('terminais PTY', () => {
-  test('abre um shell, executa comando e mostra a saida', async ({ page }) => {
-    await page.goto('/terminal');
+  test('navega pelos artefatos persistidos e preserva a selecao ao voltar ao canvas', async ({ page, request }) => {
+    const workspaceName = `E2E modo terminais ${Date.now()}`;
 
-    // Os botoes de provider so aparecem apos onMount (hidratar + fetch do status).
-    await expect(page.getByRole('button', { name: 'Claude' })).toBeVisible({ timeout: 15_000 });
+    await page.goto('/canvas');
+    await page.getByRole('button', { name: 'Novo workspace' }).click();
+    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
+    await page.getByRole('button', { name: 'Criar' }).click();
 
-    await page.getByRole('button', { name: 'Shell' }).click();
-    const terminal = page.locator('.terminal-card').first();
-    await expect(terminal).toBeVisible();
+    const list = await request.get('/api/agent-room/workspaces');
+    const workspace = ((await list.json()).data as Array<{ id: string; name: string }>).find(
+      (item) => item.name === workspaceName
+    )!;
 
-    // Aguarda o shell inicializar e digita um comando marcador.
-    const marker = `e2e-${Date.now()}`;
-    await terminal.locator('.terminal-container').click();
-    await page.keyboard.type(`echo ${marker}`);
-    await page.keyboard.press('Enter');
+    try {
+      const noteResponse = await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+        data: {
+          type: 'note',
+          title: 'Briefing E2E',
+          x: 100,
+          y: 100,
+          width: 360,
+          height: 260,
+          payload: { content: '# Briefing persistido' },
+        },
+      });
+      const note = (await noteResponse.json()).data as { id: string };
 
-    await expect(terminal.locator('.terminal-container')).toContainText(marker, { timeout: 10_000 });
-  });
+      await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+        data: {
+          type: 'terminal',
+          title: 'Shell E2E',
+          x: 520,
+          y: 100,
+          width: 480,
+          height: 320,
+          payload: { command: process.platform === 'win32' ? 'powershell.exe' : '/bin/sh', args: [] },
+        },
+      });
 
-  test('lista providers instalados com botoes de agente', async ({ page }) => {
-    await page.goto('/terminal');
-    await expect(page.getByRole('button', { name: 'Claude' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: 'Codex' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: 'Kimi' })).toBeVisible({ timeout: 15_000 });
+      await page.goto(`/terminal?workspace=${workspace.id}&node=${note.id}`);
+      const tree = page.getByTestId('terminal-workspace-tree');
+      await expect(tree).toContainText(workspaceName);
+      await expect(page.locator('.canvas-note textarea')).toHaveValue('# Briefing persistido');
+
+      const search = page.getByTestId('terminal-workspace-search');
+      await search.fill('Shell E2E');
+      await expect(tree).toContainText('Shell E2E');
+      await expect(tree).not.toContainText('Briefing E2E');
+      await tree.locator('button', { hasText: 'Shell E2E' }).click();
+
+      const terminal = page.locator('.canvas-terminal');
+      await expect(terminal.locator('.xterm')).toBeVisible({ timeout: 15_000 });
+      const marker = `e2e-${Date.now()}`;
+      await terminal.locator('.terminal-container').click();
+      await page.keyboard.type(`echo ${marker}`);
+      await page.keyboard.press('Enter');
+      await expect(terminal.locator('.terminal-container')).toContainText(marker, { timeout: 10_000 });
+
+      await page.getByTestId('terminal-open-canvas').click();
+      await expect(page).toHaveURL(new RegExp(`/canvas\\?workspace=${workspace.id}.*node=`));
+      await expect(page.locator('.canvas-terminal')).toBeVisible();
+    } finally {
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+    }
   });
 
   test('botao de agente no canvas cria terminal com o comando do agente (nao shell puro)', async ({ page, request }) => {
@@ -40,9 +82,7 @@ test.describe('terminais PTY', () => {
 
     // Arma a ferramenta do agente e clica no canvas (tamanho padrao); o
     // dialogo de criacao abre — confirma com o nome padrao.
-    const claudeButton = page.getByRole('button', { name: 'Claude', exact: true });
-    await expect(claudeButton).toBeEnabled({ timeout: 15_000 });
-    await claudeButton.click();
+    await selectAgentTool(page, 'Claude');
     await page.locator('.svelte-flow__pane').click({ position: { x: 700, y: 400 } });
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();

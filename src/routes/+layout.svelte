@@ -60,6 +60,7 @@
     const canvasActions = new Set(['new-workspace', 'presets', 'organize', 'floors', 'roles', 'usage', 'ports', 'command-palette']);
     const unsubscribeMenu = desktopMenu?.onMenuAction?.((action) => {
       if (action === 'canvas') location.assign('/canvas');
+      else if (action === 'terminals') location.assign('/terminal');
       else if (action === 'providers') location.assign('/providers');
       else if (action === 'settings') location.assign('/settings');
       else if (action === 'docs') location.assign('/docs');

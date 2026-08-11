@@ -777,6 +777,29 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'focused-workspace-view',
+    icon: 'PanelLeftOpen',
+    title: 'Trabalhar no modo Terminais',
+    tagline: 'Abra qualquer artefato do workspace em tela cheia sem perder o canvas.',
+    steps: [
+      {
+        id: 'switch-view',
+        title: 'Alterne a visualização',
+        body: 'Use Canvas/Terminais no canto superior esquerdo ou abra Terminais pelo menu Workspace. Os agentes continuam nas mesmas sessões enquanto você troca de modo.',
+      },
+      {
+        id: 'choose-item',
+        title: 'Escolha onde trabalhar',
+        body: 'Expanda um workspace ou use a pesquisa para abrir um terminal, quadro, nota, portal, arquivo, fluxo ou Uso ocupando toda a área disponível.',
+      },
+      {
+        id: 'return-canvas',
+        title: 'Volte ao contexto visual',
+        body: 'Clique no ícone de canvas no cabeçalho ou use o seletor. O workspace permanece ativo e o nó escolhido aparece centralizado no canvas.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar a aparência',

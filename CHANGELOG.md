@@ -5,6 +5,14 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.10.0 - 2026-08-11
+
+### Added
+
+- Added a focused Terminals workspace view with a searchable cross-workspace
+  explorer for live terminals, task boards, notes, portals, files, flows, and
+  usage. Switching back to the canvas preserves the active workspace and node.
+
 ## 0.9.1 - 2026-08-11
 
 ### Fixed

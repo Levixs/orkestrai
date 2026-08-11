@@ -24,6 +24,9 @@ Download the latest installers from
 - **Live agent canvas:** arrange real PTY terminals, notes, task boards, browser
   portals, file trees, loops, and shapes. Connections show collaboration between
   agents as it happens.
+- **Focused workspace view:** switch from Canvas to Terminals to browse every
+  workspace and open its live terminals, boards, notes, portals, files, flows,
+  and usage in the full work area without duplicating sessions.
 - **Maestro mode:** assign a leader that can propose a team, recruit agents,
   delegate complete task briefings, coordinate work, and dismiss agents when the
   work is done.
@@ -125,8 +128,9 @@ Orkestrai is built with Svelte 5, SvelteKit, Electron, Svelar, SQLite,
 
 - `src/lib/modules/agent-room/` contains the application, domain, persistence,
   PTY, bridge, voice, and provider adapter layers.
-- `src/routes/canvas/` and `src/lib/components/agent-room/canvas/` implement the
-  desktop workspace.
+- `src/routes/canvas/`, `src/routes/terminal/`, and
+  `src/lib/components/agent-room/canvas/` implement the two desktop workspace
+  views.
 - `packages/orkestrai-cli/` provides the agent-facing CLI and MCP bridge.
 - `electron/` owns the desktop lifecycle, native notifications, and updates.
 - `docs/` contains build and release documentation.

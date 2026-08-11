@@ -1,5 +1,11 @@
 import type { Page } from '@playwright/test';
 
+/** Seleciona um provider no menu compacto de agentes da toolbar. */
+export async function selectAgentTool(page: Page, providerName: string) {
+  await page.locator('.toolbar .agents-trigger').click();
+  await page.getByRole('menuitem').filter({ hasText: providerName }).click();
+}
+
 /**
  * Cria um no no canvas: clica na ferramenta da toolbar e depois clica no
  * fundo do canvas (o no nasce com tamanho padrao nessa posicao). Terminais

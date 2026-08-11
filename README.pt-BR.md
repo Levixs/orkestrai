@@ -24,6 +24,9 @@ Baixe os instaladores mais recentes em
 - **Canvas de agentes ao vivo:** organize terminais PTY reais, notas, quadros de
   tarefas, portais de browser, árvores de arquivos, loops e formas. As conexões
   mostram a colaboração entre os agentes enquanto ela acontece.
+- **Modo de trabalho focado:** alterne de Canvas para Terminais para navegar por
+  todos os workspaces e abrir terminais, quadros, notas, portais, arquivos,
+  fluxos e uso na área inteira sem duplicar sessões.
 - **Modo Maestro:** defina um líder que pode propor um time, recrutar agentes,
   delegar briefings completos, coordenar o trabalho e dispensar agentes quando
   não forem mais necessários.
@@ -126,7 +129,8 @@ Orkestrai utiliza Svelte 5, SvelteKit, Electron, Svelar, SQLite, `node-pty` e
 
 - `src/lib/modules/agent-room/` contém as camadas de aplicação, domínio,
   persistência, PTY, bridge, voz e adapters de providers.
-- `src/routes/canvas/` e `src/lib/components/agent-room/canvas/` implementam o
+- `src/routes/canvas/`, `src/routes/terminal/` e
+  `src/lib/components/agent-room/canvas/` implementam as duas visualizações do
   workspace desktop.
 - `packages/orkestrai-cli/` fornece a CLI e a ponte MCP usadas pelos agentes.
 - `electron/` controla o ciclo de vida desktop, notificações nativas e updates.

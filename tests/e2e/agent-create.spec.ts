@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectAgentTool } from './helpers.js';
 
 test.describe('dialogo de criacao de agente', () => {
   test('desenhar terminal abre dialogo com nome/modelo/esforco/lider', async ({ page, request }) => {
@@ -12,7 +13,7 @@ test.describe('dialogo de criacao de agente', () => {
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
 
     // Desenha um Claude no canvas: o dialogo precisa abrir ANTES de criar.
-    await page.locator(".toolbar").getByRole("button", { name: "Claude", exact: true }).click();
+    await selectAgentTool(page, 'Claude');
     await page.locator('.svelte-flow__pane').click({ position: { x: 600, y: 350 } });
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();

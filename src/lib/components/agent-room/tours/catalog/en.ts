@@ -773,6 +773,29 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'focused-workspace-view',
+    icon: 'PanelLeftOpen',
+    title: 'Work in Terminals mode',
+    tagline: 'Open any workspace artifact full-screen without losing the canvas.',
+    steps: [
+      {
+        id: 'switch-view',
+        title: 'Switch the view',
+        body: 'Use Canvas/Terminals in the upper-left corner or open Terminals from the Workspace menu. Agents remain in the same sessions while you switch modes.',
+      },
+      {
+        id: 'choose-item',
+        title: 'Choose where to work',
+        body: 'Expand a workspace or use search to open a terminal, board, note, portal, file, flow, or Usage in the full work area.',
+      },
+      {
+        id: 'return-canvas',
+        title: 'Return to visual context',
+        body: 'Click the canvas icon in the header or use the switch. The workspace stays active and the selected node is centered on the canvas.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Customize the appearance',

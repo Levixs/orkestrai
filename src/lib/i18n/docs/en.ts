@@ -269,6 +269,12 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['Canvas layout', 'selection', 'connections'],
     },
     {
+      id: 'focused-workspace-view',
+      title: 'Work in one terminal or artifact without distractions',
+      body: 'Use the Canvas/Terminals switch in the upper-left corner to open the workspace explorer. Search for and choose a terminal, board, note, portal, file, flow, or usage node to give it the full work area. It is the same persisted canvas artifact, so sessions, content, and edits stay synchronized. When you return to Canvas, Orkestrai preserves the workspace and centers the selected node.',
+      tags: ['Terminals mode', 'workspace explorer', 'focus'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adapt the app appearance to your work',
       body: 'Choose one of three dark themes or the high-contrast light theme under Settings → Appearance. Duplicate the closest option, adjust semantic color tokens with an immediate preview, and export the JSON to use the same theme in another installation.',
@@ -276,6 +282,12 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 11, 2026 · 0.10.0',
+      items: [
+        'The new Terminals mode provides a searchable explorer across all workspaces and opens terminals, boards, notes, portals, files, flows, and usage in the full work area while preserving the selected node when returning to the canvas.',
+      ],
+    },
     {
       date: 'Aug 11, 2026 · 0.9.1',
       items: [

@@ -273,6 +273,12 @@ export const DOCS_PT: DocsCatalog = {
       tags: ['Layout do canvas', 'seleção', 'conexões'],
     },
     {
+      id: 'focused-workspace-view',
+      title: 'Trabalhar em um terminal ou artefato sem distrações',
+      body: 'Use o seletor Canvas/Terminais no canto superior esquerdo para abrir o explorer de workspaces. Pesquise e escolha um terminal, quadro, nota, portal, arquivo, fluxo ou nó de uso para trabalhar com ele ocupando toda a área disponível. É o mesmo artefato persistido do canvas: sessões, conteúdo e alterações continuam sincronizados. Ao voltar ao Canvas, o Orkestrai preserva o workspace e centraliza o nó selecionado.',
+      tags: ['Modo Terminais', 'explorer de workspaces', 'foco'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adaptar a aparência ao seu trabalho',
       body: 'Escolha um dos três temas escuros ou o tema claro de alto contraste em Configurações → Aparência. Duplique o mais próximo da sua preferência, ajuste os tokens de cor com prévia imediata e exporte o JSON para usar o mesmo tema em outra instalação.',
@@ -280,6 +286,12 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '11 ago 2026 · 0.10.0',
+      items: [
+        'O novo modo Terminais oferece um explorer pesquisável de todos os workspaces e abre terminais, quadros, notas, portais, arquivos, fluxos e uso na área inteira, preservando o nó ao voltar ao canvas.',
+      ],
+    },
     {
       date: '11 ago 2026 · 0.9.1',
       items: [

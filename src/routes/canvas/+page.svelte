@@ -36,6 +36,7 @@
   import OnboardingWizard from '$lib/components/agent-room/tours/OnboardingWizard.svelte';
   import TourGuidePanel from '$lib/components/agent-room/tours/TourGuidePanel.svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
+  import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
   import FlowCanvasNode from '$lib/components/agent-room/canvas/FlowCanvasNode.svelte';
   import ImageCanvasNode from '$lib/components/agent-room/canvas/ImageCanvasNode.svelte';
@@ -519,7 +520,17 @@
     // em voo, a lista antiga nao sobrescreve o estado mais novo.
     if (selectionRequestId === 0) {
       workspaces = workspaceList;
-      if (workspaceList.length) await selectWorkspace(workspaceList[0].id);
+      const params = new URLSearchParams(location.search);
+      const requestedWorkspaceId = params.get('workspace') || localStorage.getItem('orkestrai.activeWorkspaceId');
+      const requestedWorkspace = workspaceList.find((workspace) => workspace.id === requestedWorkspaceId) ?? workspaceList[0];
+      if (requestedWorkspace) {
+        await selectWorkspace(requestedWorkspace.id);
+        const requestedNodeId = params.get('node');
+        if (requestedNodeId && nodes.some((node) => node.id === requestedNodeId)) {
+          await tick();
+          requestAnimationFrame(() => requestAnimationFrame(() => jumpToNode(requestedNodeId)));
+        }
+      }
     }
     providers = status.providers ?? [];
     nodes = nodes.map((node) => ({ ...node, data: { ...node.data, providers } }));
@@ -745,6 +756,7 @@
       ]);
       if (requestId !== selectionRequestId) return;
       activeWorkspace = workspace;
+      localStorage.setItem('orkestrai.activeWorkspaceId', workspace.id);
       if (changingWorkspace) {
         leaderDictationState = 'idle';
         leaderDictationNodeId = null;
@@ -1508,6 +1520,13 @@
       <div class="brand-row">
         <img src="/brand/icon.svg" width="22" height="22" alt="Orkestrai" />
         <span class="brand-name">Orkestrai</span>
+      </div>
+      <div class="px-3 pb-2">
+        <WorkspaceModeSwitch
+          active="canvas"
+          workspaceId={activeWorkspace?.id ?? null}
+          nodeId={nodes.find((node) => node.selected)?.id ?? null}
+        />
       </div>
     {/if}
     <div class="sidebar-header">

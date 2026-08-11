@@ -31,15 +31,15 @@ let menuLocale = 'en';
 
 const MENU_COPY = {
   'pt-BR': {
-    workspace: 'Workspace', canvas: 'Canvas', providers: 'Central de Providers', newWorkspace: 'Novo workspace', presets: 'Biblioteca de presets', floors: 'Andares', roles: 'Responsabilidades', usage: 'Uso', ports: 'Portas',
+    workspace: 'Workspace', canvas: 'Canvas', terminals: 'Terminais', providers: 'Central de Providers', newWorkspace: 'Novo workspace', presets: 'Biblioteca de presets', floors: 'Andares', roles: 'Responsabilidades', usage: 'Uso', ports: 'Portas',
     settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', notifications: (count) => `${count} notificações`,
   },
   en: {
-    workspace: 'Workspace', canvas: 'Canvas', providers: 'Provider Center', newWorkspace: 'New workspace', presets: 'Preset library', floors: 'Floors', roles: 'Roles', usage: 'Usage', ports: 'Ports',
+    workspace: 'Workspace', canvas: 'Canvas', terminals: 'Terminals', providers: 'Provider Center', newWorkspace: 'New workspace', presets: 'Preset library', floors: 'Floors', roles: 'Roles', usage: 'Usage', ports: 'Ports',
     settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', notifications: (count) => `${count} notifications`,
   },
   es: {
-    workspace: 'Workspace', canvas: 'Canvas', providers: 'Central de Providers', newWorkspace: 'Nuevo workspace', presets: 'Biblioteca de presets', floors: 'Pisos', roles: 'Roles', usage: 'Uso', ports: 'Puertos',
+    workspace: 'Workspace', canvas: 'Canvas', terminals: 'Terminales', providers: 'Central de Providers', newWorkspace: 'Nuevo workspace', presets: 'Biblioteca de presets', floors: 'Pisos', roles: 'Roles', usage: 'Uso', ports: 'Puertos',
     settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', notifications: (count) => `${count} notificaciones`,
   },
 };
@@ -66,6 +66,7 @@ function buildApplicationMenu() {
     label: copy.workspace,
     submenu: [
       { label: copy.canvas, accelerator: 'CmdOrCtrl+1', click: () => sendMenuAction('canvas') },
+      { label: copy.terminals, accelerator: 'CmdOrCtrl+Shift+1', click: () => sendMenuAction('terminals') },
       { label: copy.providers, accelerator: 'CmdOrCtrl+2', click: () => sendMenuAction('providers') },
       { label: copy.newWorkspace, accelerator: 'CmdOrCtrl+N', click: () => sendMenuAction('new-workspace') },
       { label: copy.presets, accelerator: 'CmdOrCtrl+Shift+P', click: () => sendMenuAction('presets') },
@@ -489,7 +490,7 @@ ipcMain.handle('orkestrai:menu-locale', (_event, locale) => {
 });
 
 const RENDERER_MENU_ACTIONS = new Set([
-  'canvas', 'providers', 'new-workspace', 'presets', 'organize', 'floors', 'roles', 'usage', 'ports',
+  'canvas', 'terminals', 'providers', 'new-workspace', 'presets', 'organize', 'floors', 'roles', 'usage', 'ports',
   'settings', 'command-palette', 'docs', 'changelog',
 ]);
 
