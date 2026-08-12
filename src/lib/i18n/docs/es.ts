@@ -358,7 +358,7 @@ export const DOCS_ES: DocsCatalog = {
         'Los indicadores de actividad de Canvas y Workbench ahora se actualizan por eventos WebSocket en vez de polling cada diez segundos, y los eventos informativos ya no disparan notificaciones nativas.',
         'Los nombres y roles de los agentes ahora se distribuyen en líneas propias en el explorador del Workbench, y los elementos abiertos en vertical muestran el nombre completo sin ocultar la parte que distingue a cada agente con puntos suspensivos.',
         'Workbench ahora incluye un Centro de revisión con cambios Git preparados y no preparados estructurados, sincronización de rama, diffs Monaco limitados, comentarios persistentes por archivo y línea, detección de contexto desactualizado, tarea y agente vinculados y decisiones de aprobar, solicitar cambios o rechazar con envío directo al agente.',
-        'Portal Design Mode ahora resalta elementos reales de la página, captura una imagen recortada y contexto seguro limitado, muestra una vista previa antes del envío y entrega feedback visual a un agente o tarea existente sin recopilar cookies, tokens, storage, headers ni query strings.',
+        'Portal Design Mode ahora resalta elementos reales de la página, captura una imagen recortada y contexto seguro limitado, muestra una vista previa antes del envío y entrega feedback visual a un agente o tarea existente sin recopilar cookies, tokens, storage, headers ni query strings. Los parámetros de ruta del workspace y del portal se validan explícitamente para que la validación estricta no bloquee la entrega.',
       ],
     },
     {

@@ -17,6 +17,7 @@ import {
   sendPortalDesignFeedbackSchema,
 } from '$lib/modules/agent-room/contracts/schemas/portal-design-feedback.schema.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
+import { SendPortalDesignFeedbackRequest } from '$lib/modules/agent-room/interface/http/requests/SendPortalDesignFeedbackRequest.js';
 
 const tempDirs: string[] = [];
 
@@ -149,5 +150,38 @@ describe('PortalDesignFeedbackService', () => {
       portal.id,
       PortalDesignFeedbackDto.fromInput(input),
     )).rejects.toThrow('PNG válido');
+  });
+
+  it('accepts the workspace and portal route parameters merged by Svelar FormRequest', async () => {
+    const { html: _previewOnly, ...context } = capture();
+    const workspaceId = '00000000-0000-4000-8000-000000000001';
+    const portalNodeId = '00000000-0000-4000-8000-000000000002';
+    const taskId = '00000000-0000-4000-8000-000000000003';
+    const body = {
+      capture: context,
+      screenshot: {
+        id: '00000000-0000-4000-8000-000000000004',
+        kind: 'file',
+        name: 'capture.png',
+        path: '.orkestrai/attachments/capture.png',
+        url: null,
+        mimeType: 'image/png',
+        size: 100,
+      },
+      instruction: 'Improve the contrast.',
+      destination: { kind: 'task', taskId },
+    };
+
+    const dto = await SendPortalDesignFeedbackRequest.validate({
+      request: new Request('http://localhost/design-feedback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      url: new URL('http://localhost/design-feedback'),
+      params: { id: workspaceId, nodeId: portalNodeId },
+    } as never);
+
+    expect(dto).toMatchObject({ instruction: 'Improve the contrast.', destination: { kind: 'task', taskId } });
   });
 });

@@ -358,7 +358,7 @@ export const DOCS_EN: DocsCatalog = {
         'Canvas and Workbench activity indicators now update through WebSocket events instead of polling every ten seconds, and informational heartbeats no longer trigger native notifications.',
         'Agent names and roles now wrap onto dedicated lines in the Workbench explorer, and vertical open-item labels show their full names instead of hiding distinguishing text behind ellipses.',
         'Workbench now includes a Review Center with structured staged and unstaged changes, branch synchronization, bounded Monaco diffs, persisted file and line comments, stale-context detection, task and agent context, and approve, request changes, or reject decisions with direct agent handoff.',
-        'Portal Design Mode now highlights real page elements, captures a cropped screenshot and bounded safe context, previews it before sending, and hands visual feedback to an agent or existing task without collecting cookies, tokens, storage, headers, or query strings.',
+        'Portal Design Mode now highlights real page elements, captures a cropped screenshot and bounded safe context, previews it before sending, and hands visual feedback to an agent or existing task without collecting cookies, tokens, storage, headers, or query strings. Workspace and portal route parameters are validated explicitly so strict request validation does not block delivery.',
       ],
     },
     {

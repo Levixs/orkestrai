@@ -1,10 +1,16 @@
 import { FormRequest } from '@beeblock/svelar/forms';
+import { z } from 'zod';
 import { PortalDesignFeedbackDto } from '$lib/modules/agent-room/application/dto/PortalDesignFeedbackDto.js';
 import { sendPortalDesignFeedbackSchema } from '$lib/modules/agent-room/contracts/schemas/portal-design-feedback.schema.js';
 
+const sendPortalDesignFeedbackRequestSchema = sendPortalDesignFeedbackSchema.extend({
+  id: z.string().uuid(),
+  nodeId: z.string().uuid(),
+}).strict();
+
 export class SendPortalDesignFeedbackRequest extends FormRequest {
   rules() {
-    return sendPortalDesignFeedbackSchema;
+    return sendPortalDesignFeedbackRequestSchema;
   }
 
   authorize(): boolean {
@@ -12,6 +18,7 @@ export class SendPortalDesignFeedbackRequest extends FormRequest {
   }
 
   passedValidation(data: unknown): PortalDesignFeedbackDto {
-    return PortalDesignFeedbackDto.fromInput(sendPortalDesignFeedbackSchema.parse(data));
+    const { id: _workspaceId, nodeId: _portalNodeId, ...input } = sendPortalDesignFeedbackRequestSchema.parse(data);
+    return PortalDesignFeedbackDto.fromInput(sendPortalDesignFeedbackSchema.parse(input));
   }
 }

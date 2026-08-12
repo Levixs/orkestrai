@@ -46,7 +46,8 @@ pt-BR, English, and Spanish translations.
   a real page element, review a cropped screenshot and bounded safe context,
   then send actionable visual feedback to an agent or append it to an existing
   task. Cookies, headers, tokens, storage, query strings, and hidden state are
-  excluded from the captured context.
+  excluded from the captured context. Workspace and portal route parameters are
+  validated explicitly so strict request validation does not block delivery.
 
 ### Changed
 
