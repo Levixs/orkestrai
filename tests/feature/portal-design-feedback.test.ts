@@ -114,4 +114,40 @@ describe('PortalDesignFeedbackService', () => {
     }).success).toBe(false);
     expect(redactPortalText('Authorization: Bearer abcdefghijklmnop')).not.toContain('abcdefghijklmnop');
   });
+
+  it('rejects a file named as PNG when its bytes are not a PNG', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-portal-design-'));
+    tempDirs.push(dir);
+    const workspace = await workspaceRepository.createWorkspace({ name: 'invalid capture', workingDir: dir });
+    const portal = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'portal',
+      title: 'Preview',
+      payload: { url: 'https://example.com' },
+    });
+    const task = await taskBoardService.create(workspace.id, {
+      title: 'Review preview',
+      description: '',
+      createdBy: 'agent',
+    });
+    const screenshot = await workspaceAttachmentService.create(
+      workspace.id,
+      WorkspaceAttachmentDto.fromFile(new File([
+        'this is not a png',
+      ], 'fake.png', { type: 'image/png' }) as unknown as globalThis.File),
+    );
+    const { html: _previewOnly, ...context } = capture();
+    const input = sendPortalDesignFeedbackSchema.parse({
+      capture: context,
+      screenshot,
+      instruction: 'Fix this.',
+      destination: { kind: 'task', taskId: task.id },
+    });
+
+    await expect(portalDesignFeedbackService.send(
+      workspace.id,
+      portal.id,
+      PortalDesignFeedbackDto.fromInput(input),
+    )).rejects.toThrow('PNG válido');
+  });
 });

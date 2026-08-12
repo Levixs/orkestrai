@@ -30,6 +30,8 @@ describe('portal design inspector', () => {
     expect(source).not.toContain('localStorage');
     expect(source).not.toContain('sessionStorage');
     expect(source).not.toContain('indexedDB');
+    expect(source).toContain("element.id && !sensitiveName.test(element.id)");
+    expect(source).toContain("return redact(clone.outerHTML || ''");
   });
 
   it('checks the selected element and captures only its padded viewport clip', async () => {

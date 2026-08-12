@@ -491,7 +491,7 @@
             src={data.payload.url}
             class="portal-frame"
             class:portal-frame-hidden={reviewOpen}
-            partition="orkestrai-portals"
+            partition="persist:orkestrai-portals"
             webpreferences="contextIsolation=yes, sandbox=yes, nodeIntegration=no"
           ></webview>
         {:else}

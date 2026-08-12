@@ -51,7 +51,7 @@ export function portalInspectorSource(): string {
         }
       };
       const selectorFor = (element) => {
-        if (element.id) return '#' + escapeSelector(element.id);
+        if (element.id && !sensitiveName.test(element.id)) return '#' + escapeSelector(element.id);
         for (const attribute of ['data-testid', 'data-test', 'aria-label']) {
           const value = element.getAttribute(attribute);
           if (value && !sensitiveName.test(value)) {
@@ -96,7 +96,7 @@ export function portalInspectorSource(): string {
           if ('checked' in node) node.removeAttribute('checked');
           if ('selected' in node) node.removeAttribute('selected');
         }
-        return String(clone.outerHTML || '').slice(0, ${PORTAL_DESIGN_LIMITS.html});
+        return redact(clone.outerHTML || '', ${PORTAL_DESIGN_LIMITS.html});
       };
 
       const overlay = document.createElement('div');

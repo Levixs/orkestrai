@@ -38,16 +38,19 @@ function formatFeedback(dto: PortalDesignFeedbackDto, portalTitle: string): stri
 
 export class PortalDesignFeedbackService {
   async send(workspaceId: string, portalNodeId: string, dto: PortalDesignFeedbackDto): Promise<PortalDesignFeedbackResult> {
-    const [workspace, portal, screenshotInfo] = await Promise.all([
+    const [workspace, portal, screenshotInfo, screenshotFile] = await Promise.all([
       workspaceRepository.getWorkspace(workspaceId),
       workspaceRepository.getNode(portalNodeId),
       filesystemService.inspect(workspaceId, dto.screenshot.path ?? ''),
+      filesystemService.readBinary(workspaceId, dto.screenshot.path ?? ''),
     ]);
     if (!workspace) throw new Error('Workspace não encontrado.');
     if (!portal || portal.workspaceId !== workspaceId || portal.type !== 'portal') {
       throw new Error('Portal não encontrado neste workspace.');
     }
-    if (screenshotInfo.kind !== 'image' || screenshotInfo.contentType !== 'image/png') {
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    const hasPngSignature = pngSignature.every((byte, index) => screenshotFile.data[index] === byte);
+    if (screenshotInfo.kind !== 'image' || screenshotInfo.contentType !== 'image/png' || !hasPngSignature) {
       throw new Error('A captura do portal precisa ser um PNG válido do workspace.');
     }
 
