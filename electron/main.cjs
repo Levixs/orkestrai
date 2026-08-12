@@ -346,6 +346,37 @@ async function createWindow() {
     return { action: 'deny' };
   });
 
+  mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+    let protocol = '';
+    try {
+      protocol = new URL(params.src || 'about:blank').protocol;
+    } catch {
+      event.preventDefault();
+      return;
+    }
+    if (!['http:', 'https:', 'about:'].includes(protocol)) {
+      event.preventDefault();
+      return;
+    }
+    delete webPreferences.preload;
+    webPreferences.nodeIntegration = false;
+    webPreferences.nodeIntegrationInSubFrames = false;
+    webPreferences.contextIsolation = true;
+    webPreferences.sandbox = true;
+    webPreferences.webSecurity = true;
+    webPreferences.allowRunningInsecureContent = false;
+  });
+
+  mainWindow.webContents.on('did-attach-webview', (_event, guestContents) => {
+    guestContents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+      return { action: 'deny' };
+    });
+    guestContents.on('will-navigate', (navigationEvent, url) => {
+      if (!/^https?:\/\//.test(url) && url !== 'about:blank') navigationEvent.preventDefault();
+    });
+  });
+
   mainWindow.once('ready-to-show', () => {
     closeSplash();
     mainWindow?.show();

@@ -424,6 +424,43 @@ export class TaskBoardService {
     return this.mapWithTitles(await this.requireTask(workspaceId, taskId));
   }
 
+  async appendPortalFeedback(
+    workspaceId: string,
+    taskId: string,
+    feedback: string,
+    attachment: WorkspaceAttachment,
+  ): Promise<BoardTask> {
+    const task = await this.requireTask(workspaceId, taskId);
+    const validatedAttachment = workspaceAttachmentSchema.parse(attachment);
+    const attachments = attachmentsOf(task);
+    if (!attachments.some((item) => item.id === validatedAttachment.id)) {
+      if (attachments.length >= MAX_WORKSPACE_ATTACHMENTS) {
+        throw new Error(`A task supports up to ${MAX_WORKSPACE_ATTACHMENTS} attachments.`);
+      }
+      attachments.push(validatedAttachment);
+    }
+    const images = imagesOf(task);
+    if (
+      validatedAttachment.path
+      && isRasterWorkspaceAttachment(validatedAttachment)
+      && !images.includes(validatedAttachment.path)
+      && images.length < 6
+    ) images.push(validatedAttachment.path);
+    const currentDescription = String(task.getAttribute('description') ?? '').trim();
+    const nextDescription = [currentDescription, `### Portal design feedback\n\n${feedback}`]
+      .filter(Boolean)
+      .join('\n\n');
+    await AgentBoardTask.query().where('id', taskId).update({
+      description: nextDescription,
+      attachments_json: JSON.stringify(attachments),
+      images_json: images.length ? JSON.stringify(images) : null,
+      image_path: images[0] ?? null,
+      updated_at: new Date().toISOString(),
+    });
+    notifyWorkspaceChanged(workspaceId);
+    return this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+  }
+
   async detachAttachment(workspaceId: string, taskId: string, attachmentId: string): Promise<BoardTask> {
     const task = await this.requireTask(workspaceId, taskId);
     const removed = attachmentsOf(task).find((attachment) => attachment.id === attachmentId);
