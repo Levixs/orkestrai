@@ -45,20 +45,21 @@ test.describe('andares e rotinas', () => {
     await expect(panel).toBeVisible();
     await panel.getByPlaceholder('Nome do andar').fill('feature-x');
     await panel.getByRole('button', { name: 'Criar andar' }).click();
-    await expect(panel.locator('.floor-item', { hasText: 'feature-x' })).toBeVisible({ timeout: 10_000 });
+    const featureFloor = panel.getByRole('article').filter({ hasText: 'feature-x' });
+    await expect(featureFloor).toBeVisible({ timeout: 10_000 });
 
     // Alterna para o andar: canvas vazio (layout nao clonado)
-    await panel.locator('.floor-open', { hasText: 'feature-x' }).click();
+    await featureFloor.getByRole('button', { name: /feature-x/ }).click();
     await expect(page.locator('.canvas-note')).toHaveCount(0);
 
     // Volta ao terreo: nota reaparece
-    await panel.locator('.floor-item', { hasText: 'Térreo' }).click();
+    await panel.getByRole('article').filter({ hasText: 'Térreo' }).getByRole('button', { name: /Térreo/ }).click();
     await expect(page.locator('.canvas-note')).toHaveCount(1);
 
     // Exclui o andar
-    await panel.locator('.floor-open', { hasText: 'feature-x' }).click();
-    await page.locator('.floor-item', { hasText: 'feature-x' }).getByRole('button', { name: 'Excluir (manter branch)' }).click();
-    await expect(panel.locator('.floor-item', { hasText: 'feature-x' })).toHaveCount(0);
+    await featureFloor.getByRole('button', { name: /feature-x/ }).click();
+    await featureFloor.getByRole('button', { name: 'Excluir (manter branch)' }).click();
+    await expect(featureFloor).toHaveCount(0);
 
     await cleanup(request, workspaceName);
   });

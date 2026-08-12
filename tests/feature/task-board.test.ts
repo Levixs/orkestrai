@@ -89,6 +89,26 @@ describe('TaskBoardService', () => {
       title: 'Implementar login',
       description: 'Usar OAuth e cobrir o fluxo de erro.',
       images: ['.orkestrai/images/login.png'],
+      attachments: [
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          kind: 'file',
+          name: 'brief.md',
+          path: '.orkestrai/attachments/brief.md',
+          url: null,
+          mimeType: 'text/markdown',
+          size: 42,
+        },
+        {
+          id: '00000000-0000-4000-8000-000000000002',
+          kind: 'link',
+          name: 'example.com',
+          path: null,
+          url: 'https://example.com/reference',
+          mimeType: null,
+          size: null,
+        },
+      ],
       assigneeNodeId: terminal.id,
     });
     expect(task.status).toBe('doing');
@@ -98,6 +118,8 @@ describe('TaskBoardService', () => {
     expect(scrollback).toContain('Implementar login');
     expect(scrollback).toContain('Usar OAuth e cobrir o fluxo de erro.');
     expect(scrollback).toContain('.orkestrai/images/login.png');
+    expect(scrollback).toContain('.orkestrai/attachments/brief.md');
+    expect(scrollback).toContain('https://example.com/reference');
     expect(scrollback).toContain('orkestrai task done');
     ptySessionManager.kill(session.id);
   });

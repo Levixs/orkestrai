@@ -41,7 +41,12 @@ test.describe('ditado por voz', () => {
   test('atalho do ditado e configuravel e persiste', async ({ page, request }) => {
     // Isolamento: garante o atalho padrao antes de abrir a pagina (uma corrida
     // anterior que morreu no meio do teste deixaria outro atalho salvo).
-    await request.put('/api/agent-room/settings', { data: { dictationHotkey: 'alt+space' } });
+    await expect.poll(
+      async () => request.put('/api/agent-room/settings', { data: { dictationHotkey: 'alt+space' } })
+        .then((response) => response.ok())
+        .catch(() => false),
+      { timeout: 10_000, intervals: [250, 500, 1_000] },
+    ).toBe(true);
     await page.goto('/settings');
 
     const capture = page.getByRole('button', { name: /Alt\+Espaco|Pressione as teclas/ });

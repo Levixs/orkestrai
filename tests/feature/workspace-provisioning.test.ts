@@ -3,11 +3,60 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { useSvelarTest } from '@beeblock/svelar/testing';
-import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
+import { WorkspaceService, workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 
 describe('WorkspaceService — provisionamento da ponte', () => {
   useSvelarTest({ refreshDatabase: true });
+
+  it('compartilha o provisionamento concorrente do mesmo workspace', async () => {
+    const service = new WorkspaceService() as unknown as {
+      ensureProvisioned: (workspace: unknown) => Promise<void>;
+      provisionWorkspace: (workspace: unknown) => Promise<void>;
+      provisionInFlight: Map<string, Promise<void>>;
+    };
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => (finish = resolve));
+    let calls = 0;
+    service.provisionWorkspace = async () => {
+      calls += 1;
+      await pending;
+    };
+    const workspace = { id: 'protected-workspace', workingDir: '/protected' };
+
+    const first = service.ensureProvisioned(workspace);
+    const second = service.ensureProvisioned(workspace);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls).toBe(1);
+    expect(service.provisionInFlight.size).toBe(1);
+    finish();
+    await Promise.all([first, second]);
+    expect(service.provisionInFlight.size).toBe(0);
+  });
+
+  it('nao deixa a permissao pendente de um workspace bloquear os demais', async () => {
+    const service = new WorkspaceService() as unknown as {
+      ensureProvisioned: (workspace: unknown) => Promise<void>;
+      provisionWorkspace: (workspace: { id: string }) => Promise<void>;
+    };
+    const releases = new Map<string, () => void>();
+    const started: string[] = [];
+    service.provisionWorkspace = async (workspace) => {
+      started.push(workspace.id);
+      await new Promise<void>((resolve) => releases.set(workspace.id, resolve));
+    };
+
+    const first = service.ensureProvisioned({ id: 'protected-a', workingDir: '/protected/a' });
+    const second = service.ensureProvisioned({ id: 'protected-b', workingDir: '/protected/b' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(started).toEqual(['protected-a', 'protected-b']);
+    releases.get('protected-b')?.();
+    await second;
+    releases.get('protected-a')?.();
+    await first;
+  });
 
   it('provisiona skill e token ao criar o workspace', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-prov-new-'));

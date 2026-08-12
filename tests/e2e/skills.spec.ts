@@ -22,14 +22,16 @@ test.describe('marketplace de skills', () => {
       // Busca real no registry (endpoint publico do skills.sh).
       await page.locator('.search-input').fill('web design guidelines');
       await page.getByRole('button', { name: 'Buscar' }).click();
-      const firstResult = page.locator('.result-row').first();
-      await expect(firstResult).toBeVisible({ timeout: 20_000 });
+      const skillResult = page.locator('.result-row').filter({
+        has: page.getByText('vercel-labs/agent-skills/web-design-guidelines', { exact: true }),
+      });
+      await expect(skillResult).toBeVisible({ timeout: 20_000 });
 
-      // Instala a primeira skill encontrada e confere a lista de instaladas.
-      await firstResult.getByRole('button', { name: 'Instalar' }).click();
+      // Instala a skill procurada e confere a lista de instaladas.
+      await skillResult.getByRole('button', { name: 'Instalar' }).click();
       const installedSkill = page.locator('.installed-row', { hasText: 'web-design-guidelines' });
       await expect(installedSkill).toBeVisible({ timeout: 20_000 });
-      await expect(firstResult.getByText('Instalada')).toBeVisible();
+      await expect(skillResult.getByText('Instalada')).toBeVisible();
 
       // Remove pelo botao da lista de instaladas (resta so a da ponte).
       await installedSkill.getByRole('button').click();

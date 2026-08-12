@@ -2,6 +2,43 @@ import { expect, test } from '@playwright/test';
 import { selectAgentTool } from './helpers.js';
 
 test.describe('terminais PTY', () => {
+  test('troca de workspace antes de abrir ao lado e nao mistura artefatos', async ({ page, request }) => {
+    const runId = Date.now();
+    const firstName = `E2E Workbench A ${runId}`;
+    const secondName = `E2E Workbench B ${runId}`;
+    const firstResponse = await request.post('/api/agent-room/workspaces', {
+      data: { name: firstName, workingDir: '/tmp' },
+    });
+    const secondResponse = await request.post('/api/agent-room/workspaces', {
+      data: { name: secondName, workingDir: '/tmp' },
+    });
+    const first = (await firstResponse.json()).data as { id: string };
+    const second = (await secondResponse.json()).data as { id: string };
+
+    try {
+      const firstNoteResponse = await request.post(`/api/agent-room/workspaces/${first.id}/nodes`, {
+        data: { type: 'note', title: `Note A ${runId}`, x: 100, y: 100, width: 360, height: 260, payload: { content: 'Workspace A' } },
+      });
+      const secondNoteTitle = `Note B ${runId}`;
+      await request.post(`/api/agent-room/workspaces/${second.id}/nodes`, {
+        data: { type: 'note', title: secondNoteTitle, x: 100, y: 100, width: 360, height: 260, payload: { content: 'Workspace B' } },
+      });
+      const firstNote = (await firstNoteResponse.json()).data as { id: string };
+
+      await page.goto(`/terminal?workspace=${first.id}&node=${firstNote.id}`);
+      const tree = page.getByTestId('terminal-workspace-tree');
+      await tree.locator('button', { hasText: secondName }).click();
+      await tree.getByRole('button', { name: `Abrir ${secondNoteTitle} à direita` }).click();
+
+      await expect(page).toHaveURL(new RegExp(`/terminal\\?workspace=${second.id}.*node=`));
+      await expect(page.getByTestId('workbench-pane-secondary')).toHaveCount(0);
+      await expect(page.getByTestId('workbench-pane-primary').locator('.canvas-note textarea')).toHaveValue('Workspace B');
+    } finally {
+      await request.delete(`/api/agent-room/workspaces/${first.id}`);
+      await request.delete(`/api/agent-room/workspaces/${second.id}`);
+    }
+  });
+
   test('navega pelos artefatos persistidos e preserva a selecao ao voltar ao canvas', async ({ page, request }) => {
     test.setTimeout(75_000);
     const runId = Date.now();
@@ -9,17 +46,22 @@ test.describe('terminais PTY', () => {
     const noteTitle = `Briefing E2E ${runId}`;
     const shellTitle = `Shell E2E ${runId}`;
     const leaderTitle = `Lider de voz E2E ${runId}`;
+    const settingsResponse = await request.get('/api/agent-room/settings');
+    const originalSettings = (await settingsResponse.json()).data as Record<string, string>;
+    let workspace: { id: string; name: string } | undefined;
 
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
     await page.getByPlaceholder('Nome').fill(workspaceName);
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
+    await expect(page.locator('.workspace-list')).toContainText(workspaceName);
 
     const list = await request.get('/api/agent-room/workspaces');
-    const workspace = ((await list.json()).data as Array<{ id: string; name: string }>).find(
+    workspace = ((await list.json()).data as Array<{ id: string; name: string }>).find(
       (item) => item.name === workspaceName
-    )!;
+    );
+    if (!workspace) throw new Error(`Workspace ${workspaceName} was not persisted`);
 
     try {
       const noteResponse = await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
@@ -66,29 +108,38 @@ test.describe('terminais PTY', () => {
       await page.goto(`/terminal?workspace=${workspace.id}&node=${note.id}`);
       const tree = page.getByTestId('terminal-workspace-tree');
       await expect(tree).toContainText(workspaceName);
+      await expect(page.getByTestId('workbench-vertical-tabs')).toBeVisible();
       await expect(page.locator('.canvas-note textarea')).toHaveValue('# Briefing persistido');
 
       const search = page.getByTestId('terminal-workspace-search');
       await search.fill(shellTitle);
       await expect(tree).toContainText(shellTitle);
       await expect(tree).not.toContainText(noteTitle);
-      await tree.locator('button', { hasText: shellTitle }).click();
+      await tree.getByRole('button', { name: `Abrir ${shellTitle} à direita` }).click();
+      await expect(page.getByTestId('workbench-pane-primary').locator('.canvas-note textarea')).toHaveValue('# Briefing persistido');
+      await expect(page.getByTestId('workbench-pane-secondary')).toBeVisible();
 
-      const terminal = page.locator('.canvas-terminal');
+      const terminal = page.getByTestId('workbench-pane-secondary').locator('.canvas-terminal');
       await expect(terminal.locator('.xterm')).toBeVisible({ timeout: 15_000 });
       const marker = `e2e-${Date.now()}`;
-      await terminal.locator('.terminal-container').click();
+      const terminalInput = terminal.locator('.xterm-helper-textarea');
+      await page.waitForTimeout(300);
+      await terminalInput.evaluate((element) => (element as HTMLTextAreaElement).focus());
+      await expect.poll(() => terminalInput.evaluate((element) => document.activeElement === element)).toBe(true);
       await page.keyboard.type(`echo ${marker}`);
       await page.keyboard.press('Enter');
       await expect(terminal.locator('.terminal-container')).toContainText(marker, { timeout: 10_000 });
 
       await page.getByTestId('terminal-open-canvas').click();
       await expect(page.locator('.canvas-terminal.selected')).toContainText(shellTitle);
-      await page.getByRole('link', { name: 'Terminais' }).click();
+      await page.getByRole('link', { name: 'Workbench' }).click();
       await expect(page).toHaveURL(new RegExp(`/terminal\\?workspace=${workspace.id}.*node=`));
+      await expect(page.getByTestId('workbench-pane-secondary')).toBeVisible();
 
       const restoredTerminal = page.locator('.canvas-terminal');
       await expect(restoredTerminal.locator('.xterm')).toBeVisible({ timeout: 15_000 });
+      await page.getByTestId('workbench-close-pane').click();
+      await expect(page.getByTestId('workbench-pane-secondary')).toHaveCount(0);
       await restoredTerminal.locator('.terminal-container').click();
       await page.keyboard.type('stty size');
       await page.keyboard.press('Enter');
@@ -97,6 +148,9 @@ test.describe('terminais PTY', () => {
         const size = rows.map((row) => row.trim()).filter((row) => /^\d+ \d+$/.test(row)).at(-1);
         return size ? Number(size.split(' ')[1]) : 0;
       }).toBeGreaterThan(80);
+
+      await tree.getByRole('button', { name: `Abrir ${noteTitle} à direita` }).click();
+      await expect(page.getByTestId('workbench-pane-secondary').locator('.canvas-note textarea')).toHaveValue('# Briefing persistido');
 
       const fallbackHandled = await page.evaluate(() => {
         const detail = { handled: false };
@@ -110,13 +164,24 @@ test.describe('terminais PTY', () => {
       const cancelVoiceDownload = page.getByRole('button', { name: 'Agora não' });
       if (await cancelVoiceDownload.isVisible()) await cancelVoiceDownload.click();
 
+      await request.put('/api/agent-room/settings', {
+        data: { ...originalSettings, workbenchTabPlacement: 'horizontal' },
+      });
+      await page.reload();
+      await expect(page.getByTestId('workbench-vertical-tabs')).toHaveCount(0);
+      await expect(page.getByRole('tablist')).toHaveCount(2);
+      await expect(page.getByRole('tab', { name: leaderTitle })).toHaveAttribute('aria-selected', 'true');
+
       const openCanvas = page.getByTestId('terminal-open-canvas');
       await expect(openCanvas.locator('svg')).toHaveCount(1);
       await openCanvas.click();
       await expect(page).toHaveURL(new RegExp(`/canvas\\?workspace=${workspace.id}.*node=`));
       await expect(page.locator('.canvas-terminal.selected')).toContainText(leaderTitle);
     } finally {
-      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+      await request.put('/api/agent-room/settings', {
+        data: { ...originalSettings, workbenchTabPlacement: originalSettings.workbenchTabPlacement ?? 'vertical' },
+      });
+      if (workspace) await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
     }
   });
 

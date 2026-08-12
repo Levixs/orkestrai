@@ -4,6 +4,7 @@ import { useSvelarTest } from '@beeblock/svelar/testing';
 import { bridgeService } from '$lib/modules/agent-room/application/services/BridgeService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
+import { controlCenterService } from '$lib/modules/agent-room/application/services/ControlCenterService.js';
 
 async function createWorkspaceWithTerminal() {
   const workspace = await workspaceRepository.createWorkspace({ name: 'bridge', workingDir: '/tmp' });
@@ -58,6 +59,15 @@ describe('BridgeService', () => {
     expect(result.delivered).toBe(true);
     expect(result.replyConfirmed).toBe(true);
     expect(result.reply).toContain('ping-ponte');
+    expect(result.messageId).toBeTruthy();
+    expect(result.deliveryState).toBe('replied');
+    expect((await controlCenterService.snapshot(workspace.id)).communications[0].events.map((event) => event.state)).toEqual([
+      'queued',
+      'sent',
+      'delivered',
+      'acknowledged',
+      'replied',
+    ]);
     ptySessionManager.kill(session.id);
   });
 

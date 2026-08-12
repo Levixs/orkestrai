@@ -30,6 +30,7 @@ for (const tour of TOURS_PT) {
       await page.goto('/canvas?onboarding=1');
       const dialog = page.locator('[role="dialog"]');
       await expect(dialog).toBeVisible({ timeout: 10_000 });
+      await dialog.getByRole('button', { name: 'Português (Brasil)' }).click();
       await dialog.getByRole('button', { name: 'Já tenho workspace — pular' }).click();
       await dialog.locator('.tour-card', { hasText: tour.title }).first().click();
       await dialog.getByRole('button', { name: 'Começar o tour guiado' }).click();

@@ -18,14 +18,14 @@ test.describe('nó de fluxo (pipeline)', () => {
 
     // Sem agentes no canvas: "+ Agente" explica o que falta (nada de falha silenciosa)
     await flow.getByRole('button', { name: 'Agente' }).click();
-    await expect(flow.locator('.flow-banner')).toContainText('Crie um agente');
+    await expect(flow.locator('.flow-banner')).toContainText(/Crie .*agente/);
 
     // Rodar sem passos: orienta em vez de ignorar o clique
     await flow.getByRole('button', { name: 'Rodar' }).click();
     await expect(flow.locator('.flow-banner')).toContainText('passo');
 
     // Monta um passo de aprovação, roda, aprova e vê o histórico
-    await flow.getByRole('button', { name: 'Aprovacao' }).click();
+    await flow.getByRole('button', { name: 'Aprovação' }).click();
     await expect(flow.locator('.flow-step')).toHaveCount(1);
     await flow.getByRole('button', { name: 'Rodar' }).click();
     const approveButton = flow.getByRole('button', { name: 'Aprovar e continuar' });
