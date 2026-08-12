@@ -7,7 +7,7 @@
   import { Input } from '$lib/components/ui/input';
   import * as m from '$lib/paraglide/messages.js';
   import {
-    ArrowLeft, Cable, FolderPlus, GitBranch, Languages, Layers, LayoutGrid, LayoutTemplate, Mic, Palette, Pin, RadioTower, Repeat, Rocket, Search, Sparkles, Users, Workflow,
+    Activity, ArrowLeft, Cable, FileCode2, FolderPlus, GitBranch, GitPullRequestArrow, Languages, Layers, LayoutGrid, LayoutTemplate, Mic, Palette, PanelLeftOpen, Pin, RadioTower, Repeat, Rocket, Search, Sparkles, Users, Workflow,
   } from '@lucide/svelte';
   import { toursCatalog, startTour } from './engine.svelte.js';
   import type { Tour } from './types.js';
@@ -26,7 +26,7 @@
 
   let { open, onClose, onCreateWorkspace, activeWorkspaceId }: Props = $props();
 
-  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, Palette, Pin, RadioTower, Mic, Languages };
+  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, GitPullRequestArrow, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, Palette, PanelLeftOpen, FileCode2, Pin, RadioTower, Mic, Languages, Activity };
 
   type WizardStep = 'language' | 'welcome' | 'workspace' | 'usecase';
   type UiLanguage = 'pt-BR' | 'en' | 'es';
@@ -245,7 +245,7 @@
   }
 
   .wizard-title {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 19px;
     font-weight: 600;
     margin: 0;

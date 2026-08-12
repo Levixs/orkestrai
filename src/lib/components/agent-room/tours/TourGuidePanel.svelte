@@ -143,7 +143,7 @@
 
   .tour-title {
     margin: 0;
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 15px;
     font-weight: 600;
     color: var(--app-text);

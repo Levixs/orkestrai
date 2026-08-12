@@ -1,0 +1,35 @@
+<script lang="ts">
+  import {
+    FileCode2,
+    FolderTree,
+    Gauge,
+    GitCompareArrows,
+    Globe2,
+    Image as ImageIcon,
+    Repeat2,
+    SquareKanban,
+    SquareTerminal,
+    StickyNote,
+    Workflow,
+    Activity,
+    GitPullRequestArrow,
+  } from '@lucide/svelte';
+  import type { CanvasNodeType } from '$lib/modules/agent-room/domain/types.js';
+
+  let { type, size = 14 }: { type: CanvasNodeType; size?: number } = $props();
+</script>
+
+{#if type === 'terminal'}<SquareTerminal {size} aria-hidden="true" />
+{:else if type === 'tasks'}<SquareKanban {size} aria-hidden="true" />
+{:else if type === 'note'}<StickyNote {size} aria-hidden="true" />
+{:else if type === 'portal'}<Globe2 {size} aria-hidden="true" />
+{:else if type === 'fileTree'}<FolderTree {size} aria-hidden="true" />
+{:else if type === 'editor'}<FileCode2 {size} aria-hidden="true" />
+{:else if type === 'diff'}<GitCompareArrows {size} aria-hidden="true" />
+{:else if type === 'image'}<ImageIcon {size} aria-hidden="true" />
+{:else if type === 'flow'}<Workflow {size} aria-hidden="true" />
+{:else if type === 'loop'}<Repeat2 {size} aria-hidden="true" />
+{:else if type === 'usage'}<Gauge {size} aria-hidden="true" />
+{:else if type === 'controlCenter'}<Activity {size} aria-hidden="true" />
+{:else if type === 'reviewCenter'}<GitPullRequestArrow {size} aria-hidden="true" />
+{/if}

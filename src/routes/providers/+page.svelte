@@ -237,7 +237,7 @@
   }
 
   .header-titles { min-width: 0; }
-  .header-titles h1 { margin: 0; font-family: 'Sora', 'Inter', sans-serif; font-size: 22px; font-weight: 600; }
+  .header-titles h1 { margin: 0; font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif; font-size: 22px; font-weight: 600; }
   .header-titles p { margin: 5px 0 0; color: var(--copy-muted); font-size: 13px; line-height: 1.5; }
   .header-spacer { flex: 1; }
 

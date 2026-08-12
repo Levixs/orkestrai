@@ -45,7 +45,7 @@
   .md :global(h2),
   .md :global(h3),
   .md :global(h4) {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-weight: 600;
     color: var(--app-text);
     margin: 12px 0 6px;

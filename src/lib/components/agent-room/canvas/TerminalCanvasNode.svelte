@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowLeftRight, BadgeCheck, Ellipsis, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { ArrowLeftRight, BadgeCheck, Ellipsis, Paperclip, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
@@ -12,8 +12,14 @@
   import { speakText } from '../voice-speech.js';
   import { terminalThemeLabel } from '../terminal-theme-label.js';
   import { normalizeTerminalTheme, TERMINAL_THEMES, TERMINAL_THEME_ORDER, type TerminalThemeName } from '../terminal-themes.js';
-  import type { AgentProviderInfo, TerminalNodePayload } from '$lib/modules/agent-room/domain/types.js';
+  import type { AgentProviderInfo, TerminalNodePayload, WorkspaceAttachment } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
+  import {
+    attachmentPromptReference,
+    attachmentsFromTransfer,
+    transferHasWorkspaceAttachments,
+    uploadWorkspaceAttachment,
+  } from '../workspace-attachments.js';
 
   export type MentionTarget = { id: string; title: string; type: string };
 
@@ -156,6 +162,10 @@
   let mentionFilter = $state('');
   let mentionTargets = $state<MentionTarget[]>([]);
   let promptInput: HTMLInputElement;
+  let attachmentInput: HTMLInputElement;
+  let attachmentBusy = $state(false);
+  let attachmentDropActive = $state(false);
+  let attachmentError = $state('');
 
   const filteredMentions = $derived(
     mentionTargets.filter((target) => target.title.toLowerCase().includes(mentionFilter.toLowerCase())).slice(0, 8)
@@ -224,6 +234,58 @@
     if (mentionOpen && event.key === 'Tab' && filteredMentions.length) {
       event.preventDefault();
       insertMention(filteredMentions[0]);
+    }
+  }
+
+  function appendPromptAttachments(attachments: WorkspaceAttachment[]) {
+    if (!attachments.length) return;
+    const references = attachments.map(attachmentPromptReference).join(' · ');
+    prompt = `${prompt.trim()}${prompt.trim() ? ' · ' : ''}${references}`;
+    promptInput?.focus();
+  }
+
+  function handleAttachmentDragOver(event: DragEvent) {
+    if (!transferHasWorkspaceAttachments(event.dataTransfer)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    attachmentDropActive = true;
+  }
+
+  async function handleAttachmentDrop(event: DragEvent) {
+    if (!event.dataTransfer || !transferHasWorkspaceAttachments(event.dataTransfer)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    attachmentDropActive = false;
+    attachmentBusy = true;
+    attachmentError = '';
+    try {
+      appendPromptAttachments(await attachmentsFromTransfer(data.workspaceId, event.dataTransfer));
+    } catch (error) {
+      attachmentError = error instanceof Error && error.message === 'attachment_too_large'
+        ? m['attachment.too_large']()
+        : m['attachment.error']();
+    } finally {
+      attachmentBusy = false;
+    }
+  }
+
+  async function handleAttachmentFiles(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    attachmentBusy = true;
+    attachmentError = '';
+    try {
+      const attachments: WorkspaceAttachment[] = [];
+      for (const file of files) attachments.push(await uploadWorkspaceAttachment(data.workspaceId, file));
+      appendPromptAttachments(attachments);
+    } catch (error) {
+      attachmentError = error instanceof Error && error.message === 'attachment_too_large'
+        ? m['attachment.too_large']()
+        : m['attachment.error']();
+    } finally {
+      attachmentBusy = false;
     }
   }
 
@@ -335,13 +397,13 @@
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
     {#if currentRole}
-      <span class="terminal-status-chip" title={m['term.role_label']({ role: currentRole })} aria-label={m['term.role_label']({ role: currentRole })}>
+      <span class="terminal-status-chip" role="status" title={m['term.role_label']({ role: currentRole })} aria-label={m['term.role_label']({ role: currentRole })}>
         <BadgeCheck size={12} />
         <span>{roleLabel}</span>
       </span>
     {/if}
     {#if data.payload.maestro}
-      <span class="terminal-leader-state" title={m['term.maestro_active']()} aria-label={m['term.maestro_active']()}>
+      <span class="terminal-leader-state" role="img" title={m['term.maestro_active']()} aria-label={m['term.maestro_active']()}>
         <Star size={12} fill="currentColor" />
       </span>
     {/if}
@@ -451,7 +513,15 @@
     </div>
   {/if}
 
-  <div class="terminal-body nodrag">
+  <div
+    class="terminal-body nodrag"
+    class:attachment-drop-active={attachmentDropActive}
+    role="group"
+    aria-label={m['attachment.agent_drop_target']()}
+    ondragover={handleAttachmentDragOver}
+    ondragleave={() => (attachmentDropActive = false)}
+    ondrop={handleAttachmentDrop}
+  >
     {#if data.payload.sessionId && !forceRespawn}
       <TerminalNode
         sessionId={data.payload.sessionId}
@@ -500,10 +570,28 @@
   {/if}
   <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => (voiceOn = true)} onCancel={() => {}} />
 
-  <div class="composer nodrag">
+  <div
+    class="composer nodrag"
+    class:attachment-drop-active={attachmentDropActive}
+    role="group"
+    aria-label={m['attachment.agent_drop_target']()}
+    ondragover={handleAttachmentDragOver}
+    ondragleave={() => (attachmentDropActive = false)}
+    ondrop={handleAttachmentDrop}
+  >
+    <input bind:this={attachmentInput} type="file" multiple class="attachment-input" onchange={handleAttachmentFiles} />
+    <button
+      class="composer-attach"
+      aria-label={m['attachment.add']()}
+      disabled={attachmentBusy}
+      onclick={() => attachmentInput.click()}
+    >
+      <Paperclip size={13} aria-hidden="true" />
+    </button>
     <input
       bind:this={promptInput}
       bind:value={prompt}
+      data-testid="terminal-quick-prompt"
       oninput={handlePromptInput}
       onkeydown={handlePromptKeydown}
       placeholder={m['ph.quick_prompt']()}
@@ -513,12 +601,56 @@
       <SendHorizontal size={13} />
     </button>
   </div>
+  {#if attachmentError}<p class="attachment-error" role="status">{attachmentError}</p>{/if}
 </NodeShell>
 
 <style>
   .terminal-body {
     flex: 1;
     min-height: 0;
+  }
+
+  .terminal-body.attachment-drop-active,
+  .composer.attachment-drop-active {
+    box-shadow: inset 0 0 0 2px var(--app-accent);
+  }
+
+  .attachment-input {
+    display: none;
+  }
+
+  .composer-attach {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    place-items: center;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--app-text-muted);
+    cursor: pointer;
+  }
+
+  .composer-attach:hover:not(:disabled) {
+    background: var(--app-border);
+    color: var(--app-text);
+  }
+
+  .composer-attach:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 1px;
+  }
+
+  .composer-attach:disabled {
+    opacity: 0.45;
+  }
+
+  .attachment-error {
+    margin: 0;
+    padding: 3px 8px 5px;
+    color: var(--app-danger);
+    font-size: 10px;
   }
 
   .terminal-empty {

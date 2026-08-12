@@ -1,7 +1,18 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { Eye, Pencil, StickyNote, X } from '@lucide/svelte';
+  import { Eye, Paperclip, Pencil, StickyNote, X } from '@lucide/svelte';
   import MarkdownView from '../MarkdownView.svelte';
+  import AttachmentList from '../AttachmentList.svelte';
+  import {
+    attachmentMarkdown,
+    attachmentsFromClipboard,
+    attachmentsFromTransfer,
+    deleteWorkspaceAttachment,
+    MAX_WORKSPACE_ATTACHMENTS,
+    removeAttachmentMarkdown,
+    transferHasWorkspaceAttachments,
+    uploadWorkspaceAttachment,
+  } from '../workspace-attachments.js';
   import * as m from '$lib/paraglide/messages.js';
 
   const NOTE_COLORS: Record<string, { color: string; label: string }> = {
@@ -14,7 +25,7 @@
   };
   import NodeShell from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
-  import type { NoteNodePayload } from '$lib/modules/agent-room/domain/types.js';
+  import type { NoteNodePayload, WorkspaceAttachment } from '$lib/modules/agent-room/domain/types.js';
 
   export type NoteNodeData = {
     title: string;
@@ -22,14 +33,20 @@
     payload: NoteNodePayload;
     onDelete: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
-    onContentChange: (id: string, content: string) => void;
+    onContentChange: (id: string, content: string) => void | Promise<void>;
     onColorChange?: (id: string, color: string) => void;
+    onPayloadChange?: (id: string, partial: Record<string, unknown>) => void | Promise<void>;
   };
 
   let { id, data, selected } = $props<NodeProps & { data: NoteNodeData }>();
 
   let draft = $state(data.payload.content ?? '');
   let formatted = $state(Boolean(data.payload.formatted));
+  let attachments = $state<WorkspaceAttachment[]>([...(data.payload.attachments ?? [])]);
+  let attachmentInput: HTMLInputElement;
+  let attachmentBusy = $state(false);
+  let attachmentDropActive = $state(false);
+  let attachmentError = $state('');
   const noteColor = $derived(NOTE_COLORS[(data.payload as { color?: string }).color ?? 'yellow'] ?? NOTE_COLORS.yellow);
 
   function setColor(color: string) {
@@ -48,29 +65,119 @@
     formatted = !formatted;
   }
 
+  async function addAttachments(next: WorkspaceAttachment[], at = draft.length) {
+    if (!next.length) return;
+    const available = Math.max(0, MAX_WORKSPACE_ATTACHMENTS - attachments.length);
+    const accepted = next.slice(0, available);
+    await Promise.allSettled(next.slice(available).map(
+      (attachment) => deleteWorkspaceAttachment(data.workspaceId, attachment),
+    ));
+    if (!accepted.length) return;
+
+    const previousAttachments = attachments;
+    const previousDraft = draft;
+    attachments = [...attachments, ...accepted];
+    const markdown = accepted.map((attachment) => attachmentMarkdown(data.workspaceId, attachment)).join('\n\n');
+    const separatorBefore = at > 0 && !draft.slice(0, at).endsWith('\n') ? '\n\n' : '';
+    const separatorAfter = at < draft.length && !draft.slice(at).startsWith('\n') ? '\n\n' : '';
+    draft = `${draft.slice(0, at)}${separatorBefore}${markdown}${separatorAfter}${draft.slice(at)}`;
+    try {
+      if (data.onPayloadChange) await data.onPayloadChange(id, { attachments, content: draft });
+      else await data.onContentChange(id, draft);
+    } catch (error) {
+      attachments = previousAttachments;
+      draft = previousDraft;
+      await Promise.allSettled(accepted.map(
+        (attachment) => deleteWorkspaceAttachment(data.workspaceId, attachment),
+      ));
+      throw error;
+    }
+  }
+
   async function handlePaste(event: ClipboardEvent) {
-    const item = [...(event.clipboardData?.items ?? [])].find((entry) => entry.type.startsWith('image/'));
-    if (!item) return;
+    if (!event.clipboardData?.files.length) return;
     event.preventDefault();
-    const blob = item.getAsFile();
-    if (!blob) return;
+    attachmentBusy = true;
+    attachmentError = '';
+    try {
+      const textarea = event.target as HTMLTextAreaElement;
+      await addAttachments(await attachmentsFromClipboard(data.workspaceId, event.clipboardData), textarea.selectionStart ?? draft.length);
+    } catch (error) {
+      attachmentError = error instanceof Error && error.message === 'attachment_too_large'
+        ? m['attachment.too_large']()
+        : m['attachment.error']();
+    } finally {
+      attachmentBusy = false;
+    }
+  }
 
-    const buffer = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    const ext = blob.type.split('/').at(-1) ?? 'png';
-    const path = `.orkestrai/images/${crypto.randomUUID()}.${ext}`;
-    const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/fs/write-binary`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ path, base64 }),
-    });
-    if (!response.ok) return;
+  function handleDragOver(event: DragEvent) {
+    if (!transferHasWorkspaceAttachments(event.dataTransfer)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    attachmentDropActive = true;
+  }
 
-    const url = `/api/agent-room/workspaces/${data.workspaceId}/fs/raw?path=${encodeURIComponent(path)}`;
-    const textarea = event.target as HTMLTextAreaElement;
-    const at = textarea.selectionStart ?? draft.length;
-    draft = `${draft.slice(0, at)}![](${url})${draft.slice(at)}`;
-    handleInput();
+  async function handleDrop(event: DragEvent) {
+    if (!event.dataTransfer || !transferHasWorkspaceAttachments(event.dataTransfer)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    attachmentDropActive = false;
+    attachmentBusy = true;
+    attachmentError = '';
+    try {
+      const at = event.currentTarget instanceof HTMLTextAreaElement
+        ? event.currentTarget.selectionStart ?? draft.length
+        : draft.length;
+      await addAttachments(await attachmentsFromTransfer(data.workspaceId, event.dataTransfer), at);
+    } catch (error) {
+      attachmentError = error instanceof Error && error.message === 'attachment_too_large'
+        ? m['attachment.too_large']()
+        : m['attachment.error']();
+    } finally {
+      attachmentBusy = false;
+    }
+  }
+
+  async function pickAttachments(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    attachmentBusy = true;
+    attachmentError = '';
+    try {
+      const uploaded: WorkspaceAttachment[] = [];
+      for (const file of files) uploaded.push(await uploadWorkspaceAttachment(data.workspaceId, file));
+      await addAttachments(uploaded);
+    } catch (error) {
+      attachmentError = error instanceof Error && error.message === 'attachment_too_large'
+        ? m['attachment.too_large']()
+        : m['attachment.error']();
+    } finally {
+      attachmentBusy = false;
+    }
+  }
+
+  async function removeAttachment(attachment: WorkspaceAttachment) {
+    if (attachmentBusy) return;
+    attachmentBusy = true;
+    attachmentError = '';
+    const previousAttachments = attachments;
+    const previousDraft = draft;
+    try {
+      await deleteWorkspaceAttachment(data.workspaceId, attachment);
+      attachments = attachments.filter((item) => item.id !== attachment.id);
+      draft = removeAttachmentMarkdown(draft, data.workspaceId, attachment);
+      if (data.onPayloadChange) await data.onPayloadChange(id, { attachments, content: draft });
+      else await data.onContentChange(id, draft);
+    } catch {
+      attachments = previousAttachments;
+      draft = previousDraft;
+      attachmentError = m['attachment.remove_error']();
+    } finally {
+      attachmentBusy = false;
+    }
   }
 </script>
 
@@ -91,6 +198,7 @@
   {#snippet icon()}<StickyNote size={13} />{/snippet}
   {#snippet title()}{data.title || m['note.default_title']()}{/snippet}
   {#snippet actions()}
+    <input bind:this={attachmentInput} type="file" multiple class="hidden" onchange={pickAttachments} />
     <span class="color-swatches nodrag">
       {#each Object.entries(NOTE_COLORS) as [name, preset]}
         <button
@@ -103,6 +211,8 @@
         ></button>
       {/each}
     </span>
+    <IconAction label={m['attachment.add']()} disabled={attachmentBusy} onclick={() => attachmentInput.click()}>
+      <Paperclip size={13} /></IconAction>
     <IconAction label={formatted ? m['note.edit_raw']() : m['note.view_formatted']()} onclick={toggleFormatted}>
       {#if formatted}<Pencil size={13} />{:else}<Eye size={13} />{/if}
     </IconAction>
@@ -113,8 +223,12 @@
   {#if formatted}
     <div
       class="note-content note-preview nodrag nowheel"
+      class:attachment-drop-active={attachmentDropActive}
       style="--note-color: {noteColor.color}"
       ondblclick={toggleFormatted}
+      ondragover={handleDragOver}
+      ondragleave={() => (attachmentDropActive = false)}
+      ondrop={handleDrop}
       role="presentation"
     >
       <MarkdownView content={draft} />
@@ -122,14 +236,20 @@
   {:else}
     <textarea
       class="note-content nodrag nowheel"
+      class:attachment-drop-active={attachmentDropActive}
       style="--note-color: {noteColor.color}"
       bind:value={draft}
       oninput={handleInput}
       onpaste={handlePaste}
+      ondragover={handleDragOver}
+      ondragleave={() => (attachmentDropActive = false)}
+      ondrop={handleDrop}
       placeholder={m['ph.note_content']()}
       spellcheck="false"
     ></textarea>
   {/if}
+  <AttachmentList workspaceId={data.workspaceId} {attachments} compact onRemove={removeAttachment} />
+  {#if attachmentError}<p class="attachment-error" role="status">{attachmentError}</p>{/if}
 </NodeShell>
 
 <style>
@@ -145,6 +265,18 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12px;
     line-height: 1.5;
+  }
+
+  .note-content.attachment-drop-active {
+    box-shadow: inset 0 0 0 2px var(--app-accent);
+    background: color-mix(in srgb, var(--app-accent) 10%, var(--app-surface));
+  }
+
+  .attachment-error {
+    margin: 0;
+    padding: 3px 8px 5px;
+    color: var(--app-danger);
+    font-size: 10px;
   }
 
   .note-preview {

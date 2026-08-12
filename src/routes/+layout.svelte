@@ -3,10 +3,12 @@
   import { Toaster, toast, Seo } from '@beeblock/svelar/ui';
   import { getCsrfToken, registerToast } from '@beeblock/svelar/http';
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import UpdateNotifier from '$lib/components/agent-room/UpdateNotifier.svelte';
   import GlobalDictation from '$lib/components/agent-room/GlobalDictation.svelte';
   import DesktopTitlebar from '$lib/components/agent-room/DesktopTitlebar.svelte';
+  import GlobalCommandPalette from '$lib/components/agent-room/GlobalCommandPalette.svelte';
   import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
   import { appSettingsStore } from '$lib/components/agent-room/app-settings.svelte.js';
   import { applyAppTheme } from '$lib/components/agent-room/app-themes.js';
@@ -48,27 +50,19 @@
       applyAppTheme(appSettingsStore.values);
       localeReady = true;
     });
-    // Cmd/Ctrl+K global: de qualquer tela, abre a busca da documentacao.
-    const docsSearchShortcut = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
-      if (location.pathname === '/docs') return; // a pagina trata localmente
-      event.preventDefault();
-      location.assign('/docs?search=1');
-    };
-    window.addEventListener('keydown', docsSearchShortcut);
-
-    const canvasActions = new Set(['new-workspace', 'presets', 'organize', 'floors', 'roles', 'usage', 'ports', 'command-palette']);
+    const canvasActions = new Set(['new-workspace', 'presets', 'organize', 'floors', 'roles', 'usage', 'ports']);
     const unsubscribeMenu = desktopMenu?.onMenuAction?.((action) => {
-      if (action === 'canvas') location.assign('/canvas');
-      else if (action === 'terminals') location.assign('/terminal');
-      else if (action === 'providers') location.assign('/providers');
-      else if (action === 'settings') location.assign('/settings');
-      else if (action === 'docs') location.assign('/docs');
-      else if (action === 'changelog') location.assign('/docs#changelog');
+      if (action === 'canvas') void goto('/canvas');
+      else if (action === 'terminals') void goto('/terminal');
+      else if (action === 'providers') void goto('/providers');
+      else if (action === 'settings') void goto('/settings');
+      else if (action === 'docs') void goto('/docs');
+      else if (action === 'changelog') void goto('/docs#changelog');
+      else if (action === 'command-palette') window.dispatchEvent(new CustomEvent('orkestrai:global-search'));
       else if (canvasActions.has(action)) {
         if (location.pathname !== '/canvas') {
           sessionStorage.setItem('orkestrai.menu-action', action);
-          location.assign('/canvas');
+          void goto('/canvas');
         } else {
           window.dispatchEvent(new CustomEvent('orkestrai:menu-action', { detail: action }));
         }
@@ -95,7 +89,6 @@
 
     document.addEventListener('submit', syncCsrfToken, true);
     return () => {
-      window.removeEventListener('keydown', docsSearchShortcut);
       unsubscribeMenu?.();
       document.removeEventListener('submit', syncCsrfToken, true);
     };
@@ -110,13 +103,6 @@
   ogType="website"
 />
 
-<svelte:head>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
-</svelte:head>
-
 <!-- Tooltip.Provider global: qualquer pagina pode usar Tooltip shadcn -->
 <Tooltip.Provider>
   <!-- #key no locale: ao trocar de idioma, a arvore inteira remonta e todo
@@ -128,6 +114,7 @@
         {@render children()}
       </div>
       <GlobalDictation />
+      <GlobalCommandPalette />
     {/key}
   {/if}
 </Tooltip.Provider>
@@ -139,7 +126,7 @@
   :global(body) {
     margin: 0;
     padding: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   .app-content {

@@ -5,8 +5,9 @@
   import { Skeleton } from '$lib/components/ui/skeleton';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
-  import { USAGE_REFRESH_INTERVAL_MS, usageSeverity } from '$lib/modules/agent-room/domain/usage.js';
-  import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
+  import { usageSeverity } from '$lib/modules/agent-room/domain/usage.js';
+  import type { UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
+  import { refreshUsage, retainUsageFeed, usageStore } from '../usage-store.svelte.js';
 
   type Props = {
     onClose: () => void;
@@ -21,23 +22,9 @@
     kimi: { name: 'Kimi', icon: '/images/kimi.svg' },
   };
 
-  let usages = $state<ProviderUsage[]>([]);
-  let loading = $state(true);
-  let lastFetchAt = $state<Date | null>(null);
-  let timer: ReturnType<typeof setInterval> | null = null;
-
-  async function refresh(force = false) {
-    try {
-      const response = await fetch(force ? '/api/agent-room/usage?refresh=1' : '/api/agent-room/usage');
-      const payload = await response.json();
-      usages = payload.data ?? [];
-      lastFetchAt = new Date();
-    } catch {
-      // mantem o ultimo estado; proxima tentativa no intervalo automatico
-    } finally {
-      loading = false;
-    }
-  }
+  const usages = $derived(usageStore.values);
+  const loading = $derived(usageStore.loading);
+  const lastFetchAt = $derived(usageStore.lastFetchAt);
 
   function barColor(percent: number): string {
     const severity = usageSeverity(percent);
@@ -82,17 +69,11 @@
   let clock = $state(0);
 
   onMount(() => {
-    refresh();
-    timer = setInterval(() => void refresh(), USAGE_REFRESH_INTERVAL_MS);
+    const release = retainUsageFeed();
     const ticker = setInterval(() => (clock += 1), 5_000);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
-    };
-    document.addEventListener('visibilitychange', onVisible);
     return () => {
-      if (timer) clearInterval(timer);
+      release();
       clearInterval(ticker);
-      document.removeEventListener('visibilitychange', onVisible);
     };
   });
 </script>
@@ -106,7 +87,7 @@
           <PanelTopOpen size={13} />
         </HeaderIconButton>
       {/if}
-      <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={() => void refresh(true)}>
+      <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={() => void refreshUsage(true)}>
         <RefreshCw size={13} />
       </HeaderIconButton>
       <HeaderIconButton label={m['usage.close']()} class="node-action-btn" side="left" onclick={onClose}>

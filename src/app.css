@@ -1,11 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/sora/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
 @source "../node_modules/@beeblock/svelar/src/ui";
 
 @custom-variant dark (&:is(.dark *));
 
 html {
   color-scheme: dark;
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -23,6 +27,12 @@ code,
 pre,
 kbd {
   font-variant-numeric: tabular-nums;
+}
+
+code,
+pre,
+kbd {
+  font-family: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', Consolas, monospace;
 }
 
 /* Headings sem widows */

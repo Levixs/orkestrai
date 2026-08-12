@@ -34,12 +34,16 @@
   const EDGE_GAP = 14;
   let trigger = $state<HTMLButtonElement | null>(null);
   let placement = $state({ x: 0, y: 56, pinned: true });
+  let dockPosition = $state<{ x: number; y: number } | null>(null);
   let placementReady = $state(false);
   let placementMenuOpen = $state(false);
   let placementModifier = $state('Ctrl');
   let drag = $state<{ pointerId: number; offsetX: number; offsetY: number; moved: boolean } | null>(null);
   let suppressNextClick = false;
   const hotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
+  const displayedPlacement = $derived(
+    placement.pinned && dockPosition ? { ...placement, ...dockPosition } : placement
+  );
 
   const supported = typeof window !== 'undefined'
     && typeof MediaRecorder !== 'undefined'
@@ -308,22 +312,33 @@
     }
     clampPlacement();
     placementReady = true;
-    let observedCanvas: HTMLElement | null = null;
-    const placementObserver = new ResizeObserver(() => clampPlacement());
-    const observeCanvas = () => {
-      const canvas = document.querySelector<HTMLElement>('.canvas-area .svelte-flow');
-      if (canvas === observedCanvas) return;
-      if (observedCanvas) placementObserver.unobserve(observedCanvas);
-      observedCanvas = canvas;
-      if (canvas) {
-        placementObserver.observe(canvas);
-        clampPlacement();
+    let observedSurface: HTMLElement | null = null;
+    const syncPlacementSurface = () => {
+      const dock = document.querySelector<HTMLElement>('[data-dictation-dock]');
+      if (dock) {
+        const rect = dock.getBoundingClientRect();
+        const footprint = BUTTON_SIZE + 4;
+        dockPosition = {
+          x: rect.left + Math.max(0, (rect.width - footprint) / 2),
+          y: rect.top + Math.max(0, (rect.height - footprint) / 2),
+        };
+      } else {
+        dockPosition = null;
       }
+      const canvas = document.querySelector<HTMLElement>('.canvas-area .svelte-flow');
+      const surface = dock ?? canvas;
+      if (surface !== observedSurface) {
+        if (observedSurface) placementObserver.unobserve(observedSurface);
+        observedSurface = surface;
+        if (surface) placementObserver.observe(surface);
+      }
+      clampPlacement();
     };
-    observeCanvas();
-    const canvasObserver = new MutationObserver(observeCanvas);
-    canvasObserver.observe(document.body, { childList: true, subtree: true });
-    const clampOnResize = () => clampPlacement();
+    const placementObserver = new ResizeObserver(syncPlacementSurface);
+    syncPlacementSurface();
+    const surfaceObserver = new MutationObserver(syncPlacementSurface);
+    surfaceObserver.observe(document.body, { childList: true, subtree: true });
+    const clampOnResize = () => syncPlacementSurface();
     window.addEventListener('resize', clampOnResize);
     const focusIn = (event: FocusEvent) => {
       const eventTarget = event.target instanceof HTMLElement ? event.target : null;
@@ -364,7 +379,7 @@
       window.removeEventListener(LEADER_DICTATION_STATE, leaderState);
       window.removeEventListener('resize', clampOnResize);
       placementObserver.disconnect();
-      canvasObserver.disconnect();
+      surfaceObserver.disconnect();
       if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
       stopTracks();
     };
@@ -375,8 +390,8 @@
   <div
     class="fixed z-30 size-12"
     data-dictation-trigger
-    style:left={`${placement.x}px`}
-    style:top={`${placement.y}px`}
+    style:left={`${displayedPlacement.x}px`}
+    style:top={`${displayedPlacement.y}px`}
   >
     <Tooltip.Root>
       <Tooltip.Trigger>
@@ -445,8 +460,8 @@
       data-dictation-trigger
       role="menu"
       aria-label={m['dictation.position_menu']()}
-      style:left={`${Math.max(EDGE_GAP, Math.min(window.innerWidth - 188, placement.x - 136))}px`}
-      style:top={`${Math.min(window.innerHeight - 92, placement.y + BUTTON_SIZE + 8)}px`}
+      style:left={`${Math.max(EDGE_GAP, Math.min(window.innerWidth - 188, displayedPlacement.x - 136))}px`}
+      style:top={`${Math.min(window.innerHeight - 92, displayedPlacement.y + BUTTON_SIZE + 8)}px`}
     >
       <button type="button" role="menuitem" onclick={togglePinned}>
         {#if placement.pinned}<PinOff size={14} />{m['dictation.unpin']()}{:else}<Pin size={14} />{m['dictation.pin']()}{/if}

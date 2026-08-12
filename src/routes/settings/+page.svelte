@@ -433,6 +433,49 @@
         <p>{m['settings.section_appearance_desc']()}</p>
       </div>
     </header>
+    <div class="mb-5 grid gap-2 border-b border-[var(--app-border)] pb-5">
+      <span class="field-label">{m['settings.workbench_tabs']()}</span>
+      <p class="field-hint">{m['settings.workbench_tabs_desc']()}</p>
+      <Select.Root
+        type="single"
+        value={settings.workbenchTabPlacement ?? 'vertical'}
+        onValueChange={(value: string) => (settings = { ...settings, workbenchTabPlacement: value })}
+      >
+        <Select.Trigger class="w-full sm:w-72" aria-label={m['settings.workbench_tabs']()}>
+          {(settings.workbenchTabPlacement ?? 'vertical') === 'horizontal'
+            ? m['settings.workbench_tabs_horizontal']()
+            : m['settings.workbench_tabs_vertical']()}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="vertical">{m['settings.workbench_tabs_vertical']()}</Select.Item>
+          <Select.Item value="horizontal">{m['settings.workbench_tabs_horizontal']()}</Select.Item>
+        </Select.Content>
+      </Select.Root>
+    </div>
+    <div class="mb-5 grid gap-4 border-b border-[var(--app-border)] pb-5">
+      <div>
+        <span class="field-label">{m['settings.workbench_editor']()}</span>
+        <p class="field-hint">{m['settings.workbench_editor_desc']()}</p>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <label class="flex min-h-11 items-center justify-between gap-3 rounded-[6px] border border-[var(--app-border)] bg-[var(--app-surface-subtle)] px-3">
+          <span class="text-xs text-[var(--app-text-soft)]">{m['settings.editor_minimap']()}</span>
+          <Switch checked={settings.editorMinimap !== 'false'} onCheckedChange={(checked: boolean) => (settings = { ...settings, editorMinimap: String(checked) })} />
+        </label>
+        <label class="flex min-h-11 items-center justify-between gap-3 rounded-[6px] border border-[var(--app-border)] bg-[var(--app-surface-subtle)] px-3">
+          <span class="text-xs text-[var(--app-text-soft)]">{m['settings.editor_word_wrap']()}</span>
+          <Switch checked={settings.editorWordWrap === 'true'} onCheckedChange={(checked: boolean) => (settings = { ...settings, editorWordWrap: String(checked) })} />
+        </label>
+        <label class="flex min-h-11 items-center justify-between gap-3 rounded-[6px] border border-[var(--app-border)] bg-[var(--app-surface-subtle)] px-3">
+          <span class="text-xs text-[var(--app-text-soft)]">{m['settings.editor_autosave']()}</span>
+          <Switch checked={settings.editorAutoSave === 'true'} onCheckedChange={(checked: boolean) => (settings = { ...settings, editorAutoSave: String(checked) })} />
+        </label>
+      </div>
+      <label class="field max-w-40">
+        <span class="field-label">{m['settings.editor_font_size']()}</span>
+        <Input type="number" min="9" max="24" bind:value={settings.editorFontSize} />
+      </label>
+    </div>
     <AppThemeSettings {settings} onChange={(next) => (settings = next)} />
   </section>
 
@@ -777,7 +820,7 @@
   }
 
   .header-titles h1 {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 19px;
     font-weight: 600;
     letter-spacing: 0;
@@ -838,7 +881,7 @@
   }
 
   .section-titles h2 {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 14.5px;
     font-weight: 600;
     letter-spacing: 0;

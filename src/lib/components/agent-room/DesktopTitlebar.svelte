@@ -19,7 +19,7 @@
       <DropdownMenu.Trigger class="menu-trigger">{m['desktop.workspace']()}</DropdownMenu.Trigger>
       <DropdownMenu.Content align="start" class="titlebar-menu">
         <DropdownMenu.Item onclick={() => run('canvas')}><AppWindow size={14} />{m['desktop.canvas']()}<DropdownMenu.Shortcut>Ctrl+1</DropdownMenu.Shortcut></DropdownMenu.Item>
-        <DropdownMenu.Item onclick={() => run('terminals')}><SquareTerminal size={14} />{m['desktop.terminals']()}<DropdownMenu.Shortcut>Ctrl+Shift+1</DropdownMenu.Shortcut></DropdownMenu.Item>
+        <DropdownMenu.Item onclick={() => run('terminals')}><SquareTerminal size={14} />{m['workspace_view.workbench']()}<DropdownMenu.Shortcut>Ctrl+Shift+1</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('providers')}><PanelTop size={14} />{m['desktop.providers']()}<DropdownMenu.Shortcut>Ctrl+2</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('new-workspace')}>{m['desktop.new_workspace']()}<DropdownMenu.Shortcut>Ctrl+N</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('presets')}>{m['desktop.presets']()}</DropdownMenu.Item>
@@ -104,7 +104,7 @@
   }
 
   .brand strong {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 11px;
     font-weight: 600;
   }

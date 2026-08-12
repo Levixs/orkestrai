@@ -34,6 +34,7 @@
 >
   <a
     href={target('/canvas')}
+    data-sveltekit-preload-data="hover"
     class={itemClass(active === 'canvas')}
     aria-current={active === 'canvas' ? 'page' : undefined}
   >
@@ -42,10 +43,11 @@
   </a>
   <a
     href={target('/terminal')}
+    data-sveltekit-preload-data="hover"
     class={itemClass(active === 'terminals')}
     aria-current={active === 'terminals' ? 'page' : undefined}
   >
     <SquareTerminal size={13} strokeWidth={1.8} />
-    <span>{m['workspace_view.terminals']()}</span>
+    <span>{m['workspace_view.workbench']()}</span>
   </a>
 </nav>

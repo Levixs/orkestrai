@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('orkestraiDesktop', {
   installUpdate: () => ipcRenderer.invoke('orkestrai:update-install'),
   /** Abre URL https no navegador do sistema (fallback de download manual). */
   openExternal: (url) => ipcRenderer.invoke('orkestrai:open-external', url),
+  /** Abre um arquivo local no aplicativo padrão do sistema. */
+  openPath: (path) => ipcRenderer.invoke('orkestrai:open-path', path),
   /** Mantém o menu nativo no mesmo idioma selecionado dentro do app. */
   setMenuLocale: (locale) => ipcRenderer.invoke('orkestrai:menu-locale', locale),
   /** Executa uma acao validada da barra customizada do Windows. */

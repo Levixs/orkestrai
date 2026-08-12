@@ -14,6 +14,7 @@
   import FlowCanvasNode from './canvas/FlowCanvasNode.svelte';
   import ImageCanvasNode from './canvas/ImageCanvasNode.svelte';
   import UsageCanvasNode from './canvas/UsageCanvasNode.svelte';
+  import WorkbenchFileView from './WorkbenchFileView.svelte';
   import type { TerminalThemeName } from './terminal-themes.js';
   import type {
     AgentProviderInfo,
@@ -33,9 +34,9 @@
     floors,
     providers,
     onNodeUpdated,
-    onNodeCreated,
     onDeleteRequested,
     onSelectNode,
+    onOpenFile,
     onRefresh,
   }: {
     workspace: Workspace;
@@ -45,9 +46,9 @@
     floors: Floor[];
     providers: AgentProviderInfo[];
     onNodeUpdated: (node: CanvasNode) => void;
-    onNodeCreated: (node: CanvasNode) => void;
     onDeleteRequested: (node: CanvasNode) => void;
     onSelectNode: (nodeId: string) => void;
+    onOpenFile: (path: string) => void;
     onRefresh: () => void | Promise<void>;
   } = $props();
 
@@ -132,31 +133,6 @@
     toast.success(m['term.provider_switched']({ provider: providerFor(updated)?.displayName ?? provider }));
   }
 
-  async function openEditor(path: string) {
-    const existing = workspaceNodes.find(
-      (item) => item.type === 'editor' && String((item.payload as { path?: string }).path ?? '') === path
-    );
-    if (existing) {
-      onSelectNode(existing.id);
-      return;
-    }
-    const created = await api<CanvasNode>(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
-      method: 'POST',
-      body: JSON.stringify({
-        type: 'editor',
-        title: path.split('/').at(-1) ?? m['canvas.default_editor'](),
-        x: node.x + 80,
-        y: node.y + 80,
-        width: 640,
-        height: 440,
-        payload: { path },
-        floorId: node.floorId,
-      }),
-    });
-    onNodeCreated(created);
-    onSelectNode(created.id);
-  }
-
   function connectionsFor(nodeId: string) {
     return edges
       .filter((edge) => edge.sourceNodeId === nodeId || edge.targetNodeId === nodeId)
@@ -228,7 +204,7 @@
         onContentChange: (id: string, content: string) => patchPayload(id, { content }),
         onColorChange: (id: string, color: string) => patchPayload(id, { color }),
         onRoleChange: (id: string, role: string | null) => patchPayload(id, { role }),
-        onOpenFile: openEditor,
+        onOpenFile,
         onUrlChange: (id: string, url: string) => patchPayload(id, { url }),
         onRename: (id: string, title: string) => patchNode(id, { title }),
         onPayloadChange: (id: string, partial: Record<string, unknown>) => patchPayload(id, partial),
@@ -238,22 +214,31 @@
 </script>
 
 <div class="focused-node-host h-full min-h-0 w-full overflow-hidden" bind:this={host}>
-  <SvelteFlowProvider>
-    <SvelteFlow
-      nodes={focusedNodes}
-      edges={[]}
-      {nodeTypes}
-      nodesDraggable={false}
-      nodesConnectable={false}
-      elementsSelectable={false}
-      panOnDrag={false}
-      zoomOnScroll={false}
-      zoomOnPinch={false}
-      zoomOnDoubleClick={false}
-      preventScrolling={false}
-      proOptions={{ hideAttribution: true }}
+  {#if node.type === 'editor' && (node.payload as { path?: string }).path}
+    <WorkbenchFileView
+      workspaceId={workspace.id}
+      workingDir={floorPath(node.floorId) ?? workspace.workingDir}
+      path={(node.payload as { path: string }).path}
+      connections={connectionsFor(node.id)}
     />
-  </SvelteFlowProvider>
+  {:else}
+    <SvelteFlowProvider>
+      <SvelteFlow
+        nodes={focusedNodes}
+        edges={[]}
+        {nodeTypes}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
+        panOnDrag={false}
+        zoomOnScroll={false}
+        zoomOnPinch={false}
+        zoomOnDoubleClick={false}
+        preventScrolling={false}
+        proOptions={{ hideAttribution: true }}
+      />
+    </SvelteFlowProvider>
+  {/if}
 </div>
 
 <style>

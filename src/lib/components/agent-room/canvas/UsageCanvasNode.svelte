@@ -8,14 +8,15 @@
   import HeaderIconButton from './HeaderIconButton.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
-  import { USAGE_REFRESH_INTERVAL_MS, usageSeverity } from '$lib/modules/agent-room/domain/usage.js';
+  import { usageSeverity } from '$lib/modules/agent-room/domain/usage.js';
   import {
     buildUsageRoutingReport,
     normalizeUsageRoutingPolicy,
     type ProviderUsageStatus,
   } from '$lib/modules/agent-room/domain/usage-routing.js';
-  import type { ProviderUsage, UsageWindow, UsageWindowKind } from '$lib/modules/agent-room/application/services/UsageService.js';
+  import type { UsageWindow, UsageWindowKind } from '$lib/modules/agent-room/application/services/UsageService.js';
   import type { UsageNodePayload } from '$lib/modules/agent-room/domain/types.js';
+  import { refreshUsage, retainUsageFeed, usageStore } from '../usage-store.svelte.js';
 
   export type UsageNodeData = {
     title: string;
@@ -37,27 +38,13 @@
     { id: 'kimi', name: 'Kimi', icon: '/images/kimi.svg' },
   ];
 
-  let usages = $state<ProviderUsage[]>([]);
-  let loading = $state(true);
-  let lastFetchAt = $state<Date | null>(null);
-  let timer: ReturnType<typeof setInterval> | null = null;
+  const usages = $derived(usageStore.values);
+  const loading = $derived(usageStore.loading);
+  const lastFetchAt = $derived(usageStore.lastFetchAt);
   let clock = $state(0);
 
   const policy = $derived(normalizeUsageRoutingPolicy(data.payload));
   const report = $derived(buildUsageRoutingReport(usages, policy));
-
-  async function refresh(force = false) {
-    try {
-      const response = await fetch(force ? '/api/agent-room/usage?refresh=1' : '/api/agent-room/usage');
-      const payload = await response.json();
-      usages = payload.data ?? [];
-      lastFetchAt = new Date();
-    } catch {
-      // Mantem o ultimo snapshot; a proxima janela de refresh tenta de novo.
-    } finally {
-      loading = false;
-    }
-  }
 
   function persist(partial: Partial<UsageNodePayload>) {
     data.onPayloadChange?.(id, partial);
@@ -136,11 +123,10 @@
   }
 
   onMount(() => {
-    void refresh();
-    timer = setInterval(() => void refresh(), USAGE_REFRESH_INTERVAL_MS);
+    const release = retainUsageFeed();
     const ticker = setInterval(() => (clock += 1), 5_000);
     return () => {
-      if (timer) clearInterval(timer);
+      release();
       clearInterval(ticker);
     };
   });
@@ -163,7 +149,7 @@
   {#snippet icon()}<Gauge size={14} />{/snippet}
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
-    <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={() => void refresh(true)}>
+    <HeaderIconButton label={m['usage.refresh']()} class="node-action-btn" side="left" onclick={() => void refreshUsage(true)}>
       <RefreshCw size={12} class={loading ? 'spin' : undefined} />
     </HeaderIconButton>
     <HeaderIconButton label={m['settings.delete']()} class="node-action-btn danger" side="left" onclick={() => data.onDelete(id)}>
@@ -201,7 +187,14 @@
                     <span>{windowLabel(window)}</span>
                     <strong>{window.usedPercent}%</strong>
                   </div>
-                  <div class="bar" aria-label={`${windowLabel(window)} ${window.usedPercent}%`}>
+                  <div
+                    class="bar"
+                    role="progressbar"
+                    aria-label={`${windowLabel(window)} ${window.usedPercent}%`}
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow={window.usedPercent}
+                  >
                     <span style:width={`${window.usedPercent}%`} style:background={barColor(window.usedPercent)}></span>
                   </div>
                   {#if window.resetsAt}<small>{resetText(window.resetsAt)}</small>{/if}

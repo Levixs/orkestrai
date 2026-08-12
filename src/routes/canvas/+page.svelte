@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { goto } from '$app/navigation';
   import { toast } from '@beeblock/svelar/ui';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import {
@@ -37,6 +38,15 @@
   import TourGuidePanel from '$lib/components/agent-room/tours/TourGuidePanel.svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
+  import {
+    readProviderCache,
+    readWorkspaceListCache,
+    readWorkspaceViewCache,
+    removeWorkspaceViewCache,
+    writeProviderCache,
+    writeWorkspaceListCache,
+    writeWorkspaceViewCache,
+  } from '$lib/components/agent-room/workspace-view-cache.js';
   import TasksCanvasNode from '$lib/components/agent-room/canvas/TasksCanvasNode.svelte';
   import FlowCanvasNode from '$lib/components/agent-room/canvas/FlowCanvasNode.svelte';
   import ImageCanvasNode from '$lib/components/agent-room/canvas/ImageCanvasNode.svelte';
@@ -120,7 +130,6 @@
   let showOnboarding = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
-  let activityTimer: ReturnType<typeof setInterval> | null = null;
   let editingWorkspace = $state<Workspace | null>(null);
   let deletingWorkspace = $state<Workspace | null>(null);
   let selectionRequestId = 0;
@@ -413,14 +422,39 @@
 
   onMount(() => {
     const listener = (event: Event) => handleDesktopMenuAction(String((event as CustomEvent).detail ?? ''));
+    const openFileListener = (event: Event) => {
+      const detail = (event as CustomEvent<{ workspaceId?: string; path?: string }>).detail;
+      if (detail?.workspaceId && detail.path) void openFileFromSearch(detail.workspaceId, detail.path);
+    };
     window.addEventListener('orkestrai:menu-action', listener);
+    window.addEventListener('orkestrai:open-file', openFileListener);
     const pending = sessionStorage.getItem('orkestrai.menu-action');
     if (pending) {
       sessionStorage.removeItem('orkestrai.menu-action');
       requestAnimationFrame(() => handleDesktopMenuAction(pending));
     }
-    return () => window.removeEventListener('orkestrai:menu-action', listener);
+    return () => {
+      window.removeEventListener('orkestrai:menu-action', listener);
+      window.removeEventListener('orkestrai:open-file', openFileListener);
+    };
   });
+
+  async function openFileFromSearch(workspaceId: string, path: string) {
+    sessionStorage.setItem('orkestrai.open-file', JSON.stringify({ workspaceId, path }));
+    await goto(`/terminal?workspace=${workspaceId}`);
+  }
+
+  async function openPendingSearchFile() {
+    const raw = sessionStorage.getItem('orkestrai.open-file');
+    if (!raw) return;
+    sessionStorage.removeItem('orkestrai.open-file');
+    try {
+      const detail = JSON.parse(raw) as { workspaceId?: string; path?: string };
+      if (detail.workspaceId && detail.path) await openFileFromSearch(detail.workspaceId, detail.path);
+    } catch {
+      // Pedido obsoleto ou invalido: ignora sem bloquear o workspace.
+    }
+  }
 
   function floorPath(floorId: string | null | undefined): string | null {
     if (!floorId) return null;
@@ -480,6 +514,15 @@
   // ativo — sem precisar trocar de andar ou recarregar a pagina.
   let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
 
+  async function refreshActivity(): Promise<void> {
+    const summaries = await api<Record<string, { agents: Array<{ sessionAlive: boolean }> }>>('/api/agent-room/control-center').catch(() => ({}));
+    activity = Object.fromEntries(
+      Object.entries(summaries)
+        .map(([workspaceId, snapshot]) => [workspaceId, snapshot.agents.filter((agent) => agent.sessionAlive).length] as const)
+        .filter(([, count]) => count > 0),
+    );
+  }
+
   function connectWorkspaceEvents() {
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
     const socket = new WebSocket(`${protocol}://${location.host}/ws/agent-room/pty`);
@@ -493,6 +536,9 @@
             if (activeWorkspace) selectWorkspace(activeWorkspace.id, { force: true });
           }, 250);
         }
+        if (message.type === 'controlCenterChanged' || message.type === 'messageDelivery') {
+          void refreshActivity();
+        }
       } catch {
         // frame nao-JSON: ignora
       }
@@ -504,65 +550,80 @@
     return socket;
   }
 
-  onMount(async () => {
+  onMount(() => {
     const eventsSocket = connectWorkspaceEvents();
-    const [workspaceList, status, settingsResponse] = await Promise.all([
-      api<Workspace[]>('/api/agent-room/workspaces'),
-      api<{ providers: AgentProviderInfo[] }>('/api/agent-room/status'),
-      api<Record<string, string>>('/api/agent-room/settings'),
-    ]);
-    appSettings = settingsResponse ?? {};
-    const registeredProviderIds = new Set((status.providers ?? []).map((provider) => provider.id));
-    pinnedProviderIds = parsePinnedAgentProviders(appSettings[PINNED_AGENT_PROVIDERS_SETTING])
-      .filter((id) => registeredProviderIds.has(id));
-    persistedPinnedProviderIds = pinnedProviderIds;
-    // Se o usuario ja criou/selecionou algo enquanto o fetch inicial estava
-    // em voo, a lista antiga nao sobrescreve o estado mais novo.
-    if (selectionRequestId === 0) {
-      workspaces = workspaceList;
-      const params = new URLSearchParams(location.search);
-      const requestedWorkspaceId = params.get('workspace') || localStorage.getItem('orkestrai.activeWorkspaceId');
-      const requestedWorkspace = workspaceList.find((workspace) => workspace.id === requestedWorkspaceId) ?? workspaceList[0];
-      if (requestedWorkspace) {
-        await selectWorkspace(requestedWorkspace.id);
-        const requestedNodeId = params.get('node');
-        if (requestedNodeId && nodes.some((node) => node.id === requestedNodeId)) {
-          await tick();
-          requestAnimationFrame(() => requestAnimationFrame(() => jumpToNode(requestedNodeId)));
+    void (async () => {
+      const cachedWorkspaces = readWorkspaceListCache();
+      const cachedProviders = readProviderCache();
+      if (cachedWorkspaces) {
+        workspaces = cachedWorkspaces;
+        workspacesLoaded = true;
+      }
+      if (cachedProviders) providers = cachedProviders;
+      const [workspaceList, settingsResponse] = await Promise.all([
+        api<Workspace[]>('/api/agent-room/workspaces'),
+        api<Record<string, string>>('/api/agent-room/settings'),
+      ]);
+      appSettings = settingsResponse ?? {};
+      const availableProviderIds = new Set(providers.map((provider) => provider.id));
+      pinnedProviderIds = parsePinnedAgentProviders(appSettings[PINNED_AGENT_PROVIDERS_SETTING])
+        .filter((id) => availableProviderIds.size === 0 || availableProviderIds.has(id));
+      persistedPinnedProviderIds = pinnedProviderIds;
+      // Se o usuario ja criou/selecionou algo enquanto o fetch inicial estava
+      // em voo, a lista antiga nao sobrescreve o estado mais novo.
+      if (selectionRequestId === 0) {
+        workspaces = workspaceList;
+        writeWorkspaceListCache(workspaceList);
+        const params = new URLSearchParams(location.search);
+        const requestedWorkspaceId = params.get('workspace') || localStorage.getItem('orkestrai.activeWorkspaceId');
+        const requestedWorkspace = workspaceList.find((workspace) => workspace.id === requestedWorkspaceId) ?? workspaceList[0];
+        if (requestedWorkspace) {
+          await selectWorkspace(requestedWorkspace.id);
+          const requestedNodeId = params.get('node');
+          if (requestedNodeId && nodes.some((node) => node.id === requestedNodeId)) {
+            await tick();
+            requestAnimationFrame(() => requestAnimationFrame(() => jumpToNode(requestedNodeId)));
+          }
+          await openPendingSearchFile();
         }
       }
-    }
-    providers = status.providers ?? [];
-    nodes = nodes.map((node) => ({ ...node, data: { ...node.data, providers } }));
-    providersReadyResolve();
-    workspacesLoaded = true;
-    // Indicador de workspaces ativos (sessoes PTY vivas em background).
-    const refreshActivity = async () => {
-      activity = await api<Record<string, number>>('/api/agent-room/workspaces/activity').catch(() => ({}));
-    };
-    await refreshActivity();
-    activityTimer = setInterval(refreshActivity, 10_000);
-    // Onboarding: automatico na primeira vez (sem workspaces) ou forcado
-    // via /canvas?onboarding=1 (botao "Rever apresentacao" do /docs).
-    // A intencao vai para sessionStorage: a troca de idioma remonta a arvore
-    // ({#key locale}) DEPOIS do replaceState — sem a flag, o remount recriava
-    // a pagina com showOnboarding=false e o wizard nunca abria fora de pt-BR.
-    try {
-      const forced = new URLSearchParams(location.search).has('onboarding');
-      if (forced) {
-        sessionStorage.setItem('orkestrai.onboarding', '1');
-        history.replaceState(null, '', '/canvas');
+      workspacesLoaded = true;
+      await tick();
+      // Indicador de workspaces ativos (sessoes PTY vivas em background).
+      await refreshActivity();
+      void api<{ providers: AgentProviderInfo[] }>('/api/agent-room/status')
+        .then((status) => {
+          providers = status.providers ?? [];
+          writeProviderCache(providers);
+          const registeredProviderIds = new Set(providers.map((provider) => provider.id));
+          pinnedProviderIds = parsePinnedAgentProviders(appSettings[PINNED_AGENT_PROVIDERS_SETTING])
+            .filter((id) => registeredProviderIds.has(id));
+          persistedPinnedProviderIds = pinnedProviderIds;
+          nodes = nodes.map((node) => ({ ...node, data: { ...node.data, providers } }));
+        })
+        .catch(() => undefined)
+        .finally(providersReadyResolve);
+      // Onboarding: automatico na primeira vez (sem workspaces) ou forcado
+      // via /canvas?onboarding=1 (botao "Rever apresentacao" do /docs).
+      // A intencao vai para sessionStorage: a troca de idioma remonta a arvore
+      // ({#key locale}) DEPOIS do replaceState — sem a flag, o remount recriava
+      // a pagina com showOnboarding=false e o wizard nunca abria fora de pt-BR.
+      try {
+        const forced = new URLSearchParams(location.search).has('onboarding');
+        if (forced) {
+          sessionStorage.setItem('orkestrai.onboarding', '1');
+          history.replaceState(null, '', '/canvas');
+        }
+        if (forced || sessionStorage.getItem('orkestrai.onboarding') === '1') {
+          showOnboarding = true;
+        } else if (!workspaceList.length && !localStorage.getItem('orkestrai.onboarded')) {
+          showOnboarding = true;
+        }
+      } catch {
+        // storage indisponivel — nao bloqueia
       }
-      if (forced || sessionStorage.getItem('orkestrai.onboarding') === '1') {
-        showOnboarding = true;
-      } else if (!workspaceList.length && !localStorage.getItem('orkestrai.onboarded')) {
-        showOnboarding = true;
-      }
-    } catch {
-      // storage indisponivel — nao bloqueia
-    }
+    })();
     return () => {
-      if (activityTimer) clearInterval(activityTimer);
       toolbarResizeObserver?.disconnect();
       eventsSocket.onclose = null;
       eventsSocket.close();
@@ -744,6 +805,16 @@
     const changingWorkspace = activeWorkspace?.id !== id;
     const requestId = ++selectionRequestId;
     errorMessage = '';
+    const cached = !options.force ? readWorkspaceViewCache(id) : null;
+    if (cached) {
+      activeWorkspace = cached.workspace;
+      floors = cached.floors;
+      nodes = cached.nodes
+        .filter((node) => (node.floorId ?? null) === visibleFloorId)
+        .map(toFlowNode);
+      const visibleIds = new Set(nodes.map((node) => node.id));
+      edges = cached.edges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+    }
     try {
       const [workspace, canvasNodes, canvasEdges, floorList] = await Promise.all([
         api<Workspace>(`/api/agent-room/workspaces/${id}`),
@@ -769,6 +840,7 @@
         .map(toFlowNode);
       const visibleIds = new Set(nodes.map((node) => node.id));
       edges = canvasEdges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+      writeWorkspaceViewCache({ workspace, nodes: canvasNodes, edges: canvasEdges, floors: floorList });
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : m['canvas.error_open_ws']();
     }
@@ -867,6 +939,7 @@
   async function handleWorkspaceCreated(workspace: Workspace) {
     selectionRequestId += 1; // invalida o auto-select do mount imediatamente
     workspaces = [workspace, ...workspaces];
+    writeWorkspaceListCache(workspaces);
     showWorkspaceForm = false;
     await selectWorkspace(workspace.id);
   }
@@ -880,6 +953,7 @@
     if (!workspace) return null;
     selectionRequestId += 1;
     workspaces = [workspace, ...workspaces];
+    writeWorkspaceListCache(workspaces);
     await selectWorkspace(workspace.id);
     return workspace;
   }
@@ -897,6 +971,7 @@
       body: JSON.stringify(changes),
     });
     workspaces = workspaces.map((item) => (item.id === updated.id ? updated : item));
+    writeWorkspaceListCache(workspaces);
     if (activeWorkspace?.id === updated.id) activeWorkspace = updated;
   }
 
@@ -906,6 +981,8 @@
     if (!workspace) return;
     await api(`/api/agent-room/workspaces/${workspace.id}`, { method: 'DELETE' });
     workspaces = workspaces.filter((item) => item.id !== workspace.id);
+    removeWorkspaceViewCache(workspace.id);
+    writeWorkspaceListCache(workspaces);
     if (activeWorkspace?.id === workspace.id) {
       activeWorkspace = null;
       nodes = [];
@@ -982,23 +1059,8 @@
 
   async function openEditor(path: string) {
     if (!activeWorkspace) return;
-    // Reaproveita editor ja aberto para o mesmo arquivo
-    const existing = nodes.find((node) => node.type === 'editor' && (node.data?.payload as { path?: string })?.path === path);
-    if (existing) return;
-    const position = nextFreePosition();
-    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
-      method: 'POST',
-      body: JSON.stringify({
-        type: 'editor',
-        title: path.split('/').at(-1) ?? m['canvas.default_editor'](),
-        ...position,
-        width: 640,
-        height: 440,
-        payload: { path },
-        floorId: visibleFloorId,
-      }),
-    });
-    nodes = [...nodes, toFlowNode(node)];
+    sessionStorage.setItem('orkestrai.open-file', JSON.stringify({ workspaceId: activeWorkspace.id, path }));
+    await goto(`/terminal?workspace=${activeWorkspace.id}`);
   }
 
   const SHAPES = ['rectangle', 'ellipse', 'diamond', 'arrow'] as const;
@@ -1277,7 +1339,7 @@
     { id: 'tasks', label: m['canvas.palette_new_tasks'](), hint: m['canvas.hint_action'](), run: () => addTasksNode() },
     { id: 'files', label: m['canvas.palette_new_files'](), hint: m['canvas.hint_action'](), run: () => addFileTree() },
     { id: 'diff', label: m['canvas.palette_new_diff'](), hint: m['canvas.hint_action'](), run: () => addDiff() },
-    { id: 'providers', label: m['providers.title'](), hint: m['canvas.hint_view'](), run: () => location.assign('/providers') },
+    { id: 'providers', label: m['providers.title'](), hint: m['canvas.hint_view'](), run: () => void goto('/providers') },
     { id: 'fit', label: m['canvas.palette_fit'](), hint: m['canvas.hint_view'](), run: () => zoomApi?.fitView({ duration: 300 }) },
     {
       id: 'bg',
@@ -1710,7 +1772,7 @@
               activeProviderId={drawTool === 'terminal' ? (drawProvider?.id ?? null) : null}
               onSelect={(provider) => toggleDrawTool('terminal', provider)}
               onTogglePin={togglePinnedProvider}
-              onOpenProviderCenter={() => location.assign('/providers')}
+              onOpenProviderCenter={() => void goto('/providers')}
             />
             <ToolbarButton label={m['tool.note']()} active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
               <StickyNote size={15} class="tool-icon-svg" /> {m['canvas.default_note']()}
@@ -1968,7 +2030,7 @@
   }
 
   .brand-name {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 16.5px;
     font-weight: 600;
     letter-spacing: -0.01em;

@@ -486,7 +486,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'fallback',
         title: 'Usa el atajo del líder en cualquier vista',
-        body: 'Sin un campo activo, la esfera envía la transcripción al líder Maestro en Canvas o Terminales. Creo uno para probar; sin campo ni líder, la app muestra un aviso. En macOS, Fn/Globe por sí sola está reservada por el sistema, así que configura una combinación o F1–F12.',
+        body: 'Sin un campo activo, la esfera envía la transcripción al líder Maestro en Canvas o Workbench. Creo uno para probar; sin campo ni líder, la app muestra un aviso. En macOS, Fn/Globe por sí sola está reservada por el sistema, así que configura una combinación o F1–F12.',
         action: { kind: 'createAgent', title: 'Líder por voz', provider: 'claude', leader: true },
         check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Líder por voz' },
       },
@@ -775,18 +775,33 @@ export const TOURS_ES: Tour[] = [
   {
     id: 'focused-workspace-view',
     icon: 'PanelLeftOpen',
-    title: 'Trabajar en modo Terminales',
-    tagline: 'Abre cualquier artefacto del workspace en pantalla completa sin perder el canvas.',
+    title: 'Trabajar en el Workbench',
+    tagline: 'Abre, organiza y compara artefactos sin perder el canvas.',
     steps: [
       {
         id: 'switch-view',
         title: 'Cambia la vista',
-        body: 'Usa Canvas/Terminales en la esquina superior izquierda o abre Terminales desde el menú Workspace. Los agentes permanecen en las mismas sesiones mientras cambias de modo.',
+        body: 'Usa Canvas/Workbench en la esquina superior izquierda o abre Workbench desde el menú Workspace. Los agentes permanecen en las mismas sesiones mientras cambias de modo.',
       },
       {
         id: 'choose-item',
         title: 'Elige dónde trabajar',
-        body: 'Expande un workspace o usa la búsqueda para abrir una terminal, tablero, nota, portal, archivo, flujo o Uso en toda el área de trabajo.',
+        body: 'Expande un workspace o usa la búsqueda. Los elementos abiertos usan pestañas verticales por defecto; puedes elegir pestañas horizontales en Configuración → Apariencia.',
+      },
+      {
+        id: 'split-work',
+        title: 'Arma tu espacio de trabajo',
+        body: 'Divide el panel activo a la derecha o abajo y organiza hasta ocho artefactos redimensionables. Arrastra pestañas entre paneles o usa el menú Mover a; el layout vuelve con el workspace.',
+      },
+      {
+        id: 'attach-context',
+        title: 'Mantén las referencias con el trabajo',
+        body: 'Suelta, pega o selecciona imágenes, PDFs, archivos y enlaces en notas, tarjetas o el composer del agente. Los archivos de hasta 10 MB quedan en el workspace y la referencia completa llega al briefing.',
+      },
+      {
+        id: 'monitor-provider-usage',
+        title: 'Controla las cuotas en el pie',
+        body: 'El pie muestra las ventanas de 5 horas, semanal y mensual realmente informadas por Claude, Codex y Kimi. Haz clic en cualquier provider para abrir los detalles de Uso.',
       },
       {
         id: 'terminal-options',
@@ -796,12 +811,121 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'dictate-to-leader',
         title: 'Dicta sin volver al Canvas',
-        body: 'Sin un campo de texto activo, la esfera de voz encuentra al líder del workspace seleccionado, abre su terminal e inicia el mismo flujo de dictado del Canvas.',
+        body: 'Cuando está fijada, la esfera usa un espacio propio del encabezado sin cubrir pestañas ni acciones. Sin un campo de texto activo, encuentra al líder del workspace, abre su terminal e inicia el mismo flujo del Canvas.',
       },
       {
         id: 'return-canvas',
         title: 'Vuelve al contexto visual',
         body: 'Haz clic en el icono del canvas en el encabezado o usa el selector. El workspace sigue activo y el nodo elegido aparece centrado en el canvas.',
+      },
+    ],
+  },
+  {
+    id: 'edit-and-preview-files',
+    icon: 'FileCode2',
+    title: 'Editar y visualizar archivos',
+    tagline: 'Usa un editor local completo e inspecciona formatos comunes sin salir de la app.',
+    steps: [
+      {
+        id: 'open-file',
+        title: 'Abre un archivo del workspace',
+        body: 'Expande Archivos en la barra lateral del Workbench y elige un archivo de texto. Se abre directamente en una pestaña local sin añadir un nodo al Canvas. Monaco conserva cursor, selección, undo y cambios sin guardar entre pestañas y paneles.',
+      },
+      {
+        id: 'use-editor-tools',
+        title: 'Usa las herramientas del editor',
+        body: 'Busca o reemplaza texto, navega por símbolos, formatea archivos compatibles y alterna el ajuste de línea o el minimapa. Configuración → Apariencia también ofrece tamaño de fuente y guardado automático opcional.',
+      },
+      {
+        id: 'inspect-previews',
+        title: 'Inspecciona sin otra aplicación',
+        body: 'Alterna Markdown entre fuente y vista previa, navega y amplía PDFs o desplaza y amplía imágenes. Los binarios muestran metadatos seguros y pueden abrirse con la aplicación del sistema.',
+      },
+      {
+        id: 'protect-edits',
+        title: 'Mantén los cambios explícitos',
+        body: 'Las pestañas sin guardar muestran un indicador y piden confirmación al cerrar. Los archivos mayores de 512 KB se abren solo para lectura para no sobrescribir contenido que no fue cargado.',
+      },
+    ],
+  },
+  {
+    id: 'universal-workspace-search',
+    icon: 'Search',
+    title: 'Usar la búsqueda universal',
+    tagline: 'Encuentra y abre cualquier parte del trabajo con Command/Ctrl+K.',
+    steps: [
+      {
+        id: 'open-search',
+        title: 'Ábrela desde cualquier pantalla',
+        body: 'Presiona Command/Ctrl+K para buscar workspaces, agentes, tareas, notas, roles, skills, archivos, configuración y comandos.',
+      },
+      {
+        id: 'inspect-result',
+        title: 'Comprueba el contexto',
+        body: 'Navega por los grupos y lee la vista previa antes de abrir. Marca elementos frecuentes con la estrella; los recientes vuelven en la próxima apertura.',
+      },
+      {
+        id: 'place-result',
+        title: 'Elige dónde abrir',
+        body: 'Abre en el panel actual, a la derecha o abajo. Usa content: antes del término para buscar dentro de archivos, siempre limitado a la carpeta del workspace.',
+      },
+    ],
+  },
+  {
+    id: 'monitor-team-control-center',
+    icon: 'Activity',
+    title: 'Supervisar el equipo en el Centro de control',
+    tagline: 'Observa la actividad real y verifica cada handoff sin despertar agentes inactivos.',
+    steps: [
+      {
+        id: 'open-control-center',
+        title: 'Abre la vista operativa',
+        body: 'Ve a Workbench, expande un workspace y abre el Centro de control sobre Archivos. Es una vista local del Workbench y no crea otro nodo en el Canvas.',
+        action: { kind: 'openPage', path: '/terminal' },
+      },
+      {
+        id: 'read-agent-state',
+        title: 'Lee el estado real de los agentes',
+        body: 'Compara agentes trabajando, esperando respuesta o permiso, bloqueados, inactivos, completados, con error o desconectados. Cada fila incluye tarea actual, última acción relevante, tiempo en el estado, proveedor, rol y uso.',
+      },
+      {
+        id: 'verify-delivery',
+        title: 'Verifica las comunicaciones',
+        body: 'La bandeja agrupa las transiciones en cola, enviado, entregado, recibido, respondido y falló bajo un id de mensaje. Un orkestrai ask exitoso siempre termina con respuesta confirmada.',
+      },
+      {
+        id: 'switch-without-waking',
+        title: 'Cambia de workspace de forma segura',
+        body: 'Cambia de vista o reinicia la app. El historial reconstruye el Centro sin inyectar prompts ni activar terminales inactivos; las notificaciones nativas se reservan para atención y finalización reales.',
+      },
+    ],
+  },
+  {
+    id: 'review-delivery',
+    icon: 'GitPullRequestArrow',
+    title: 'Revisar una entrega',
+    tagline: 'Inspecciona los cambios reales, reúne evidencias y registra una decisión clara.',
+    steps: [
+      {
+        id: 'open-review-center',
+        title: 'Abre el Centro de revisión',
+        body: 'Ve a Workbench, expande el workspace y abre el Centro de revisión encima de Archivos. Es una vista local y no agrega otro nodo al Canvas.',
+        action: { kind: 'openPage', path: '/terminal' },
+      },
+      {
+        id: 'inspect-diff',
+        title: 'Inspecciona los cambios reales',
+        body: 'Elige un archivo preparado o no preparado. Monaco compara lado a lado la versión indexada y la modificada; usa la lista para preparar, quitar de preparación o crear el commit sin cambiar de aplicación.',
+      },
+      {
+        id: 'capture-context',
+        title: 'Registra el contexto de la entrega',
+        body: 'Inicia una revisión, vincula la tarea y el agente responsable y registra el resultado esperado, evidencias, pruebas, riesgos y archivos incluidos. La revisión Git actual queda guardada con ella.',
+      },
+      {
+        id: 'decide',
+        title: 'Comenta y decide',
+        body: 'Haz clic en una línea del diff para comentar y después aprueba, solicita cambios o rechaza. Los cambios solicitados se envían al agente responsable cuando está conectado; los comentarios siguen visibles y se marcan como desactualizados si cambia el código.',
       },
     ],
   },

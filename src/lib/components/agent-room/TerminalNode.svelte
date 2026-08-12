@@ -426,6 +426,8 @@
           sessionStorage,
           label: sessionLabel,
           workspace: workspaceName,
+          workspaceId,
+          nodeId,
           cols: terminal.cols,
           rows: terminal.rows,
         });
@@ -605,7 +607,7 @@
     <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
-            <span {...props} class="idle-dot" aria-label={m['term.idle']()}></span>
+            <span {...props} class="idle-dot" role="status" aria-label={m['term.idle']()}></span>
           {/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content side="left">{m['term.idle']()}</Tooltip.Content>

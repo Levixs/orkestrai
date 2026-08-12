@@ -481,7 +481,7 @@
   }
 
   .header-titles h1 {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 19px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -582,7 +582,7 @@
   }
 
   .section-titles h2 {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 14.5px;
     font-weight: 600;
     letter-spacing: -0.005em;

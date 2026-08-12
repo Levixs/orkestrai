@@ -486,7 +486,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'fallback',
         title: 'Use the leader shortcut in either view',
-        body: 'With no active field, the orb sends the transcript to the Maestro leader in Canvas or Terminals mode. I create one to test; without a field or leader, the app shows a warning. On macOS, Fn/Globe by itself is reserved by the system, so configure a key combination or F1–F12.',
+        body: 'With no active field, the orb sends the transcript to the Maestro leader in Canvas or Workbench. I create one to test; without a field or leader, the app shows a warning. On macOS, Fn/Globe by itself is reserved by the system, so configure a key combination or F1–F12.',
         action: { kind: 'createAgent', title: 'Voice Leader', provider: 'claude', leader: true },
         check: { kind: 'nodeExists', nodeType: 'terminal', titleIncludes: 'Voice Leader' },
       },
@@ -775,18 +775,33 @@ export const TOURS_EN: Tour[] = [
   {
     id: 'focused-workspace-view',
     icon: 'PanelLeftOpen',
-    title: 'Work in Terminals mode',
-    tagline: 'Open any workspace artifact full-screen without losing the canvas.',
+    title: 'Work in the Workbench',
+    tagline: 'Open, organize, and compare artifacts without losing the canvas.',
     steps: [
       {
         id: 'switch-view',
         title: 'Switch the view',
-        body: 'Use Canvas/Terminals in the upper-left corner or open Terminals from the Workspace menu. Agents remain in the same sessions while you switch modes.',
+        body: 'Use Canvas/Workbench in the upper-left corner or open Workbench from the Workspace menu. Agents remain in the same sessions while you switch modes.',
       },
       {
         id: 'choose-item',
         title: 'Choose where to work',
-        body: 'Expand a workspace or use search to open a terminal, board, note, portal, file, flow, or Usage in the full work area.',
+        body: 'Expand a workspace or use search. Open items use vertical tabs by default; you can choose horizontal tabs under Settings → Appearance.',
+      },
+      {
+        id: 'split-work',
+        title: 'Build your work area',
+        body: 'Split the active pane right or down and arrange up to eight resizable artifacts. Drag tabs between panes or use the Move to menu; the layout returns with the workspace.',
+      },
+      {
+        id: 'attach-context',
+        title: 'Keep references with the work',
+        body: 'Drop, paste, or select images, PDFs, files, and links in notes, cards, or the agent composer. Files up to 10 MB stay in the workspace and the complete reference reaches the brief.',
+      },
+      {
+        id: 'monitor-provider-usage',
+        title: 'Monitor quotas in the footer',
+        body: 'The footer shows the 5-hour, weekly, and monthly windows actually reported by Claude, Codex, and Kimi. Click any provider to open Usage details.',
       },
       {
         id: 'terminal-options',
@@ -796,12 +811,121 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'dictate-to-leader',
         title: 'Dictate without returning to Canvas',
-        body: 'With no text field active, the voice orb finds the selected workspace leader, opens that terminal, and starts the same dictation flow used in Canvas.',
+        body: 'When pinned, the voice orb uses a dedicated header slot without covering tabs or actions. With no text field active, it finds the workspace leader, opens that terminal, and starts the same flow used in Canvas.',
       },
       {
         id: 'return-canvas',
         title: 'Return to visual context',
         body: 'Click the canvas icon in the header or use the switch. The workspace stays active and the selected node is centered on the canvas.',
+      },
+    ],
+  },
+  {
+    id: 'edit-and-preview-files',
+    icon: 'FileCode2',
+    title: 'Edit and preview files',
+    tagline: 'Use a complete local editor and inspect common file formats in place.',
+    steps: [
+      {
+        id: 'open-file',
+        title: 'Open a workspace file',
+        body: 'Expand Files in the Workbench sidebar and choose a text file. It opens directly in a local editor tab without adding a node to Canvas. Monaco keeps cursor, selection, undo, and unsaved edits across tabs and panes.',
+      },
+      {
+        id: 'use-editor-tools',
+        title: 'Use the editor tools',
+        body: 'Find or replace text, navigate symbols, format supported files, and toggle wrapping or the minimap. Settings → Appearance also offers font size and optional autosave.',
+      },
+      {
+        id: 'inspect-previews',
+        title: 'Inspect without another app',
+        body: 'Switch Markdown between source and preview, browse and zoom PDFs, or pan and zoom images. Binary files show safe metadata and can open in the system application.',
+      },
+      {
+        id: 'protect-edits',
+        title: 'Keep changes explicit',
+        body: 'Unsaved tabs show a status dot and ask before closing. Files above 512 KB open read-only so content that was not loaded is never overwritten.',
+      },
+    ],
+  },
+  {
+    id: 'universal-workspace-search',
+    icon: 'Search',
+    title: 'Use universal search',
+    tagline: 'Find and open any part of the work with Command/Ctrl+K.',
+    steps: [
+      {
+        id: 'open-search',
+        title: 'Open it from any screen',
+        body: 'Press Command/Ctrl+K to search workspaces, agents, tasks, notes, roles, skills, files, settings, and commands.',
+      },
+      {
+        id: 'inspect-result',
+        title: 'Check the context',
+        body: 'Navigate the groups and read the preview before opening. Star frequent items; recently used items return the next time search opens.',
+      },
+      {
+        id: 'place-result',
+        title: 'Choose where it opens',
+        body: 'Open in the current pane, right, or below. Prefix the term with content: to search inside files, always confined to the workspace folder.',
+      },
+    ],
+  },
+  {
+    id: 'monitor-team-control-center',
+    icon: 'Activity',
+    title: 'Monitor the team in Control Center',
+    tagline: 'See real activity and verify every handoff without waking idle agents.',
+    steps: [
+      {
+        id: 'open-control-center',
+        title: 'Open the operational view',
+        body: 'Go to Workbench, expand a workspace, and open Control Center above Files. It is a local Workbench view and does not create another Canvas node.',
+        action: { kind: 'openPage', path: '/terminal' },
+      },
+      {
+        id: 'read-agent-state',
+        title: 'Read the real agent state',
+        body: 'Compare working, waiting for input or permission, blocked, idle, done, error, and disconnected agents. Each row includes the current task, last significant action, time in state, provider, role, and usage.',
+      },
+      {
+        id: 'verify-delivery',
+        title: 'Verify communications',
+        body: 'The inbox groups queued, sent, delivered, acknowledged, replied, and failed transitions under one message id. A successful orkestrai ask always ends with a confirmed reply.',
+      },
+      {
+        id: 'switch-without-waking',
+        title: 'Move between workspaces safely',
+        body: 'Switch views or restart the app. Event history reconstructs the Control Center without injecting prompts or activating idle terminals; native notifications remain reserved for real attention and completion.',
+      },
+    ],
+  },
+  {
+    id: 'review-delivery',
+    icon: 'GitPullRequestArrow',
+    title: 'Review a delivery',
+    tagline: 'Inspect the actual changes, collect evidence, and send a clear decision.',
+    steps: [
+      {
+        id: 'open-review-center',
+        title: 'Open the Review Center',
+        body: 'Go to Workbench, expand the workspace, and open Review Center above Files. It is a local view and does not add a node to Canvas.',
+        action: { kind: 'openPage', path: '/terminal' },
+      },
+      {
+        id: 'inspect-diff',
+        title: 'Inspect the real changes',
+        body: 'Choose a staged or unstaged file. Monaco compares the indexed and changed versions side by side; use the source list to stage, unstage, or commit without switching applications.',
+      },
+      {
+        id: 'capture-context',
+        title: 'Capture delivery context',
+        body: 'Start a review, link the task and responsible agent, and record the expected outcome, evidence, tests, risks, and included files. The current Git revision is saved with it.',
+      },
+      {
+        id: 'decide',
+        title: 'Comment and decide',
+        body: 'Click a diff line to comment, then approve, request changes, or reject. Requested changes are submitted to the responsible agent when online; comments remain visible and are marked outdated if the code changes.',
       },
     ],
   },

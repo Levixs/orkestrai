@@ -1,15 +1,22 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Columns3, History, ImagePlus, Link2, Plus, SquareKanban, StickyNote, Trash2, X } from '@lucide/svelte';
+  import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Columns3, History, Link2, Paperclip, Plus, SquareKanban, StickyNote, Trash2, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
   import HeaderIconButton from './HeaderIconButton.svelte';
   import MarkdownView from '../MarkdownView.svelte';
-  import { arrayBufferToBase64 } from '../base64.js';
+  import AttachmentList from '../AttachmentList.svelte';
+  import {
+    attachmentsFromClipboard,
+    attachmentsFromTransfer,
+    transferHasWorkspaceAttachments,
+    uploadWorkspaceAttachment,
+  } from '../workspace-attachments.js';
   import * as m from '$lib/paraglide/messages.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
+  import type { WorkspaceAttachment } from '$lib/modules/agent-room/domain/types.js';
 
   type BoardTask = {
     id: string;
@@ -20,6 +27,7 @@
     assigneeTitle: string | null;
     imagePath: string | null;
     images: string[];
+    attachments: WorkspaceAttachment[];
     createdBy: string;
     updatedAt: string;
     archivedAt: string | null;
@@ -61,6 +69,7 @@
     { id: 'doing', key: 'doing', name: null, color: '#ffc857', position: 1, builtin: true },
     { id: 'done', key: 'done', name: null, color: '#8ec98e', position: 2, builtin: true },
   ]);
+  let taskColumns = $state<BoardColumn[]>([]);
   const COLUMNS = $derived((taskColumns.length ? taskColumns : FALLBACK_COLUMNS).map((column) => ({
     ...column,
     status: column.key,
@@ -69,7 +78,6 @@
   })));
 
   let tasks = $state<BoardTask[]>([]);
-  let taskColumns = $state<BoardColumn[]>([]);
   let agents = $state<Array<{ id: string; title: string }>>([]);
   let draft = $state('');
   let dragTaskId = $state<string | null>(null);
@@ -77,7 +85,9 @@
   let editingId = $state<string | null>(null);
   let editDraft = $state('');
   let fileInput: HTMLInputElement;
-  let imageTargetId = $state<string | null>(null);
+  let attachmentTargetId = $state<string | null>(null);
+  let attachmentDropTaskId = $state<string | null>(null);
+  let attachmentBusy = $state(false);
   let columnsOpen = $state(false);
   let columnError = $state('');
   let newColumnName = $state('');
@@ -224,16 +234,9 @@
     const title = draft.trim();
     if (!title) return;
     const description = draftDescription.trim();
-    let images: string[] = [];
-    try {
-      for (const file of stagedImages) images = [...images, await writeImageFile(file)];
-    } catch (error) {
-      imageError = error instanceof Error ? error.message : m['tasks.err_image_attach']();
-      return;
-    }
     const task = await api<BoardTask>(`/api/agent-room/workspaces/${data.workspaceId}/tasks`, {
       method: 'POST',
-      body: JSON.stringify({ title, description: description || undefined, images }),
+      body: JSON.stringify({ title, description: description || undefined, attachments: stagedAttachments }),
     });
     if (!task) return;
     imageError = '';
@@ -244,44 +247,43 @@
     await refresh();
   }
 
-  // -- Imagens no composer (anexar ANTES de criar a tarefa) ----------------------
+  // -- Anexos no composer (anexar ANTES de criar a tarefa) ----------------------
   let composerOpen = $state(false);
   let draftDescription = $state('');
-  let stagedImages = $state<File[]>([]);
-  let stagedPreviews = $state<string[]>([]);
+  let stagedAttachments = $state<WorkspaceAttachment[]>([]);
 
-  function stageImages(files: File[]) {
-    for (const file of files) {
-      if (stagedImages.length >= 6) break;
-      stagedImages = [...stagedImages, file];
-      stagedPreviews = [...stagedPreviews, URL.createObjectURL(file)];
-    }
+  function stageAttachments(attachments: WorkspaceAttachment[]) {
+    const unique = new Map(stagedAttachments.map((attachment) => [attachment.id, attachment]));
+    for (const attachment of attachments) unique.set(attachment.id, attachment);
+    stagedAttachments = [...unique.values()].slice(0, 12);
   }
 
-  function unstageImage(index: number) {
-    URL.revokeObjectURL(stagedPreviews[index]);
-    stagedImages = stagedImages.filter((_, i) => i !== index);
-    stagedPreviews = stagedPreviews.filter((_, i) => i !== index);
+  function unstageAttachment(attachment: WorkspaceAttachment) {
+    stagedAttachments = stagedAttachments.filter((item) => item.id !== attachment.id);
   }
 
   function clearStaged() {
-    for (const preview of stagedPreviews) URL.revokeObjectURL(preview);
-    stagedImages = [];
-    stagedPreviews = [];
+    stagedAttachments = [];
   }
 
-  function onComposerFilePicked(event: Event) {
-    const input = event.target as HTMLInputElement;
-    stageImages([...(input.files ?? [])]);
-    input.value = '';
+  async function uploadFiles(files: File[]): Promise<WorkspaceAttachment[]> {
+    const attachments: WorkspaceAttachment[] = [];
+    for (const file of files) attachments.push(await uploadWorkspaceAttachment(data.workspaceId, file));
+    return attachments;
   }
 
-  function onComposerPaste(event: ClipboardEvent) {
-    const item = [...(event.clipboardData?.items ?? [])].find((entry) => entry.type.startsWith('image/'));
-    if (!item) return;
+  async function onComposerPaste(event: ClipboardEvent) {
+    if (!event.clipboardData?.files.length) return;
     event.preventDefault();
-    const file = item.getAsFile();
-    if (file) stageImages([file]);
+    attachmentBusy = true;
+    imageError = '';
+    try {
+      stageAttachments(await attachmentsFromClipboard(data.workspaceId, event.clipboardData));
+    } catch (error) {
+      imageError = attachmentErrorMessage(error);
+    } finally {
+      attachmentBusy = false;
+    }
   }
 
   async function patchTask(taskId: string, patch: Record<string, unknown>) {
@@ -346,46 +348,32 @@
     await patchTask(task.id, { status });
   }
 
-  // -- Imagens de referencia (multiplas, com viewer) ---------------------------
+  // -- Anexos e imagens de referencia ------------------------------------------
   let viewerTask = $state<BoardTask | null>(null);
   let viewerIndex = $state(0);
   let imageError = $state('');
 
-  function pickImage(task: BoardTask) {
+  function attachmentErrorMessage(error: unknown): string {
+    return error instanceof Error && error.message === 'attachment_too_large'
+      ? m['attachment.too_large']()
+      : m['attachment.error']();
+  }
+
+  function pickAttachment(task: BoardTask) {
     imageError = '';
-    imageTargetId = task.id;
+    attachmentTargetId = task.id;
     fileInput.click();
   }
 
-  /** base64 em chunks — o spread direto estoura a pilha em imagens >100 KB. */
-  async function writeImageFile(file: File): Promise<string> {
-    const base64 = arrayBufferToBase64(await file.arrayBuffer());
-    const ext = file.type.split('/').at(-1) ?? 'png';
-    const path = `.orkestrai/images/${crypto.randomUUID()}.${ext}`;
-    const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/fs/write-binary`, {
-      method: 'PUT',
-      headers: {
-        'content-type': 'application/json',
-        ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
-      },
-      body: JSON.stringify({ path, base64 }),
-    });
-    if (!response.ok) throw new Error(m['tasks.err_image_http']({ status: response.status }));
-    return path;
-  }
-
-  async function uploadImage(file: File, taskId: string) {
-    try {
-      const path = await writeImageFile(file);
-      await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${taskId}/images`, {
+  async function attachToTask(taskId: string, attachments: WorkspaceAttachment[]) {
+    for (const attachment of attachments) {
+      const result = await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${taskId}/attachments`, {
         method: 'POST',
-        body: JSON.stringify({ path }),
+        body: JSON.stringify({ attachment }),
       });
-      imageError = '';
-      await refresh();
-    } catch (error) {
-      imageError = error instanceof Error ? error.message : m['tasks.err_image_attach']();
+      if (!result) throw new Error('attachment_failed');
     }
+    await refresh();
   }
 
   async function onFilePicked(event: Event) {
@@ -393,21 +381,51 @@
     const files = [...(input.files ?? [])];
     input.value = '';
     if (!files.length) return;
-    if (imageTargetId) {
-      for (const file of files) await uploadImage(file, imageTargetId);
-    } else {
-      // Sem alvo: composer de nova tarefa (anexar ANTES de criar).
-      stageImages(files);
+    attachmentBusy = true;
+    imageError = '';
+    try {
+      const attachments = await uploadFiles(files);
+      if (attachmentTargetId) await attachToTask(attachmentTargetId, attachments);
+      else stageAttachments(attachments);
+    } catch (error) {
+      imageError = attachmentErrorMessage(error);
+    } finally {
+      attachmentBusy = false;
+      attachmentTargetId = null;
     }
-    imageTargetId = null;
   }
 
-  async function onCardPaste(event: ClipboardEvent, task: BoardTask) {
-    const item = [...(event.clipboardData?.items ?? [])].find((entry) => entry.type.startsWith('image/'));
-    if (!item) return;
+  function onAttachmentDragOver(event: DragEvent, taskId: string | null = null) {
+    if (!transferHasWorkspaceAttachments(event.dataTransfer)) return;
     event.preventDefault();
-    const file = item.getAsFile();
-    if (file) await uploadImage(file, task.id);
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    attachmentDropTaskId = taskId ?? 'composer';
+  }
+
+  async function onAttachmentDrop(event: DragEvent, taskId: string | null = null) {
+    if (!event.dataTransfer || !transferHasWorkspaceAttachments(event.dataTransfer)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    attachmentDropTaskId = null;
+    attachmentBusy = true;
+    imageError = '';
+    try {
+      const attachments = await attachmentsFromTransfer(data.workspaceId, event.dataTransfer);
+      if (taskId) await attachToTask(taskId, attachments);
+      else stageAttachments(attachments);
+    } catch (error) {
+      imageError = attachmentErrorMessage(error);
+    } finally {
+      attachmentBusy = false;
+    }
+  }
+
+  async function removeTaskAttachment(task: BoardTask, attachment: WorkspaceAttachment) {
+    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${task.id}/attachments?attachmentId=${encodeURIComponent(attachment.id)}`, {
+      method: 'DELETE',
+    });
+    await refresh();
   }
 
   function openViewer(task: BoardTask, index: number) {
@@ -424,7 +442,9 @@
     if (!viewerTask) return;
     const path = viewerTask.images[viewerIndex];
     if (!path) return;
-    await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${viewerTask.id}/images?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+    const attachment = viewerTask.attachments.find((item) => item.path === path);
+    if (attachment) await removeTaskAttachment(viewerTask, attachment);
+    else await api(`/api/agent-room/workspaces/${data.workspaceId}/tasks/${viewerTask.id}/images?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
     await refresh();
     const updated = tasks.find((task) => task.id === viewerTask?.id);
     if (!updated?.images.length) viewerTask = null;
@@ -472,7 +492,7 @@
       <X size={13} /></HeaderIconButton>
   {/snippet}
 
-  <input bind:this={fileInput} type="file" accept="image/*" multiple class="tb-hidden" onchange={onFilePicked} />
+  <input bind:this={fileInput} type="file" multiple class="tb-hidden" onchange={onFilePicked} />
 
   {#if imageError}
     <p class="tb-image-error nodrag">{imageError}</p>
@@ -557,7 +577,15 @@
   {/if}
   <div class="tb-add nodrag">
     {#if composerOpen}
-      <div class="tb-composer">
+      <div
+        class="tb-composer"
+        class:attachment-drop-active={attachmentDropTaskId === 'composer'}
+        role="group"
+        aria-label={m['attachment.task_drop_target']()}
+        ondragover={(event) => onAttachmentDragOver(event)}
+        ondragleave={() => (attachmentDropTaskId = null)}
+        ondrop={(event) => onAttachmentDrop(event)}
+      >
         <input
           bind:value={draft}
           placeholder={m['ph.task_title']()}
@@ -578,19 +606,15 @@
           spellcheck="false"
           onpaste={onComposerPaste}
         ></textarea>
-        {#if stagedPreviews.length}
-          <div class="tb-staged">
-            {#each stagedPreviews as preview, index (preview)}
-              <span class="tb-staged-thumb">
-                <img src={preview} alt="" />
-                <button class="tb-staged-x" aria-label={m['tasks.image_remove']()} onclick={() => unstageImage(index)}>×</button>
-              </span>
-            {/each}
-          </div>
-        {/if}
+        <AttachmentList
+          workspaceId={data.workspaceId}
+          attachments={stagedAttachments}
+          compact
+          onRemove={unstageAttachment}
+        />
         <div class="tb-composer-actions">
-          <HeaderIconButton label={m['tasks.attach_image']()} class="tb-icon-btn subtle" side="top" onclick={() => { imageTargetId = null; fileInput.click(); }}>
-            <ImagePlus size={13} />
+          <HeaderIconButton label={m['attachment.add']()} class="tb-icon-btn subtle" side="top" disabled={attachmentBusy} onclick={() => { attachmentTargetId = null; fileInput.click(); }}>
+            <Paperclip size={13} />
           </HeaderIconButton>
           <span class="tb-spacer"></span>
           <button class="tb-cancel" onclick={() => { composerOpen = false; clearStaged(); }}>{m['tasks.cancel']()}</button>
@@ -629,11 +653,13 @@
             <article
               class="tb-card"
               class:dragging={dragTaskId === task.id}
+              class:attachment-drop-active={attachmentDropTaskId === task.id}
               draggable="true"
               ondragstart={(event) => onDragStart(event, task)}
               ondragend={() => { dragTaskId = null; dropTarget = null; }}
-              onpaste={(event) => onCardPaste(event, task)}
-              tabindex="0"
+              ondragover={(event) => onAttachmentDragOver(event, task.id)}
+              ondragleave={() => (attachmentDropTaskId = null)}
+              ondrop={(event) => onAttachmentDrop(event, task.id)}
             >
               {#if task.images?.length}
                 <div class="tb-thumbs">
@@ -684,6 +710,12 @@
                   onblur={commitDescEdit}
                 ></textarea>
               {/if}
+              <AttachmentList
+                workspaceId={data.workspaceId}
+                attachments={(task.attachments ?? []).filter((attachment) => !attachment.path || !task.images.includes(attachment.path))}
+                compact
+                onRemove={(attachment) => removeTaskAttachment(task, attachment)}
+              />
               <div class="tb-card-bottom">
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger class="tb-assignee" aria-label={m['tasks.assign_aria']()}>
@@ -723,8 +755,8 @@
                     {/each}
                   </DropdownMenu.Content>
                 </DropdownMenu.Root>
-                <HeaderIconButton label={m['tasks.attach_image_card']()} class="tb-icon-btn subtle" side="top" onclick={() => pickImage(task)}>
-                  <ImagePlus size={11} />
+                <HeaderIconButton label={m['attachment.add_to_task']()} class="tb-icon-btn subtle" side="top" disabled={attachmentBusy} onclick={() => pickAttachment(task)}>
+                  <Paperclip size={11} />
                 </HeaderIconButton>
                 {#if task.status === 'done'}
                   <HeaderIconButton label={m['tasks.archive_task']()} class="tb-icon-btn subtle" side="top" onclick={() => archiveTask(task)}>
@@ -926,6 +958,13 @@
     background: color-mix(in srgb, var(--app-accent) 7%, var(--app-surface));
   }
 
+  .tb-composer.attachment-drop-active,
+  .tb-card.attachment-drop-active {
+    border-color: var(--app-accent);
+    box-shadow: inset 0 0 0 1px var(--app-accent);
+    background: color-mix(in srgb, var(--app-accent) 9%, var(--app-surface));
+  }
+
   .tb-composer input,
   .tb-composer textarea,
   .tb-desc-edit {
@@ -945,45 +984,6 @@
   .tb-composer textarea:focus,
   .tb-desc-edit:focus {
     border-color: var(--app-accent);
-  }
-
-  .tb-staged {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .tb-staged-thumb {
-    position: relative;
-    width: 52px;
-    height: 40px;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid var(--app-border);
-  }
-
-  .tb-staged-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .tb-staged-x {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    font-size: 9px;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .tb-composer-actions {
