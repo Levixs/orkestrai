@@ -110,14 +110,6 @@
     void tick().then(() => paletteInput?.focus());
   }
 
-  function handleGlobalKeydown(event: KeyboardEvent) {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      if (paletteOpen) paletteOpen = false;
-      else openPalette();
-    }
-  }
-
   function handlePaletteKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       paletteOpen = false;
@@ -152,7 +144,6 @@
   <meta name="theme-color" content="#0d0b2e" />
 </svelte:head>
 
-<svelte:window onkeydown={handleGlobalKeydown} />
 
 <main class="docs-page">
   <header class="docs-header">
@@ -328,7 +319,7 @@
   }
 
   .docs-header h1 {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 19px;
     font-weight: 600;
     letter-spacing: 0;
@@ -464,7 +455,7 @@
 
   .doc-card h2 {
     flex: 1;
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 14.5px;
     font-weight: 600;
     letter-spacing: 0;
@@ -526,7 +517,7 @@
   }
 
   .usecases-title {
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 15px;
     font-weight: 600;
     margin: 8px 2px 0;
@@ -541,7 +532,7 @@
 
   .usecase-card h3 {
     flex: 1;
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 13.5px;
     font-weight: 600;
     margin: 0;
@@ -609,7 +600,7 @@
 
   .changelog-date {
     margin: 0 0 6px;
-    font-family: 'Sora', 'Inter', sans-serif;
+    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
     font-size: 12px;
     font-weight: 600;
     color: var(--cyan);

@@ -24,11 +24,35 @@ Download the latest installers from
 - **Live agent canvas:** arrange real PTY terminals, notes, task boards, browser
   portals, file trees, loops, and shapes. Connections show collaboration between
   agents as it happens.
-- **Focused workspace view:** switch from Canvas to Terminals to browse every
-  workspace and open its live terminals, boards, notes, portals, files, flows,
-  and usage in the full work area without duplicating sessions. The global
-  voice orb follows the active workspace and routes no-focus dictation to its
-  leader in either view.
+- **Configurable Workbench:** keep open terminals, boards, notes, portals,
+  files, flows, and usage in vertical tabs by default or optional horizontal
+  tabs, then arrange up to eight live artifacts in resizable right/down splits.
+  Tabs move between panes by drag and drop or an accessible menu. The Workbench
+  references canvas artifacts without duplicating sessions, while workspace
+  files remain local editor tabs, and the global
+  voice orb follows its active workspace and leader. Its footer keeps every
+  reported Claude, Codex, and Kimi quota window visible without opening a panel.
+- **Operational Control Center:** inspect every agent's current task, state,
+  state duration, provider, role, and usage. Its persistent communications inbox
+  proves whether each handoff was queued, delivered, acknowledged, replied to,
+  or failed under one message id, without waking idle terminals after restart.
+- **Git Review Center:** inspect staged and unstaged changes, compare files in a
+  Monaco diff, create reviews linked to tasks and assignees, leave persistent
+  file and line comments, and approve, reject, or request changes. Feedback is
+  routed back to the responsible live agent without losing the review history.
+- **Universal search:** press `Cmd/Ctrl+K` to find workspaces, agents, tasks,
+  notes, roles, skills, files, settings, and commands, with recent and favorite
+  items plus direct actions to open in the current pane, right, or below.
+- **Rich local editor and previews:** browse the workspace's native file tree
+  and open files directly in local Workbench tabs, without creating canvas
+  nodes. The lazy-loaded Monaco editor keeps undo, cursor, dirty state, find/replace,
+  formatting, outline, minimap, wrapping, and optional autosave. Preview
+  Markdown, PDFs, and images offline; binary files show safe metadata and open
+  through the system application.
+- **Shared reference material:** drop, paste, or select images, PDFs, files, and
+  HTTP/HTTPS links in agent prompts, task cards, notes, and composers. Files up
+  to 10 MB stay inside the workspace under `.orkestrai/attachments/`, and agents
+  receive the complete relative path or URL.
 - **Maestro mode:** assign a leader that can propose a team, recruit agents,
   delegate complete task briefings, coordinate work, and dismiss agents when the
   work is done.

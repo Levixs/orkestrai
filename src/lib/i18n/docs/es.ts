@@ -36,14 +36,24 @@ export const DOCS_ES: DocsCatalog = {
       body: `Todos los agentes corren en paralelo (procesos independientes). La coordinación es por conexiones: agente pregunta a agente con orkestrai ask, o el Líder (★ Maestro) distribuye con task/ask y recluta/despide con recruit/dismiss. El nodo Loop Ralph es el modo secuencial: líder planea → ingeniero implementa → tester revisa, hasta N rondas. Las rutinas disparan prompts programados en cualquier terminal.`,
     },
     {
+      id: 'control-center',
+      title: 'Centro de control y comunicaciones verificadas',
+      body: `Abre el Centro de control en la parte superior de cada workspace expandido en el explorador del Workbench. Reconstruye el estado de cada agente a partir de un historial append-only: iniciando, trabajando, esperando respuesta o permiso, bloqueado, inactivo, completado, error o desconectado. Cada fila muestra la tarea actual, última acción relevante, tiempo en el estado, proveedor, rol y uso disponible. La bandeja de Comunicaciones registra las transiciones en cola, enviado, entregado, recibido, respondido y falló bajo un único id de mensaje; orkestrai ask solo tiene éxito después de una respuesta confirmada. Estos estados sobreviven al cambio de vista y al reinicio sin despertar terminales inactivos. Las conexiones siguen siendo un historial visual de conversaciones reales, pero la entrega usa el puente y no depende de una conexión. Las notificaciones nativas se reservan para atención explícita, finalización de tarea o del proyecto, sin ruido de actividad rutinaria.`,
+    },
+    {
+      id: 'review-center',
+      title: 'Control de código y Centro de revisión',
+      body: `Abre el Centro de revisión de cada workspace en el explorador del Workbench para inspeccionar cambios preparados y no preparados sin salir de Orkestrai. El encabezado muestra la rama, el upstream y los commits por delante o detrás; la lista permite preparar, quitar de preparación, crear commits, hacer pull, push y descartar ediciones rastreadas solo tras una confirmación. Al seleccionar un archivo se abre un diff lado a lado y limitado en Monaco; los archivos binarios o demasiado grandes muestran estados seguros explícitos. Inicia una revisión para vincular la revisión Git exacta con una tarea, agente responsable, resumen, evidencias, pruebas, riesgos y archivos seleccionados. Haz clic en cualquier lado del diff para comentar el archivo o una línea. Cuando cambia el repositorio, los comentarios anteriores siguen visibles como contexto desactualizado en vez de apuntar silenciosamente a otra línea. Aprueba, solicita cambios o rechaza con lenguaje directo; los cambios solicitados se envían al agente responsable cuando su terminal está disponible y permanecen guardados cuando está desconectado.`,
+    },
+    {
       id: 'notas',
       title: 'Notas como canales de trabajo',
-      body: `Las notas son markdown vivo compartido con los agentes. La convención: conecta la nota a quien debe leerla/escribirla y di el propósito en el título y el contenido. Ej.: nota "Backlog (líder escribe)" conectada al líder — escribes "divide en tareas para el equipo" y él la lee con orkestrai note read y distribuye en el tablero. Nota "Para mí (humano)" — pide al líder que registre estado/decisiones en ella con orkestrai note write/edit, y tú lo sigues formateado (ícono de ojo). Doble clic en el título renombra la nota. Pega imágenes directo en el editor.`,
+      body: `Las notas son markdown vivo compartido con los agentes. La convención: conecta la nota a quien debe leerla/escribirla y di el propósito en el título y el contenido. Ej.: nota "Backlog (líder escribe)" conectada al líder — escribes "divide en tareas para el equipo" y él la lee con orkestrai note read y distribuye en el tablero. Nota "Para mí (humano)" — pide al líder que registre estado/decisiones en ella con orkestrai note write/edit, y tú lo sigues formateado (ícono de ojo). Doble clic en el título renombra la nota. Suelta, pega o selecciona imágenes, PDFs, otros archivos y enlaces HTTP/HTTPS; los archivos de hasta 10 MB quedan en .orkestrai/attachments/ y su referencia markdown se inserta en el cursor. Al eliminar un adjunto con su X, la referencia también desaparece de la nota y el archivo almacenado en el workspace se borra.`,
     },
     {
       id: 'tarefas',
       title: 'Tareas (kanban)',
-      body: `El nodo Tareas (+ Tareas en la barra inferior) es el tablero del workspace. Usa el icono de columnas para crear hasta diez etapas que representen tu proceso. El líder y el equipo ven esas etapas automáticamente y mantienen el estado real de cada entrega. "Agregar tarea" abre un composer con título, descripción markdown e imágenes. Asignar una tarjeta despacha todo el briefing al agente. Al iniciar, el líder recibe cada tarea sin responsable con título, descripción, imágenes y nota vinculada, y debe registrarla/asignarla en el tablero antes de delegar por mensaje. task done envía una notificación identificada como Tarea completada y entrega automáticamente el handoff al líder cuando su composer queda libre; Proyecto completado se reserva para el final real del proyecto. El trabajo concluido puede archivarse sin perder historial.`,
+      body: `El nodo Tareas (+ Tareas en la barra inferior) es el tablero del workspace. Usa el icono de columnas para crear hasta diez etapas que representen tu proceso. El líder y el equipo ven esas etapas automáticamente y mantienen el estado real de cada entrega. "Agregar tarea" abre un composer con título, descripción markdown e imágenes, PDFs, archivos o enlaces; también puedes soltarlos directo sobre una tarjeta. Asignar una tarjeta envía su título, descripción y todas las referencias al agente. Al iniciar, el líder recibe cada tarea sin responsable con el briefing completo y debe registrarla/asignarla en el tablero antes de delegar por mensaje. task done envía una notificación identificada como Tarea completada y entrega automáticamente el handoff al líder cuando su composer queda libre; Proyecto completado se reserva para el final real del proyecto. El trabajo concluido puede archivarse sin perder historial.`,
     },
     {
       id: 'imagens',
@@ -235,7 +245,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictar en cualquier campo de texto',
-      body: 'Enfoca cualquier campo editable — título o descripción del kanban, rol, nota o formulario — y usa la esfera de voz global o Alt+Espacio. Desde el primer clic, el campo se conserva y la transcripción entra en el cursor sin requerir líder. En Configuración → Dictado por voz, puedes activar el envío automático: en terminales, la transcripción también presiona Enter; los campos comunes siguen recibiendo solo el texto. El indicador clicable muestra si la esfera está fijada o libre y abre directamente los controles de posición; el tooltip también presenta el atajo Ctrl+clic o Command+clic. Sin campo activo, el control encuentra al líder del workspace tanto en Canvas como en modo Terminales. En macOS, Fn/Globe por sí sola pertenece al sistema; elige una combinación o una tecla F1–F12.',
+      body: 'Enfoca cualquier campo editable — título o descripción del kanban, rol, nota o formulario — y usa la esfera de voz global o Alt+Espacio. Desde el primer clic, el campo se conserva y la transcripción entra en el cursor sin requerir líder. En Configuración → Dictado por voz, puedes activar el envío automático: en terminales, la transcripción también presiona Enter; los campos comunes siguen recibiendo solo el texto. El indicador clicable muestra si la esfera está fijada o libre y abre directamente los controles de posición; el tooltip también presenta el atajo Ctrl+clic o Command+clic. En el Workbench, la posición fijada usa un espacio propio del encabezado y no cubre pestañas ni acciones; al liberarla, vuelve a moverse libremente. Sin campo activo, el control encuentra al líder del workspace tanto en Canvas como en el Workbench. En macOS, Fn/Globe por sí sola pertenece al sistema; elige una combinación o una tecla F1–F12.',
       tags: ['Dictado global', 'campos de texto', 'voz local'],
     },
     {
@@ -270,9 +280,39 @@ export const DOCS_ES: DocsCatalog = {
     },
     {
       id: 'focused-workspace-view',
-      title: 'Trabajar en una terminal o artefacto sin distracciones',
-      body: 'Usa el selector Canvas/Terminales en la esquina superior izquierda para abrir el explorador de workspaces. Busca y elige una terminal, tablero, nota, portal, archivo, flujo o nodo de uso para ocupar toda el área de trabajo. Es el mismo artefacto persistido del canvas, por lo que las sesiones, el contenido y los cambios siguen sincronizados. En las terminales, el menú de opciones mantiene provider, rol, 10 temas ANSI, recarga, Modo Maestro y eliminación organizados sin saturar el encabezado. La esfera de voz también usa al líder del workspace activo en esta vista. Al volver al Canvas, Orkestrai conserva el workspace y centra el nodo seleccionado.',
-      tags: ['Modo Terminales', 'explorador de workspaces', 'foco'],
+      title: 'Trabajar con varios artefactos en el Workbench',
+      body: 'Usa el selector Canvas/Workbench en la esquina superior izquierda para abrir el explorador agrupado de workspaces. Los elementos abiertos usan pestañas verticales por defecto; en Configuración → Apariencia, puedes elegir pestañas horizontales sobre cada panel. Divide el panel activo a la derecha o abajo y organiza hasta ocho terminales, tableros, notas, portales, archivos, flujos o nodos de uso redimensionables. Arrastra una pestaña a otro panel o usa su menú Mover a. El layout se guarda por workspace, los layouts anteriores migran automáticamente y las referencias inválidas se descartan de forma segura. Los artefactos del canvas conservan su identidad persistida para mantener sesiones, contenido y cambios sincronizados; los archivos usan pestañas locales y no crean nodos en el canvas. El pie muestra todas las ventanas de uso de Claude, Codex y Kimi y abre los detalles con un clic, usando el mismo snapshot de cinco minutos que el panel y el nodo Uso. Command/Ctrl+Page Up o Page Down recorre los elementos, Shift cambia de panel y Command/Ctrl+\\ divide el panel. La esfera de voz también usa al líder del workspace activo en esta vista. Al volver al Canvas, Orkestrai conserva el workspace y centra el nodo seleccionado.',
+      tags: ['Workbench', 'hasta 8 paneles', 'divisiones recursivas'],
+    },
+    {
+      id: 'monitor-team-control-center',
+      title: 'Ver lo que el equipo realmente está haciendo',
+      body: 'Abre el Centro de control desde un workspace expandido en Workbench para comparar quién trabaja, está inactivo, bloqueado, espera una respuesta o está offline. El explorador compacto muestra la tarea y el estado de cada agente; la bandeja de comunicaciones demuestra si un handoff entró en cola, fue entregado, recibido, respondido o falló bajo un id persistente. Cambia de workspace o reinicia la app sin despertar terminales inactivos: el historial reconstruye la misma vista operativa.',
+      tags: ['Centro de control', 'entrega verificada', 'actividad de agentes'],
+    },
+    {
+      id: 'edit-and-preview-files',
+      title: 'Editar e inspeccionar archivos sin salir del Workbench',
+      body: 'Expande Archivos en la barra lateral del Workbench y abre un archivo del workspace directamente en una pestaña local, sin crear un nodo en el canvas. El árbol de archivos del Canvas y Command/Ctrl+K usan la misma apertura directa. Monaco conserva cursor, undo, selección y estado sin guardar entre paneles. Busca o reemplaza texto, navega por símbolos, formatea archivos compatibles y elige minimapa, ajuste de línea, tamaño de fuente o guardado automático opcional en Configuración → Apariencia. Markdown alterna entre fuente y vista previa sanitizada; los PDFs tienen navegación y zoom; las imágenes permiten zoom, desplazamiento, dimensiones y transparencia; los binarios muestran metadatos y se abren con la aplicación del sistema. Los archivos mayores de 512 KB se abren en una vista limitada de solo lectura para no sobrescribir contenido que no fue cargado.',
+      tags: ['Editor Monaco', 'vistas offline', 'estado sin guardar'],
+    },
+    {
+      id: 'share-reference-material',
+      title: 'Entregar contexto completo al equipo',
+      body: 'Arrastra una imagen, PDF, archivo o enlace HTTP/HTTPS a una nota de briefing, el composer de un agente o una tarjeta del kanban. Orkestrai guarda archivos de hasta 10 MB dentro del workspace, inserta una referencia legible y entrega el título, la descripción y todos los adjuntos cuando el líder o agente recibe la tarea.',
+      tags: ['Adjuntos', 'drag and drop', 'briefing completo'],
+    },
+    {
+      id: 'universal-workspace-search',
+      title: 'Encontrar cualquier elemento sin navegar por menús',
+      body: 'Presiona Command/Ctrl+K desde cualquier pantalla para buscar workspaces, agentes, tareas, notas, herramientas, roles, skills, archivos, configuración y comandos. La búsqueda muestra contexto y vista previa, recuerda elementos recientes y favoritos y puede abrir un artefacto en el panel actual, a la derecha o abajo. Usa el prefijo content: para buscar dentro del contenido de los archivos. La lectura permanece confinada a la carpeta del workspace.',
+      tags: ['Búsqueda universal', 'Command/Ctrl+K', 'archivos y comandos'],
+    },
+    {
+      id: 'review-delivery',
+      title: 'Revisar una entrega con evidencias y una decisión clara',
+      body: 'Abre el Centro de revisión en Workbench, selecciona los archivos modificados y crea una revisión vinculada a la tarea del kanban y al agente responsable. Registra capturas o evidencias de la entrega, pruebas realizadas y riesgos conocidos. Agrega comentarios a archivos o líneas exactas y después aprueba, solicita cambios o rechaza. Los cambios solicitados se envían al terminal del agente cuando está disponible; si el código cambia antes, el comentario original se conserva marcado como contexto desactualizado.',
+      tags: ['Centro de revisión', 'diff Monaco', 'feedback al agente'],
     },
     {
       id: 'custom-app-theme',
@@ -282,6 +322,33 @@ export const DOCS_ES: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: '12 ago 2026 · En desarrollo',
+      items: [
+        'El modo enfocado evolucionó a Workbench con elementos abiertos persistentes, pestañas verticales por defecto y pestañas horizontales opcionales en Configuración.',
+        'Ahora se pueden organizar hasta ocho artefactos en vivo en divisiones redimensionables hacia la derecha o abajo, cambiar el panel activo y restaurar el layout por workspace sin duplicar sesiones.',
+        'El explorador ahora agrupa agentes, trabajo, contenido y herramientas; las pestañas se mueven arrastrando o por menú y los layouts anteriores migran de forma segura.',
+        'Command/Ctrl+K ahora abre una búsqueda universal de workspaces, agentes, tareas, notas, roles, skills, archivos, configuración y comandos, con vista previa, recientes, favoritos y apertura directa en paneles.',
+        'La búsqueda de archivos usa ripgrep confinado al workspace y virtualiza listas grandes para mantener la interfaz ágil.',
+        'Imágenes, PDFs, archivos y enlaces ahora se pueden soltar, pegar o seleccionar en agentes, tareas, notas y composers; los archivos de hasta 10 MB quedan confinados en .orkestrai/attachments/ y acompañan el briefing completo.',
+        'El pie del Workbench muestra todas las ventanas de uso de Claude, Codex y Kimi con los mismos colores de severidad y el mismo snapshot compartido de cinco minutos del panel y nodo Uso.',
+        'La esfera de voz fijada ahora usa un espacio dedicado del encabezado del Workbench y ya no cubre pestañas ni acciones del artefacto abierto.',
+        'Abrir al lado desde otro workspace ahora cambia primero el contexto, sin crear paneles vacíos ni mezclar artefactos de workspaces diferentes.',
+        'Inter, Sora y JetBrains Mono ahora se incluyen en la app, eliminando la dependencia de Google Fonts y de internet para la tipografía.',
+        'Canvas y Workbench ya no esperan el diagnóstico lento de providers para abrir, y la búsqueda global ya no bloquea el montaje por un ciclo reactivo ni comprime su lista y vista previa.',
+        'Cerrar el panel activo ahora conserva su artefacto visible, y los indicadores de terminal y textos compactos usan semántica y contraste accesibles.',
+        'La restauración ahora comparte verificaciones repetidas por workspace, aísla entre workspaces el acceso a carpetas protegidas y repara los archivos del puente de forma asíncrona, para que un permiso pendiente de macOS no bloquee el Canvas o Workbench en otro lugar.',
+        'Eliminar un adjunto de una nota ahora también quita su markdown renderizado y borra el archivo del workspace, sin dejar contenido huérfano.',
+        'El Workbench ahora tiene un explorador nativo del workspace. Los archivos se abren directamente en pestañas locales desde el explorador, el árbol del Canvas o la búsqueda global, sin crear nodos Editor desconectados, mientras Monaco conserva modelos, cambios sin guardar, símbolos, formato y búsqueda/reemplazo.',
+        'Markdown, PDFs, imágenes y binarios ahora se abren en vistas offline dedicadas, con límites seguros para archivos grandes, navegación y zoom, dimensiones de imagen, metadatos y apertura mediante la aplicación del sistema.',
+        'Los assets de producción ahora reciben los mismos headers de aislamiento de la app, manteniendo los workers de Monaco y PDF fuera del hilo de la interfaz en builds instalados.',
+        'Workbench ahora incluye un Centro de control con estados persistentes de agentes, tareas actuales, duración del estado, uso de proveedores y una bandeja de comunicaciones verificadas.',
+        'Los mensajes del puente ahora conservan un único id entre los eventos en cola, enviado, entregado, recibido, respondido y falló; ask solo tiene éxito tras una respuesta confirmada.',
+        'Los indicadores de actividad de Canvas y Workbench ahora se actualizan por eventos WebSocket en vez de polling cada diez segundos, y los eventos informativos ya no disparan notificaciones nativas.',
+        'Los nombres y roles de los agentes ahora se distribuyen en líneas propias en el explorador del Workbench, y los elementos abiertos en vertical muestran el nombre completo sin ocultar la parte que distingue a cada agente con puntos suspensivos.',
+        'Workbench ahora incluye un Centro de revisión con cambios Git preparados y no preparados estructurados, sincronización de rama, diffs Monaco limitados, comentarios persistentes por archivo y línea, detección de contexto desactualizado, tarea y agente vinculados y decisiones de aprobar, solicitar cambios o rechazar con envío directo al agente.',
+      ],
+    },
     {
       date: '11 ago 2026 · 0.10.0',
       items: [

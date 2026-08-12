@@ -52,6 +52,45 @@ when a suitable system runtime is unavailable.
 - License: MIT and additional licenses listed by the Node.js distribution
 - Source and notices: <https://github.com/nodejs/node/blob/main/LICENSE>
 
+## Bundled Fonts
+
+The following variable fonts are bundled through Fontsource and remain licensed
+under the SIL Open Font License 1.1:
+
+- Inter: Copyright 2016 The Inter Project Authors.
+  Source: <https://github.com/rsms/inter>
+- Sora: Copyright 2019 The Sora Project Authors.
+  Source: <https://github.com/sora-xor/sora-font>
+- JetBrains Mono: Copyright 2020 The JetBrains Mono Project Authors.
+  Source: <https://github.com/JetBrains/JetBrainsMono>
+
+The complete OFL-1.1 text accompanies each `@fontsource-variable` package in
+the installed dependency graph. The fonts are not sold by themselves and their
+project names do not imply endorsement of Orkestrai.
+
+## Workbench Search And Virtualization
+
+- `@tanstack/svelte-virtual`: Copyright TanStack contributors, MIT License.
+  Source: <https://github.com/TanStack/virtual>
+- `@vscode/ripgrep`: Copyright Microsoft Corporation and contributors, MIT
+  License. It bundles the ripgrep executable, which is dual-licensed under MIT
+  or the Unlicense. Source: <https://github.com/microsoft/vscode-ripgrep>
+
+These packages provide bounded rendering for large search result sets and
+workspace-confined file search. Their license files remain in the installed
+dependency graph.
+
+## Workbench Editor And Previews
+
+- `monaco-editor`: Copyright Microsoft Corporation, MIT License.
+  Source: <https://github.com/microsoft/monaco-editor>
+- `pdfjs-dist`: Copyright Mozilla Foundation, Apache License 2.0.
+  Source: <https://github.com/mozilla/pdf.js>
+
+These packages provide the local code editor and PDF preview. Their workers and
+assets are bundled with the desktop app so these surfaces remain available
+offline.
+
 ## Agent Providers And Trademarks
 
 Claude and Anthropic are trademarks of Anthropic PBC. Codex and OpenAI are

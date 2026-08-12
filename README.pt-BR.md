@@ -24,10 +24,36 @@ Baixe os instaladores mais recentes em
 - **Canvas de agentes ao vivo:** organize terminais PTY reais, notas, quadros de
   tarefas, portais de browser, árvores de arquivos, loops e formas. As conexões
   mostram a colaboração entre os agentes enquanto ela acontece.
-- **Modo de trabalho focado:** alterne de Canvas para Terminais para navegar por
-  todos os workspaces e abrir terminais, quadros, notas, portais, arquivos,
-  fluxos e uso na área inteira sem duplicar sessões. A bolinha global de voz
-  acompanha o workspace ativo e envia o ditado sem foco ao líder nos dois modos.
+- **Workbench configurável:** mantenha terminais, quadros, notas, portais,
+  arquivos, fluxos e uso abertos em abas verticais por padrão ou horizontais
+  opcionais, e organize até oito artefatos ao vivo em divisões redimensionáveis
+  para a direita ou para baixo. As abas mudam de painel por arrastar e soltar ou
+  por um menu acessível. O Workbench referencia os artefatos do canvas sem
+  duplicar sessões, enquanto arquivos permanecem abas locais, e a bolinha de voz
+  acompanha o workspace ativo e seu líder.
+  O rodapé mantém visíveis todas as janelas de cota reportadas por Claude, Codex
+  e Kimi sem exigir a abertura de outro painel.
+- **Central de controle operacional:** acompanhe tarefa atual, estado, duração,
+  provider, role e uso de cada agente. A caixa persistente comprova se cada
+  handoff entrou na fila, foi entregue, recebido, respondido ou falhou sob um
+  id de mensagem, sem acordar terminais ociosos após reiniciar.
+- **Central de revisão Git:** inspecione alterações staged e unstaged, compare
+  arquivos em um diff Monaco, crie revisões ligadas a tarefas e responsáveis,
+  deixe comentários persistentes por arquivo e linha, e aprove, rejeite ou peça
+  mudanças. O feedback volta ao agente responsável sem perder o histórico.
+- **Busca universal:** pressione `Cmd/Ctrl+K` para encontrar workspaces, agentes,
+  tarefas, notas, roles, skills, arquivos, configurações e comandos, com itens
+  recentes/favoritos e abertura no painel atual, à direita ou abaixo.
+- **Editor local rico e prévias:** navegue pela árvore nativa do workspace e
+  abra arquivos diretamente em abas locais do Workbench, sem criar nós no
+  canvas. O Monaco carregado sob demanda preserva undo, cursor e estado não salvo,
+  busca/substituição, formatação, símbolos, minimapa, quebra de linha e autosave
+  opcional. Markdown, PDFs e imagens têm prévia offline; binários mostram
+  metadados seguros e abrem no aplicativo do sistema.
+- **Materiais de referência compartilhados:** solte, cole ou selecione imagens,
+  PDFs, arquivos e links HTTP/HTTPS em prompts de agentes, cartões, notas e
+  composers. Arquivos de até 10 MB ficam no workspace em
+  `.orkestrai/attachments/`, e o agente recebe o path relativo ou URL completo.
 - **Modo Maestro:** defina um líder que pode propor um time, recrutar agentes,
   delegar briefings completos, coordenar o trabalho e dispensar agentes quando
   não forem mais necessários.

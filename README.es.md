@@ -24,10 +24,38 @@ Descarga los instaladores más recientes desde
 - **Lienzo de agentes en vivo:** organiza terminales PTY reales, notas, tableros
   de tareas, portales de navegador, árboles de archivos, loops y formas. Las
   conexiones muestran la colaboración entre agentes mientras ocurre.
-- **Vista de trabajo enfocada:** cambia de Canvas a Terminales para navegar por
-  todos los workspaces y abrir terminales, tableros, notas, portales, archivos,
-  flujos y uso en toda el área de trabajo sin duplicar sesiones. La esfera global
-  de voz sigue el workspace activo y dirige el dictado sin foco a su líder en ambas vistas.
+- **Workbench configurable:** mantén abiertas terminales, tableros, notas,
+  portales, archivos, flujos y uso en pestañas verticales por defecto u
+  horizontales opcionales, y organiza hasta ocho artefactos en vivo en divisiones
+  redimensionables hacia la derecha o abajo. Las pestañas se mueven entre paneles
+  arrastrando o con un menú accesible. El Workbench referencia los artefactos
+  del canvas sin duplicar sesiones, mientras los archivos permanecen como
+  pestañas locales, y la esfera de voz sigue el workspace activo.
+  El pie mantiene visibles todas las ventanas de cuota informadas por Claude,
+  Codex y Kimi sin abrir otro panel.
+- **Centro de control operativo:** consulta la tarea actual, estado, duración,
+  proveedor, rol y uso de cada agente. La bandeja persistente demuestra si cada
+  handoff entró en cola, fue entregado, recibido, respondido o falló bajo un id
+  de mensaje, sin despertar terminales inactivos tras reiniciar.
+- **Centro de revisión Git:** inspecciona cambios staged y unstaged, compara
+  archivos en un diff Monaco, crea revisiones vinculadas a tareas y responsables,
+  deja comentarios persistentes por archivo y línea, y aprueba, rechaza o solicita
+  cambios. El feedback vuelve al agente responsable sin perder el historial.
+- **Búsqueda universal:** presiona `Cmd/Ctrl+K` para encontrar workspaces,
+  agentes, tareas, notas, roles, skills, archivos, configuración y comandos,
+  con elementos recientes/favoritos y apertura en el panel actual, derecho o inferior.
+- **Editor local completo y vistas previas:** navega por el árbol nativo del
+  workspace y abre archivos directamente en pestañas locales del Workbench, sin
+  crear nodos en el canvas. Monaco se carga bajo demanda y conserva undo, cursor
+  y estado sin guardar
+  persistentes, búsqueda/reemplazo, formato, símbolos, minimapa, ajuste de línea
+  y guardado automático opcional. Markdown, PDFs e imágenes tienen vista previa
+  offline; los binarios muestran metadatos seguros y se abren con la aplicación
+  del sistema.
+- **Material de referencia compartido:** suelta, pega o selecciona imágenes,
+  PDFs, archivos y enlaces HTTP/HTTPS en prompts de agentes, tarjetas, notas y
+  composers. Los archivos de hasta 10 MB quedan en el workspace bajo
+  `.orkestrai/attachments/`, y el agente recibe el path relativo o URL completo.
 - **Modo Maestro:** asigna un líder que puede proponer un equipo, reclutar
   agentes, delegar briefings completos, coordinar el trabajo y retirar agentes
   cuando ya no sean necesarios.

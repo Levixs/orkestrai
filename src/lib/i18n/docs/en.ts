@@ -36,14 +36,24 @@ export const DOCS_EN: DocsCatalog = {
       body: `All agents run in parallel (independent processes). Coordination happens through connections: agent asks agent with orkestrai ask, or the Leader (★ Maestro) distributes with task/ask and recruits/dismisses with recruit/dismiss. The Loop Ralph node is the sequential mode: leader plans → engineer implements → tester reviews, for up to N rounds. Routines fire scheduled prompts into any terminal.`,
     },
     {
+      id: 'control-center',
+      title: 'Control Center and verified communications',
+      body: `Open Control Center at the top of each expanded workspace in the Workbench explorer. It reconstructs every agent's state from an append-only event history: starting, working, waiting for input or permission, blocked, idle, done, error, or disconnected. Each row shows the current task, last significant action, time in state, provider, role, and available usage. The Communications inbox records queued, sent, delivered, acknowledged, replied, and failed transitions under one message id; orkestrai ask succeeds only after a confirmed reply. These states survive view changes and app restarts without waking idle terminals. Canvas edges remain a visual history of real conversations, while delivery itself uses the bridge and does not depend on an edge. Native notifications are reserved for explicit attention, task completion, or project completion instead of routine activity.`,
+    },
+    {
+      id: 'review-center',
+      title: 'Source Control and Review Center',
+      body: `Open Review Center under each workspace in the Workbench explorer to inspect staged and unstaged changes without leaving Orkestrai. The header shows the branch, upstream, and commits ahead or behind; the source list stages, unstages, commits, pulls, pushes, and discards tracked edits only after confirmation. Selecting a file opens a bounded Monaco side-by-side diff; binary and oversized files get explicit safe states. Start a review to link its exact Git revision to a task, responsible agent, summary, evidence, tests, risks, and selected files. Click either side of the diff to attach a file or line comment. When the repository changes, old comments remain visible as outdated context instead of silently pointing at a different line. Approve, request changes, or reject in plain language; requested changes are submitted directly to the responsible agent when its terminal is available, and remain persisted when it is offline.`,
+    },
+    {
       id: 'notas',
       title: 'Notes as work channels',
-      body: `Notes are living markdown shared with the agents. The convention: connect the note to whoever should read/write it and state the purpose in the title and content. E.g.: a "Backlog (leader writes)" note connected to the leader — you write "break this into tasks for the team" and it reads it with orkestrai note read and distributes it on the board. A "For me (human)" note — ask the leader to log status/decisions there with orkestrai note write/edit, and you follow along formatted (eye icon). Double-click the title to rename the note. Paste images straight into the editor.`,
+      body: `Notes are living markdown shared with the agents. The convention: connect the note to whoever should read/write it and state the purpose in the title and content. E.g.: a "Backlog (leader writes)" note connected to the leader — you write "break this into tasks for the team" and it reads it with orkestrai note read and distributes it on the board. A "For me (human)" note — ask the leader to log status/decisions there with orkestrai note write/edit, and you follow along formatted (eye icon). Double-click the title to rename the note. Drop, paste, or select images, PDFs, other files, and HTTP/HTTPS links; files up to 10 MB stay in .orkestrai/attachments/ and their markdown reference is inserted at the cursor. Removing an attachment with its X also removes that reference and deletes the stored workspace file.`,
     },
     {
       id: 'tarefas',
       title: 'Tasks (kanban)',
-      body: `The Tasks node (+ Tasks in the bottom bar) is the workspace board. Use the columns icon in its header to name, color, reorder, and create up to ten stages that match your process. The lead and team see those stages automatically and keep each delivery's real state current. "Add task" opens a complete composer with title, markdown description, and reference images. Assigning a card dispatches the full brief to the agent. At startup, the leader receives every unassigned task with its title, description, images, and linked note and must record/assign work on the board before delegating by message. task done sends a notification labeled Task completed and automatically hands completion back to the leader as soon as its composer is free; Project completed is reserved for the real end of the project. Completed work can be archived without losing history.`,
+      body: `The Tasks node (+ Tasks in the bottom bar) is the workspace board. Use the columns icon in its header to name, color, reorder, and create up to ten stages that match your process. The lead and team see those stages automatically and keep each delivery's real state current. "Add task" opens a complete composer with title, markdown description, and images, PDFs, files, or links; you can also drop them directly onto a card. Assigning a card dispatches its title, description, and every reference to the agent. At startup, the leader receives every unassigned task with its complete brief and must record/assign work on the board before delegating by message. task done sends a notification labeled Task completed and automatically hands completion back to the leader as soon as its composer is free; Project completed is reserved for the real end of the project. Completed work can be archived without losing history.`,
     },
     {
       id: 'imagens',
@@ -235,7 +245,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'leader-dictation',
       title: 'Dictate into any text field',
-      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Under Settings → Voice dictation, you can enable automatic sending: terminals also receive Enter after the transcript, while regular fields still only receive text. The clickable badge shows whether the orb is pinned or movable and opens its position controls directly; the tooltip also displays the Ctrl-click or Command-click shortcut. With no active field, the same control finds the workspace leader in both Canvas and Terminals mode. On macOS, Fn/Globe by itself belongs to the system; choose a key combination or an F1–F12 key.',
+      body: 'Focus any editable field — a kanban title or description, role, note, or form — then use the global voice orb or Alt+Space. The very first click preserves that field and inserts the transcript at its cursor without requiring a leader. Under Settings → Voice dictation, you can enable automatic sending: terminals also receive Enter after the transcript, while regular fields still only receive text. The clickable badge shows whether the orb is pinned or movable and opens position controls directly; the tooltip also displays the Ctrl-click or Command-click shortcut. In Workbench, the pinned position uses a dedicated header slot and never covers tabs or actions; unpinning restores free movement. With no active field, the same control finds the workspace leader in both Canvas and Workbench. On macOS, Fn/Globe by itself belongs to the system; choose a key combination or an F1–F12 key.',
       tags: ['Global dictation', 'text fields', 'local voice'],
     },
     {
@@ -270,9 +280,39 @@ export const DOCS_EN: DocsCatalog = {
     },
     {
       id: 'focused-workspace-view',
-      title: 'Work in one terminal or artifact without distractions',
-      body: 'Use the Canvas/Terminals switch in the upper-left corner to open the workspace explorer. Search for and choose a terminal, board, note, portal, file, flow, or usage node to give it the full work area. It is the same persisted canvas artifact, so sessions, content, and edits stay synchronized. In terminals, the options menu keeps provider, role, 10 ANSI themes, reload, Maestro Mode, and removal organized without crowding the header. The voice orb also uses the active workspace leader in this view. When you return to Canvas, Orkestrai preserves the workspace and centers the selected node.',
-      tags: ['Terminals mode', 'workspace explorer', 'focus'],
+      title: 'Work with multiple artifacts in the Workbench',
+      body: 'Use the Canvas/Workbench switch in the upper-left corner to open the grouped workspace explorer. Open items use vertical tabs by default; under Settings → Appearance, you can choose horizontal tabs above each pane. Split the active pane right or down and arrange up to eight resizable terminals, boards, notes, portals, files, flows, or usage nodes. Drag a tab to another pane or use its Move to menu. Layout is saved per workspace, old layouts migrate automatically, and invalid references are discarded safely. Canvas artifacts keep their persisted identity so sessions, content, and edits stay synchronized; workspace files use local tabs and do not create canvas nodes. The footer shows every Claude, Codex, and Kimi usage window and opens details with one click, using the same five-minute snapshot as the Usage panel and node. Command/Ctrl+Page Up or Page Down cycles items, Shift switches panes, and Command/Ctrl+\\ splits the pane. The voice orb also uses the active workspace leader in this view. When you return to Canvas, Orkestrai preserves the workspace and centers the selected node.',
+      tags: ['Workbench', 'up to 8 panes', 'recursive splits'],
+    },
+    {
+      id: 'monitor-team-control-center',
+      title: 'See what the team is really doing',
+      body: 'Open Control Center from an expanded workspace in Workbench to compare who is working, idle, blocked, waiting for input, or offline. The compact explorer shows each agent\'s current task and state; the communications inbox proves whether a handoff was queued, delivered, acknowledged, replied to, or failed under one persistent message id. Switch workspaces or restart the app without waking idle terminals; the history reconstructs the same operational view.',
+      tags: ['Control Center', 'verified delivery', 'agent activity'],
+    },
+    {
+      id: 'edit-and-preview-files',
+      title: 'Edit and inspect files without leaving the Workbench',
+      body: 'Expand Files in the Workbench sidebar and open a workspace file directly in a local tab, without creating a canvas node. The Canvas file tree and Command/Ctrl+K use the same direct handoff. Monaco preserves cursor, undo, selection, and unsaved state across panes. Find or replace text, navigate symbols, format supported files, and choose minimap, wrapping, font size, or optional autosave under Settings → Appearance. Markdown switches between source and a sanitized preview; PDFs have page and zoom controls; images support zoom, pan, dimensions, and transparency; binary files show metadata and open through the system application. Files above 512 KB open a bounded read-only preview so unloaded content cannot be overwritten.',
+      tags: ['Monaco editor', 'offline previews', 'dirty buffers'],
+    },
+    {
+      id: 'share-reference-material',
+      title: 'Give the team complete context',
+      body: 'Drag an image, PDF, file, or HTTP/HTTPS link onto a briefing note, an agent composer, or a kanban card. Orkestrai stores files up to 10 MB inside the workspace, inserts a readable reference, and delivers the title, description, and every attachment when the lead or agent receives the task.',
+      tags: ['Attachments', 'drag and drop', 'complete brief'],
+    },
+    {
+      id: 'universal-workspace-search',
+      title: 'Find anything without navigating menus',
+      body: 'Press Command/Ctrl+K from any screen to search workspaces, agents, tasks, notes, tools, roles, skills, files, settings, and commands. Search shows context and a preview, remembers recent and favorite items, and can open an artifact in the current pane, right, or below. Use the content: prefix to search inside workspace file contents. Reads remain confined to the workspace folder.',
+      tags: ['Universal search', 'Command/Ctrl+K', 'files and commands'],
+    },
+    {
+      id: 'review-delivery',
+      title: 'Review a delivery with evidence and a clear decision',
+      body: 'Open Review Center in Workbench, select the changed files and create a review linked to the kanban task and responsible agent. Record screenshots or delivery evidence, tests performed, and known risks. Add comments to exact files or lines, then approve, request changes, or reject. Requested changes are submitted to the agent terminal when available; if the code changes first, the original comment is kept and marked as outdated context.',
+      tags: ['Review Center', 'Monaco diff', 'agent feedback'],
     },
     {
       id: 'custom-app-theme',
@@ -282,6 +322,33 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Aug 12, 2026 · In development',
+      items: [
+        'The focused mode evolved into Workbench with persistent open items, vertical tabs by default, and optional horizontal tabs in Settings.',
+        'Up to eight live artifacts can now be arranged in resizable right/down splits, with active-pane switching and per-workspace layout restoration without duplicate sessions.',
+        'The explorer now groups agents, work, content, and tools; tabs move by drag or menu, and old layouts migrate safely to the new format.',
+        'Command/Ctrl+K now opens a universal search for workspaces, agents, tasks, notes, roles, skills, files, settings, and commands, with previews, recents, favorites, and direct pane placement.',
+        'File search uses workspace-confined ripgrep and virtualizes large result lists to keep the interface responsive.',
+        'Images, PDFs, files, and links can now be dropped, pasted, or selected in agents, tasks, notes, and composers; files up to 10 MB stay confined to .orkestrai/attachments/ and travel with the complete brief.',
+        'The Workbench footer shows every Claude, Codex, and Kimi usage window with the same severity colors and shared five-minute snapshot as the Usage panel and node.',
+        'The pinned voice orb now uses a dedicated Workbench header slot and no longer covers tabs or actions in the open artifact.',
+        'Opening to the side from another workspace now switches context first, without creating empty panes or mixing artifacts from different workspaces.',
+        'Inter, Sora, and JetBrains Mono are now bundled with the app, removing the Google Fonts and network dependency for typography.',
+        'Canvas and Workbench no longer wait for slow provider diagnostics before opening, and global search no longer blocks view mounting with a reactive loop or compresses its list and preview.',
+        'Closing the active pane now preserves its visible artifact, while terminal indicators and compact labels use accessible semantics and contrast.',
+        'Workspace restoration now shares duplicate checks per workspace, isolates protected-folder access between workspaces, and repairs bridge files asynchronously, so a pending macOS permission prompt cannot block Canvas or Workbench elsewhere.',
+        'Removing an attachment from a note now removes its rendered Markdown and deletes the workspace file instead of leaving both behind.',
+        'The Workbench now has a native workspace file explorer. Files open directly in local tabs from the explorer, Canvas file tree, or global search instead of creating disconnected Editor nodes, while the lazy-loaded Monaco editor preserves models, dirty buffers, symbols, formatting, and find/replace.',
+        'Markdown, PDFs, images, and binary files now open in dedicated offline previews with safe large-file limits, page and zoom controls, image dimensions, metadata, and system-app fallback.',
+        'Production assets now receive the same cross-origin isolation headers as the app, keeping Monaco and PDF workers off the UI thread in packaged builds.',
+        'Workbench now includes a Control Center with persisted agent states, current tasks, state duration, provider usage, and a verified communications inbox.',
+        'Bridge messages now keep one message id across queued, sent, delivered, acknowledged, replied, and failed events; ask succeeds only after a confirmed reply.',
+        'Canvas and Workbench activity indicators now update through WebSocket events instead of polling every ten seconds, and informational heartbeats no longer trigger native notifications.',
+        'Agent names and roles now wrap onto dedicated lines in the Workbench explorer, and vertical open-item labels show their full names instead of hiding distinguishing text behind ellipses.',
+        'Workbench now includes a Review Center with structured staged and unstaged changes, branch synchronization, bounded Monaco diffs, persisted file and line comments, stale-context detection, task and agent context, and approve, request changes, or reject decisions with direct agent handoff.',
+      ],
+    },
     {
       date: 'Aug 11, 2026 · 0.10.0',
       items: [

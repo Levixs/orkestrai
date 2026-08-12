@@ -5,6 +5,93 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Added
+
+- Evolved the focused workspace view into Workbench with persistent open items,
+  vertical tabs by default, optional horizontal tabs, and up to eight recursive
+  right/down resizable panes for live canvas artifacts.
+- Added explicit open-right/open-below actions, tab movement between panes,
+  active-pane feedback, safe recovery when persisted nodes no longer exist,
+  and keyboard navigation between open items and panes.
+- Added a global `Cmd/Ctrl+K` search for workspaces, agents, tasks, notes,
+  artifacts, roles, skills, workspace files, settings, and commands, with
+  previews, recent items, favorites, and direct pane placement.
+- Added workspace-confined ripgrep file search and virtualized result rendering
+  for large result sets.
+- Added a single workspace attachment pipeline for files up to 10 MB and
+  HTTP/HTTPS links, with upload, paste, and drag-and-drop support across agent
+  prompts, tasks, notes, and composers. Files are stored under
+  `.orkestrai/attachments/` and complete references are delivered to agents.
+- Added a compact provider usage footer to the Workbench with every reported
+  5-hour, weekly, or monthly quota window and severity-matched percentages.
+- Added a lazy-loaded Monaco editor to Workbench files with persistent models,
+  undo and view state, find/replace, symbol navigation, formatting, configurable
+  minimap and wrapping, optional autosave, and explicit dirty-buffer protection.
+- Added offline Markdown, PDF, and image previews with source switching, page
+  and zoom controls, image pan and dimensions, plus safe metadata and a system
+  application action for binary files.
+- Added a Workbench Control Center with append-only agent activity history,
+  current tasks, state duration, provider usage, and a verified communications
+  inbox that survives view changes and restarts without waking idle terminals.
+- Added persistent message delivery tracking under one message id across
+  queued, sent, delivered, acknowledged, replied, and failed transitions.
+- Added a Workbench Review Center with structured staged/unstaged Git status,
+  branch synchronization, bounded Monaco diffs, persisted file/line comments,
+  stale-context detection, task and agent context, and approve, request changes,
+  or reject decisions. Requested changes are handed directly to the responsible
+  agent when its terminal is available.
+
+### Changed
+
+- Moved workspace files into a native Workbench explorer and local editor tabs.
+  Opening a file from the explorer, Canvas file tree, or global search now goes
+  directly to the Workbench instead of creating a disconnected Editor node on
+  the canvas.
+- Renamed the user-facing Terminals mode to Workbench while preserving the
+  existing `/terminal` route and live PTY sessions for compatibility.
+- Bundled the variable Inter, Sora, and JetBrains Mono fonts locally so the
+  desktop interface no longer depends on Google Fonts or network availability.
+- Grouped the Workbench explorer into agents, work, content, and tools, and
+  migrated old two-pane layouts automatically to the recursive v2 format.
+- Consolidated the Usage panel, Usage node, and Workbench footer onto one
+  shared five-minute snapshot and refresh timer to avoid duplicate provider
+  requests.
+- Limited large text reads at the filesystem boundary and opens the first
+  512 KB read-only instead of loading or accidentally overwriting the full file.
+- Replaced ten-second activity polling in Canvas and Workbench with WebSocket
+  updates from confirmed PTY, task, and bridge events. Informational events stay
+  in Control Center; native notifications are reserved for attention and
+  completion transitions.
+- Made `orkestrai ask` and its MCP tool return the persistent message id and
+  succeed only after the response is confirmed and recorded.
+
+### Fixed
+
+- Let Workbench agent names and roles wrap onto dedicated lines in the explorer,
+  and let vertical open-item labels grow to their full name instead of hiding
+  distinguishing text behind ellipses.
+- Applied cross-origin isolation headers to production static assets so Monaco
+  and PDF workers run off the UI thread instead of being blocked after packaging.
+- Made note attachment removal delete the inserted Markdown reference and the
+  workspace file together instead of hiding only the attachment chip and
+  leaving orphaned content under `.orkestrai/attachments/`.
+- Docked the pinned voice orb in a dedicated Workbench header slot so it no
+  longer covers tabs or contextual actions; unpinned placement remains freely
+  movable and keeps the user's saved canvas position.
+- Made open-to-the-side switch cleanly to a different workspace before creating
+  splits, preventing empty panes and mixed workspace context.
+- Removed the slow provider/model diagnostics from the Canvas and Workbench
+  startup path, and fixed a command-palette reactive loop that could leave both
+  views stuck in their initial loading state despite completed API requests;
+  the palette now also keeps its full responsive list-and-preview layout.
+- Preserved the visible artifact when closing its active Workbench pane, and
+  corrected terminal status semantics and light-theme explorer contrast.
+- Deduplicated same-workspace provisioning, isolated checks for different
+  workspaces, and made every bridge repair read/write asynchronous, so a pending
+  macOS folder prompt cannot block Canvas or Workbench in another workspace.
+
 ## 0.10.0 - 2026-08-11
 
 ### Added
