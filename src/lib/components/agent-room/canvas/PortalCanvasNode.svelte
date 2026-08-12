@@ -1,28 +1,49 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowRight, Globe, X } from '@lucide/svelte';
+  import { ArrowRight, Globe, MousePointer2, Navigation, RotateCcw, Send, X } from '@lucide/svelte';
   import { getCsrfToken } from '@beeblock/svelar/http';
+  import { toast } from '@beeblock/svelar/ui';
+  import DOMPurify from 'dompurify';
   import NodeShell from './NodeShell.svelte';
+  import type { NodeConnection } from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import * as NativeSelect from '$lib/components/ui/native-select';
+  import { Button } from '$lib/components/ui/button';
+  import { Textarea } from '$lib/components/ui/textarea';
+  import { Badge } from '$lib/components/ui/badge';
+  import {
+    beginPortalInspection,
+    cancelPortalInspection,
+    capturePortalSelection,
+    portalScreenshotFile,
+    portalSelectionExists,
+    type PortalWebviewElement,
+  } from '$lib/components/agent-room/portal-design-inspector.js';
+  import {
+    sendPortalDesignFeedbackSchema,
+    type PortalDesignCapture,
+    type PortalDesignFeedbackResult,
+  } from '$lib/modules/agent-room/contracts/schemas/portal-design-feedback.schema.js';
+  import type { CanvasNode, WorkspaceAttachment } from '$lib/modules/agent-room/domain/types.js';
+  import {
+    deleteWorkspaceAttachment,
+    uploadWorkspaceAttachment,
+  } from '$lib/components/agent-room/workspace-attachments.js';
   import * as m from '$lib/paraglide/messages.js';
 
   export type PortalNodeData = {
     title: string;
     workspaceId: string;
     payload: { url?: string };
+    connections?: NodeConnection[];
     onDelete: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
     onUrlChange?: (id: string, url: string) => void;
-  };
-
-  let { id, data, selected } = $props<NodeProps & { data: PortalNodeData }>();
-
-  type WebviewElement = HTMLElement & {
-    src: string;
-    loadURL: (url: string) => Promise<void>;
-    executeJavaScript: (code: string) => Promise<unknown>;
-    capturePage: () => Promise<{ toDataURL: () => string }>;
+    onRename?: (id: string, title: string) => void;
+    onJumpToNode?: (nodeId: string) => void;
+    onRemoveConnection?: (edgeId: string) => void;
   };
 
   type WebviewLoadFailure = Event & {
@@ -32,30 +53,61 @@
     isMainFrame?: boolean;
   };
 
+  type AgentTarget = { id: string; title: string; role: string | null; maestro: boolean };
+  type TaskTarget = { id: string; title: string; status: string; assigneeTitle: string | null };
+
+  let { id, data, selected } = $props<NodeProps & { data: PortalNodeData }>();
+
   let address = $state(data.payload.url ?? '');
-  let frame: (WebviewElement | HTMLIFrameElement) | null = $state(null);
+  let frame: (PortalWebviewElement | HTMLIFrameElement) | null = $state(null);
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let retryTimer: ReturnType<typeof setInterval> | null = null;
-  let portalReady = false;
-  let portalError = '';
+  let portalReady = $state(false);
+  let portalError = $state('');
+  let inspecting = $state(false);
+  let reviewOpen = $state(false);
+  let capture = $state<PortalDesignCapture | null>(null);
+  let screenshotDataUrl = $state('');
+  let instruction = $state('');
+  let destinationKind = $state<'agent' | 'task'>('agent');
+  let destinationId = $state('');
+  let agents = $state<AgentTarget[]>([]);
+  let tasks = $state<TaskTarget[]>([]);
+  let targetsLoading = $state(false);
+  let sending = $state(false);
+  let selectionDetached = $state(false);
   const readyWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
   const isDesktop = typeof window !== 'undefined' && 'orkestraiDesktop' in window;
+  const sanitizedElementHtml = $derived(DOMPurify.sanitize(capture?.html ?? '', {
+    ALLOWED_TAGS: ['a', 'button', 'div', 'span', 'p', 'label', 'input', 'select', 'option', 'img', 'svg', 'path', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'strong', 'em', 'small'],
+    ALLOWED_ATTR: ['role', 'aria-label', 'title', 'alt', 'href', 'src', 'type', 'placeholder', 'viewBox', 'd'],
+    FORBID_ATTR: ['style'],
+  }));
+  const currentTargets = $derived(destinationKind === 'agent' ? agents : tasks);
+
+  function csrfHeaders(json = false): HeadersInit {
+    const csrf = getCsrfToken();
+    return {
+      ...(json ? { 'content-type': 'application/json' } : {}),
+      ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+    };
+  }
 
   async function postResult(commandId: string, ok: boolean, result?: unknown, error?: string) {
-    const csrf = getCsrfToken();
     await fetch(`/api/agent-room/workspaces/${data.workspaceId}/portal/${id}/commands/${commandId}/result`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
-      },
+      headers: csrfHeaders(true),
       body: JSON.stringify({ ok, result, error }),
     }).catch(() => {});
   }
 
   function targetUrl() {
     return address.trim() || String(data.payload.url ?? '').trim();
+  }
+
+  function desktopFrame(): PortalWebviewElement | null {
+    return frame && 'executeJavaScript' in frame ? frame : null;
   }
 
   function clearRetry() {
@@ -76,8 +128,9 @@
 
   function retryLoad() {
     const url = targetUrl();
-    if (!url || !frame || !('loadURL' in frame)) return;
-    void frame.loadURL(url).catch((error) => {
+    const webview = desktopFrame();
+    if (!url || !webview) return;
+    void webview.loadURL(url).catch((error) => {
       portalError = error instanceof Error ? error.message : String(error);
     });
   }
@@ -85,9 +138,8 @@
   function markUnavailable(detail: string) {
     portalReady = false;
     portalError = detail;
-    if (!retryTimer && targetUrl()) {
-      retryTimer = setInterval(retryLoad, 3_000);
-    }
+    if (inspecting) void cancelInspection();
+    if (!retryTimer && targetUrl()) retryTimer = setInterval(retryLoad, 3_000);
   }
 
   function waitUntilReady(timeoutMs = 25_000): Promise<void> {
@@ -106,7 +158,7 @@
     });
   }
 
-  async function verifyLoadedPage(webview: WebviewElement) {
+  async function verifyLoadedPage(webview: PortalWebviewElement) {
     try {
       const href = String(await webview.executeJavaScript('location.href') ?? '');
       if (href && href !== 'about:blank' && !href.startsWith('chrome-error:')) markReady();
@@ -117,7 +169,8 @@
   }
 
   async function executeCommand(command: { id: string; action: string; args: Record<string, unknown> }) {
-    if (!frame || !('executeJavaScript' in frame)) {
+    const webview = desktopFrame();
+    if (!webview) {
       await postResult(command.id, false, undefined, 'Portal sem webview (precisa do app desktop).');
       return;
     }
@@ -127,9 +180,10 @@
           const url = String(command.args.url ?? '');
           portalReady = false;
           address = url;
+          resetCapture();
           data.onUrlChange?.(id, url);
           try {
-            await frame.loadURL(url);
+            await webview.loadURL(url);
           } catch {
             await waitUntilReady();
           }
@@ -139,19 +193,19 @@
         }
         case 'eval': {
           await waitUntilReady();
-          const result = await frame.executeJavaScript(String(command.args.js ?? ''));
+          const result = await webview.executeJavaScript(String(command.args.js ?? ''));
           await postResult(command.id, true, result);
           break;
         }
         case 'dom': {
           await waitUntilReady();
-          const html = await frame.executeJavaScript('document.documentElement.outerHTML');
+          const html = await webview.executeJavaScript('document.documentElement.outerHTML');
           await postResult(command.id, true, String(html).slice(0, 50_000));
           break;
         }
         case 'screenshot': {
           await waitUntilReady();
-          const image = await frame.capturePage();
+          const image = await webview.capturePage();
           await postResult(command.id, true, { dataUrl: image.toDataURL().slice(0, 200_000) });
           break;
         }
@@ -168,9 +222,7 @@
     pollTimer = setInterval(async () => {
       const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/portal/${id}/commands`);
       const payload = await response.json().catch(() => ({ data: [] }));
-      for (const command of payload.data ?? []) {
-        await executeCommand(command);
-      }
+      for (const command of payload.data ?? []) await executeCommand(command);
     }, 2_000);
   }
 
@@ -179,24 +231,185 @@
     pollTimer = null;
   }
 
-  function navigate() {
+  function resetCapture() {
+    reviewOpen = false;
+    capture = null;
+    screenshotDataUrl = '';
+    instruction = '';
+    selectionDetached = false;
+  }
+
+  async function navigate() {
     let url = address.trim();
     if (!url) return;
     if (!/^https?:\/\//.test(url)) url = `https://${url}`;
+    if (inspecting) await cancelInspection();
+    resetCapture();
     address = url;
     portalReady = false;
     data.onUrlChange?.(id, url);
-    if (frame && 'loadURL' in frame) retryLoad();
+    retryLoad();
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter') navigate();
+    if (event.key === 'Enter') void navigate();
+  }
+
+  async function loadTargets() {
+    targetsLoading = true;
+    try {
+      const [nodesResponse, tasksResponse] = await Promise.all([
+        fetch(`/api/agent-room/workspaces/${data.workspaceId}/nodes`),
+        fetch(`/api/agent-room/workspaces/${data.workspaceId}/tasks`),
+      ]);
+      const [nodesPayload, tasksPayload] = await Promise.all([nodesResponse.json(), tasksResponse.json()]);
+      if (!nodesResponse.ok || nodesPayload.error) throw new Error(nodesPayload.error || `HTTP ${nodesResponse.status}`);
+      if (!tasksResponse.ok || tasksPayload.error) throw new Error(tasksPayload.error || `HTTP ${tasksResponse.status}`);
+      agents = (nodesPayload.data as CanvasNode[])
+        .filter((node) => node.type === 'terminal')
+        .map((node) => ({
+          id: node.id,
+          title: node.title ?? m['portal.design_unnamed_agent'](),
+          role: String((node.payload as { role?: string }).role ?? '').trim() || null,
+          maestro: Boolean((node.payload as { maestro?: boolean }).maestro),
+        }))
+        .sort((left, right) => Number(right.maestro) - Number(left.maestro) || left.title.localeCompare(right.title));
+      tasks = (tasksPayload.data as TaskTarget[]).map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        assigneeTitle: task.assigneeTitle ?? null,
+      }));
+      if (!agents.length && tasks.length) destinationKind = 'task';
+      const options = destinationKind === 'agent' ? agents : tasks;
+      if (!options.some((target) => target.id === destinationId)) destinationId = options[0]?.id ?? '';
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : m['portal.design_targets_error']());
+    } finally {
+      targetsLoading = false;
+    }
+  }
+
+  function chooseDestination(kind: 'agent' | 'task') {
+    destinationKind = kind;
+    const options = kind === 'agent' ? agents : tasks;
+    destinationId = options[0]?.id ?? '';
+  }
+
+  async function startInspection() {
+    const webview = desktopFrame();
+    if (!isDesktop || !webview) {
+      toast.error(m['portal.design_desktop_only']());
+      return;
+    }
+    if (!portalReady) {
+      toast.error(m['portal.design_disconnected']({ detail: portalError || m['portal.design_loading']() }));
+      return;
+    }
+    if (inspecting) {
+      await cancelInspection();
+      return;
+    }
+    resetCapture();
+    inspecting = true;
+    try {
+      const selectedElement = await beginPortalInspection(webview);
+      if (!selectedElement) return;
+      if (!await portalSelectionExists(webview, selectedElement.selector)) {
+        throw new Error('element_removed');
+      }
+      const screenshot = await capturePortalSelection(webview, selectedElement);
+      capture = selectedElement;
+      screenshotDataUrl = screenshot;
+      await loadTargets();
+      reviewOpen = true;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      if (reason.includes('element_removed')) toast.error(m['portal.design_element_removed']());
+      else if (portalError) toast.error(m['portal.design_disconnected']({ detail: portalError }));
+      else toast.error(m['portal.design_inspection_error']());
+    } finally {
+      inspecting = false;
+    }
+  }
+
+  async function cancelInspection() {
+    const webview = desktopFrame();
+    if (webview) await cancelPortalInspection(webview);
+    inspecting = false;
+  }
+
+  async function verifySelection(): Promise<boolean> {
+    const webview = desktopFrame();
+    if (!webview || !capture) return false;
+    try {
+      const exists = await portalSelectionExists(webview, capture.selector);
+      selectionDetached = !exists;
+      return exists;
+    } catch {
+      selectionDetached = true;
+      return false;
+    }
+  }
+
+  async function sendFeedback() {
+    if (!capture || !screenshotDataUrl || !instruction.trim() || !destinationId) {
+      toast.error(m['portal.design_form_error']());
+      return;
+    }
+    if (!await verifySelection()) {
+      toast.error(m['portal.design_element_removed']());
+      return;
+    }
+    sending = true;
+    let attachment: WorkspaceAttachment | null = null;
+    try {
+      attachment = await uploadWorkspaceAttachment(data.workspaceId, portalScreenshotFile(screenshotDataUrl));
+      const { html: _previewOnlyHtml, ...context } = capture;
+      const body = sendPortalDesignFeedbackSchema.parse({
+        capture: context,
+        screenshot: attachment,
+        instruction,
+        destination: destinationKind === 'agent'
+          ? { kind: 'agent', nodeId: destinationId }
+          : { kind: 'task', taskId: destinationId },
+      });
+      const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/portal/${id}/design-feedback`, {
+        method: 'POST',
+        headers: csrfHeaders(true),
+        body: JSON.stringify(body),
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.error) throw new Error(payload.error || `HTTP ${response.status}`);
+      const result = payload.data as PortalDesignFeedbackResult;
+      if (!result.persisted) {
+        await deleteWorkspaceAttachment(data.workspaceId, attachment).catch(() => undefined);
+        attachment = null;
+        toast.error(result.delivery?.error || m['portal.design_send_error']());
+        return;
+      }
+      if (result.delivery && !result.delivery.delivered) {
+        toast.warning(m['portal.design_saved_offline']({ destination: result.destinationTitle }));
+      } else {
+        toast.success(m['portal.design_sent']({ destination: result.destinationTitle }));
+      }
+      resetCapture();
+    } catch (error) {
+      if (attachment) await deleteWorkspaceAttachment(data.workspaceId, attachment).catch(() => undefined);
+      toast.error(error instanceof Error ? error.message : m['portal.design_send_error']());
+    } finally {
+      sending = false;
+    }
+  }
+
+  async function closePortal() {
+    if (inspecting) await cancelInspection();
+    data.onDelete(id);
   }
 
   $effect(() => {
-    const webview = frame;
-    if (!webview || !('executeJavaScript' in webview)) return;
-
+    const webview = desktopFrame();
+    if (!webview) return;
     const handleFinish = () => void verifyLoadedPage(webview);
     const handleFailure = (event: Event) => {
       const failure = event as WebviewLoadFailure;
@@ -205,9 +418,7 @@
     };
     webview.addEventListener('did-finish-load', handleFinish);
     webview.addEventListener('did-fail-load', handleFailure);
-
     void verifyLoadedPage(webview);
-
     return () => {
       webview.removeEventListener('did-finish-load', handleFinish);
       webview.removeEventListener('did-fail-load', handleFailure);
@@ -219,6 +430,7 @@
     return () => {
       stopPolling();
       clearRetry();
+      if (inspecting) void cancelInspection();
       for (const waiter of readyWaiters) {
         clearTimeout(waiter.timer);
         waiter.reject(new Error('Portal fechado antes de concluir o carregamento.'));
@@ -250,25 +462,144 @@
       onkeydown={handleKeydown}
       placeholder="https://..."
       spellcheck="false"
+      aria-label={m['portal.address']()}
     />
   {/snippet}
   {#snippet actions()}
-    <IconAction label={m['portal.navigate']()} onclick={navigate}><ArrowRight size={13} /></IconAction>
-    <IconAction label={m['portal.close']()} danger onclick={() => data.onDelete(id)}><X size={13} /></IconAction>
+    <IconAction label={m['portal.navigate']()} disabled={inspecting} onclick={() => void navigate()}><ArrowRight size={13} /></IconAction>
+    <IconAction
+      label={isDesktop ? (inspecting ? m['portal.design_cancel']() : m['portal.design_inspect']()) : m['portal.design_desktop_only']()}
+      active={inspecting}
+      onclick={() => void startInspection()}
+    ><MousePointer2 size={13} /></IconAction>
+    <IconAction label={m['portal.close']()} danger onclick={() => void closePortal()}><X size={13} /></IconAction>
   {/snippet}
 
-  <div class="portal-body nodrag nowheel">
-    {#if data.payload.url}
-      {#if isDesktop}
-        <webview bind:this={frame} src={data.payload.url} class="portal-frame" websecurity="no" allowpopups></webview>
-      {:else}
-        <iframe bind:this={frame} src={data.payload.url} title={data.title || m['portal.default_title']()} class="portal-frame"></iframe>
-      {/if}
-    {:else}
-      <p class="portal-empty">{m['portal.empty']()}</p>
+  <div class="portal-body nodrag nowheel" class:inspecting>
+    {#if inspecting}
+      <div class="inspection-bar" role="status">
+        <span class="inspection-pulse"></span>
+        <span>{m['portal.design_pick_hint']()}</span>
+        <button type="button" onclick={() => void cancelInspection()}>{m['portal.design_cancel']()}</button>
+      </div>
     {/if}
+    <div class="portal-stage">
+      {#if data.payload.url}
+        {#if isDesktop}
+          <webview
+            bind:this={frame}
+            src={data.payload.url}
+            class="portal-frame"
+            class:portal-frame-hidden={reviewOpen}
+            partition="orkestrai-portals"
+            webpreferences="contextIsolation=yes, sandbox=yes, nodeIntegration=no"
+          ></webview>
+        {:else}
+          <iframe bind:this={frame} src={data.payload.url} title={data.title || m['portal.default_title']()} class="portal-frame"></iframe>
+        {/if}
+      {:else}
+        <p class="portal-empty">{m['portal.empty']()}</p>
+      {/if}
+      {#if !portalReady && data.payload.url && isDesktop && portalError}
+        <div class="portal-status" role="status">
+          <Navigation size={15} />
+          <span>{m['portal.design_disconnected']({ detail: portalError })}</span>
+        </div>
+      {/if}
+    </div>
   </div>
 </NodeShell>
+
+<Dialog.Root bind:open={reviewOpen} onOpenChange={(open) => { if (!open) resetCapture(); }}>
+  <Dialog.Content class="max-h-[min(92dvh,880px)] max-w-[calc(100%-1.5rem)]! grid-rows-[auto_minmax(0,1fr)_auto] gap-0! overflow-hidden p-0! sm:max-w-5xl!">
+    <Dialog.Header class="border-b border-border/60 px-5 py-4 pr-12">
+      <Dialog.Title>{m['portal.design_review_title']()}</Dialog.Title>
+      <Dialog.Description>{m['portal.design_review_desc']()}</Dialog.Description>
+    </Dialog.Header>
+
+    {#if capture}
+      <div class="grid min-h-0 overflow-y-auto lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,.8fr)] lg:overflow-hidden">
+        <section class="min-h-[280px] border-b border-border/60 bg-[var(--app-canvas)] p-4 lg:min-h-0 lg:border-r lg:border-b-0">
+          <div class="flex h-full min-h-0 flex-col">
+            <div class="mb-3 flex min-w-0 items-center gap-2">
+              <Badge variant="secondary">&lt;{capture.tagName}&gt;</Badge>
+              <code class="min-w-0 flex-1 truncate text-[11px] text-[var(--app-text-muted)]" title={capture.selector}>{capture.selector}</code>
+              <span class="shrink-0 text-[10px] tabular-nums text-[var(--app-text-muted)]">{Math.round(capture.rect.width)} × {Math.round(capture.rect.height)}</span>
+            </div>
+            <div class="flex min-h-[220px] flex-1 items-center justify-center overflow-hidden border border-[var(--app-border)] bg-[linear-gradient(45deg,var(--app-surface)_25%,transparent_25%),linear-gradient(-45deg,var(--app-surface)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--app-surface)_75%),linear-gradient(-45deg,transparent_75%,var(--app-surface)_75%)] bg-[length:18px_18px] bg-[position:0_0,0_9px,9px_-9px,-9px_0] p-4">
+              <img src={screenshotDataUrl} alt={m['portal.design_screenshot_alt']()} class="max-h-full max-w-full object-contain shadow-sm ring-1 ring-black/10" />
+            </div>
+            <div class="mt-3 grid gap-2 text-[11px] text-[var(--app-text-muted)] sm:grid-cols-2">
+              <div><span class="font-medium text-[var(--app-text)]">{m['portal.design_page']()}</span><br />{capture.page.title || capture.page.origin}<br /><code>{capture.page.origin}{capture.page.path}</code></div>
+              <div><span class="font-medium text-[var(--app-text)]">{m['portal.design_viewport']()}</span><br />{capture.viewport.width} × {capture.viewport.height} @ {capture.viewport.deviceScaleFactor}x<br />{capture.styles.fontSize} · {capture.styles.fontWeight}</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="min-h-0 overflow-y-auto p-4">
+          <div class="space-y-4">
+            <div>
+              <h3 class="text-xs font-semibold">{m['portal.design_element_preview']()}</h3>
+              <div class="portal-element-preview mt-2 min-h-14 overflow-hidden border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-xs">
+                <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized with DOMPurify and a strict allowlist -->
+                {@html sanitizedElementHtml}
+              </div>
+              {#if capture.text}
+                <p class="mt-2 line-clamp-4 whitespace-pre-wrap text-[11px] leading-4 text-[var(--app-text-muted)]">{capture.text}</p>
+              {/if}
+            </div>
+
+            <label class="block">
+              <span class="mb-1.5 block text-xs font-medium">{m['portal.design_instruction']()}</span>
+              <Textarea class="min-h-24 resize-y text-xs" bind:value={instruction} maxlength={4000} placeholder={m['portal.design_instruction_placeholder']()} />
+            </label>
+
+            <fieldset>
+              <legend class="mb-1.5 text-xs font-medium">{m['portal.design_destination']()}</legend>
+              <div class="grid grid-cols-2 gap-1 rounded-lg bg-[var(--app-surface)] p-1" aria-label={m['portal.design_destination']()}>
+                <Button size="sm" variant={destinationKind === 'agent' ? 'secondary' : 'ghost'} aria-pressed={destinationKind === 'agent'} onclick={() => chooseDestination('agent')}>{m['portal.design_agent']()}</Button>
+                <Button size="sm" variant={destinationKind === 'task' ? 'secondary' : 'ghost'} aria-pressed={destinationKind === 'task'} onclick={() => chooseDestination('task')}>{m['portal.design_task']()}</Button>
+              </div>
+              <NativeSelect.Root class="mt-2 w-full" bind:value={destinationId} disabled={targetsLoading || currentTargets.length === 0} aria-label={m['portal.design_destination']()}>
+                {#if targetsLoading}
+                  <NativeSelect.Option value="">{m['portal.design_loading_targets']()}</NativeSelect.Option>
+                {:else if currentTargets.length === 0}
+                  <NativeSelect.Option value="">{destinationKind === 'agent' ? m['portal.design_no_agents']() : m['portal.design_no_tasks']()}</NativeSelect.Option>
+                {:else}
+                  {#each currentTargets as target (target.id)}
+                    <NativeSelect.Option value={target.id}>
+                      {target.title}{destinationKind === 'agent' && 'role' in target && target.role ? ` — ${target.role}` : ''}{destinationKind === 'task' && 'status' in target ? ` — ${target.status}` : ''}
+                    </NativeSelect.Option>
+                  {/each}
+                {/if}
+              </NativeSelect.Root>
+            </fieldset>
+
+            <div class="border-l-2 border-[var(--app-border-strong)] pl-3 text-[10px] leading-4 text-[var(--app-text-muted)]">
+              {m['portal.design_privacy_note']()}
+            </div>
+
+            {#if selectionDetached}
+              <div class="flex items-start gap-2 border border-[var(--app-danger)]/40 bg-[var(--app-danger)]/10 p-2.5 text-xs text-[var(--app-danger)]" role="alert">
+                <RotateCcw size={14} class="mt-0.5 shrink-0" />
+                <span>{m['portal.design_element_removed']()}</span>
+              </div>
+            {/if}
+          </div>
+        </section>
+      </div>
+    {/if}
+
+    <Dialog.Footer class="m-0! rounded-none border-t border-border/60 px-5 py-3">
+      <Button variant="outline" disabled={sending} onclick={() => resetCapture()}>{m['settings.cancel']()}</Button>
+      <Button variant="outline" disabled={sending} onclick={() => { resetCapture(); void startInspection(); }}><MousePointer2 />{m['portal.design_pick_again']()}</Button>
+      <Button disabled={sending || selectionDetached || !instruction.trim() || !destinationId} onclick={() => void sendFeedback()}>
+        {#if sending}<span class="size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"></span>{:else}<Send />{/if}
+        {m['portal.design_send']()}
+      </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
 
 <style>
   .portal-address {
@@ -284,9 +615,54 @@
   }
 
   .portal-body {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
     flex: 1;
     min-height: 0;
     background: #fff;
+  }
+
+  .portal-body.inspecting { grid-template-rows: 32px minmax(0, 1fr); }
+
+  .inspection-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    padding: 0 8px;
+    color: var(--app-text);
+    background: var(--app-accent-soft);
+    border-bottom: 1px solid var(--app-accent);
+    font-size: 10px;
+  }
+
+  .inspection-bar span:nth-child(2) {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inspection-bar button {
+    color: var(--app-accent);
+    font-weight: 650;
+  }
+
+  .inspection-pulse {
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--app-accent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-accent) 45%, transparent);
+    animation: inspect-pulse 1.8s ease-out infinite;
+  }
+
+  .portal-stage {
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .portal-frame {
@@ -296,6 +672,8 @@
     display: flex;
   }
 
+  .portal-frame-hidden { visibility: hidden; }
+
   .portal-empty {
     color: var(--app-text-muted);
     font-size: 12px;
@@ -303,5 +681,32 @@
     background: var(--app-canvas);
     height: 100%;
     margin: 0;
+  }
+
+  .portal-status {
+    position: absolute;
+    inset: auto 10px 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    border: 1px solid var(--app-warning);
+    background: color-mix(in srgb, var(--app-canvas) 92%, var(--app-warning));
+    color: var(--app-text);
+    font-size: 10px;
+    box-shadow: 0 6px 18px rgb(0 0 0 / 16%);
+  }
+
+  .portal-element-preview :global(*) {
+    max-width: 100%;
+    pointer-events: none;
+  }
+
+  @keyframes inspect-pulse {
+    70%, 100% { box-shadow: 0 0 0 7px transparent; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .inspection-pulse { animation: none; }
   }
 </style>
