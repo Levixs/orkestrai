@@ -46,6 +46,11 @@ export const DOCS_ES: DocsCatalog = {
       body: `Abre el Centro de revisión de cada workspace en el explorador del Workbench para inspeccionar cambios preparados y no preparados sin salir de Orkestrai. El encabezado muestra la rama, el upstream y los commits por delante o detrás; la lista permite preparar, quitar de preparación, crear commits, hacer pull, push y descartar ediciones rastreadas solo tras una confirmación. Al seleccionar un archivo se abre un diff lado a lado y limitado en Monaco; los archivos binarios o demasiado grandes muestran estados seguros explícitos. Inicia una revisión para vincular la revisión Git exacta con una tarea, agente responsable, resumen, evidencias, pruebas, riesgos y archivos seleccionados. Haz clic en cualquier lado del diff para comentar el archivo o una línea. Cuando cambia el repositorio, los comentarios anteriores siguen visibles como contexto desactualizado en vez de apuntar silenciosamente a otra línea. Aprueba, solicita cambios o rechaza con lenguaje directo; los cambios solicitados se envían al agente responsable cuando su terminal está disponible y permanecen guardados cuando está desconectado.`,
     },
     {
+      id: 'portal-design-mode',
+      title: 'Portal Design Mode',
+      body: `En la aplicación instalada, abre un Portal y elige Inspeccionar diseño en su encabezado. El hover resalta el elemento real de la página sin modificarlo; el clic captura un selector limitado, texto visible, estilos computados relevantes, viewport y un PNG recortado. Revisa ese contexto, describe el resultado esperado y envíalo a un agente o agrégalo a una tarea existente. El feedback de la tarea mantiene la captura y el contexto juntos, y el agente asignado conectado recibe el aviso inmediatamente. Escape cancela la inspección. El HTML bruto se usa solo en la vista previa sanitizada; query strings, cookies, headers, tokens, storage y estado oculto nunca se agregan automáticamente.`,
+    },
+    {
       id: 'notas',
       title: 'Notas como canales de trabajo',
       body: `Las notas son markdown vivo compartido con los agentes. La convención: conecta la nota a quien debe leerla/escribirla y di el propósito en el título y el contenido. Ej.: nota "Backlog (líder escribe)" conectada al líder — escribes "divide en tareas para el equipo" y él la lee con orkestrai note read y distribuye en el tablero. Nota "Para mí (humano)" — pide al líder que registre estado/decisiones en ella con orkestrai note write/edit, y tú lo sigues formateado (ícono de ojo). Doble clic en el título renombra la nota. Suelta, pega o selecciona imágenes, PDFs, otros archivos y enlaces HTTP/HTTPS; los archivos de hasta 10 MB quedan en .orkestrai/attachments/ y su referencia markdown se inserta en el cursor. Al eliminar un adjunto con su X, la referencia también desaparece de la nota y el archivo almacenado en el workspace se borra.`,
@@ -315,6 +320,12 @@ export const DOCS_ES: DocsCatalog = {
       tags: ['Centro de revisión', 'diff Monaco', 'feedback al agente'],
     },
     {
+      id: 'portal-design-feedback',
+      title: 'Señalar un problema visual en vez de describirlo de memoria',
+      body: 'Abre la aplicación en un Portal y elige Inspeccionar diseño. Haz clic en el botón, título, campo, imagen o área de layout que necesita atención, revisa la captura recortada y el contexto seguro del elemento, describe el resultado esperado y envíalo a un especialista o a una tarea existente del kanban. El feedback funciona en el mismo portal de Canvas o Workbench sin exponer secretos del navegador.',
+      tags: ['Portal Design Mode', 'feedback visual', 'inspección segura'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adaptar la apariencia a tu trabajo',
       body: 'Elige uno de los tres temas oscuros o el tema claro de alto contraste en Configuración → Apariencia. Duplica el más cercano a tu preferencia, ajusta los tokens de color con vista previa inmediata y exporta el JSON para usar el mismo tema en otra instalación.',
@@ -347,6 +358,7 @@ export const DOCS_ES: DocsCatalog = {
         'Los indicadores de actividad de Canvas y Workbench ahora se actualizan por eventos WebSocket en vez de polling cada diez segundos, y los eventos informativos ya no disparan notificaciones nativas.',
         'Los nombres y roles de los agentes ahora se distribuyen en líneas propias en el explorador del Workbench, y los elementos abiertos en vertical muestran el nombre completo sin ocultar la parte que distingue a cada agente con puntos suspensivos.',
         'Workbench ahora incluye un Centro de revisión con cambios Git preparados y no preparados estructurados, sincronización de rama, diffs Monaco limitados, comentarios persistentes por archivo y línea, detección de contexto desactualizado, tarea y agente vinculados y decisiones de aprobar, solicitar cambios o rechazar con envío directo al agente.',
+        'Portal Design Mode ahora resalta elementos reales de la página, captura una imagen recortada y contexto seguro limitado, muestra una vista previa antes del envío y entrega feedback visual a un agente o tarea existente sin recopilar cookies, tokens, storage, headers ni query strings.',
       ],
     },
     {

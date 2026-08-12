@@ -930,6 +930,35 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'portal-design-feedback',
+    icon: 'ScanSearch',
+    title: 'Give visual feedback from a Portal',
+    tagline: 'Select the exact interface element and send safe, actionable context.',
+    steps: [
+      {
+        id: 'open-portal',
+        title: 'Open the real page',
+        body: 'Open a Portal in Canvas or Workbench using the installed desktop app. Load the screen and viewport where you found the visual problem.',
+        action: { kind: 'openPage', path: '/canvas' },
+      },
+      {
+        id: 'inspect-element',
+        title: 'Select the element',
+        body: 'Choose Inspect design in the Portal header. Move over the page to highlight real elements and click the exact button, field, image, heading, or layout area. Press Escape to cancel without changing the page.',
+      },
+      {
+        id: 'review-context',
+        title: 'Review before sending',
+        body: 'Confirm the cropped screenshot, selector, visible text, relevant styles, page path, and viewport. Add the expected outcome. Raw HTML stays in the sanitized preview; cookies, tokens, storage, headers, and query strings are excluded.',
+      },
+      {
+        id: 'send-feedback',
+        title: 'Choose the responsible destination',
+        body: 'Send directly to a specialist or append the feedback and PNG to an existing task. An online assigned agent receives the handoff immediately; an offline task keeps the complete context for later.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Customize the appearance',

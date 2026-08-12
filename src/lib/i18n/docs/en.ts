@@ -46,6 +46,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `Open Review Center under each workspace in the Workbench explorer to inspect staged and unstaged changes without leaving Orkestrai. The header shows the branch, upstream, and commits ahead or behind; the source list stages, unstages, commits, pulls, pushes, and discards tracked edits only after confirmation. Selecting a file opens a bounded Monaco side-by-side diff; binary and oversized files get explicit safe states. Start a review to link its exact Git revision to a task, responsible agent, summary, evidence, tests, risks, and selected files. Click either side of the diff to attach a file or line comment. When the repository changes, old comments remain visible as outdated context instead of silently pointing at a different line. Approve, request changes, or reject in plain language; requested changes are submitted directly to the responsible agent when its terminal is available, and remain persisted when it is offline.`,
     },
     {
+      id: 'portal-design-mode',
+      title: 'Portal Design Mode',
+      body: `In the installed desktop app, open a Portal and choose Inspect design in its header. Hover highlights the real page element without changing it; click captures a bounded selector, visible text, relevant computed styles, viewport and a cropped PNG. Review that context, describe the expected result, and send it to an agent or append it to an existing task. Task feedback keeps the screenshot and full context together, and an assigned online agent is notified immediately. Escape cancels inspection. Raw HTML is preview-only and sanitized; query strings, cookies, headers, tokens, storage and hidden page state are never added automatically.`,
+    },
+    {
       id: 'notas',
       title: 'Notes as work channels',
       body: `Notes are living markdown shared with the agents. The convention: connect the note to whoever should read/write it and state the purpose in the title and content. E.g.: a "Backlog (leader writes)" note connected to the leader — you write "break this into tasks for the team" and it reads it with orkestrai note read and distributes it on the board. A "For me (human)" note — ask the leader to log status/decisions there with orkestrai note write/edit, and you follow along formatted (eye icon). Double-click the title to rename the note. Drop, paste, or select images, PDFs, other files, and HTTP/HTTPS links; files up to 10 MB stay in .orkestrai/attachments/ and their markdown reference is inserted at the cursor. Removing an attachment with its X also removes that reference and deletes the stored workspace file.`,
@@ -315,6 +320,12 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['Review Center', 'Monaco diff', 'agent feedback'],
     },
     {
+      id: 'portal-design-feedback',
+      title: 'Point at a visual problem instead of describing it from memory',
+      body: 'Open the app in a Portal and choose Inspect design. Click the exact button, heading, field, image, or layout area that needs attention, review the cropped screenshot and safe element context, describe the expected result, then send it to a specialist or an existing kanban task. The feedback reaches the same portal in Canvas or Workbench without exposing browser secrets.',
+      tags: ['Portal Design Mode', 'visual feedback', 'safe inspection'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adapt the app appearance to your work',
       body: 'Choose one of three dark themes or the high-contrast light theme under Settings → Appearance. Duplicate the closest option, adjust semantic color tokens with an immediate preview, and export the JSON to use the same theme in another installation.',
@@ -347,6 +358,7 @@ export const DOCS_EN: DocsCatalog = {
         'Canvas and Workbench activity indicators now update through WebSocket events instead of polling every ten seconds, and informational heartbeats no longer trigger native notifications.',
         'Agent names and roles now wrap onto dedicated lines in the Workbench explorer, and vertical open-item labels show their full names instead of hiding distinguishing text behind ellipses.',
         'Workbench now includes a Review Center with structured staged and unstaged changes, branch synchronization, bounded Monaco diffs, persisted file and line comments, stale-context detection, task and agent context, and approve, request changes, or reject decisions with direct agent handoff.',
+        'Portal Design Mode now highlights real page elements, captures a cropped screenshot and bounded safe context, previews it before sending, and hands visual feedback to an agent or existing task without collecting cookies, tokens, storage, headers, or query strings.',
       ],
     },
     {

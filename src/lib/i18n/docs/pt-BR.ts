@@ -50,6 +50,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `Abra a Central de revisão em cada workspace do explorer do Workbench para inspecionar alterações preparadas e não preparadas sem sair do Orkestrai. O cabeçalho mostra branch, upstream e commits à frente ou atrás; a lista permite preparar, remover da preparação, criar commit, fazer pull, push e descartar edições rastreadas somente após confirmação. Selecionar um arquivo abre um diff lado a lado e limitado no Monaco; arquivos binários ou muito grandes recebem estados seguros explícitos. Inicie uma revisão para vincular a revisão Git exata a uma tarefa, agente responsável, resumo, evidências, testes, riscos e arquivos selecionados. Clique em qualquer lado do diff para comentar no arquivo ou na linha. Quando o repositório muda, comentários antigos continuam visíveis como contexto desatualizado em vez de apontarem silenciosamente para outra linha. Aprove, solicite alterações ou rejeite em linguagem direta; alterações solicitadas são enviadas ao agente responsável quando seu terminal está disponível e permanecem salvas quando ele está offline.`,
     },
     {
+      id: 'portal-design-mode',
+      title: 'Portal Design Mode',
+      body: `No aplicativo instalado, abra um Portal e escolha Inspecionar design no cabeçalho. O hover destaca o elemento real da página sem alterá-lo; o clique captura um seletor limitado, texto visível, estilos computados relevantes, viewport e um PNG recortado. Revise esse contexto, descreva o resultado esperado e envie para um agente ou acrescente a uma tarefa existente. O feedback da tarefa mantém screenshot e contexto juntos, e o agente responsável online recebe o aviso imediatamente. Esc cancela a inspeção. O HTML bruto serve apenas para a prévia sanitizada; query strings, cookies, headers, tokens, storage e estado oculto nunca entram automaticamente.`,
+    },
+    {
       id: 'notas',
       title: 'Notas como canais de trabalho',
       body: `Notas são markdown vivo compartilhado com os agentes. A convenção: conecte a nota a quem deve lê-la/escrevê-la e diga o propósito no título e no conteúdo. Ex.: nota “Backlog (líder escreve)” conectada ao líder — você escreve “quebre em tarefas para o time” e ele lê com orkestrai note read e distribui no quadro. Nota “Para mim (humano)” — peça ao líder para registrar status/decisões nela com orkestrai note write/edit, e você acompanha formatado (ícone de olho). Duplo-clique no título renomeia a nota. Solte, cole ou selecione imagens, PDFs, outros arquivos e links HTTP/HTTPS; arquivos de até 10 MB ficam em .orkestrai/attachments/ e a referência markdown entra no cursor. Ao remover um anexo pelo X, a referência também sai da nota e o arquivo armazenado no workspace é apagado.`,
@@ -319,6 +324,12 @@ export const DOCS_PT: DocsCatalog = {
       tags: ['Central de revisão', 'diff Monaco', 'feedback para agente'],
     },
     {
+      id: 'portal-design-feedback',
+      title: 'Apontar um problema visual em vez de descrevê-lo de memória',
+      body: 'Abra o app em um Portal e escolha Inspecionar design. Clique no botão, título, campo, imagem ou área de layout que precisa de atenção, revise o screenshot recortado e o contexto seguro do elemento, descreva o resultado esperado e envie para um especialista ou para uma tarefa existente do kanban. O feedback funciona no mesmo portal no Canvas ou Workbench sem expor segredos do browser.',
+      tags: ['Portal Design Mode', 'feedback visual', 'inspeção segura'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adaptar a aparência ao seu trabalho',
       body: 'Escolha um dos três temas escuros ou o tema claro de alto contraste em Configurações → Aparência. Duplique o mais próximo da sua preferência, ajuste os tokens de cor com prévia imediata e exporte o JSON para usar o mesmo tema em outra instalação.',
@@ -351,6 +362,7 @@ export const DOCS_PT: DocsCatalog = {
         'Os indicadores de atividade do Canvas e Workbench agora atualizam por eventos WebSocket em vez de polling a cada dez segundos, e eventos informativos não disparam mais notificações nativas.',
         'Nomes e roles dos agentes agora quebram em linhas próprias no explorer do Workbench, e os itens abertos na vertical mostram o nome completo sem esconder a parte que diferencia cada agente com reticências.',
         'O Workbench agora inclui uma Central de revisão com alterações Git preparadas e não preparadas estruturadas, sincronização de branch, diffs Monaco limitados, comentários persistidos por arquivo e linha, detecção de contexto desatualizado, tarefa e agente vinculados e decisões de aprovar, solicitar alterações ou rejeitar com envio direto ao agente.',
+        'O Portal Design Mode agora destaca elementos reais da página, captura screenshot recortado e contexto seguro limitado, mostra uma prévia antes do envio e entrega o feedback visual a um agente ou tarefa existente sem coletar cookies, tokens, storage, headers ou query strings.',
       ],
     },
     {

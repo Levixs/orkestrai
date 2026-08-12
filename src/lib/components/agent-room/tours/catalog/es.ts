@@ -930,6 +930,35 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'portal-design-feedback',
+    icon: 'ScanSearch',
+    title: 'Dar feedback visual desde un Portal',
+    tagline: 'Selecciona el elemento exacto de la interfaz y envía contexto seguro y accionable.',
+    steps: [
+      {
+        id: 'open-portal',
+        title: 'Abre la página real',
+        body: 'Abre un Portal en Canvas o Workbench usando la aplicación instalada. Carga la pantalla y el viewport donde encontraste el problema visual.',
+        action: { kind: 'openPage', path: '/canvas' },
+      },
+      {
+        id: 'inspect-element',
+        title: 'Selecciona el elemento',
+        body: 'Elige Inspeccionar diseño en el encabezado del Portal. Recorre la página para resaltar elementos reales y haz clic en el botón, campo, imagen, título o área de layout exacta. Presiona Escape para cancelar sin modificar la página.',
+      },
+      {
+        id: 'review-context',
+        title: 'Revisa antes de enviar',
+        body: 'Confirma la captura recortada, selector, texto visible, estilos relevantes, path de la página y viewport. Agrega el resultado esperado. El HTML bruto queda en la vista previa sanitizada; cookies, tokens, storage, headers y query strings se excluyen.',
+      },
+      {
+        id: 'send-feedback',
+        title: 'Elige el destino responsable',
+        body: 'Envía directamente a un especialista o agrega el feedback y PNG a una tarea existente. El agente asignado conectado recibe el handoff al instante; una tarea offline conserva todo el contexto para después.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar la apariencia',

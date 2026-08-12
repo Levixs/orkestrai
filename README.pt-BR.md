@@ -41,6 +41,9 @@ Baixe os instaladores mais recentes em
   arquivos em um diff Monaco, crie revisões ligadas a tarefas e responsáveis,
   deixe comentários persistentes por arquivo e linha, e aprove, rejeite ou peça
   mudanças. O feedback volta ao agente responsável sem perder o histórico.
+- **Portal Design Mode:** aponte o elemento exato da interface que precisa de
+  atenção, revise seu screenshot recortado e contexto visual seguro e envie o
+  feedback para um agente ou tarefa existente. Segredos e estado oculto ficam de fora.
 - **Busca universal:** pressione `Cmd/Ctrl+K` para encontrar workspaces, agentes,
   tarefas, notas, roles, skills, arquivos, configurações e comandos, com itens
   recentes/favoritos e abertura no painel atual, à direita ou abaixo.

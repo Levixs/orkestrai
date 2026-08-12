@@ -42,6 +42,11 @@ pt-BR, English, and Spanish translations.
   stale-context detection, task and agent context, and approve, request changes,
   or reject decisions. Requested changes are handed directly to the responsible
   agent when its terminal is available.
+- Added Portal Design Mode to the installed desktop app: inspect and highlight
+  a real page element, review a cropped screenshot and bounded safe context,
+  then send actionable visual feedback to an agent or append it to an existing
+  task. Cookies, headers, tokens, storage, query strings, and hidden state are
+  excluded from the captured context.
 
 ### Changed
 
