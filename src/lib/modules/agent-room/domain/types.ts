@@ -199,8 +199,105 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
+
+export type AgentActivityState =
+  | 'starting'
+  | 'working'
+  | 'waiting_input'
+  | 'waiting_permission'
+  | 'blocked'
+  | 'idle'
+  | 'done'
+  | 'error'
+  | 'disconnected';
+
+export type AgentMessageDeliveryState =
+  | 'queued'
+  | 'sent'
+  | 'delivered'
+  | 'acknowledged'
+  | 'replied'
+  | 'failed';
+
+export type AgentActivity = {
+  id: string;
+  workspaceId: string;
+  nodeId: string;
+  state: AgentActivityState;
+  action: string | null;
+  taskId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type AgentMessageDeliveryEvent = {
+  id: string;
+  messageId: string;
+  workspaceId: string;
+  fromNodeId: string | null;
+  toNodeId: string;
+  state: AgentMessageDeliveryState;
+  content: string;
+  reply: string | null;
+  error: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type AgentActivitySnapshot = {
+  nodeId: string;
+  title: string;
+  provider: string | null;
+  role: string | null;
+  state: AgentActivityState;
+  stateSince: string;
+  lastAction: string | null;
+  lastActionData: Record<string, unknown>;
+  currentTask: { id: string; title: string; status: string } | null;
+  sessionAlive: boolean;
+};
+
+export type AgentMessageThread = {
+  messageId: string;
+  workspaceId: string;
+  fromNodeId: string | null;
+  fromTitle: string | null;
+  toNodeId: string;
+  toTitle: string;
+  state: AgentMessageDeliveryState;
+  content: string;
+  reply: string | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  events: AgentMessageDeliveryEvent[];
+};
+
+export type ControlCenterSnapshot = {
+  workspaceId: string;
+  counts: Record<AgentActivityState, number>;
+  agents: AgentActivitySnapshot[];
+  communications: AgentMessageThread[];
+  generatedAt: string;
+};
+
+export type WorkspaceAttachment = {
+  id: string;
+  kind: 'file' | 'link';
+  name: string;
+  path: string | null;
+  url: string | null;
+  mimeType: string | null;
+  size: number | null;
+};
+
+const RASTER_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+
+export function isRasterWorkspaceAttachment(attachment: WorkspaceAttachment): boolean {
+  return attachment.kind === 'file' && RASTER_IMAGE_MIMES.has(attachment.mimeType ?? '');
+}
 
 export type Workspace = {
   id: string;
@@ -240,6 +337,7 @@ export type TerminalNodePayload = {
 export type NoteNodePayload = {
   content: string;
   locked?: boolean;
+  attachments?: WorkspaceAttachment[];
 };
 
 export type UsageNodePayload = {
@@ -267,6 +365,31 @@ export type CanvasNode = {
   floorId: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type WorkspaceSearchResultKind =
+  | 'workspace'
+  | 'agent'
+  | 'task'
+  | 'note'
+  | 'artifact'
+  | 'role'
+  | 'skill'
+  | 'file';
+
+export type WorkspaceSearchResult = {
+  id: string;
+  kind: WorkspaceSearchResultKind;
+  title: string;
+  subtitle: string;
+  preview: string | null;
+  workspaceId: string;
+  workspaceName: string;
+  nodeId: string | null;
+  taskId: string | null;
+  path: string | null;
+  route: string;
+  score: number;
 };
 
 export type CanvasEdge = {

@@ -28,7 +28,7 @@ import { agentSessionTracker } from './AgentSessionTracker.ts';
 export const PTY_WS_PATH = '/ws/agent-room/pty';
 
 type ClientMessage =
-  | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string }
+  | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string; workspaceId?: string; nodeId?: string }
   | { type: 'attach'; sessionId: string; cols?: number; rows?: number }
   | { type: 'input'; sessionId: string; data: string }
   | { type: 'resize'; sessionId: string; cols: number; rows: number }
@@ -137,6 +137,8 @@ export function handlePtyConnection(socket: WebSocket): void {
             env: message.env,
             label: typeof message.label === 'string' ? message.label : null,
             workspace: typeof message.workspace === 'string' ? message.workspace : null,
+            workspaceId: typeof message.workspaceId === 'string' ? message.workspaceId : null,
+            nodeId: typeof message.nodeId === 'string' ? message.nodeId : null,
             provider: typeof message.provider === 'string' ? message.provider : null,
           });
           const scrollback = attachSession(session.id);
@@ -167,7 +169,7 @@ export function handlePtyConnection(socket: WebSocket): void {
               // (o no remonta em modo attach ao receber o sessionId).
               wsGlobal.__orkestraiBroadcast?.({
                 type: 'agentSession',
-                workspaceId: typeof message.workspace === 'string' ? message.workspace : null,
+                workspaceId: typeof message.workspaceId === 'string' ? message.workspaceId : null,
                 sessionId: session.id,
                 agentSessionId,
                 provider,

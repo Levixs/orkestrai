@@ -20,6 +20,7 @@ import {
   BridgeNoteEditRequest,
   BridgeNoteWriteRequest,
   BridgeNotifyRequest,
+  BridgeActivityRequest,
 } from '$lib/modules/agent-room/interface/http/requests/BridgeRequests.js';
 
 /**
@@ -59,7 +60,7 @@ export class BridgeController extends Controller {
       const input = await BridgeAskRequest.validate(event);
       const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
       const result = input.raw
-        ? await bridgeService.askRaw(workspace.id, { to: input.to, message: input.message })
+        ? await bridgeService.askRaw(workspace.id, { to: input.to, message: input.message, from: input.from })
         : await bridgeService.ask(workspace.id, {
             to: input.to,
             message: input.message,
@@ -120,6 +121,16 @@ export class BridgeController extends Controller {
       return this.json({ data: await bridgeService.notify(workspace, input) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao notificar.');
+    }
+  }
+
+  async activity(event: any) {
+    try {
+      const input = await BridgeActivityRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
+      return this.json({ data: await bridgeService.reportActivity(workspace.id, input) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao atualizar o estado do agente.');
     }
   }
 

@@ -48,6 +48,7 @@ Uso:
   orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]
   orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
   orkestrai notify <mensagem> [--kind info|attention|project|task] [--title <titulo>]
+  orkestrai status <starting|working|waiting_input|waiting_permission|blocked|idle|done|error|disconnected> [acao] [--task <id>]
   orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--role <papel>] [--replace <agente>] [--json]
   orkestrai dismiss <agente> --from <maestro>
   orkestrai connect <de> <para> --from <maestro>
@@ -259,9 +260,9 @@ export async function run(argv, options = {}) {
         raw: flags.raw || undefined,
       });
       if (flags.json) out(JSON.stringify(data, null, 2));
-      else if (flags.raw) out(data.sent ? `Mensagem enviada para ${data.to}.` : 'Mensagem nao enviada.');
+      else if (flags.raw) out(data.sent ? `Mensagem ${data.messageId} entregue para ${data.to}.` : 'Mensagem nao enviada.');
       else if (data.replyConfirmed ?? (!data.timedOut && Boolean(data.reply))) {
-        out(`Resposta confirmada de ${data.to}:`);
+        out(`Resposta confirmada de ${data.to} (mensagem ${data.messageId}):`);
         out(data.reply);
       } else {
         out(`Resposta nao confirmada de ${data.to}: timeout ou interrupcao. Nao trate esta tentativa como uma conversa concluida.`);
@@ -401,8 +402,21 @@ export async function run(argv, options = {}) {
     case 'notify': {
       const message = rest.join(' ');
       if (!message) throw new Error('Uso: orkestrai notify <mensagem>');
-      await bridge(config, 'POST', '/api/agent-room/bridge/notify', { message, kind: flags.kind, title: flags.title });
-      out('Notificacao enviada.');
+      const data = await bridge(config, 'POST', '/api/agent-room/bridge/notify', { message, kind: flags.kind, title: flags.title, from: flags.from });
+      out(data.notified ? 'Notificacao enviada.' : 'Evento informativo registrado sem notificacao do sistema.');
+      return 0;
+    }
+    case 'status': {
+      const [state, ...actionParts] = rest;
+      if (!state || !flags.from) throw new Error('Uso: orkestrai status <estado> [acao] [--task <id>]');
+      const data = await bridge(config, 'POST', '/api/agent-room/bridge/activity', {
+        from: flags.from,
+        state,
+        action: actionParts.join(' ') || undefined,
+        taskId: flags.task,
+      });
+      if (flags.json) out(JSON.stringify(data, null, 2));
+      else out(`Estado registrado: ${data.state}.`);
       return 0;
     }
     case 'task': {

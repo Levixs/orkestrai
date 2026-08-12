@@ -1,8 +1,9 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { uuidv7 } from '@beeblock/svelar/support';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
-import type { CanvasNode, Workspace } from '../../domain/types.js';
+import type { AgentActivityState, CanvasNode, Workspace } from '../../domain/types.js';
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pty/PtySessionManager.ts';
@@ -12,6 +13,7 @@ import { getAgentAdapter, hasAgentAdapter, listAgentAdapters } from '../adapters
 import { nativeNotificationService, type NativeNotificationKind } from './NativeNotificationService.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
 import { upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
+import { controlCenterService } from './ControlCenterService.js';
 
 export function resolveAgentReplyText(
   transcriptText: string | null,
@@ -82,13 +84,13 @@ export class BridgeService {
     const existing = await AgentWorkspace.query().where('id', workspaceId).first();
     const token = existing?.getAttribute('bridge_token') as string | null;
     if (token) {
-      this.writeBridgeConfig(workspace, token, apiUrl);
+      await this.writeBridgeConfig(workspace, token, apiUrl);
       return token;
     }
 
     const generated = randomBytes(24).toString('hex');
     await AgentWorkspace.query().where('id', workspaceId).update({ bridge_token: generated });
-    this.writeBridgeConfig(workspace, generated, apiUrl);
+    await this.writeBridgeConfig(workspace, generated, apiUrl);
     return generated;
   }
 
@@ -120,24 +122,90 @@ export class BridgeService {
    * a resposta também e injetada de volta no terminal de origem.
    */
   /** Envia bytes brutos ao terminal (controlar TUIs/pagers interativos). */
-  async askRaw(workspaceId: string, input: { to: string; message: string }): Promise<{ to: string; sent: boolean }> {
+  async askRaw(workspaceId: string, input: { to: string; message: string; from?: string | null }): Promise<{ to: string; sent: boolean; messageId: string; deliveryState: 'delivered' }> {
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.to);
     if (!target.sessionId || !target.sessionAlive) {
       throw new Error(`O agente "${target.title}" não tem uma sessão PTY ativa.`);
     }
+    const origin = input.from ? this.findAgent(agents, input.from) : null;
+    const messageId = uuidv7();
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: origin?.nodeId ?? null,
+      toNodeId: target.nodeId,
+      state: 'queued',
+      content: input.message,
+      metadata: { raw: true },
+    });
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: origin?.nodeId ?? null,
+      toNodeId: target.nodeId,
+      state: 'sent',
+      content: input.message,
+      metadata: { raw: true },
+    });
     ptySessionManager.write(target.sessionId, input.message);
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: origin?.nodeId ?? null,
+      toNodeId: target.nodeId,
+      state: 'delivered',
+      content: input.message,
+      metadata: { raw: true },
+    });
     // Pulso de "conversando" na edge (raw não tem ciclo de resposta).
     this.broadcastTalking(workspaceId, null, target.nodeId, true);
     const pulse = setTimeout(() => this.broadcastTalking(workspaceId, null, target.nodeId, false), 6_000);
     pulse.unref?.();
-    return { to: target.title, sent: true };
+    return { to: target.title, sent: true, messageId, deliveryState: 'delivered' };
+  }
+
+  /** Envia uma mensagem submetida sem aguardar resposta, para handoffs e feedback de review. */
+  async sendOneWay(
+    workspaceId: string,
+    input: { to: string; message: string; kind?: string },
+  ): Promise<{ to: string; sent: boolean; messageId: string; deliveryState: 'delivered' }> {
+    const target = this.findAgent(await this.listAgents(workspaceId), input.to);
+    if (!target.sessionId || !target.sessionAlive) {
+      throw new Error(`O agente "${target.title}" não tem uma sessão PTY ativa.`);
+    }
+    const messageId = uuidv7();
+    const metadata = { oneWay: true, kind: input.kind ?? 'handoff' };
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: null,
+      toNodeId: target.nodeId,
+      state: 'queued',
+      content: input.message,
+      metadata,
+    });
+    const delivery = ptySessionManager.queueWithSubmit(target.sessionId, input.message, 120);
+    await delivery.submitted;
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: null,
+      toNodeId: target.nodeId,
+      state: 'delivered',
+      content: input.message,
+      metadata,
+    });
+    this.broadcastTalking(workspaceId, null, target.nodeId, true);
+    const pulse = setTimeout(() => this.broadcastTalking(workspaceId, null, target.nodeId, false), 4_000);
+    pulse.unref?.();
+    return { to: target.title, sent: true, messageId, deliveryState: 'delivered' };
   }
 
   async ask(
     workspaceId: string,
     input: { to: string; message: string; from?: string | null; timeoutMs?: number; signal?: AbortSignal }
-  ): Promise<{ to: string; reply: string; delivered: true; replyConfirmed: boolean; timedOut: boolean }> {
+  ): Promise<{ to: string; reply: string; delivered: boolean; replyConfirmed: boolean; timedOut: boolean; messageId: string; deliveryState: 'replied' | 'failed' }> {
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.to);
     if (!target.sessionId || !target.sessionAlive) {
@@ -146,6 +214,23 @@ export class BridgeService {
 
     const origin = input.from ? this.findAgent(agents, input.from) : null;
     if (origin) await this.ensureEdge(workspaceId, origin.nodeId, target.nodeId);
+    const messageId = uuidv7();
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: origin?.nodeId ?? null,
+      toNodeId: target.nodeId,
+      state: 'queued',
+      content: input.message,
+    });
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: origin?.nodeId ?? null,
+      toNodeId: target.nodeId,
+      state: 'sent',
+      content: input.message,
+    });
 
     // Baseline ANTES de mandar: a resposta só vale quando o transcrito muda
     // (assistente novo depois da nossa mensagem) — nunca o boot do TUI.
@@ -153,8 +238,44 @@ export class BridgeService {
 
     this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, true);
     let reply: { text: string; timedOut: boolean };
+    let terminalDelivered = false;
     try {
-      reply = await this.askAndWait(target.sessionId, input.message, input.timeoutMs ?? 180_000, input.signal, target.provider);
+      reply = await this.askAndWait(
+        target.sessionId,
+        input.message,
+        input.timeoutMs ?? 180_000,
+        input.signal,
+        target.provider,
+        async () => {
+          terminalDelivered = true;
+          await controlCenterService.recordDelivery({
+            messageId,
+            workspaceId,
+            fromNodeId: origin?.nodeId ?? null,
+            toNodeId: target.nodeId,
+            state: 'delivered',
+            content: input.message,
+          });
+          await controlCenterService.recordActivity({
+            workspaceId,
+            nodeId: target.nodeId,
+            state: 'working',
+            action: 'system:message_received',
+            metadata: { fromTitle: origin?.title ?? null },
+          });
+        },
+      );
+    } catch (error) {
+      await controlCenterService.recordDelivery({
+        messageId,
+        workspaceId,
+        fromNodeId: origin?.nodeId ?? null,
+        toNodeId: target.nodeId,
+        state: 'failed',
+        content: input.message,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     } finally {
       this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, false);
     }
@@ -184,8 +305,61 @@ export class BridgeService {
     // Usa o provider da sessao PTY real, não apenas o metadata do nó. Isso
     // mantém shells explícitos utilizáveis e protege somente TUIs de agentes.
     const activeProvider = target.sessionId ? ptySessionManager.get(target.sessionId)?.provider : null;
-    const replyText = resolveAgentReplyText(transcriptText, reply.text, activeProvider, target.title);
+    let replyText: string;
+    try {
+      replyText = resolveAgentReplyText(transcriptText, reply.text, activeProvider, target.title);
+    } catch (error) {
+      await controlCenterService.recordDelivery({
+        messageId,
+        workspaceId,
+        fromNodeId: origin?.nodeId ?? null,
+        toNodeId: target.nodeId,
+        state: 'failed',
+        content: input.message,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
     const replyConfirmed = Boolean(transcriptText) || (!activeProvider && !reply.timedOut && Boolean(replyText));
+
+    if (terminalDelivered && (reply.text || transcriptText)) {
+      await controlCenterService.recordDelivery({
+        messageId,
+        workspaceId,
+        fromNodeId: origin?.nodeId ?? null,
+        toNodeId: target.nodeId,
+        state: 'acknowledged',
+        content: input.message,
+      });
+    }
+    if (replyConfirmed) {
+      await controlCenterService.recordDelivery({
+        messageId,
+        workspaceId,
+        fromNodeId: origin?.nodeId ?? null,
+        toNodeId: target.nodeId,
+        state: 'replied',
+        content: input.message,
+        reply: replyText,
+      });
+      await controlCenterService.recordActivity({
+        workspaceId,
+        nodeId: target.nodeId,
+        state: 'idle',
+        action: 'system:message_replied',
+        metadata: { toTitle: origin?.title ?? null },
+      });
+    } else {
+      await controlCenterService.recordDelivery({
+        messageId,
+        workspaceId,
+        fromNodeId: origin?.nodeId ?? null,
+        toNodeId: target.nodeId,
+        state: 'failed',
+        content: input.message,
+        error: reply.timedOut ? 'Reply timed out' : 'Reply could not be confirmed',
+      });
+    }
 
     // A resposta chega ao agente de origem pelo RETORNO do comando (stdout da
     // CLI / resultado da tool MCP). NAO injetamos mais no composer de origem:
@@ -199,9 +373,11 @@ export class BridgeService {
     return {
       to: target.title,
       reply: replyText,
-      delivered: true,
+      delivered: terminalDelivered,
       replyConfirmed,
       timedOut: reply.timedOut && !replyConfirmed,
+      messageId,
+      deliveryState: replyConfirmed ? 'replied' : 'failed',
     };
   }
 
@@ -233,7 +409,18 @@ export class BridgeService {
 
   async readNote(workspaceId: string, nodeId: string): Promise<{ nodeId: string; title: string; content: string }> {
     const node = await this.requireNoteNode(workspaceId, nodeId);
-    return { nodeId: node.id, title: node.title ?? 'nota', content: String((node.payload as { content?: string }).content ?? '') };
+    const payload = node.payload as {
+      content?: string;
+      attachments?: Array<{ name?: string; path?: string | null; url?: string | null }>;
+    };
+    const attachmentList = (payload.attachments ?? [])
+      .map((attachment) => `- ${attachment.name ?? 'attachment'}: ${attachment.path ?? attachment.url ?? ''}`)
+      .join('\n');
+    const content = [
+      String(payload.content ?? ''),
+      attachmentList ? `Attachments:\n${attachmentList}` : '',
+    ].filter(Boolean).join('\n\n');
+    return { nodeId: node.id, title: node.title ?? 'nota', content };
   }
 
   /** Cria uma nota no canvas (e opcionalmente já conecta a um agente ou a todos). */
@@ -321,9 +508,38 @@ export class BridgeService {
 
   async notify(
     workspace: Workspace,
-    input: { message: string; kind?: NativeNotificationKind; title?: string | null }
+    input: { message: string; kind?: NativeNotificationKind; title?: string | null; from?: string | null }
   ): Promise<{ notified: boolean }> {
+    if (input.from) {
+      const agent = this.findAgent(await this.listAgents(workspace.id), input.from);
+      const state: AgentActivityState = input.kind === 'attention'
+        ? 'waiting_input'
+        : input.kind === 'task' || input.kind === 'project'
+          ? 'done'
+          : 'idle';
+      await controlCenterService.recordActivity({
+        workspaceId: workspace.id,
+        nodeId: agent.nodeId,
+        state,
+        action: input.title?.trim() || input.message,
+      });
+    }
     return nativeNotificationService.send(workspace, input);
+  }
+
+  async reportActivity(
+    workspaceId: string,
+    input: { from: string; state: AgentActivityState; action?: string | null; taskId?: string | null },
+  ): Promise<{ recorded: boolean; nodeId: string; state: AgentActivityState }> {
+    const agent = this.findAgent(await this.listAgents(workspaceId), input.from);
+    const event = await controlCenterService.recordActivity({
+      workspaceId,
+      nodeId: agent.nodeId,
+      state: input.state,
+      action: input.action,
+      taskId: input.taskId,
+    });
+    return { recorded: Boolean(event), nodeId: agent.nodeId, state: input.state };
   }
 
 
@@ -565,6 +781,7 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/task_*/portal_*/floor_*/notify/
 - \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas e portais conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
 - \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage. Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\`. Não troque silenciosamente o provider de um terminal que já executa trabalho.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda uma resposta confirmada. Só diga que falou/consultou o agente quando o comando terminar com sucesso e imprimir \`Resposta confirmada de ...\`. Timeout, erro ou \`Resposta nao confirmada\` significam que a conversa NÃO foi concluída — informe isso sem inventar resposta.
+- \`orkestrai status working "<ação atual>" --task <taskId>\` — registra o trabalho atual no Control Center. Use \`waiting_input\`, \`waiting_permission\`, \`blocked\`, \`idle\`, \`done\` ou \`error\` sempre que houver uma transição real; não use como heartbeat.
 - \`orkestrai note read <nodeId>\` — lê uma nota conectada a você.
 - \`orkestrai note create "<título>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
 - \`orkestrai note write <nodeId> "<conteúdo>"\` — substitui o conteúdo da nota.
@@ -619,6 +836,7 @@ Antes de propor o time e antes de cada nova rodada de delegação, consulte \`or
 6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time está construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrão 5173/3000 — outro workspace pode estar usando).
 7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silêncio ou pedir algo (uma nota, um id, um esclarecimento), VOCÊ resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCÊ MESMO é o último recurso, só depois de tentar desbloquear e o agente realmente não dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado é problema de coordenação do líder, não motivo para assumir o trabalho.
 8. NUNCA afirme que consultou/falou com outro agente sem uma execução bem-sucedida de \`orkestrai ask\` e a confirmação explícita retornada pela ponte. \`orkestrai task done\` avisa o líder automaticamente, além da notificação nativa de TAREFA CONCLUÍDA. Não duplique esse aviso. Quando precisar de atenção/aprovação, use \`orkestrai notify "<pedido>" --kind attention\`. Somente ao concluir o PROJETO inteiro, após conferir o quadro, use \`orkestrai notify "<resumo>" --kind project --title "<projeto>"\`.
+9. Mantenha o Control Center fiel: reporte somente MUDANÇAS semânticas com \`orkestrai status\` (trabalhando, bloqueado, aguardando entrada/permissão, concluído ou erro). O ciclo do PTY já cobre inicialização/atividade/ociosidade; não envie pulsos repetidos.
 9. Ao finalizar uma frente, dispense o que não precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
 
 Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma skill: crie \`.claude/skills/<nome>/SKILL.md\` (frontmatter com name/description + instruções). Skills novas são descobertas nas próximas sessões do agente.
@@ -629,7 +847,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
    * Provisiona a skill da ponte nos diretórios convencionais dos agentes
    * de Claude, Cline, Devin, Antigravity e no formato portavel do Orkestrai.
    */
-  provisionSkill(workspace: Workspace, token: string): void {
+  async provisionSkill(workspace: Workspace, token: string): Promise<void> {
     const skill = this.bridgeSkillContent();
     try {
       const dirs = [
@@ -640,8 +858,8 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         resolve(workspace.workingDir, '.orkestrai'),
       ];
       for (const dir of dirs) {
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(resolve(dir, 'SKILL.md'), skill);
+        await mkdir(dir, { recursive: true });
+        await writeFile(resolve(dir, 'SKILL.md'), skill);
       }
       // Cada CLI descobre MCP em um caminho proprio. Todos recebem o mesmo
       // launch absoluto (inclusive no Windows) e o merge preserva servidores.
@@ -652,17 +870,17 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         '.devin/mcp_config.json',
         '.agents/mcp_config.json',
       ]) {
-        this.provisionStandardMcp(resolve(workspace.workingDir, relativePath));
+        await this.provisionStandardMcp(resolve(workspace.workingDir, relativePath));
       }
-      this.provisionAgentsMd(workspace.workingDir);
-      this.provisionCodexMcp();
-      this.provisionOpenCodeMcp(workspace.workingDir);
+      await this.provisionAgentsMd(workspace.workingDir);
+      await this.provisionCodexMcp();
+      await this.provisionOpenCodeMcp(workspace.workingDir);
       // Em repos git, exclui os arquivos da ponte do status (info/exclude
       // local) — senao o checkout fica "sujo" e o land de andares falha.
       const gitDir = resolve(workspace.workingDir, '.git');
-      if (existsSync(gitDir)) {
+      if (await this.pathExists(gitDir)) {
         const excludePath = resolve(gitDir, 'info', 'exclude');
-        const currentExclude = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
+        const currentExclude = await this.readText(excludePath);
         const additions = [
           '.orkestrai/',
           '.claude/skills/orkestrai/',
@@ -678,14 +896,14 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
           'AGENTS.md',
         ].filter((entry) => !currentExclude.includes(entry));
         if (additions.length) {
-          mkdirSync(resolve(gitDir, 'info'), { recursive: true });
-          writeFileSync(excludePath, `${currentExclude.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
+          await mkdir(resolve(gitDir, 'info'), { recursive: true });
+          await writeFile(excludePath, `${currentExclude.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
         }
       }
     } catch {
       // Sem permissao de escrita no working_dir não bloqueia a conexão.
     }
-    this.writeBridgeConfig(workspace, token);
+    await this.writeBridgeConfig(workspace, token);
   }
 
   /** Bloco portavel lido pelos providers que nao usam a skill do Claude. */
@@ -713,26 +931,26 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
   }
 
   /** Escreve/mescla o bloco da ponte no AGENTS.md (preserva o conteúdo do usuário). */
-  private provisionAgentsMd(workingDir: string): void {
+  private async provisionAgentsMd(workingDir: string): Promise<void> {
     const path = resolve(workingDir, 'AGENTS.md');
     const block = this.agentsMdBlock();
-    const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
+    const current = await this.readText(path);
     const pattern = /<!-- orkestrai:begin -->[\s\S]*?<!-- orkestrai:end -->/;
     if (pattern.test(current)) {
       const next = current.replace(pattern, block);
-      if (next !== current) writeFileSync(path, next);
+      if (next !== current) await writeFile(path, next);
       return;
     }
-    writeFileSync(path, `${current.replace(/\s*$/, '\n\n')}${block}\n`);
+    await writeFile(path, `${current.replace(/\s*$/, '\n\n')}${block}\n`);
   }
 
   /** Codex le MCP de ~/.codex/config.toml ([mcp_servers.*]) — não le .mcp.json. */
-  private provisionCodexMcp(): void {
+  private async provisionCodexMcp(): Promise<void> {
     if (process.env.VITEST) return;
     const dir = resolve(homedir(), '.codex');
-    if (!existsSync(dir)) return; // codex não instalado — não polui o HOME
+    if (!(await this.pathExists(dir))) return; // codex não instalado — não polui o HOME
     const path = resolve(dir, 'config.toml');
-    const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
+    const current = await this.readText(path);
     const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
     const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
     const next = upsertCodexMcpConfig(current, {
@@ -741,14 +959,14 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       electronRuntime:
         process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron),
     });
-    if (next !== current) writeFileSync(path, next);
+    if (next !== current) await writeFile(path, next);
   }
 
   /** Formato MCP padrao usado por Claude/Kimi, Cursor, Cline, Devin e Antigravity. */
-  private provisionStandardMcp(path: string): void {
+  private async provisionStandardMcp(path: string): Promise<void> {
     let config: { mcpServers?: Record<string, unknown> } & Record<string, unknown> = {};
     try {
-      config = JSON.parse(readFileSync(path, 'utf8'));
+      config = JSON.parse(await readFile(path, 'utf8'));
     } catch {
       // Ausente ou invalido: cria o documento minimo.
     }
@@ -761,17 +979,17 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       ...(electronRuntime ? { env: { ELECTRON_RUN_AS_NODE: '1' } } : {}),
     };
     if (JSON.stringify(config.mcpServers?.orkestrai ?? null) === JSON.stringify(desired)) return;
-    mkdirSync(dirname(path), { recursive: true });
+    await mkdir(dirname(path), { recursive: true });
     config.mcpServers = { ...(config.mcpServers ?? {}), orkestrai: desired };
-    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+    await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
   }
 
   /** OpenCode le MCP do opencode.json do projeto (secao "mcp", type local). */
-  private provisionOpenCodeMcp(workingDir: string): void {
+  private async provisionOpenCodeMcp(workingDir: string): Promise<void> {
     const path = resolve(workingDir, 'opencode.json');
     let config: { mcp?: Record<string, unknown> } & Record<string, unknown> = {};
     try {
-      config = JSON.parse(readFileSync(path, 'utf8'));
+      config = JSON.parse(await readFile(path, 'utf8'));
     } catch {
       // não existe ou inválido — cria do zero
     }
@@ -789,7 +1007,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     };
     if (JSON.stringify(config.mcp?.orkestrai ?? null) === JSON.stringify(desired)) return;
     config.mcp = { ...(config.mcp ?? {}), orkestrai: desired };
-    writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+    await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
   }
 
   // -- Internos ---------------------------------------------------------------
@@ -823,7 +1041,8 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     message: string,
     timeoutMs: number,
     signal?: AbortSignal,
-    provider?: string | null
+    provider?: string | null,
+    onSubmitted?: () => Promise<void>,
   ): Promise<{ text: string; timedOut: boolean }> {
     return new Promise((resolvePromise, reject) => {
       let captured = '';
@@ -910,8 +1129,9 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         const delivery = ptySessionManager.queueWithSubmit(sessionId, message, 120);
         cancelQueuedDelivery = delivery.cancel;
         delivery.submitted
-          .then(() => {
+          .then(async () => {
             if (done) return;
+            await onSubmitted?.();
             cancelQueuedDelivery = null;
             // Ignora boot/eco/comandos observados enquanto a mensagem aguardava
             // um rascunho humano ser enviado. Daqui em diante e resposta real.
@@ -969,11 +1189,28 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     });
   }
 
-  private writeBridgeConfig(workspace: Workspace, token: string, apiUrl?: string) {
+  private async pathExists(path: string): Promise<boolean> {
+    try {
+      await access(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async readText(path: string): Promise<string> {
+    try {
+      return await readFile(path, 'utf8');
+    } catch {
+      return '';
+    }
+  }
+
+  private async writeBridgeConfig(workspace: Workspace, token: string, apiUrl?: string): Promise<void> {
     try {
       const dir = resolve(workspace.workingDir, '.orkestrai');
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(
+      await mkdir(dir, { recursive: true });
+      await writeFile(
         resolve(dir, 'workspace.json'),
         JSON.stringify(
           {

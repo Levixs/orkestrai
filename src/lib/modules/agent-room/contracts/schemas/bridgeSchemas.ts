@@ -36,12 +36,22 @@ export const bridgeNotifySchema = z.object({
   message: z.string().trim().min(1, 'Informe a mensagem da notificacao.'),
   kind: z.enum(['info', 'attention', 'project', 'task']).default('info'),
   title: z.string().trim().nullish(),
+  from: z.string().trim().nullish(),
+});
+
+export const bridgeActivitySchema = z.object({
+  token: z.string().trim().min(1).nullish(),
+  from: z.string().trim().min(1, 'Informe o agente que está reportando o estado.'),
+  state: z.enum(['starting', 'working', 'waiting_input', 'waiting_permission', 'blocked', 'idle', 'done', 'error', 'disconnected']),
+  action: z.string().trim().max(240).nullish(),
+  taskId: z.string().trim().nullish(),
 });
 
 export type BridgeAskInput = z.infer<typeof bridgeAskSchema>;
 export type BridgeNoteWriteInput = z.infer<typeof bridgeNoteWriteSchema>;
 export type BridgeNoteEditInput = z.infer<typeof bridgeNoteEditSchema>;
 export type BridgeNotifyInput = z.infer<typeof bridgeNotifySchema>;
+export type BridgeActivityInput = z.infer<typeof bridgeActivitySchema>;
 
 export const bridgeRecruitSchema = z.object({
   token: z.string().trim().min(1).nullish(),

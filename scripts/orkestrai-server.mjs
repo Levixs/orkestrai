@@ -151,7 +151,21 @@ const { handler } = await import('../build/handler.js');
   await new Migrator().run(migrations);
 }
 
-const server = http.createServer(handler);
+const crossOriginIsolationHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Origin-Agent-Cluster': '?1',
+};
+
+// The adapter serves immutable assets before SvelteKit hooks run. Set these
+// headers at the HTTP boundary so Monaco/PDF workers are not blocked by COEP.
+const server = http.createServer((request, response) => {
+  for (const [header, value] of Object.entries(crossOriginIsolationHeaders)) {
+    response.setHeader(header, value);
+  }
+  handler(request, response);
+});
 const wss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {

@@ -16,6 +16,8 @@ import { AgentRoutine } from '../../domain/models/AgentRoutine.js';
 import { AgentRoutineRun } from '../../domain/models/AgentRoutineRun.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { AgentBoardColumn } from '../../domain/models/AgentBoardColumn.js';
+import { controlCenterRepository } from './ControlCenterRepository.js';
+import { reviewCenterRepository } from './ReviewCenterRepository.js';
 
 function toIso(value: unknown): string {
   if (value instanceof Date) return value.toISOString();
@@ -147,6 +149,8 @@ export class WorkspaceRepository {
   }
 
   async deleteWorkspace(id: string): Promise<boolean> {
+    await controlCenterRepository.deleteWorkspaceHistory(id);
+    await reviewCenterRepository.deleteWorkspaceHistory(id);
     await AgentCanvasEdge.query().where('workspace_id', id).delete();
     await AgentCanvasNode.query().where('workspace_id', id).delete();
     await AgentFloor.query().where('workspace_id', id).delete();

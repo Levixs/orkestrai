@@ -1,5 +1,5 @@
-import { constants as fsConstants, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { access } from 'node:fs/promises';
+import { constants as fsConstants, existsSync, statSync, writeFileSync } from 'node:fs';
+import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Workspace } from '../../domain/types.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
@@ -19,13 +19,34 @@ import type {
 } from '../dto/WorkspaceDtos.js';
 import { getAgentAdapter, materializeInteractiveAgentCommand } from '../adapters/registry.js';
 
+type WorkspaceProvisionState = {
+  checked: Set<string>;
+  inFlight: Map<string, Promise<void>>;
+};
+
+const WORKSPACE_PROVISION_STATE = Symbol.for('orkestrai.workspaceProvisionState');
+
+function workspaceProvisionState(): WorkspaceProvisionState {
+  const globals = globalThis as typeof globalThis & {
+    [WORKSPACE_PROVISION_STATE]?: WorkspaceProvisionState;
+  };
+  return globals[WORKSPACE_PROVISION_STATE] ??= {
+    checked: new Set<string>(),
+    inFlight: new Map<string, Promise<void>>(),
+  };
+}
+
 /**
  * Servico de aplicacao de workspaces e canvas: valida diretorios,
  * sincroniza CLAUDE.md/AGENTS.md e delega ao WorkspaceRepository.
  */
 export class WorkspaceService {
+  private provisionState = workspaceProvisionState();
   /** Workspaces ja verificados neste processo (evita statSync a cada chamada). */
-  private provisionChecked = new Set<string>();
+  private provisionChecked = this.provisionState.checked;
+  /** Uma restauracao carrega nos/arestas/andares em paralelo. Compartilhar a
+      mesma verificacao evita ocupar todo o pool fs enquanto o macOS aguarda TCC. */
+  private provisionInFlight = this.provisionState.inFlight;
 
   /**
    * Avisa o canvas que a estrutura mudou (no/aresta criada ou removida FORA da
@@ -57,24 +78,44 @@ export class WorkspaceService {
    */
   private async ensureProvisioned(workspace: Workspace) {
     if (this.provisionChecked.has(workspace.id)) return;
+    const inFlight = this.provisionInFlight.get(workspace.id);
+    if (inFlight) return inFlight;
+
+    // A permissao de uma pasta protegida pode ficar aguardando o usuario por
+    // tempo indeterminado. Workspaces distintos precisam continuar abrindo;
+    // chamadas repetidas do mesmo workspace ainda compartilham esta promise.
+    const provisioning = this.provisionWorkspace(workspace);
+    this.provisionInFlight.set(workspace.id, provisioning);
+    try {
+      await provisioning;
+    } finally {
+      if (this.provisionInFlight.get(workspace.id) === provisioning) {
+        this.provisionInFlight.delete(workspace.id);
+      }
+    }
+  }
+
+  private async provisionWorkspace(workspace: Workspace) {
     // Downloads/Documents/Desktop podem exigir consentimento TCC no macOS.
-    // A checagem assincrona deixa o servidor responder enquanto o dialogo do
-    // sistema aguarda o usuario; chamadas sync aqui congelavam todo o app.
+    // Uma unica checagem assincrona deixa threads livres enquanto o dialogo do
+    // sistema aguarda o usuario; chamadas concorrentes esgotavam o pool fs.
     await access(workspace.workingDir, fsConstants.R_OK | fsConstants.W_OK);
     const skillPath = resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md');
-    const skillCurrent = existsSync(skillPath) && readFileSync(skillPath, 'utf8') === bridgeService.bridgeSkillContent();
-    const hasConfig = existsSync(resolve(workspace.workingDir, '.orkestrai', 'workspace.json'));
-    const agentsMd = resolve(workspace.workingDir, 'AGENTS.md');
+    const [skillCurrent, hasConfig, agentsMdCurrent] = await Promise.all([
+      readFile(skillPath, 'utf8').then((content) => content === bridgeService.bridgeSkillContent()).catch(() => false),
+      access(resolve(workspace.workingDir, '.orkestrai', 'workspace.json')).then(() => true).catch(() => false),
+      readFile(resolve(workspace.workingDir, 'AGENTS.md'), 'utf8').catch(() => ''),
+    ]);
     // Bloco AGENTS.md (codex/kimi/opencode) entrou depois — workspaces antigos
     // so ganham os arquivos novos se o reparo verificar o marcador tambem.
-    const hasAgentsMd = existsSync(agentsMd) && readFileSync(agentsMd, 'utf8').includes('<!-- orkestrai:begin -->');
+    const hasAgentsMd = agentsMdCurrent.includes('<!-- orkestrai:begin -->');
     if (skillCurrent && hasConfig && hasAgentsMd) {
       this.provisionChecked.add(workspace.id);
       return;
     }
     const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
     if (!token) return;
-    bridgeService.provisionSkill(workspace, token);
+    await bridgeService.provisionSkill(workspace, token);
     this.provisionChecked.add(workspace.id);
   }
 
@@ -93,7 +134,7 @@ export class WorkspaceService {
     // qualquer agente criado depois nasce sabendo usar a CLI orkestrai,
     // sem o usuario precisar conectar nada antes (fluxo zero-config).
     const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
-    if (token) bridgeService.provisionSkill(workspace, token);
+    if (token) await bridgeService.provisionSkill(workspace, token);
     return workspace;
   }
 
@@ -270,7 +311,7 @@ export class WorkspaceService {
     // Conexao com terminal => provisiona a skill da ponte nos agentes.
     if (source.type === 'terminal' || target.type === 'terminal') {
       const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
-      if (token) bridgeService.provisionSkill(workspace, token);
+      if (token) await bridgeService.provisionSkill(workspace, token);
     }
 
     this.notifyStructureChanged(dto.workspaceId);

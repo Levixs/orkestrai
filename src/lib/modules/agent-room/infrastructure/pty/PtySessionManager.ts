@@ -23,6 +23,8 @@ export type PtySessionInfo = {
   /** Rotulos humanos (título do no / workspace) para notificações. */
   label?: string | null;
   workspace?: string | null;
+  workspaceId?: string | null;
+  nodeId?: string | null;
   /** Provider registrado; ausente em shells puros. */
   provider?: string | null;
 };
@@ -72,6 +74,8 @@ export type CreatePtySessionInput = {
   /** Rotulos humanos (título do no / workspace) para notificações. */
   label?: string | null;
   workspace?: string | null;
+  workspaceId?: string | null;
+  nodeId?: string | null;
   provider?: string | null;
 };
 
@@ -134,8 +138,11 @@ export class PtySessionManager {
       exited: false,
       exitCode: null,
       waiting: false,
+      hasOutput: false,
       label: input.label ?? null,
       workspace: input.workspace ?? null,
+      workspaceId: input.workspaceId ?? null,
+      nodeId: input.nodeId ?? null,
       provider: input.provider ?? null,
       pty: ptyProcess,
       scrollback: '',
@@ -155,10 +162,13 @@ export class PtySessionManager {
     };
 
     ptyProcess.onData((data) => {
+      const firstOutput = session.scrollback.length === 0;
+      const resumedFromIdle = session.waiting;
       session.lastOutputAt = Date.now();
       session.scrollback = (session.scrollback + data).slice(-SCROLLBACK_LIMIT);
       for (const listener of session.listeners) listener(data);
       this.scheduleAttentionCheck(session);
+      if (firstOutput || resumedFromIdle) this.recordLifecycle(session, 'working');
     });
 
     ptyProcess.onExit(({ exitCode }) => {
@@ -169,9 +179,11 @@ export class PtySessionManager {
       this.rejectDeliveries(session, new Error(`Sessão PTY ${id} finalizada com código ${exitCode}.`));
       this.setWaiting(session, false);
       for (const listener of session.exitListeners) listener(exitCode);
+      this.recordLifecycle(session, exitCode === 0 ? 'disconnected' : 'error', exitCode === 0 ? null : `PTY exited with code ${exitCode}`);
     });
 
     this.sessions.set(id, session);
+    this.recordLifecycle(session, 'starting');
     return this.toInfo(session);
   }
 
@@ -345,6 +357,27 @@ export class PtySessionManager {
     if (session.waiting === waiting) return;
     session.waiting = waiting;
     for (const listener of session.attentionListeners) listener(waiting);
+    if (waiting) this.recordLifecycle(session, 'idle');
+  }
+
+  private recordLifecycle(session: PtySession, state: 'starting' | 'working' | 'idle' | 'error' | 'disconnected', action: string | null = null): void {
+    if (!session.workspaceId || !session.nodeId) return;
+    const recorder = (globalThis as unknown as {
+      __orkestraiRecordActivity?: (input: {
+        workspaceId: string;
+        nodeId: string;
+        state: typeof state;
+        action?: string | null;
+        metadata?: Record<string, unknown>;
+      }) => void;
+    }).__orkestraiRecordActivity;
+    recorder?.({
+      workspaceId: session.workspaceId,
+      nodeId: session.nodeId,
+      state,
+      action,
+      metadata: { sessionId: session.id, provider: session.provider ?? null },
+    });
   }
 
   private drainDeliveryQueue(session: PtySession): void {
@@ -479,6 +512,8 @@ export class PtySessionManager {
       waiting: session.waiting,
       label: session.label,
       workspace: session.workspace,
+      workspaceId: session.workspaceId,
+      nodeId: session.nodeId,
       provider: session.provider,
       /** Já produziu algum output (boot comecou/terminou) — usado na prontidao do ask. */
       hasOutput: session.scrollback.length > 0,

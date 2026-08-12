@@ -11,6 +11,7 @@ import {
   bridgeNoteEditSchema,
   bridgeNoteWriteSchema,
   bridgeNotifySchema,
+  bridgeActivitySchema,
   type BridgeAskInput,
   type BridgeConnectInput,
   type BridgeDismissInput,
@@ -18,6 +19,7 @@ import {
   type BridgeNoteEditInput,
   type BridgeNoteWriteInput,
   type BridgeNotifyInput,
+  type BridgeActivityInput,
 } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 
 export class BridgeAskRequest extends FormRequest {
@@ -73,6 +75,20 @@ export class BridgeNotifyRequest extends FormRequest {
 
   passedValidation(data: unknown): BridgeNotifyInput {
     return bridgeNotifySchema.parse(data);
+  }
+}
+
+export class BridgeActivityRequest extends FormRequest {
+  rules() {
+    return bridgeActivitySchema;
+  }
+
+  authorize(): boolean {
+    return true;
+  }
+
+  passedValidation(data: unknown): BridgeActivityInput {
+    return bridgeActivitySchema.parse(data);
   }
 }
 

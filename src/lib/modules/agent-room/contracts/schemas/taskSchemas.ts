@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import { MAX_WORKSPACE_ATTACHMENTS, workspaceAttachmentSchema } from './workspaceAttachmentSchemas.js';
 
 export const createBoardTaskSchema = z.object({
   title: z.string().trim().min(1, 'Informe o titulo da tarefa.'),
   description: z.string().trim().nullish(),
   images: z.array(z.string().trim().min(1)).max(6).optional(),
+  attachments: z.array(workspaceAttachmentSchema).max(MAX_WORKSPACE_ATTACHMENTS).optional(),
   assigneeNodeId: z.string().trim().nullish(),
   noteId: z.string().trim().nullish(),
   createdBy: z.string().trim().optional(),

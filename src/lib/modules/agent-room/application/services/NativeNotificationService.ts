@@ -30,9 +30,10 @@ export class NativeNotificationService {
     const locale = await settingsService.get('uiLanguage');
     const copy = COPY[locale === 'pt-BR' || locale === 'es' ? locale : 'en'];
     const kind = input.kind ?? 'info';
-    const title = kind === 'info'
-      ? `Orkestrai — ${workspace.name}`
-      : `Orkestrai — ${copy[kind]}`;
+    // Heartbeats ficam no Control Center. O sistema operacional recebe apenas
+    // transições semânticas de atenção e conclusão.
+    if (kind === 'info') return { notified: false };
+    const title = `Orkestrai — ${copy[kind]}`;
     const subject = input.title?.trim();
     const body = [subject ? `“${subject}”` : '', input.message.trim(), workspace.name]
       .filter(Boolean)
@@ -43,4 +44,3 @@ export class NativeNotificationService {
 }
 
 export const nativeNotificationService = new NativeNotificationService();
-

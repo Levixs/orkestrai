@@ -6,6 +6,7 @@ import {
   createBoardTaskSchema,
   updateBoardTaskSchema,
 } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
+import { workspaceAttachmentSchema } from '$lib/modules/agent-room/contracts/schemas/workspaceAttachmentSchemas.js';
 
 function requestOf(schema: unknown) {
   return class extends FormRequest {
@@ -32,6 +33,7 @@ export class TaskBoardController extends Controller {
             title: input.title,
             description: input.description ?? null,
             images: input.images ?? [],
+            attachments: input.attachments ?? [],
             assigneeNodeId: input.assigneeNodeId ?? null,
             noteId: input.noteId ?? null,
             createdBy: input.createdBy ?? 'user',
@@ -90,6 +92,28 @@ export class TaskBoardController extends Controller {
       return this.json({ data: await taskBoardService.detachImage(event.params.id, event.params.taskId, path) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao remover imagem.');
+    }
+  }
+
+  async attachAttachment(event: any) {
+    try {
+      const input = z.object({ attachment: workspaceAttachmentSchema }).parse(await event.request.json());
+      return this.json({
+        data: await taskBoardService.attachAttachment(event.params.id, event.params.taskId, input.attachment),
+      }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao anexar item.');
+    }
+  }
+
+  async detachAttachment(event: any) {
+    try {
+      const attachmentId = z.string().uuid().parse(event.url.searchParams.get('attachmentId'));
+      return this.json({
+        data: await taskBoardService.detachAttachment(event.params.id, event.params.taskId, attachmentId),
+      });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao remover anexo.');
     }
   }
 

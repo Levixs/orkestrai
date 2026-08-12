@@ -4,6 +4,12 @@ import { workspaceRepository } from '../../infrastructure/repositories/Workspace
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { boardColumnService } from './BoardColumnService.js';
 import { nativeNotificationService } from './NativeNotificationService.js';
+import { controlCenterService } from './ControlCenterService.js';
+import { isRasterWorkspaceAttachment, type WorkspaceAttachment } from '../../domain/types.js';
+import {
+  MAX_WORKSPACE_ATTACHMENTS,
+  workspaceAttachmentSchema,
+} from '../../contracts/schemas/workspaceAttachmentSchemas.js';
 
 export type BoardTask = {
   id: string;
@@ -17,6 +23,7 @@ export type BoardTask = {
   imagePath: string | null;
   /** Todas as imagens de referência da tarefa (imagePath = primeira/capa). */
   images: string[];
+  attachments: WorkspaceAttachment[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -49,14 +56,43 @@ function normalizeImages(images: string[] | undefined): string[] {
   return [...new Set((images ?? []).map((image) => image.trim()).filter(Boolean))].slice(0, 6);
 }
 
+function attachmentsOf(model: AgentBoardTask): WorkspaceAttachment[] {
+  const raw = model.getAttribute('attachments_json') as string | null;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item) => {
+      const result = workspaceAttachmentSchema.safeParse(item);
+      return result.success ? [result.data] : [];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function normalizeAttachments(attachments: WorkspaceAttachment[] | undefined): WorkspaceAttachment[] {
+  const unique = new Map<string, WorkspaceAttachment>();
+  for (const attachment of attachments ?? []) {
+    const validated = workspaceAttachmentSchema.parse(attachment);
+    unique.set(validated.id, validated);
+  }
+  return [...unique.values()].slice(0, MAX_WORKSPACE_ATTACHMENTS);
+}
+
 function taskBrief(task: AgentBoardTask): string {
   const description = String(task.getAttribute('description') ?? '').trim();
   const images = imagesOf(task);
+  const attachments = attachmentsOf(task);
   const imageList = images.length ? images.map((image) => `- ${image}`).join('\n') : '(nenhuma imagem anexada)';
+  const attachmentList = attachments.length
+    ? attachments.map((attachment) => `- ${attachment.name}: ${attachment.path ?? attachment.url}`).join('\n')
+    : '(nenhum arquivo ou link anexado)';
   return [
     `Título: ${task.getAttribute('title')}`,
     `Descrição:\n${description || '(sem descrição)'}`,
     `Imagens de referência:\n${imageList}`,
+    `Arquivos e links:\n${attachmentList}`,
   ].join('\n');
 }
 
@@ -72,6 +108,7 @@ function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null, not
     assigneeTitle,
     imagePath: model.getAttribute('image_path') ?? images[0] ?? null,
     images,
+    attachments: attachmentsOf(model),
     createdBy: model.getAttribute('created_by'),
     createdAt: String(model.getAttribute('created_at')),
     updatedAt: String(model.getAttribute('updated_at')),
@@ -205,6 +242,7 @@ export class TaskBoardService {
       title: string;
       description?: string | null;
       images?: string[];
+      attachments?: WorkspaceAttachment[];
       assigneeNodeId?: string | null;
       createdBy?: string;
       noteId?: string | null;
@@ -217,6 +255,12 @@ export class TaskBoardService {
     const now = new Date().toISOString();
     const id = uuidv7();
     const images = normalizeImages(input.images);
+    const attachments = normalizeAttachments(input.attachments);
+    for (const attachment of attachments) {
+      if (attachment.path && isRasterWorkspaceAttachment(attachment) && images.length < 6) {
+        images.push(attachment.path);
+      }
+    }
     const status = input.status
       ? await boardColumnService.resolveKey(workspaceId, input.status)
       : input.assigneeNodeId ? 'doing' : 'todo';
@@ -227,6 +271,7 @@ export class TaskBoardService {
       description: input.description?.trim() || null,
       image_path: images[0] ?? null,
       images_json: images.length ? JSON.stringify(images) : null,
+      attachments_json: attachments.length ? JSON.stringify(attachments) : null,
       status,
       assignee_node_id: input.assigneeNodeId ?? null,
       note_node_id: input.noteId ?? null,
@@ -286,6 +331,16 @@ export class TaskBoardService {
     }
     notifyWorkspaceChanged(workspaceId);
     const updated = await this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+    if (!wasDone && updated.status === 'done' && updated.assigneeNodeId) {
+      await controlCenterService.recordActivity({
+        workspaceId,
+        nodeId: updated.assigneeNodeId,
+        state: 'done',
+        action: 'system:task_completed',
+        taskId: updated.id,
+        metadata: { taskTitle: updated.title },
+      });
+    }
     let completionHandoff: BoardTask['completionHandoff'];
     if (input.notifyCompletion && !wasDone && updated.status === 'done') {
       const workspace = await workspaceRepository.getWorkspace(workspaceId);
@@ -343,6 +398,47 @@ export class TaskBoardService {
     return mapTask(await this.requireTask(workspaceId, taskId));
   }
 
+  async attachAttachment(workspaceId: string, taskId: string, attachment: WorkspaceAttachment): Promise<BoardTask> {
+    const task = await this.requireTask(workspaceId, taskId);
+    const validatedAttachment = workspaceAttachmentSchema.parse(attachment);
+    const attachments = attachmentsOf(task);
+    if (attachments.some((item) => item.id === validatedAttachment.id)) throw new Error('Attachment already exists on this task.');
+    if (attachments.length >= MAX_WORKSPACE_ATTACHMENTS) throw new Error(`A task supports up to ${MAX_WORKSPACE_ATTACHMENTS} attachments.`);
+    attachments.push(validatedAttachment);
+
+    const images = imagesOf(task);
+    if (
+      validatedAttachment.path
+      && isRasterWorkspaceAttachment(validatedAttachment)
+      && !images.includes(validatedAttachment.path)
+      && images.length < 6
+    ) images.push(validatedAttachment.path);
+
+    await AgentBoardTask.query().where('id', taskId).update({
+      attachments_json: JSON.stringify(attachments),
+      images_json: images.length ? JSON.stringify(images) : null,
+      image_path: images[0] ?? null,
+      updated_at: new Date().toISOString(),
+    });
+    notifyWorkspaceChanged(workspaceId);
+    return this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+  }
+
+  async detachAttachment(workspaceId: string, taskId: string, attachmentId: string): Promise<BoardTask> {
+    const task = await this.requireTask(workspaceId, taskId);
+    const removed = attachmentsOf(task).find((attachment) => attachment.id === attachmentId);
+    const attachments = attachmentsOf(task).filter((attachment) => attachment.id !== attachmentId);
+    const images = removed?.path ? imagesOf(task).filter((path) => path !== removed.path) : imagesOf(task);
+    await AgentBoardTask.query().where('id', taskId).update({
+      attachments_json: attachments.length ? JSON.stringify(attachments) : null,
+      images_json: images.length ? JSON.stringify(images) : null,
+      image_path: images[0] ?? null,
+      updated_at: new Date().toISOString(),
+    });
+    notifyWorkspaceChanged(workspaceId);
+    return this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+  }
+
   /**
    * Aviso ao líder (maestro) no terminal dele: uma task nova entrou no quadro.
    * Sem responsável = precisa de ação (distribuir); com responsável = FYI.
@@ -396,13 +492,65 @@ export class TaskBoardService {
     }
 
     const author = completer?.title ?? task.assigneeTitle ?? completedBy ?? 'agente';
-    const delivery = ptySessionManager.queueWithSubmit(
-      session.id,
+    const content =
       `[tarefa concluida no quadro #${task.id.slice(0, 8)}] Titulo: ${task.title}. Concluida por: ${author}. ` +
       'Verifique o resultado e o quadro agora; se estiver correto, integre o andar quando houver e distribua o proximo trabalho. ' +
-      'Use orkestrai task list e orkestrai ask para qualquer confirmacao necessaria.',
+      'Use orkestrai task list e orkestrai ask para qualquer confirmacao necessaria.';
+    const messageId = uuidv7();
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: completer?.id ?? null,
+      toNodeId: leader.id,
+      state: 'queued',
+      content,
+      metadata: { kind: 'task_completion', taskId: task.id },
+    });
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId,
+      fromNodeId: completer?.id ?? null,
+      toNodeId: leader.id,
+      state: 'sent',
+      content,
+      metadata: { kind: 'task_completion', taskId: task.id },
+    });
+    const delivery = ptySessionManager.queueWithSubmit(
+      session.id,
+      content,
     );
-    void delivery.submitted.catch(() => {});
+    void delivery.submitted
+      .then(async () => {
+        await controlCenterService.recordDelivery({
+          messageId,
+          workspaceId,
+          fromNodeId: completer?.id ?? null,
+          toNodeId: leader.id,
+          state: 'delivered',
+          content,
+          metadata: { kind: 'task_completion', taskId: task.id },
+        });
+        await controlCenterService.recordActivity({
+          workspaceId,
+          nodeId: leader.id,
+          state: 'working',
+          action: 'system:task_review',
+          taskId: task.id,
+          metadata: { taskTitle: task.title },
+        });
+      })
+      .catch(async (error) => {
+        await controlCenterService.recordDelivery({
+          messageId,
+          workspaceId,
+          fromNodeId: completer?.id ?? null,
+          toNodeId: leader.id,
+          state: 'failed',
+          content,
+          error: error instanceof Error ? error.message : String(error),
+          metadata: { kind: 'task_completion', taskId: task.id },
+        });
+      });
     return { status: 'queued', leaderTitle: leader.title ?? 'Lider' };
   }
 
@@ -433,6 +581,14 @@ export class TaskBoardService {
     // Texto e Enter separados — ver writeWithSubmit (composer do Codex).
     const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}]\n${taskBrief(task)}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
     await ptySessionManager.writeWithSubmit(session.id, prompt);
+    await controlCenterService.recordActivity({
+      workspaceId,
+      nodeId: node.id,
+      state: 'working',
+      action: 'system:task_working',
+      taskId,
+      metadata: { taskTitle: task.getAttribute('title') },
+    });
   }
 }
 

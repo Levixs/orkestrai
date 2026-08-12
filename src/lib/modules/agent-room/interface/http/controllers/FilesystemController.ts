@@ -52,6 +52,16 @@ export class FilesystemController extends Controller {
     }
   }
 
+  async inspect(event: any) {
+    try {
+      const path = event.url.searchParams.get('path');
+      if (!path) throw new Error('Informe o caminho do arquivo.');
+      return this.json({ data: await filesystemService.inspect(event.params.id, path) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao inspecionar arquivo.', 404);
+    }
+  }
+
   async write(event: any) {
     try {
       const input = await FsWriteRequest.validate(event);
@@ -77,7 +87,13 @@ export class FilesystemController extends Controller {
       if (!path) throw new Error('Informe o caminho.');
       const file = await filesystemService.readBinary(event.params.id, path);
       return new Response(Buffer.from(file.data), {
-        headers: { 'content-type': file.contentType, 'cache-control': 'private, max-age=60' },
+        headers: {
+          'content-type': file.contentType,
+          'content-disposition': `${file.contentType.startsWith('image/') ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(file.name)}`,
+          'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+          'x-content-type-options': 'nosniff',
+          'cache-control': 'private, max-age=60',
+        },
       });
     } catch (error) {
       return this.json({ error: error instanceof Error ? error.message : 'Não encontrado.' }, 404);
@@ -99,6 +115,17 @@ export class FilesystemController extends Controller {
       return this.json({ data: await gitService.diff(event.params.id, path, staged) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao ler diff.');
+    }
+  }
+
+  async gitFileDiff(event: any) {
+    try {
+      const path = event.url.searchParams.get('path');
+      if (!path) throw new Error('Informe o caminho do arquivo.');
+      const staged = event.url.searchParams.get('staged') === 'true';
+      return this.json({ data: await gitService.fileDiff(event.params.id, path, staged) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao ler diff estruturado.');
     }
   }
 
