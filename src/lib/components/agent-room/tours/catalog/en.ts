@@ -995,9 +995,10 @@ export const TOURS_EN: Tour[] = [
     steps: [
       {
         id: 'open-mobile-device',
-        title: 'Open Mobile Device',
-        body: 'In Workbench, expand the active workspace and open Mobile Device under Tools. Orkestrai lists the iOS Simulator runtimes available on this Apple Silicon Mac.',
-        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-device:{workspace}' },
+        title: 'Add Mobile Device',
+        body: 'Add Mobile Device from the Canvas toolbar. It becomes one persistent workspace node; Workbench then lists and opens that same node with the iOS Simulator runtimes available on this Apple Silicon Mac.',
+        action: { kind: 'createDevice', title: 'Mobile Device' },
+        check: { kind: 'nodeExists', nodeType: 'device' },
       },
       {
         id: 'attach-simulator',

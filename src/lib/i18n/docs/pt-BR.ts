@@ -61,8 +61,8 @@ export const DOCS_PT: DocsCatalog = {
     },
     {
       id: 'mobile-device',
-      title: 'Dispositivo móvel no Workbench',
-      body: `Abra Dispositivo móvel em Ferramentas no explorer do Workbench para conectar um iOS Simulator ao workspace sem sair do Orkestrai. Em Macs Apple Silicon com Xcode instalado, o painel lista os runtimes locais, inicia ou conecta ao simulador, transmite a tela e envia toques, swipes, gestos de pinça, rotação, botão Home e entrada de texto. A gaveta de ferramentas instala e abre apps do workspace, salva screenshots em .orkestrai/devices/screenshots, lê logs limitados e a árvore de acessibilidade e inspeciona ou altera permissões do simulador. Os agentes recebem as mesmas ações confinadas ao workspace pela CLI orkestrai device e pelas tools MCP, para reproduzir e documentar um fluxo mobile. O Orkestrai encerra apenas helpers e simuladores que ele iniciou; cada workspace admite uma sessão e sessões ociosas são limpas. Android aparece como uma etapa separada e ainda não é informado como disponível.`,
+      title: 'Dispositivo móvel no Canvas e Workbench',
+      body: `Adicione Dispositivo móvel pela barra do Canvas. Ele é um único node persistente do workspace; o Workbench lista e abre esse mesmo node com a mesma sessão e o mesmo estado do iOS Simulator. Em Macs Apple Silicon com Xcode instalado, o painel lista os runtimes locais, inicia ou conecta ao simulador, transmite a tela e envia toques, swipes, gestos de pinça, rotação, botão Home e entrada de texto. A gaveta de ferramentas instala e abre apps do workspace, salva screenshots em .orkestrai/devices/screenshots, lê logs limitados e a árvore de acessibilidade e inspeciona ou altera permissões do simulador. Os agentes recebem as mesmas ações confinadas ao workspace pela CLI orkestrai device e pelas tools MCP, para reproduzir e documentar um fluxo mobile. O Orkestrai encerra apenas helpers e simuladores que ele iniciou; cada workspace admite um node e uma sessão, e sessões ociosas são limpas. Android aparece como uma etapa separada e ainda não é informado como disponível.`,
     },
     {
       id: 'notas',
@@ -174,7 +174,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'mobile-qa',
       title: 'Reproduzir e validar um fluxo no iOS',
-      body: 'Abra Dispositivo móvel no Workbench, conecte um iPhone ou iPad Simulator disponível e instale um app do workspace. Você ou um agente pode tocar, arrastar, digitar, girar, alterar permissões, inspecionar a árvore de acessibilidade, capturar um screenshot e coletar logs limitados mantendo todos os artefatos dentro do projeto.',
+      body: 'Adicione Dispositivo móvel ao Canvas ou abra-o pelo Workbench, conecte um iPhone ou iPad Simulator disponível e instale um app do workspace. O mesmo node persistente e a mesma sessão continuam disponíveis nas duas visualizações. Você ou um agente pode tocar, arrastar, digitar, girar, alterar permissões, inspecionar a árvore de acessibilidade, capturar um screenshot e coletar logs limitados mantendo todos os artefatos dentro do projeto.',
       tags: ['iOS Simulator', 'QA mobile', 'CLI/MCP'],
     },
     {
@@ -386,7 +386,7 @@ export const DOCS_PT: DocsCatalog = {
         'O Workbench agora inclui uma Central de revisão com alterações Git preparadas e não preparadas estruturadas, sincronização de branch, diffs Monaco limitados, comentários persistidos por arquivo e linha, detecção de contexto desatualizado, tarefa e agente vinculados e decisões de aprovar, solicitar alterações ou rejeitar com envio direto ao agente.',
         'O Portal Design Mode agora destaca elementos reais da página, captura screenshot recortado e contexto seguro limitado, mostra uma prévia antes do envio e registra todo feedback no Kanban: como nova tarefa para triagem do líder, nova tarefa atribuída a um agente ou complemento de uma tarefa existente. Cookies, tokens, storage, headers e query strings ficam de fora.',
         'O Council agora executa de dois a cinco agentes reais como perspectivas independentes com orçamento limitado, evidências, riscos, testes, divergências e confiança estruturados, tolerância a falhas parciais, síntese opcional do líder e decisão humana persistida. Perspectivas de implementação usam andares Git isolados e exigem nova prévia limpa e sem conflitos antes de aterrissar o resultado selecionado e commitado.',
-        'O Workbench agora integra uma sessão de iOS Simulator por workspace em Macs Apple Silicon, com tela ao vivo, controles de toque e gestos, rotação, digitação, instalação e abertura de apps, screenshots, logs, árvore de acessibilidade, permissões, limpeza do ciclo de vida e comandos equivalentes na CLI orkestrai e no MCP. Android permanece como backend futuro explicitamente indisponível.',
+        'Canvas e Workbench agora compartilham um node persistente de Dispositivo móvel e uma sessão de iOS Simulator por workspace em Macs Apple Silicon, com tela ao vivo, controles de toque e gestos, rotação, digitação, instalação e abertura de apps, screenshots, logs, árvore de acessibilidade, permissões, limpeza do ciclo de vida e comandos equivalentes na CLI orkestrai e no MCP. Android permanece como backend futuro explicitamente indisponível.',
       ],
     },
     {

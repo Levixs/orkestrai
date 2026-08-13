@@ -201,6 +201,10 @@ export class WorkspaceService {
 
   async createNode(dto: CreateCanvasNodeDto) {
     await this.get(dto.workspaceId);
+    if (dto.type === 'device') {
+      const existing = (await workspaceRepository.listNodes(dto.workspaceId)).find((node) => node.type === 'device');
+      if (existing) return existing;
+    }
     const node = await workspaceRepository.createNode({
       workspaceId: dto.workspaceId,
       type: dto.type,
@@ -280,6 +284,11 @@ export class WorkspaceService {
         const titles = linked.map((task) => `"${task.getAttribute('title')}"`).join(', ');
         throw new Error(`Esta nota esta vinculada a ${linked.length === 1 ? 'tarefa' : 'tarefas'} do quadro: ${titles}. Desvincule ou apague a tarefa.`);
       }
+    }
+    if (node.type === 'device') {
+      await (globalThis as typeof globalThis & {
+        __orkestraiStopWorkspaceDevice?: (targetWorkspaceId: string) => Promise<void>;
+      }).__orkestraiStopWorkspaceDevice?.(workspaceId).catch(() => undefined);
     }
     await workspaceRepository.deleteNode(nodeId);
     this.notifyStructureChanged(workspaceId);

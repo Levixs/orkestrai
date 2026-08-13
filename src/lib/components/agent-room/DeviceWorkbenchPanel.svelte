@@ -251,7 +251,7 @@
   });
 </script>
 
-<section class="device-panel grid h-full min-h-0 grid-rows-[42px_minmax(0,1fr)] bg-[var(--app-canvas)] text-[var(--app-text)]" data-testid="device-workbench-panel">
+<section class="device-panel grid h-full min-h-0 grid-rows-[42px_minmax(0,1fr)] bg-[var(--app-canvas)] text-[var(--app-text)]" data-testid="device-panel">
   <header class="flex min-w-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-2">
     <div class="flex h-7 shrink-0 items-center rounded-[5px] border border-[var(--app-border)] bg-[var(--app-surface-subtle)] p-0.5" aria-label={m['device.platform']()}>
       <button
@@ -297,37 +297,37 @@
       </div>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" disabled={busyCommand !== null} onclick={() => void command({ command: 'button', button: 'home' })}><House size={14} aria-hidden="true" /></Button>{/snippet}
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.home']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'button', button: 'home' })}><House size={14} aria-hidden="true" /></Button>{/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.home']()}</Tooltip.Content>
       </Tooltip.Root>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" disabled={busyCommand !== null} onclick={() => void command({ command: 'rotate', orientation: session.orientation.startsWith('portrait') ? 'landscape_left' : 'portrait' })}><RotateCw size={14} aria-hidden="true" /></Button>{/snippet}
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.rotate']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'rotate', orientation: session.orientation.startsWith('portrait') ? 'landscape_left' : 'portrait' })}><RotateCw size={14} aria-hidden="true" /></Button>{/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.rotate']()}</Tooltip.Content>
       </Tooltip.Root>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" disabled={busyCommand !== null} onclick={() => void command({ command: 'pinch', centerX: 0.5, centerY: 0.5, startDistance: 0.42, endDistance: 0.18, durationMs: 260 })}><ZoomOut size={14} aria-hidden="true" /></Button>{/snippet}
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.pinch_in']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'pinch', centerX: 0.5, centerY: 0.5, startDistance: 0.42, endDistance: 0.18, durationMs: 260 })}><ZoomOut size={14} aria-hidden="true" /></Button>{/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.pinch_in']()}</Tooltip.Content>
       </Tooltip.Root>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" disabled={busyCommand !== null} onclick={() => void command({ command: 'pinch', centerX: 0.5, centerY: 0.5, startDistance: 0.18, endDistance: 0.42, durationMs: 260 })}><ZoomIn size={14} aria-hidden="true" /></Button>{/snippet}
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.pinch_out']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'pinch', centerX: 0.5, centerY: 0.5, startDistance: 0.18, endDistance: 0.42, durationMs: 260 })}><ZoomIn size={14} aria-hidden="true" /></Button>{/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.pinch_out']()}</Tooltip.Content>
       </Tooltip.Root>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" disabled={busyCommand !== null} onclick={restart}><RefreshCw size={14} class={busyCommand === 'start' || busyCommand === 'stop' ? 'animate-spin' : ''} aria-hidden="true" /></Button>{/snippet}
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.restart']()} disabled={busyCommand !== null} onclick={restart}><RefreshCw size={14} class={busyCommand === 'start' || busyCommand === 'stop' ? 'animate-spin' : ''} aria-hidden="true" /></Button>{/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.restart']()}</Tooltip.Content>
       </Tooltip.Root>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px] text-[var(--app-danger)]" disabled={busyCommand !== null} onclick={() => void command({ command: 'stop' })}><Power size={14} aria-hidden="true" /></Button>{/snippet}
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px] text-[var(--app-danger)]" aria-label={m['device.stop']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'stop' })}><Power size={14} aria-hidden="true" /></Button>{/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.stop']()}</Tooltip.Content>
       </Tooltip.Root>
@@ -335,7 +335,7 @@
 
     <Tooltip.Root>
       <Tooltip.Trigger>
-        {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 shrink-0 rounded-[5px]" aria-pressed={detailsOpen} onclick={() => (detailsOpen = !detailsOpen)}>{#if detailsOpen}<PanelRightClose size={14} aria-hidden="true" />{:else}<PanelRightOpen size={14} aria-hidden="true" />{/if}</Button>{/snippet}
+        {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 shrink-0 rounded-[5px]" aria-label={m['device.details']()} aria-pressed={detailsOpen} onclick={() => (detailsOpen = !detailsOpen)}>{#if detailsOpen}<PanelRightClose size={14} aria-hidden="true" />{:else}<PanelRightOpen size={14} aria-hidden="true" />{/if}</Button>{/snippet}
       </Tooltip.Trigger>
       <Tooltip.Content>{m['device.details']()}</Tooltip.Content>
     </Tooltip.Root>

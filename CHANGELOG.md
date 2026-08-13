@@ -57,8 +57,9 @@ pt-BR, English, and Spanish translations.
   query strings, and hidden state are excluded from the captured context.
   Workspace and portal route parameters are validated explicitly so strict
   request validation does not block delivery.
-- Added a workspace-scoped Mobile Device tool to Workbench on Apple Silicon
-  Macs. It lists and attaches to local iOS Simulators, streams the screen, sends
+- Added a persistent workspace-scoped Mobile Device node shared by Canvas and
+  Workbench on Apple Silicon Macs. It lists and attaches to local iOS
+  Simulators, streams the screen, sends
   taps, swipes, pinch gestures, rotation, Home, and text input, installs and
   launches workspace apps, captures screenshots, and exposes bounded logs,
   accessibility data, and simulator permissions. Matching `orkestrai device`

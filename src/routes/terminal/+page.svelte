@@ -95,11 +95,6 @@
     workbenchReviewCenterItemId,
   } from '$lib/components/agent-room/workbench-review-center.js';
   import {
-    createWorkbenchDeviceItem,
-    isWorkbenchDeviceItemId,
-    workbenchDeviceItemId,
-  } from '$lib/components/agent-room/workbench-device.js';
-  import {
     readProviderCache,
     readWorkspaceListCache,
     readWorkspaceViewCache,
@@ -133,6 +128,7 @@
     'usage',
     'controlCenter',
     'reviewCenter',
+    'device',
   ]);
 
   let workspaces = $state<Workspace[]>([]);
@@ -164,7 +160,7 @@
     { id: 'agents', types: ['terminal'] },
     { id: 'work', types: ['tasks', 'flow', 'loop'] },
     { id: 'content', types: ['note', 'image'] },
-    { id: 'tools', types: ['portal', 'diff', 'usage'] },
+    { id: 'tools', types: ['portal', 'device', 'diff', 'usage'] },
   ];
 
   const selectedWorkspace = $derived(workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ?? null);
@@ -196,17 +192,13 @@
     const reviewCenter = workspace
       ? [createWorkbenchReviewCenterItem(workspace, m['review_center.title']())]
       : [];
-    const device = workspace
-      ? [createWorkbenchDeviceItem(workspace, m['device.title']())]
-      : [];
-    return [...controlCenter, ...reviewCenter, ...device, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
+    return [...controlCenter, ...reviewCenter, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
   }
 
   function isVirtualWorkbenchItemId(id: string | null | undefined): boolean {
     return isWorkbenchFileItemId(id)
       || isWorkbenchControlCenterItemId(id)
-      || isWorkbenchReviewCenterItemId(id)
-      || isWorkbenchDeviceItemId(id);
+      || isWorkbenchReviewCenterItemId(id);
   }
 
   function rememberWorkbenchFiles(workspaceId: string, paths: string[]): void {
@@ -401,12 +393,6 @@
     if (node && path && isWorkbenchEditorBufferDirty(selectedWorkspaceId, path)) {
       pendingEditorClose = { paneId, node };
       return;
-    }
-    if (isWorkbenchDeviceItemId(nodeId)) {
-      await api(`/api/agent-room/workspaces/${selectedWorkspaceId}/devices`, {
-        method: 'POST',
-        body: JSON.stringify({ command: 'stop' }),
-      }).catch(() => toast.error(m['device.stop_failed']()));
     }
     applyWorkbenchLayout(selectedWorkspaceId, closeWorkbenchNode(selectedLayout, paneId, nodeId));
   }
@@ -895,7 +881,7 @@
           {#key `${pane.id}:${paneNode.id}`}
             <WorkbenchReviewCenter workspaceId={selectedWorkspace.id} />
           {/key}
-        {:else if isWorkbenchDeviceItemId(paneNode.id)}
+        {:else if paneNode.type === 'device'}
           {#key `${pane.id}:${paneNode.id}`}
             <DeviceWorkbenchPanel workspaceId={selectedWorkspace.id} />
           {/key}
@@ -1053,16 +1039,6 @@
                   >
                     <GitPullRequestArrow size={13} class={selectedNodeId === workbenchReviewCenterItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
                     <span class="min-w-0 flex-1 truncate font-medium">{m['review_center.title']()}</span>
-                  </button>
-                </div>
-                <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchDeviceItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>
-                  <button
-                    class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]"
-                    aria-current={selectedNodeId === workbenchDeviceItemId(workspace.id) ? 'page' : undefined}
-                    onclick={() => selectNode(workspace.id, workbenchDeviceItemId(workspace.id))}
-                  >
-                    <span class={selectedNodeId === workbenchDeviceItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'}><WorkbenchNodeIcon type="device" size={13} /></span>
-                    <span class="min-w-0 flex-1 truncate font-medium">{m['device.title']()}</span>
                   </button>
                 </div>
                 <WorkbenchFileExplorer

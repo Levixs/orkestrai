@@ -15,6 +15,7 @@ describe('WorkspaceService — broadcast de mudancas estruturais', () => {
   afterEach(() => {
     events.length = 0;
     delete (globalThis as { __orkestraiBroadcast?: unknown }).__orkestraiBroadcast;
+    delete (globalThis as { __orkestraiStopWorkspaceDevice?: unknown }).__orkestraiStopWorkspaceDevice;
   });
 
   function capture() {
@@ -49,5 +50,33 @@ describe('WorkspaceService — broadcast de mudancas estruturais', () => {
     events.length = 0;
     await workspaceService.updateNode({ nodeId: node.id, changes: { x: 50 } } as never);
     expect(events).toHaveLength(0);
+  });
+
+  it('mantem um unico node device por workspace e encerra a sessao ao apagar', async () => {
+    capture();
+    const workspace = await workspaceRepository.createWorkspace({ name: 'device', workingDir: '/tmp' });
+    const input = {
+      workspaceId: workspace.id,
+      type: 'device',
+      title: 'Dispositivo móvel',
+      x: 80,
+      y: 80,
+      width: 560,
+      height: 720,
+      zIndex: undefined,
+      payload: {},
+    } as never;
+
+    const first = await workspaceService.createNode(input);
+    const second = await workspaceService.createNode(input);
+    expect(second.id).toBe(first.id);
+    expect((await workspaceRepository.listNodes(workspace.id)).filter((node) => node.type === 'device')).toHaveLength(1);
+
+    let stoppedWorkspaceId = '';
+    (globalThis as { __orkestraiStopWorkspaceDevice?: (workspaceId: string) => Promise<void> }).__orkestraiStopWorkspaceDevice = async (workspaceId) => {
+      stoppedWorkspaceId = workspaceId;
+    };
+    await workspaceService.deleteNode(workspace.id, first.id);
+    expect(stoppedWorkspaceId).toBe(workspace.id);
   });
 });

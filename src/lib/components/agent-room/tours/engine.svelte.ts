@@ -205,6 +205,23 @@ async function runAction(action: TourAction): Promise<void> {
         });
         break;
       }
+      case 'createDevice': {
+        const nodes = await api<WorkspaceSnapshot['nodes']>(`/api/agent-room/workspaces/${workspaceId}/nodes`);
+        if (!nodes?.some((node) => node.type === 'device')) {
+          await api(`/api/agent-room/workspaces/${workspaceId}/nodes`, {
+            method: 'POST',
+            body: JSON.stringify({
+              type: 'device',
+              title: action.title,
+              ...nextPosition(),
+              width: 560,
+              height: 720,
+              payload: {},
+            }),
+          });
+        }
+        break;
+      }
       case 'createTask': {
         const assigneeNodeId = action.assigneeTitle ? await findNodeId(action.assigneeTitle) : null;
         await api(`/api/agent-room/workspaces/${workspaceId}/tasks`, {

@@ -57,8 +57,8 @@ export const DOCS_EN: DocsCatalog = {
     },
     {
       id: 'mobile-device',
-      title: 'Mobile Device in Workbench',
-      body: `Open Mobile Device under Tools in the Workbench explorer to attach one iOS Simulator to the workspace without leaving Orkestrai. On Apple Silicon Macs with Xcode installed, the panel lists local runtimes, starts or attaches to a simulator, streams its screen, and sends taps, swipes, pinch gestures, rotation, Home, and text input. The tool drawer installs and launches workspace apps, captures screenshots under .orkestrai/devices/screenshots, reads bounded logs and the accessibility tree, and inspects or changes simulator permissions. Agents receive the same workspace-scoped actions through the orkestrai device CLI and MCP tools, so they can reproduce and document a mobile flow. Orkestrai stops only helpers and simulators it started; one device session is allowed per workspace and idle sessions are cleaned up. Android is shown as a separate backend milestone and is not reported as available yet.`,
+      title: 'Mobile Device in Canvas and Workbench',
+      body: `Add Mobile Device from the Canvas toolbar. It is one persistent workspace node; Workbench lists and opens that same node with the same iOS Simulator session and state. On Apple Silicon Macs with Xcode installed, the panel lists local runtimes, starts or attaches to a simulator, streams its screen, and sends taps, swipes, pinch gestures, rotation, Home, and text input. The tool drawer installs and launches workspace apps, captures screenshots under .orkestrai/devices/screenshots, reads bounded logs and the accessibility tree, and inspects or changes simulator permissions. Agents receive the same workspace-scoped actions through the orkestrai device CLI and MCP tools, so they can reproduce and document a mobile flow. Orkestrai stops only helpers and simulators it started; one device node and session are allowed per workspace and idle sessions are cleaned up. Android is shown as a separate backend milestone and is not reported as available yet.`,
     },
     {
       id: 'notas',
@@ -170,7 +170,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'mobile-qa',
       title: 'Reproduce and verify an iOS flow',
-      body: 'Open Mobile Device in Workbench, attach an available iPhone or iPad Simulator, and install an app from the workspace. You or an agent can tap, swipe, type, rotate, change permissions, inspect the accessibility tree, capture a screenshot, and collect bounded logs while keeping every artifact inside the project.',
+      body: 'Add Mobile Device to the Canvas or open it from Workbench, attach an available iPhone or iPad Simulator, and install an app from the workspace. The same persistent node and session remain available in both views. You or an agent can tap, swipe, type, rotate, change permissions, inspect the accessibility tree, capture a screenshot, and collect bounded logs while keeping every artifact inside the project.',
       tags: ['iOS Simulator', 'mobile QA', 'CLI/MCP'],
     },
     {
@@ -382,7 +382,7 @@ export const DOCS_EN: DocsCatalog = {
         'Workbench now includes a Review Center with structured staged and unstaged changes, branch synchronization, bounded Monaco diffs, persisted file and line comments, stale-context detection, task and agent context, and approve, request changes, or reject decisions with direct agent handoff.',
         'Portal Design Mode now highlights real page elements, captures a cropped screenshot and bounded safe context, previews it before sending, and records every submission on the Kanban board: as a new leader-triage task, a new task assigned to an agent, or an update to an existing task. Cookies, tokens, storage, headers, and query strings remain excluded.',
         'Council now runs two to five real agents as independent, budget-limited perspectives with structured evidence, risks, tests, disagreements, confidence, partial-failure handling, optional leader synthesis, and a persisted human decision. Implementation perspectives use isolated Git floors and require a fresh clean, conflict-free preview before the selected committed result can be landed.',
-        'Workbench now integrates one workspace-scoped iOS Simulator session on Apple Silicon Macs, with a live screen, touch and gesture controls, rotation, text input, app install and launch, screenshots, logs, accessibility tree, permissions, lifecycle cleanup, and matching orkestrai CLI and MCP tools. Android remains an explicitly unavailable follow-up backend.',
+        'Canvas and Workbench now share one persistent Mobile Device node and workspace-scoped iOS Simulator session on Apple Silicon Macs, with a live screen, touch and gesture controls, rotation, text input, app install and launch, screenshots, logs, accessibility tree, permissions, lifecycle cleanup, and matching orkestrai CLI and MCP tools. Android remains an explicitly unavailable follow-up backend.',
       ],
     },
     {

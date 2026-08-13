@@ -5,6 +5,7 @@ export type TourAction =
   | { kind: 'createNote'; title: string; content: string }
   | { kind: 'createTasksBoard' }
   | { kind: 'createUsage'; title: string }
+  | { kind: 'createDevice'; title: string }
   | { kind: 'createTask'; title: string; assigneeTitle?: string }
   | { kind: 'connect'; fromTitle: string; toTitle: string }
   | { kind: 'createPortal'; url: string; title?: string }

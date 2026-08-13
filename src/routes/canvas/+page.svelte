@@ -55,6 +55,7 @@
   import RolesPanel from '$lib/components/agent-room/canvas/RolesPanel.svelte';
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
   import UsageCanvasNode from '$lib/components/agent-room/canvas/UsageCanvasNode.svelte';
+  import DeviceCanvasNode from '$lib/components/agent-room/canvas/DeviceCanvasNode.svelte';
   import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
   import PresetLibraryPanel from '$lib/components/agent-room/canvas/PresetLibraryPanel.svelte';
   import AgentToolbarMenu from '$lib/components/agent-room/canvas/AgentToolbarMenu.svelte';
@@ -75,7 +76,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -101,6 +102,7 @@
     flow: FlowCanvasNode,
     image: ImageCanvasNode,
     usage: UsageCanvasNode,
+    device: DeviceCanvasNode,
   };
 
   let workspaces = $state<Workspace[]>([]);
@@ -195,7 +197,7 @@
   }
 
   // Modo "desenhar no": clique na ferramenta e arraste o retangulo no canvas.
-  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage';
+  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'device' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage';
   let drawTool = $state<DrawTool | null>(null);
   let drawStart = $state<{ x: number; y: number } | null>(null);
   let drawCurrent = $state<{ x: number; y: number } | null>(null);
@@ -221,6 +223,7 @@
     fileTree: async (rect) => { await addFileTree(rect); },
     diff: async (rect) => { await addDiff(rect); },
     portal: async (rect) => { await addPortal(rect); },
+    device: async (rect) => { await addDevice(rect); },
     loop: async (rect) => { await addLoop(rect); },
     shape: async (rect) => { await addShape(rect); },
     tasks: async (rect) => { await addTasksNode(rect); },
@@ -582,7 +585,12 @@
           const requestedNodeId = params.get('node');
           if (requestedNodeId && nodes.some((node) => node.id === requestedNodeId)) {
             await tick();
-            requestAnimationFrame(() => requestAnimationFrame(() => jumpToNode(requestedNodeId)));
+            const requestedNode = nodes.find((node) => node.id === requestedNodeId);
+            requestAnimationFrame(() => requestAnimationFrame(() => (
+              requestedNode?.type === 'device'
+                ? jumpToNode(requestedNodeId, 0.64, 26)
+                : jumpToNode(requestedNodeId)
+            )));
           }
           await openPendingSearchFile();
         }
@@ -1096,6 +1104,35 @@
     nodes = [...nodes, toFlowNode(node)];
   }
 
+  async function addDevice(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const existing = nodes.find((node) => node.type === 'device');
+    if (existing) {
+      jumpToNode(existing.id, 0.64, 26);
+      toast.info(m['device.already_on_canvas']());
+      return;
+    }
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'device',
+        title: m['device.title'](),
+        ...position,
+        ...nodeSize(rect, 440, 560, 560, 720),
+        payload: {},
+      }),
+    });
+    if ((node.floorId ?? null) !== visibleFloorId) {
+      await selectFloor(node.floorId ?? null);
+      await tick();
+    } else if (!nodes.some((candidate) => candidate.id === node.id)) {
+      nodes = [...nodes, toFlowNode(node)];
+    }
+    jumpToNode(node.id, 0.64, 26);
+    toast.success(m['device.added_to_canvas']());
+  }
+
   async function addLoop(rect?: { x: number; y: number; width: number; height: number }) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1315,18 +1352,19 @@
     }
   }
 
-  function jumpToNode(nodeId: string) {
+  function jumpToNode(nodeId: string, zoom = 1, screenOffsetY = 0) {
     const node = nodes.find((item) => item.id === nodeId);
     if (!node) return;
     const width = node.measured?.width ?? (node.width as number) ?? 560;
     const height = node.measured?.height ?? (node.height as number) ?? 360;
-    zoomApi?.setCenter(node.position.x + width / 2, node.position.y + height / 2, { zoom: 1, duration: 300 });
+    zoomApi?.setCenter(node.position.x + width / 2, node.position.y + height / 2 + screenOffsetY / zoom, { zoom, duration: 300 });
     nodes = nodes.map((item) => ({ ...item, selected: item.id === nodeId }));
   }
 
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
     { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
+    { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
     ...providers
       .filter((provider) => provider.installed && provider.tui)
       .map((provider) => ({
@@ -1788,6 +1826,9 @@
             </ToolbarButton>
             <ToolbarButton label={m['tool.portal']()} active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
               <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.default_portal']()}
+            </ToolbarButton>
+            <ToolbarButton label={m['tool.device']()} active={drawTool === 'device'} onclick={() => toggleDrawTool('device')}>
+              <Smartphone size={15} class="tool-icon-svg" /> {m['device.title']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.loop']()} active={drawTool === 'loop'} onclick={() => toggleDrawTool('loop')}>
               <img src="/images/loop.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.label_loop']()}
