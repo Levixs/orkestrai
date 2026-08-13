@@ -1028,7 +1028,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'attach-simulator',
         title: 'Conecta un simulador',
-        body: 'Elige un iPhone o iPad y selecciona Iniciar. La pantalla se transmite dentro del panel; haz clic o arrastra sobre ella para tocar y deslizar, mientras la barra compacta ofrece Home, rotación, pinza, reinicio y detención.',
+        body: 'Elige un iPhone o iPad y selecciona Iniciar. La pantalla completa se ajusta al panel por defecto; los controles inferiores reducen, amplían, restauran el ajuste o usan 1:1 con scroll. Haz clic o arrastra sobre la pantalla para tocar y deslizar, mientras la barra superior ofrece Home, rotación, pinza, reinicio y detención.',
       },
       {
         id: 'inspect-mobile-flow',

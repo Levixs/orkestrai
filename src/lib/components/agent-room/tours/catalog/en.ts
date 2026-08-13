@@ -1028,7 +1028,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'attach-simulator',
         title: 'Attach one simulator',
-        body: 'Choose an iPhone or iPad and select Start. The screen is streamed inside the pane; click or drag on it to tap and swipe, while the compact toolbar provides Home, rotation, pinch, restart, and stop.',
+        body: 'Choose an iPhone or iPad and select Start. The complete screen fits the pane by default; the bottom controls zoom out, zoom in, restore fit, or use 1:1 with scrolling. Click or drag on the screen to tap and swipe, while the top toolbar provides Home, rotation, pinch, restart, and stop.',
       },
       {
         id: 'inspect-mobile-flow',

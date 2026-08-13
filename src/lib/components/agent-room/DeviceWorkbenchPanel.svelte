@@ -9,10 +9,13 @@
     Keyboard,
     ListTree,
     LoaderCircle,
+    Maximize2,
+    Minus,
     PackagePlus,
     PanelRightClose,
     PanelRightOpen,
     Play,
+    Plus,
     Power,
     RefreshCw,
     RotateCw,
@@ -27,6 +30,7 @@
   import * as Select from '$lib/components/ui/select';
   import * as Tabs from '$lib/components/ui/tabs';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import { fitDeviceViewportScale, stepDeviceViewportScale } from './device-viewport.js';
   import type {
     DeviceCommandInput,
     DeviceCommandResponse,
@@ -56,6 +60,13 @@
   let streamVersion = $state(0);
   let streamError = $state(false);
   let pointerStart = $state<{ x: number; y: number } | null>(null);
+  let viewportElement = $state<HTMLElement | null>(null);
+  let viewportWidth = $state(0);
+  let viewportHeight = $state(0);
+  let streamWidth = $state(0);
+  let streamHeight = $state(0);
+  let viewportMode = $state<'fit' | 'custom'>('fit');
+  let customViewportScale = $state(1);
 
   const session = $derived(snapshot?.session ?? null);
   const devices = $derived((snapshot?.devices ?? []).filter((device) => device.platform === selectedPlatform));
@@ -64,6 +75,17 @@
   const streamUrl = $derived(session
     ? `/api/agent-room/workspaces/${workspaceId}/devices/stream?session=${encodeURIComponent(session.attachedAt)}&v=${streamVersion}`
     : '');
+  const fittedViewportScale = $derived(fitDeviceViewportScale({
+    contentWidth: streamWidth + 10,
+    contentHeight: streamHeight + 10,
+    viewportWidth,
+    viewportHeight,
+  }));
+  const viewportScale = $derived(viewportMode === 'fit' ? fittedViewportScale : customViewportScale);
+  const viewportZoomLabel = $derived(`${Math.round(viewportScale * 100)}%`);
+  const streamImageStyle = $derived(streamWidth > 0 && streamHeight > 0
+    ? `width: ${Math.max(1, Math.round(streamWidth * viewportScale))}px; height: ${Math.max(1, Math.round(streamHeight * viewportScale))}px;`
+    : undefined);
   const permissionOptions = $derived<Array<{ value: DevicePermission; label: string }>>([
     { value: 'notifications', label: m['device.permission_notifications']() },
     { value: 'location', label: m['device.permission_location']() },
@@ -164,6 +186,8 @@
     if (!target) return;
     const response = await command({ command: 'start', platform: target.platform, deviceId: target.id });
     if (response?.snapshot.session) {
+      streamWidth = 0;
+      streamHeight = 0;
       streamVersion += 1;
       toast.success(m['device.attached']({ device: response.snapshot.session.deviceName }));
     }
@@ -174,7 +198,40 @@
     const target = { platform: session.platform, deviceId: session.deviceId };
     if (!(await command({ command: 'stop' }))) return;
     const response = await command({ command: 'start', ...target });
-    if (response) streamVersion += 1;
+    if (response) reconnectStream();
+  }
+
+  async function rotate(): Promise<void> {
+    if (!session) return;
+    const response = await command({
+      command: 'rotate',
+      orientation: session.orientation.startsWith('portrait') ? 'landscape_left' : 'portrait',
+    });
+    if (response) reconnectStream();
+  }
+
+  function reconnectStream(): void {
+    streamWidth = 0;
+    streamHeight = 0;
+    streamError = false;
+    streamVersion += 1;
+  }
+
+  function streamLoaded(event: Event): void {
+    const image = event.currentTarget as HTMLImageElement;
+    streamWidth = image.naturalWidth;
+    streamHeight = image.naturalHeight;
+    streamError = false;
+  }
+
+  function zoomViewport(direction: -1 | 1): void {
+    customViewportScale = stepDeviceViewportScale(viewportScale, direction);
+    viewportMode = 'custom';
+  }
+
+  function showActualSize(): void {
+    customViewportScale = 1;
+    viewportMode = 'custom';
   }
 
   async function sendText(): Promise<void> {
@@ -249,6 +306,20 @@
     }, 10_000);
     return () => window.clearInterval(timer);
   });
+
+  $effect(() => {
+    const element = viewportElement;
+    if (!element) return;
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      viewportWidth = rect.width;
+      viewportHeight = rect.height;
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  });
 </script>
 
 <section class="device-panel grid h-full min-h-0 grid-rows-[42px_minmax(0,1fr)] bg-[var(--app-canvas)] text-[var(--app-text)]" data-testid="device-panel">
@@ -303,7 +374,7 @@
       </Tooltip.Root>
       <Tooltip.Root>
         <Tooltip.Trigger>
-          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.rotate']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'rotate', orientation: session.orientation.startsWith('portrait') ? 'landscape_left' : 'portrait' })}><RotateCw size={14} aria-hidden="true" /></Button>{/snippet}
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.rotate']()} disabled={busyCommand !== null} onclick={rotate}><RotateCw size={14} aria-hidden="true" /></Button>{/snippet}
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.rotate']()}</Tooltip.Content>
       </Tooltip.Root>
@@ -342,11 +413,11 @@
   </header>
 
   <div class={`device-layout relative grid min-h-0 min-w-0 ${detailsOpen ? 'grid-cols-[minmax(0,1fr)_minmax(260px,34%)]' : 'grid-cols-[minmax(0,1fr)]'}`}>
-    <main class="relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden bg-[var(--app-canvas)] p-3 sm:p-5">
+    <main bind:this={viewportElement} class="relative min-h-0 min-w-0 overflow-hidden bg-[var(--app-canvas)]">
       {#if loading}
-        <div class="flex items-center gap-2 text-xs text-[var(--app-text-muted)]"><LoaderCircle size={15} class="animate-spin" />{m['device.status_checking']()}</div>
+        <div class="flex h-full items-center justify-center gap-2 p-3 text-xs text-[var(--app-text-muted)]"><LoaderCircle size={15} class="animate-spin" />{m['device.status_checking']()}</div>
       {:else if !session}
-        <div class="max-w-sm text-center">
+        <div class="mx-auto flex h-full max-w-sm flex-col items-center justify-center p-3 text-center sm:p-5">
           <div class="mx-auto grid size-12 place-items-center rounded-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text-muted)] shadow-sm"><Smartphone size={23} strokeWidth={1.5} /></div>
           <h2 class="mt-4 text-sm font-semibold">{availabilityLabel()}</h2>
           <p class="mt-1 text-xs leading-5 text-[var(--app-text-muted)]">{activeAvailability?.available ? m['device.select_prompt']() : m['device.setup_required']()}</p>
@@ -357,29 +428,62 @@
           {/if}
         </div>
       {:else}
-        <div class="relative flex h-full w-full items-center justify-center">
-          <div class="relative max-h-full max-w-full overflow-hidden rounded-[22px] bg-black p-[5px] shadow-[0_18px_50px_rgba(0,0,0,0.34),0_0_0_1px_rgba(255,255,255,0.12)]">
+        <div class="device-viewport-scroll absolute inset-0 overflow-auto overscroll-contain" data-testid="device-viewport-scroll">
+          <div class="device-viewport-stage box-border flex min-h-full min-w-full p-3 pb-14">
+            <div class="relative m-auto shrink-0 overflow-hidden rounded-[22px] bg-black p-[5px] shadow-[0_18px_50px_rgba(0,0,0,0.34),0_0_0_1px_rgba(255,255,255,0.12)]">
             {#if streamError}
               <div class="absolute inset-1 z-10 flex items-center justify-center rounded-[18px] bg-black/90 p-6 text-center">
-                <div><p class="text-xs font-medium text-white">{m['device.stream_lost']()}</p><Button variant="secondary" size="sm" class="mt-3" onclick={() => { streamError = false; streamVersion += 1; }}>{m['device.reconnect']()}</Button></div>
+                <div><p class="text-xs font-medium text-white">{m['device.stream_lost']()}</p><Button variant="secondary" size="sm" class="mt-3" onclick={reconnectStream}>{m['device.reconnect']()}</Button></div>
               </div>
             {/if}
             <img
               src={streamUrl}
               alt={m['device.stream_alt']({ device: session.deviceName })}
-              class="block max-h-full max-w-full touch-none select-none rounded-[18px] object-contain"
+              class="block max-h-none max-w-none touch-none select-none rounded-[18px] object-contain"
+              style={streamImageStyle}
               draggable="false"
-              onload={() => (streamError = false)}
+              onload={streamLoaded}
               onerror={() => (streamError = true)}
               onpointerdown={pointerDown}
               onpointerup={pointerUp}
               onpointercancel={() => (pointerStart = null)}
             />
+            </div>
           </div>
-          {#if busyCommand && !['logs', 'tree', 'screenshot'].includes(busyCommand)}
-            <div class="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/10 bg-black/75 px-3 py-1.5 text-[10px] font-medium text-white shadow-lg backdrop-blur-sm"><LoaderCircle size={11} class="animate-spin" />{m['device.sending']()}</div>
-          {/if}
         </div>
+
+        <div class="absolute bottom-2 right-2 z-10 flex h-8 items-center rounded-[6px] border border-[var(--app-border)] bg-[var(--app-surface)] p-0.5 shadow-lg" data-testid="device-viewport-controls">
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[4px]" aria-label={m['device.viewport_zoom_out']()} disabled={!streamWidth || viewportScale <= 0.25} onclick={() => zoomViewport(-1)}><Minus size={13} aria-hidden="true" /></Button>{/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>{m['device.viewport_zoom_out']()}</Tooltip.Content>
+          </Tooltip.Root>
+          <output class="w-11 select-none text-center font-mono text-[10px] text-[var(--app-text-soft)]" aria-label={m['device.viewport_zoom_level']({ percent: viewportZoomLabel })}>{viewportZoomLabel}</output>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[4px]" aria-label={m['device.viewport_zoom_in']()} disabled={!streamWidth || viewportScale >= 2} onclick={() => zoomViewport(1)}><Plus size={13} aria-hidden="true" /></Button>{/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>{m['device.viewport_zoom_in']()}</Tooltip.Content>
+          </Tooltip.Root>
+          <span class="mx-0.5 h-4 w-px bg-[var(--app-border)]"></span>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class={`size-7 rounded-[4px] ${viewportMode === 'fit' ? 'bg-[var(--app-surface-raised)]' : ''}`} aria-label={m['device.viewport_fit']()} aria-pressed={viewportMode === 'fit'} disabled={!streamWidth} onclick={() => (viewportMode = 'fit')}><Maximize2 size={13} aria-hidden="true" /></Button>{/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>{m['device.viewport_fit']()}</Tooltip.Content>
+          </Tooltip.Root>
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#snippet child({ props })}<Button {...props} variant="ghost" size="sm" class={`h-7 min-w-8 rounded-[4px] px-1.5 font-mono text-[9px] ${viewportMode === 'custom' && customViewportScale === 1 ? 'bg-[var(--app-surface-raised)]' : ''}`} aria-label={m['device.viewport_actual']()} aria-pressed={viewportMode === 'custom' && customViewportScale === 1} disabled={!streamWidth} onclick={showActualSize}>1:1</Button>{/snippet}
+            </Tooltip.Trigger>
+            <Tooltip.Content>{m['device.viewport_actual']()}</Tooltip.Content>
+          </Tooltip.Root>
+        </div>
+
+        {#if busyCommand && !['logs', 'tree', 'screenshot'].includes(busyCommand)}
+          <div class="pointer-events-none absolute bottom-12 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/10 bg-black/75 px-3 py-1.5 text-[10px] font-medium text-white shadow-lg backdrop-blur-sm"><LoaderCircle size={11} class="animate-spin" />{m['device.sending']()}</div>
+        {/if}
       {/if}
     </main>
 

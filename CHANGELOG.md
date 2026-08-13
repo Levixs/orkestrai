@@ -74,6 +74,10 @@ pt-BR, English, and Spanish translations.
 
 ### Changed
 
+- Mobile Device streams now fit the complete simulator screen inside both the
+  Canvas node and Workbench pane by default. Independent viewport controls add
+  stable zoom steps, actual-size mode, automatic refitting after pane resize or
+  rotation, and two-axis scrolling without changing simulator touch coordinates.
 - Moved workspace files into a native Workbench explorer and local editor tabs.
   Opening a file from the explorer, Canvas file tree, or global search now goes
   directly to the Workbench instead of creating a disconnected Editor node on

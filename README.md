@@ -36,8 +36,10 @@ Download the latest installers from
   Canvas toolbar; Workbench lists and opens that same node and session. On an
   Apple Silicon Mac, stream and control an iPhone or iPad Simulator, install
   and launch workspace apps, manage permissions, inspect logs and accessibility,
-  and save screenshots. Agents can run the same workspace-scoped flow through
-  the bundled CLI or MCP tools. Android support is a separate upcoming backend.
+  and save screenshots. The live screen fits either surface by default, with
+  independent zoom, actual-size mode, and two-axis scrolling when needed.
+  Agents can run the same workspace-scoped flow through the bundled CLI or MCP
+  tools. Android support is a separate upcoming backend.
 - **Operational Control Center:** inspect every agent's current task, state,
   state duration, provider, role, and usage. Its persistent communications inbox
   proves whether each handoff was queued, delivered, acknowledged, replied to,

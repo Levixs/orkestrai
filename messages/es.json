@@ -1466,5 +1466,10 @@
   "device.permission_faceid": "Face ID",
   "device.permission_user_tracking": "Rastreo de la app",
   "device.permission_homekit": "HomeKit",
-  "device.permission_all": "Todos los permisos"
+  "device.permission_all": "Todos los permisos",
+  "device.viewport_zoom_out": "Reducir visualización",
+  "device.viewport_zoom_in": "Ampliar visualización",
+  "device.viewport_zoom_level": "Zoom de la visualización: {percent}",
+  "device.viewport_fit": "Ajustar pantalla al panel",
+  "device.viewport_actual": "Mostrar en tamaño real"
 }

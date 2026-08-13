@@ -1466,5 +1466,10 @@
   "device.permission_faceid": "Face ID",
   "device.permission_user_tracking": "App tracking",
   "device.permission_homekit": "HomeKit",
-  "device.permission_all": "All permissions"
+  "device.permission_all": "All permissions",
+  "device.viewport_zoom_out": "Zoom viewport out",
+  "device.viewport_zoom_in": "Zoom viewport in",
+  "device.viewport_zoom_level": "Viewport zoom: {percent}",
+  "device.viewport_fit": "Fit screen to pane",
+  "device.viewport_actual": "Show at actual size"
 }

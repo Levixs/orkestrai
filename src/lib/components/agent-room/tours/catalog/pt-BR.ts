@@ -1032,7 +1032,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'attach-simulator',
         title: 'Conecte um simulador',
-        body: 'Escolha um iPhone ou iPad e selecione Iniciar. A tela aparece dentro do painel; clique ou arraste nela para tocar e fazer swipe, enquanto a barra compacta oferece Home, rotação, pinça, reinício e encerramento.',
+        body: 'Escolha um iPhone ou iPad e selecione Iniciar. A tela completa se ajusta ao painel por padrão; os controles no canto inferior reduzem, ampliam, restauram o ajuste ou usam 1:1 com scroll. Clique ou arraste na tela para tocar e fazer swipe, enquanto a barra superior oferece Home, rotação, pinça, reinício e encerramento.',
       },
       {
         id: 'inspect-mobile-flow',
