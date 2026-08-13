@@ -69,8 +69,8 @@ Uso:
   orkestrai device attach <deviceId> [--platform ios|android]
   orkestrai device tap <x> <y> | swipe <x1> <y1> <x2> <y2> [--duration <ms>]
   orkestrai device pinch <centerX> <centerY> <startDistance> <endDistance> [--duration <ms>]
-  orkestrai device type <texto> | button <home|lock|app-switcher> | rotate <orientacao>
-  orkestrai device install <path> | launch <bundleId> | logs | tree | screenshot | stop
+  orkestrai device type <texto> | button <back|home|lock|app-switcher> | rotate <orientacao>
+  orkestrai device install <path> | launch <bundleId|package/activity> | logs | tree | screenshot | stop
   orkestrai device permissions <list|grant|revoke|reset> [permission] [bundleId] [--value <valor>]
   orkestrai port [--check <porta>]  — devolve uma porta livre (ou testa uma)
   orkestrai fs read <path> | fs write <path> <conteudo> | fs search <termo> [--content]
@@ -628,7 +628,7 @@ export async function run(argv, options = {}) {
         if (!values[0]) throw new Error('Uso: orkestrai device install <path>');
         body = { command: 'install', path: values.join(' ') };
       } else if (action === 'launch') {
-        if (!values[0]) throw new Error('Uso: orkestrai device launch <bundleId>');
+        if (!values[0]) throw new Error('Uso: orkestrai device launch <bundleId|package/activity>');
         body = { command: 'launch', bundleId: values[0] };
       } else if (action === 'permissions') {
         const [permissionAction, permission, bundleId] = values;

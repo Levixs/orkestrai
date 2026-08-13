@@ -13,6 +13,7 @@ export type DeviceRuntimeSession = {
   helperBaseUrl: string;
   controlUrl: string | null;
   helperStartedByOrkestrai: boolean;
+  restartDeviceId?: string;
   touchedAt: number;
 };
 
@@ -30,7 +31,7 @@ export interface DeviceAdapter {
   health(session: DeviceRuntimeSession): Promise<boolean>;
   command(
     session: DeviceRuntimeSession,
-    input: Exclude<DeviceCommandInput, { command: 'start' | 'stop' }>,
+    input: Exclude<DeviceCommandInput, { command: 'start' | 'stop' | 'restart' }>,
     context: DeviceAdapterContext,
   ): Promise<DeviceCommandResult | null>;
 }

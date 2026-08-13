@@ -49,7 +49,7 @@ export const devicePlatformAvailabilitySchema = z.object({
     'xcode_missing',
     'runtime_missing',
     'android_sdk_missing',
-    'backend_pending',
+    'android_device_missing',
   ]),
   detail: z.string().nullable(),
   setupUrl: z.string().url().nullable(),
@@ -93,8 +93,10 @@ export const deviceCommandSchema = z.discriminatedUnion('command', [
     command: z.literal('start'),
     platform: devicePlatformSchema,
     deviceId: z.string().min(1).max(160),
+    confirmPhysical: z.boolean().optional(),
   }),
   deviceCommandBase.extend({ command: z.literal('stop') }),
+  deviceCommandBase.extend({ command: z.literal('restart') }),
   deviceCommandBase.extend({
     command: z.literal('tap'),
     x: normalizedCoordinate,
@@ -122,7 +124,7 @@ export const deviceCommandSchema = z.discriminatedUnion('command', [
   }),
   deviceCommandBase.extend({
     command: z.literal('button'),
-    button: z.enum(['home', 'lock', 'app-switcher']),
+    button: z.enum(['back', 'home', 'lock', 'app-switcher']),
   }),
   deviceCommandBase.extend({
     command: z.literal('rotate'),
@@ -134,7 +136,7 @@ export const deviceCommandSchema = z.discriminatedUnion('command', [
   }),
   deviceCommandBase.extend({
     command: z.literal('launch'),
-    bundleId: z.string().min(1).max(255).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/),
+    bundleId: z.string().min(1).max(255).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9._$-]+)?$/),
   }),
   deviceCommandBase.extend({ command: z.literal('screenshot') }),
   deviceCommandBase.extend({

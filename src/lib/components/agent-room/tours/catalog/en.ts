@@ -1015,25 +1015,25 @@ export const TOURS_EN: Tour[] = [
   {
     id: 'mobile-device-testing',
     icon: 'Smartphone',
-    title: 'Test an app in iOS Simulator',
+    title: 'Test an app on iOS or Android',
     tagline: 'Control, inspect, and capture a mobile flow without leaving the workspace.',
     steps: [
       {
         id: 'open-mobile-device',
         title: 'Add Mobile Device',
-        body: 'Add Mobile Device from the Canvas toolbar. It becomes one persistent workspace node; Workbench then lists and opens that same node with the iOS Simulator runtimes available on this Apple Silicon Mac.',
+        body: 'Add Mobile Device from the Canvas toolbar. It becomes one persistent workspace node; Workbench lists and opens that same node. Choose iOS Simulator on Apple Silicon, or Android on macOS, Windows, and Linux with Android Studio Platform Tools installed.',
         action: { kind: 'createDevice', title: 'Mobile Device' },
         check: { kind: 'nodeExists', nodeType: 'device' },
       },
       {
         id: 'attach-simulator',
-        title: 'Attach one simulator',
-        body: 'Choose an iPhone or iPad and select Start. The complete screen fits the pane by default; the bottom controls zoom out, zoom in, restore fit, or use 1:1 with scrolling. Click or drag on the screen to tap and swipe, while the top toolbar provides Home, rotation, pinch, restart, and stop.',
+        title: 'Attach one device',
+        body: 'Choose an iPhone or iPad Simulator, an Android AVD, or an ADB-authorized Android device and select Start. Physical Android hardware asks for explicit confirmation. The screen fits by default; zoom and 1:1 controls remain independent. Click or drag to tap and swipe, while the toolbar provides the platform system buttons, rotation, pinch, restart, and stop.',
       },
       {
         id: 'inspect-mobile-flow',
         title: 'Inspect the flow',
-        body: 'Open Device tools to type text, install an app from a workspace path, launch a bundle id, inspect or change permissions, read bounded logs and the accessibility tree, and save a screenshot under .orkestrai/devices/screenshots.',
+        body: 'Open Device tools to type text, install an iOS build or APK from a workspace path, launch a bundle id or Android package/activity, inspect or change permissions, read bounded logs and accessibility data, and save a screenshot under .orkestrai/devices/screenshots.',
       },
       {
         id: 'delegate-mobile-check',

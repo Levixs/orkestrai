@@ -100,6 +100,22 @@ Orkestrai uses `serve-sim` as a loopback-only streaming and control helper for
 Apple Simulators. Xcode and Apple Simulator runtimes are supplied separately by
 Apple and are not distributed with Orkestrai.
 
+## Android Device Integration
+
+- `@yume-chan/adb`, `@yume-chan/adb-server-node-tcp`,
+  `@yume-chan/adb-scrcpy`, `@yume-chan/scrcpy`,
+  `@yume-chan/scrcpy-decoder-webcodecs`, and `@yume-chan/stream-extra`:
+  Copyright Tango contributors, MIT License.
+  Source: <https://github.com/yume-chan/ya-webadb>
+- scrcpy server 3.1: Copyright Genymobile and contributors, Apache License 2.0.
+  Source: <https://github.com/Genymobile/scrcpy/releases/tag/v3.1>
+
+Orkestrai bundles only the scrcpy Android server component and sends it to the
+selected device over the user's local ADB server. Android Studio, Android SDK
+Platform Tools, Emulator images, and physical-device drivers are supplied
+separately by Google, device vendors, or the user and are not distributed with
+Orkestrai.
+
 ## Agent Providers And Trademarks
 
 Claude and Anthropic are trademarks of Anthropic PBC. Codex and OpenAI are

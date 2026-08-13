@@ -3,6 +3,7 @@
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
   import {
+    ArrowLeft,
     Camera,
     ExternalLink,
     House,
@@ -14,6 +15,7 @@
     PackagePlus,
     PanelRightClose,
     PanelRightOpen,
+    PanelsTopLeft,
     Play,
     Plus,
     Power,
@@ -21,15 +23,18 @@
     RotateCw,
     ScrollText,
     ShieldCheck,
+    ShieldAlert,
     Smartphone,
     ZoomIn,
     ZoomOut,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import * as Tabs from '$lib/components/ui/tabs';
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import AndroidDeviceStream from './AndroidDeviceStream.svelte';
   import { fitDeviceViewportScale, stepDeviceViewportScale } from './device-viewport.js';
   import type {
     DeviceCommandInput,
@@ -67,6 +72,7 @@
   let streamHeight = $state(0);
   let viewportMode = $state<'fit' | 'custom'>('fit');
   let customViewportScale = $state(1);
+  let confirmPhysicalOpen = $state(false);
 
   const session = $derived(snapshot?.session ?? null);
   const devices = $derived((snapshot?.devices ?? []).filter((device) => device.platform === selectedPlatform));
@@ -86,25 +92,33 @@
   const streamImageStyle = $derived(streamWidth > 0 && streamHeight > 0
     ? `width: ${Math.max(1, Math.round(streamWidth * viewportScale))}px; height: ${Math.max(1, Math.round(streamHeight * viewportScale))}px;`
     : undefined);
-  const permissionOptions = $derived<Array<{ value: DevicePermission; label: string }>>([
-    { value: 'notifications', label: m['device.permission_notifications']() },
-    { value: 'location', label: m['device.permission_location']() },
-    { value: 'camera', label: m['device.permission_camera']() },
-    { value: 'microphone', label: m['device.permission_microphone']() },
-    { value: 'photos', label: m['device.permission_photos']() },
-    { value: 'photos-add', label: m['device.permission_photos_add']() },
-    { value: 'contacts', label: m['device.permission_contacts']() },
-    { value: 'calendar', label: m['device.permission_calendar']() },
-    { value: 'reminders', label: m['device.permission_reminders']() },
-    { value: 'motion', label: m['device.permission_motion']() },
-    { value: 'media-library', label: m['device.permission_media_library']() },
-    { value: 'siri', label: m['device.permission_siri']() },
-    { value: 'speech', label: m['device.permission_speech']() },
-    { value: 'faceid', label: m['device.permission_faceid']() },
-    { value: 'user-tracking', label: m['device.permission_user_tracking']() },
-    { value: 'homekit', label: m['device.permission_homekit']() },
-    { value: 'all', label: m['device.permission_all']() },
-  ]);
+  const permissionOptions = $derived.by(() => {
+    const options: Array<{ value: DevicePermission; label: string }> = [
+      { value: 'notifications', label: m['device.permission_notifications']() },
+      { value: 'location', label: m['device.permission_location']() },
+      { value: 'camera', label: m['device.permission_camera']() },
+      { value: 'microphone', label: m['device.permission_microphone']() },
+      { value: 'photos', label: m['device.permission_photos']() },
+      { value: 'photos-add', label: m['device.permission_photos_add']() },
+      { value: 'contacts', label: m['device.permission_contacts']() },
+      { value: 'calendar', label: m['device.permission_calendar']() },
+      { value: 'reminders', label: m['device.permission_reminders']() },
+      { value: 'motion', label: m['device.permission_motion']() },
+      { value: 'media-library', label: m['device.permission_media_library']() },
+      { value: 'siri', label: m['device.permission_siri']() },
+      { value: 'speech', label: m['device.permission_speech']() },
+      { value: 'faceid', label: m['device.permission_faceid']() },
+      { value: 'user-tracking', label: m['device.permission_user_tracking']() },
+      { value: 'homekit', label: m['device.permission_homekit']() },
+      { value: 'all', label: m['device.permission_all']() },
+    ];
+    if (selectedPlatform !== 'android') return options;
+    const androidPermissions = new Set<DevicePermission>([
+      'notifications', 'location', 'camera', 'microphone', 'photos', 'photos-add',
+      'contacts', 'calendar', 'motion', 'media-library', 'speech', 'faceid', 'all',
+    ]);
+    return options.filter((option) => androidPermissions.has(option.value));
+  });
 
   async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const csrf = getCsrfToken();
@@ -174,6 +188,7 @@
       }
       return response;
     } catch {
+      await load({ quiet: true });
       toast.error(m['device.command_failed']());
       return null;
     } finally {
@@ -181,11 +196,25 @@
     }
   }
 
-  async function start(): Promise<void> {
+  function requestStart(): void {
+    if (selectedDevice?.physical) {
+      confirmPhysicalOpen = true;
+      return;
+    }
+    void start(false);
+  }
+
+  async function start(confirmPhysical: boolean): Promise<void> {
     const target = selectedDevice;
     if (!target) return;
-    const response = await command({ command: 'start', platform: target.platform, deviceId: target.id });
+    const response = await command({
+      command: 'start',
+      platform: target.platform,
+      deviceId: target.id,
+      confirmPhysical,
+    });
     if (response?.snapshot.session) {
+      confirmPhysicalOpen = false;
       streamWidth = 0;
       streamHeight = 0;
       streamVersion += 1;
@@ -195,9 +224,7 @@
 
   async function restart(): Promise<void> {
     if (!session) return;
-    const target = { platform: session.platform, deviceId: session.deviceId };
-    if (!(await command({ command: 'stop' }))) return;
-    const response = await command({ command: 'start', ...target });
+    const response = await command({ command: 'restart' });
     if (response) reconnectStream();
   }
 
@@ -217,10 +244,15 @@
     streamVersion += 1;
   }
 
-  function streamLoaded(event: Event): void {
-    const image = event.currentTarget as HTMLImageElement;
-    streamWidth = image.naturalWidth;
-    streamHeight = image.naturalHeight;
+  function streamLoaded(eventOrWidth: Event | number, height?: number): void {
+    if (typeof eventOrWidth === 'number') {
+      streamWidth = eventOrWidth;
+      streamHeight = height ?? 0;
+    } else {
+      const image = eventOrWidth.currentTarget as HTMLImageElement;
+      streamWidth = image.naturalWidth;
+      streamHeight = image.naturalHeight;
+    }
     streamError = false;
   }
 
@@ -251,32 +283,27 @@
     });
   }
 
-  function normalizedPoint(event: PointerEvent, image: HTMLImageElement): { x: number; y: number } | null {
-    if (!image.naturalWidth || !image.naturalHeight) return null;
-    const rect = image.getBoundingClientRect();
-    const scale = Math.min(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
-    const width = image.naturalWidth * scale;
-    const height = image.naturalHeight * scale;
-    const left = rect.left + (rect.width - width) / 2;
-    const top = rect.top + (rect.height - height) / 2;
-    const x = (event.clientX - left) / width;
-    const y = (event.clientY - top) / height;
+  function normalizedPoint(event: PointerEvent, target: HTMLElement): { x: number; y: number } | null {
+    if (!streamWidth || !streamHeight) return null;
+    const rect = target.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
     if (x < 0 || x > 1 || y < 0 || y > 1) return null;
     return { x, y };
   }
 
   function pointerDown(event: PointerEvent): void {
-    const image = event.currentTarget as HTMLImageElement;
-    const point = normalizedPoint(event, image);
+    const target = event.currentTarget as HTMLElement;
+    const point = normalizedPoint(event, target);
     if (!point) return;
     pointerStart = point;
-    image.setPointerCapture(event.pointerId);
+    target.setPointerCapture(event.pointerId);
     event.preventDefault();
   }
 
   function pointerUp(event: PointerEvent): void {
-    const image = event.currentTarget as HTMLImageElement;
-    const end = normalizedPoint(event, image);
+    const target = event.currentTarget as HTMLElement;
+    const end = normalizedPoint(event, target);
     const start = pointerStart;
     pointerStart = null;
     if (!start || !end) return;
@@ -293,7 +320,7 @@
       xcode_missing: m['device.xcode_missing'],
       runtime_missing: m['device.runtime_missing'],
       android_sdk_missing: m['device.android_sdk_missing'],
-      backend_pending: m['device.android_pending'],
+      android_device_missing: m['device.android_device_missing'],
       ready: m['device.ready'],
     };
     return (labels[activeAvailability.reason] ?? m['device.unavailable'])();
@@ -305,6 +332,12 @@
       if (!document.hidden && snapshot?.session) void load({ quiet: true });
     }, 10_000);
     return () => window.clearInterval(timer);
+  });
+
+  $effect(() => {
+    if (!permissionOptions.some((option) => option.value === selectedPermission)) {
+      selectedPermission = 'notifications';
+    }
   });
 
   $effect(() => {
@@ -346,17 +379,24 @@
         </Select.Trigger>
         <Select.Content>
           {#each devices as device (device.id)}
-            <Select.Item value={device.id} label={`${device.name} · ${device.runtime ?? ''}`}>
+            <Select.Item value={device.id} label={`${device.name} · ${device.runtime ?? ''}`} disabled={!device.available}>
               <span class="flex min-w-0 items-center gap-2">
                 <span class={`size-1.5 rounded-full ${device.state === 'booted' ? 'bg-[var(--app-success)]' : 'bg-[var(--app-text-muted)]'}`}></span>
                 <span class="truncate">{device.name}</span>
                 <span class="truncate text-[10px] text-[var(--app-text-muted)]">{device.runtime}</span>
+                {#if device.physical}<span class="shrink-0 text-[9px] text-[var(--app-warning)]">{m['device.physical']()}</span>{/if}
               </span>
             </Select.Item>
           {/each}
         </Select.Content>
       </Select.Root>
-      <Button size="sm" class="h-7 gap-1.5 rounded-[5px]" disabled={!selectedDevice || busyCommand !== null} onclick={start}>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 shrink-0 rounded-[5px]" aria-label={m['device.refresh']()} disabled={loading || busyCommand !== null} onclick={() => void load()}><RefreshCw size={13} class={loading ? 'animate-spin' : ''} aria-hidden="true" /></Button>{/snippet}
+        </Tooltip.Trigger>
+        <Tooltip.Content>{m['device.refresh']()}</Tooltip.Content>
+      </Tooltip.Root>
+      <Button size="sm" class="h-7 gap-1.5 rounded-[5px]" disabled={!selectedDevice?.available || busyCommand !== null} onclick={requestStart}>
         {#if busyCommand === 'start'}<LoaderCircle size={13} class="animate-spin" aria-hidden="true" />{:else}<Play size={13} aria-hidden="true" />{/if}
         {m['device.start']()}
       </Button>
@@ -372,6 +412,20 @@
         </Tooltip.Trigger>
         <Tooltip.Content>{m['device.home']()}</Tooltip.Content>
       </Tooltip.Root>
+      {#if session.platform === 'android'}
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.back']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'button', button: 'back' })}><ArrowLeft size={14} aria-hidden="true" /></Button>{/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>{m['device.back']()}</Tooltip.Content>
+        </Tooltip.Root>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.app_switcher']()} disabled={busyCommand !== null} onclick={() => void command({ command: 'button', button: 'app-switcher' })}><PanelsTopLeft size={14} aria-hidden="true" /></Button>{/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content>{m['device.app_switcher']()}</Tooltip.Content>
+        </Tooltip.Root>
+      {/if}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}<Button {...props} variant="ghost" size="icon-sm" class="size-7 rounded-[5px]" aria-label={m['device.rotate']()} disabled={busyCommand !== null} onclick={rotate}><RotateCw size={14} aria-hidden="true" /></Button>{/snippet}
@@ -436,18 +490,31 @@
                 <div><p class="text-xs font-medium text-white">{m['device.stream_lost']()}</p><Button variant="secondary" size="sm" class="mt-3" onclick={reconnectStream}>{m['device.reconnect']()}</Button></div>
               </div>
             {/if}
-            <img
-              src={streamUrl}
-              alt={m['device.stream_alt']({ device: session.deviceName })}
-              class="block max-h-none max-w-none touch-none select-none rounded-[18px] object-contain"
-              style={streamImageStyle}
-              draggable="false"
-              onload={streamLoaded}
-              onerror={() => (streamError = true)}
-              onpointerdown={pointerDown}
-              onpointerup={pointerUp}
-              onpointercancel={() => (pointerStart = null)}
-            />
+            {#if session.platform === 'android'}
+              <AndroidDeviceStream
+                {streamUrl}
+                alt={m['device.stream_alt']({ device: session.deviceName })}
+                style={streamImageStyle}
+                onloaded={(width, height) => streamLoaded(width, height)}
+                onerror={() => (streamError = true)}
+                onpointerdown={pointerDown}
+                onpointerup={pointerUp}
+                onpointercancel={() => (pointerStart = null)}
+              />
+            {:else}
+              <img
+                src={streamUrl}
+                alt={m['device.stream_alt']({ device: session.deviceName })}
+                class="block max-h-none max-w-none touch-none select-none rounded-[18px] object-contain"
+                style={streamImageStyle}
+                draggable="false"
+                onload={streamLoaded}
+                onerror={() => (streamError = true)}
+                onpointerdown={pointerDown}
+                onpointerup={pointerUp}
+                onpointercancel={() => (pointerStart = null)}
+              />
+            {/if}
             </div>
           </div>
         </div>
@@ -528,7 +595,7 @@
           <Tabs.Content value="permissions" class="min-h-0 overflow-auto p-3">
             <div class="space-y-3">
               <div>
-                <label class="text-[10px] font-medium text-[var(--app-text-soft)]" for="device-permission-bundle">{m['device.bundle_id']()}</label>
+                <label class="text-[10px] font-medium text-[var(--app-text-soft)]" for="device-permission-bundle">{session?.platform === 'android' ? m['device.package_id']() : m['device.bundle_id']()}</label>
                 <Input id="device-permission-bundle" bind:value={bundleId} class="mt-1 h-8 text-xs" placeholder={m['device.launch_placeholder']()} />
               </div>
               <div>
@@ -558,6 +625,22 @@
     {/if}
   </div>
 </section>
+
+<AlertDialog.Root bind:open={confirmPhysicalOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Media><ShieldAlert aria-hidden="true" /></AlertDialog.Media>
+      <AlertDialog.Title>{m['device.physical_confirm_title']()}</AlertDialog.Title>
+      <AlertDialog.Description>
+        {m['device.physical_confirm_description']({ device: selectedDevice?.name ?? m['device.physical']() })}
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel>{m['dlg.cancel']()}</AlertDialog.Cancel>
+      <AlertDialog.Action onclick={() => void start(true)}>{m['device.physical_confirm_action']()}</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 <style>
   .device-panel {

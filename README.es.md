@@ -33,13 +33,15 @@ Descarga los instaladores más recientes desde
   pestañas locales, y la esfera de voz sigue el workspace activo.
   El pie mantiene visibles todas las ventanas de cuota informadas por Claude,
   Codex y Kimi sin abrir otro panel.
-- **iOS Simulator integrado:** agrega un nodo persistente de Dispositivo móvil
-  desde la barra del Canvas; Workbench lista y abre el mismo nodo y la misma sesión.
-  En un Mac Apple Silicon, transmite y controla un iPhone o iPad
-  Simulator, instala y abre apps del workspace, gestiona permisos,
-  inspecciona logs y accesibilidad y guarda capturas. Los agentes ejecutan el
-  mismo flujo limitado al workspace mediante la CLI o las tools MCP incluidas.
-  Android es un backend futuro separado.
+- **Dispositivos móviles integrados:** agrega un nodo persistente de Dispositivo
+  móvil desde la barra del Canvas; Workbench lista y abre el mismo nodo y la misma
+  sesión. Controla iPhone y iPad Simulators en Macs Apple Silicon o AVDs Android
+  y dispositivos físicos autorizados explícitamente en macOS, Windows y Linux.
+  Transmite la pantalla, envía gestos y botones del sistema, instala y abre apps
+  del workspace, gestiona permisos, inspecciona logs y accesibilidad limitados y
+  guarda capturas. Android usa Platform Tools de Android Studio y el servidor
+  scrcpy incluido; WebCodecs decodifica la pantalla. Los agentes ejecutan el mismo
+  flujo limitado al workspace mediante la CLI o las tools MCP incluidas.
 - **Centro de control operativo:** consulta la tarea actual, estado, duración,
   proveedor, rol y uso de cada agente. La bandeja persistente demuestra si cada
   handoff entró en cola, fue entregado, recibido, respondido o falló bajo un id

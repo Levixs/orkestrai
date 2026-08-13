@@ -63,21 +63,25 @@ pt-BR, English, and Spanish translations.
   Workspace and portal route parameters are validated explicitly so strict
   request validation does not block delivery.
 - Added a persistent workspace-scoped Mobile Device node shared by Canvas and
-  Workbench on Apple Silicon Macs. It lists and attaches to local iOS
-  Simulators, streams the screen, sends
-  taps, swipes, pinch gestures, rotation, Home, and text input, installs and
-  launches workspace apps, captures screenshots, and exposes bounded logs,
-  accessibility data, and simulator permissions. Matching `orkestrai device`
-  CLI and MCP tools let agents run the same flow. Orkestrai owns at most one
-  session per workspace and cleans up only helpers and simulators it started.
-  Android remains an explicit follow-up backend instead of appearing ready.
+  Workbench. On Apple Silicon Macs it controls local iOS Simulators; on macOS,
+  Windows, and Linux it discovers Android Studio SDK tools, starts or attaches
+  to local AVDs, and can attach to authorized USB or network Android devices
+  after an explicit physical-device confirmation. Android video uses the
+  bundled scrcpy 3.1 server with hardware-accelerated WebCodecs decoding and
+  supports touch, swipe, pinch, rotation, Back, Home, Recents, text input, APK
+  installation, package/activity launch, screenshots, bounded logcat output,
+  UIAutomator trees, and runtime permissions. Matching `orkestrai device` CLI
+  and MCP tools use the same workspace session. Orkestrai owns at most one
+  session per workspace and stops only helpers and emulators it started.
 
 ### Changed
 
-- Mobile Device streams now fit the complete simulator screen inside both the
+- Restarting an Android stream now reopens its stable AVD definition instead
+  of trying to boot the expired temporary `emulator-*` serial.
+- Mobile Device streams now fit the complete device screen inside both the
   Canvas node and Workbench pane by default. Independent viewport controls add
   stable zoom steps, actual-size mode, automatic refitting after pane resize or
-  rotation, and two-axis scrolling without changing simulator touch coordinates.
+  rotation, and two-axis scrolling without changing device touch coordinates.
 - Moved workspace files into a native Workbench explorer and local editor tabs.
   Opening a file from the explorer, Canvas file tree, or global search now goes
   directly to the Workbench instead of creating a disconnected Editor node on

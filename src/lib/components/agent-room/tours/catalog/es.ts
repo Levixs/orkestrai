@@ -1015,25 +1015,25 @@ export const TOURS_ES: Tour[] = [
   {
     id: 'mobile-device-testing',
     icon: 'Smartphone',
-    title: 'Probar una app en iOS Simulator',
+    title: 'Probar una app en iOS o Android',
     tagline: 'Controla, inspecciona y captura un flujo móvil sin salir del workspace.',
     steps: [
       {
         id: 'open-mobile-device',
         title: 'Agrega Dispositivo móvil',
-        body: 'Agrega Dispositivo móvil desde la barra del Canvas. Se convierte en un único nodo persistente del workspace; Workbench pasa a listar y abrir ese mismo nodo con los runtimes de iOS Simulator disponibles en este Mac Apple Silicon.',
+        body: 'Agrega Dispositivo móvil desde la barra del Canvas. Se convierte en un único nodo persistente del workspace; Workbench lista y abre el mismo nodo. Elige iOS Simulator en Apple Silicon o Android en macOS, Windows y Linux con Platform Tools de Android Studio instalado.',
         action: { kind: 'createDevice', title: 'Dispositivo móvil' },
         check: { kind: 'nodeExists', nodeType: 'device' },
       },
       {
         id: 'attach-simulator',
-        title: 'Conecta un simulador',
-        body: 'Elige un iPhone o iPad y selecciona Iniciar. La pantalla completa se ajusta al panel por defecto; los controles inferiores reducen, amplían, restauran el ajuste o usan 1:1 con scroll. Haz clic o arrastra sobre la pantalla para tocar y deslizar, mientras la barra superior ofrece Home, rotación, pinza, reinicio y detención.',
+        title: 'Conecta un dispositivo',
+        body: 'Elige un iPhone o iPad Simulator, un AVD Android o un dispositivo Android autorizado en ADB y selecciona Iniciar. El hardware Android físico pide confirmación explícita. La pantalla se ajusta por defecto; zoom y 1:1 siguen independientes. Haz clic o arrastra para tocar y deslizar, mientras la barra ofrece los botones del sistema de la plataforma, rotación, pinza, reinicio y detención.',
       },
       {
         id: 'inspect-mobile-flow',
         title: 'Inspecciona el flujo',
-        body: 'Abre Herramientas del dispositivo para escribir texto, instalar una app desde un path del workspace, abrir un bundle id, inspeccionar o cambiar permisos, leer logs limitados y el árbol de accesibilidad y guardar una captura en .orkestrai/devices/screenshots.',
+        body: 'Abre Herramientas del dispositivo para escribir texto, instalar un build iOS o APK desde un path del workspace, abrir un bundle id o package/activity Android, inspeccionar o cambiar permisos, leer logs y datos de accesibilidad limitados y guardar una captura en .orkestrai/devices/screenshots.',
       },
       {
         id: 'delegate-mobile-check',

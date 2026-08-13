@@ -252,7 +252,7 @@ export class IosSimulatorAdapter implements DeviceAdapter {
 
   async command(
     session: DeviceRuntimeSession,
-    input: Exclude<DeviceCommandInput, { command: 'start' | 'stop' }>,
+    input: Exclude<DeviceCommandInput, { command: 'start' | 'stop' | 'restart' }>,
     context: DeviceAdapterContext,
   ): Promise<DeviceCommandResult | null> {
     const udid = session.public.deviceId;

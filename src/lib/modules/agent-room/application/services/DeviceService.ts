@@ -58,9 +58,11 @@ export class DeviceService {
     const workspace = await this.requireWorkspace(workspaceId);
     let result: DeviceCommandResult | null = null;
     if (input.command === 'start') {
-      await this.start(workspaceId, input.platform, input.deviceId);
+      await this.start(workspaceId, input.platform, input.deviceId, input.confirmPhysical);
     } else if (input.command === 'stop') {
       await this.stop(workspaceId);
+    } else if (input.command === 'restart') {
+      await this.restart(workspaceId);
     } else {
       const session = this.requireSession(workspaceId);
       const adapter = this.requireAdapter(session.public.platform);
@@ -93,13 +95,21 @@ export class DeviceService {
     });
   }
 
-  async start(workspaceId: string, platform: DevicePlatform, deviceId: string): Promise<void> {
+  async start(
+    workspaceId: string,
+    platform: DevicePlatform,
+    deviceId: string,
+    confirmPhysical = false,
+  ): Promise<void> {
     await this.requireWorkspace(workspaceId);
     const adapter = this.requireAdapter(platform);
     const availability = await adapter.availability();
     if (!availability.available) throw new Error(`Device backend unavailable: ${availability.reason}.`);
     const device = (await adapter.list()).find((candidate) => candidate.id === deviceId);
     if (!device?.available) throw new Error('The selected device is no longer available.');
+    if (device.physical && !confirmPhysical) {
+      throw new Error('Physical Android devices require explicit user confirmation before attachment.');
+    }
 
     for (const [ownerWorkspaceId, active] of this.sessions) {
       if (ownerWorkspaceId === workspaceId || active.public.deviceId === deviceId) {
@@ -118,6 +128,14 @@ export class DeviceService {
     this.sessions.delete(workspaceId);
     await this.requireAdapter(session.public.platform).stop(session);
     broadcast(workspaceId);
+  }
+
+  async restart(workspaceId: string): Promise<void> {
+    const session = this.requireSession(workspaceId);
+    const platform = session.public.platform;
+    const deviceId = session.restartDeviceId ?? session.public.deviceId;
+    await this.stop(workspaceId);
+    await this.start(workspaceId, platform, deviceId, true);
   }
 
   async stopAll(): Promise<void> {

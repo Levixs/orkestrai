@@ -32,14 +32,15 @@ Download the latest installers from
   files remain local editor tabs, and the global
   voice orb follows its active workspace and leader. Its footer keeps every
   reported Claude, Codex, and Kimi quota window visible without opening a panel.
-- **Integrated iOS Simulator:** add a persistent Mobile Device node from the
-  Canvas toolbar; Workbench lists and opens that same node and session. On an
-  Apple Silicon Mac, stream and control an iPhone or iPad Simulator, install
-  and launch workspace apps, manage permissions, inspect logs and accessibility,
-  and save screenshots. The live screen fits either surface by default, with
-  independent zoom, actual-size mode, and two-axis scrolling when needed.
-  Agents can run the same workspace-scoped flow through the bundled CLI or MCP
-  tools. Android support is a separate upcoming backend.
+- **Integrated mobile devices:** add a persistent Mobile Device node from the
+  Canvas toolbar; Workbench lists and opens that same node and session. Control
+  iPhone and iPad Simulators on Apple Silicon Macs, or Android AVDs and explicitly
+  authorized physical devices on macOS, Windows, and Linux. Stream the screen,
+  send gestures and system buttons, install and launch workspace apps, manage
+  permissions, inspect bounded logs and accessibility data, and save screenshots.
+  Android uses Android Studio Platform Tools plus the bundled scrcpy server; the
+  live screen is decoded with WebCodecs and fits either surface by default.
+  Agents run the same workspace-scoped flow through the bundled CLI or MCP tools.
 - **Operational Control Center:** inspect every agent's current task, state,
   state duration, provider, role, and usage. Its persistent communications inbox
   proves whether each handoff was queued, delivered, acknowledged, replied to,
