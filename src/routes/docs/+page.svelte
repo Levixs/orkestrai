@@ -2,8 +2,9 @@
   import { onMount, tick } from 'svelte';
   import type { Component } from 'svelte';
   import {
-    ArrowLeft, BookOpen, Cable, FolderPlus, GitBranch, History, Layers, Link2, MessageSquare,
-    Palette, PlayCircle, Repeat, Rocket, Search, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
+    Activity, ArrowLeft, BookOpen, Bot, Cable, FolderPlus, Gauge, GitBranch, GitPullRequestArrow,
+    History, Layers, Link2, MessageSquare, Palette, PanelLeftOpen, Paperclip, PlayCircle, Repeat,
+    Rocket, Scale, ScanSearch, Search, Smartphone, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import * as m from '$lib/paraglide/messages.js';
@@ -11,6 +12,7 @@
   import { DOCS_PT } from '$lib/i18n/docs/pt-BR.js';
   import { DOCS_EN } from '$lib/i18n/docs/en.js';
   import { DOCS_ES } from '$lib/i18n/docs/es.js';
+  import { tourIdForUseCase } from '$lib/components/agent-room/tours/use-case-links.js';
 
   // Conteudo longo (topicos, casos de uso, quickstart, changelog) vive em
   // catalogs TS por locale (src/lib/i18n/docs/) — mesmo padrao dos tours.
@@ -21,8 +23,14 @@
   const SECTION_ICONS: Record<string, Component> = {
     workspaces: Layers,
     agentes: SquareTerminal,
+    'provider-center': Bot,
     roles: Users,
     times: Cable,
+    council: Scale,
+    'control-center': Activity,
+    'review-center': GitPullRequestArrow,
+    'portal-design-mode': ScanSearch,
+    'mobile-device': Smartphone,
     notas: StickyNote,
     tarefas: SquareKanban,
     imagens: StickyNote,
@@ -35,6 +43,8 @@
     portal: Workflow,
     mcp: Cable,
     cli: MessageSquare,
+    'usage-routing': Gauge,
+    appearance: Palette,
     atalhos: BookOpen,
   };
 
@@ -42,7 +52,9 @@
     'leader-team': Users,
     'watch-24-7': Repeat,
     'parallel-features': GitBranch,
+    'council-decision': Scale,
     'visual-qa': Workflow,
+    'mobile-qa': Smartphone,
     'research-summary': Search,
     'inbox-files': FolderPlus,
     'cross-review': Cable,
@@ -52,11 +64,23 @@
     'chained-flows': Workflow,
     'design-figma': Palette,
     'mcp-tools': Cable,
+    'quota-aware-delegation': Gauge,
+    'focused-workspace-view': PanelLeftOpen,
+    'edit-and-preview-files': SquareTerminal,
+    'share-reference-material': Paperclip,
+    'universal-workspace-search': Search,
+    'review-delivery': GitPullRequestArrow,
+    'portal-design-feedback': ScanSearch,
+    'custom-app-theme': Palette,
   };
 
   const quickstart = $derived(catalog.quickstart);
   const sections = $derived(catalog.sections.map((section) => ({ ...section, icon: SECTION_ICONS[section.id] ?? BookOpen })));
-  const useCases = $derived(catalog.useCases.map((useCase) => ({ ...useCase, icon: USECASE_ICONS[useCase.id] ?? Cable })));
+  const useCases = $derived(catalog.useCases.map((useCase) => ({
+    ...useCase,
+    icon: USECASE_ICONS[useCase.id] ?? Cable,
+    tourId: tourIdForUseCase(useCase.id),
+  })));
   const changelog = $derived(catalog.changelog);
 
   onMount(() => {
@@ -71,6 +95,14 @@
   function rewatchOnboarding() {
     // Forca a apresentacao mesmo com workspaces existentes.
     location.href = '/canvas?onboarding=1';
+  }
+
+  function startUseCaseTour(tourId: string) {
+    const params = new URLSearchParams({ tour: tourId });
+    const workspaceId = localStorage.getItem('orkestrai.activeWorkspaceId');
+    if (workspaceId) params.set('workspace', workspaceId);
+    else params.set('onboarding', '1');
+    location.href = `/canvas?${params}`;
   }
 
   let query = $state('');
@@ -203,9 +235,17 @@
               </header>
               <p>{useCase.body}</p>
               <footer>
-                {#each useCase.tags as tag (tag)}
-                  <span class="usecase-tag">{tag}</span>
-                {/each}
+                <div class="usecase-tags">
+                  {#each useCase.tags as tag (tag)}
+                    <span class="usecase-tag">{tag}</span>
+                  {/each}
+                </div>
+                {#if useCase.tourId}
+                  <Button variant="outline" size="sm" onclick={() => useCase.tourId && startUseCaseTour(useCase.tourId)}>
+                    <PlayCircle size={14} aria-hidden="true" />
+                    {m['docs.start_tour']()}
+                  </Button>
+                {/if}
               </footer>
             </article>
           {/each}
@@ -550,9 +590,17 @@
 
   .usecase-card footer {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .usecase-tags {
+    display: flex;
     flex-wrap: wrap;
     gap: 5px;
-    margin-top: 10px;
+    min-width: 0;
   }
 
   .usecase-tag {

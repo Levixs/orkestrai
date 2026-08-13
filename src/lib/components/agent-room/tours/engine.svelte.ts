@@ -4,6 +4,7 @@ import { TOURS_EN } from './catalog/en.js';
 import { TOURS_ES } from './catalog/es.js';
 import { localeState } from '$lib/i18n/locale.svelte.js';
 import { checkPasses, isTourComplete } from './checks.js';
+import { goto } from '$app/navigation';
 
 const CATALOGS: Record<string, Tour[]> = {
   'pt-BR': TOURS_PT,
@@ -279,9 +280,15 @@ async function runAction(action: TourAction): Promise<void> {
         });
         break;
       }
+      case 'openCouncil': {
+        window.dispatchEvent(new CustomEvent('orkestrai:open-council', {
+          detail: { workspaceId },
+        }));
+        break;
+      }
       case 'openPage': {
         // Placeholder {workspace} resolve para o workspace do tour.
-        window.location.assign(action.path.replaceAll('{workspace}', String(workspaceId)));
+        await goto(action.path.replaceAll('{workspace}', String(workspaceId)));
         break;
       }
     }

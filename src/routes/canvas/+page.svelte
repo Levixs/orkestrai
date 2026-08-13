@@ -35,7 +35,8 @@
   import AgentCreateDialog from '$lib/components/agent-room/canvas/AgentCreateDialog.svelte';
   import HeaderIconButton from '$lib/components/agent-room/canvas/HeaderIconButton.svelte';
   import OnboardingWizard from '$lib/components/agent-room/tours/OnboardingWizard.svelte';
-  import TourGuidePanel from '$lib/components/agent-room/tours/TourGuidePanel.svelte';
+  import { startTour } from '$lib/components/agent-room/tours/engine.svelte.js';
+  import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
   import {
@@ -76,7 +77,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Search, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -130,6 +131,8 @@
   let showWorkspaceForm = $state(false);
   let initialPresetId = $state('');
   let showOnboarding = $state(false);
+  let requestedTourId = $state<string | null>(null);
+  let councilOpen = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
   let editingWorkspace = $state<Workspace | null>(null);
@@ -425,11 +428,20 @@
 
   onMount(() => {
     const listener = (event: Event) => handleDesktopMenuAction(String((event as CustomEvent).detail ?? ''));
+    const openCouncilListener = (event: Event) => {
+      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      if (workspaceId && workspaceId !== activeWorkspace?.id) {
+        void selectWorkspace(workspaceId).then(() => (councilOpen = true));
+        return;
+      }
+      councilOpen = true;
+    };
     const openFileListener = (event: Event) => {
       const detail = (event as CustomEvent<{ workspaceId?: string; path?: string }>).detail;
       if (detail?.workspaceId && detail.path) void openFileFromSearch(detail.workspaceId, detail.path);
     };
     window.addEventListener('orkestrai:menu-action', listener);
+    window.addEventListener('orkestrai:open-council', openCouncilListener);
     window.addEventListener('orkestrai:open-file', openFileListener);
     const pending = sessionStorage.getItem('orkestrai.menu-action');
     if (pending) {
@@ -438,6 +450,7 @@
     }
     return () => {
       window.removeEventListener('orkestrai:menu-action', listener);
+      window.removeEventListener('orkestrai:open-council', openCouncilListener);
       window.removeEventListener('orkestrai:open-file', openFileListener);
     };
   });
@@ -567,6 +580,8 @@
         api<Workspace[]>('/api/agent-room/workspaces'),
         api<Record<string, string>>('/api/agent-room/settings'),
       ]);
+      const params = new URLSearchParams(location.search);
+      requestedTourId = params.get('tour');
       appSettings = settingsResponse ?? {};
       const availableProviderIds = new Set(providers.map((provider) => provider.id));
       pinnedProviderIds = parsePinnedAgentProviders(appSettings[PINNED_AGENT_PROVIDERS_SETTING])
@@ -577,7 +592,6 @@
       if (selectionRequestId === 0) {
         workspaces = workspaceList;
         writeWorkspaceListCache(workspaceList);
-        const params = new URLSearchParams(location.search);
         const requestedWorkspaceId = params.get('workspace') || localStorage.getItem('orkestrai.activeWorkspaceId');
         const requestedWorkspace = workspaceList.find((workspace) => workspace.id === requestedWorkspaceId) ?? workspaceList[0];
         if (requestedWorkspace) {
@@ -593,6 +607,10 @@
             )));
           }
           await openPendingSearchFile();
+          if (params.has('council')) councilOpen = true;
+          if (requestedTourId && !params.has('onboarding')) {
+            await startTour(requestedTourId, requestedWorkspace.id);
+          }
         }
       }
       workspacesLoaded = true;
@@ -617,16 +635,20 @@
       // ({#key locale}) DEPOIS do replaceState — sem a flag, o remount recriava
       // a pagina com showOnboarding=false e o wizard nunca abria fora de pt-BR.
       try {
-        const forced = new URLSearchParams(location.search).has('onboarding');
+        const forced = params.has('onboarding');
         if (forced) {
           sessionStorage.setItem('orkestrai.onboarding', '1');
-          history.replaceState(null, '', '/canvas');
+          params.delete('onboarding');
         }
         if (forced || sessionStorage.getItem('orkestrai.onboarding') === '1') {
           showOnboarding = true;
         } else if (!workspaceList.length && !localStorage.getItem('orkestrai.onboarded')) {
           showOnboarding = true;
         }
+        if (!forced && requestedTourId && workspaceList.length) params.delete('tour');
+        if (params.has('council') && workspaceList.length) params.delete('council');
+        const query = params.toString();
+        history.replaceState(null, '', `/canvas${query ? `?${query}` : ''}`);
       } catch {
         // storage indisponivel — nao bloqueia
       }
@@ -1365,6 +1387,7 @@
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
     { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
+    { id: 'council', label: m['council.open'](), hint: m['canvas.hint_action'](), run: () => (councilOpen = true) },
     ...providers
       .filter((provider) => provider.installed && provider.tui)
       .map((provider) => ({
@@ -1812,6 +1835,9 @@
               onTogglePin={togglePinnedProvider}
               onOpenProviderCenter={() => void goto('/providers')}
             />
+            <ToolbarButton label={m['council.open']()} active={councilOpen} onclick={() => (councilOpen = true)}>
+              <Scale size={15} class="tool-icon-svg" /> {m['council.title']()}
+            </ToolbarButton>
             <ToolbarButton label={m['tool.note']()} active={drawTool === 'note'} onclick={() => toggleDrawTool('note')}>
               <StickyNote size={15} class="tool-icon-svg" /> {m['canvas.default_note']()}
             </ToolbarButton>
@@ -1936,16 +1962,25 @@
     />
     <OnboardingWizard
       open={showOnboarding}
+      {requestedTourId}
       onClose={() => {
         showOnboarding = false;
+        requestedTourId = null;
         try {
           sessionStorage.removeItem('orkestrai.onboarding');
           sessionStorage.removeItem('orkestrai.onboarding-step');
+          const params = new URLSearchParams(location.search);
+          params.delete('tour');
+          const query = params.toString();
+          history.replaceState(null, '', `/canvas${query ? `?${query}` : ''}`);
         } catch {}
       }}
       onCreateWorkspace={createWorkspaceFromWizard}
       activeWorkspaceId={activeWorkspace?.id ?? null}
     />
+    {#if activeWorkspace}
+      <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} />
+    {/if}
     <AlertDialog.Root open={deletingWorkspace !== null} onOpenChange={(isOpen) => !isOpen && (deletingWorkspace = null)}>
       <AlertDialog.Content>
         <AlertDialog.Header>
@@ -2002,7 +2037,6 @@
     {#if unloadMessage}
       <p class="notice-banner">{unloadMessage}</p>
     {/if}
-    <TourGuidePanel />
     </SvelteFlowProvider>
   </section>
 </main>

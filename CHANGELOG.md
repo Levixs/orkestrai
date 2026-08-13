@@ -45,6 +45,11 @@ pt-BR, English, and Spanish translations.
   rejection is always human and persisted. Implementation runs use isolated
   Git floors and can land only the selected committed result after a fresh
   clean-target and conflict preview; Council never pushes or merges by itself.
+- Made phase 0–8 features discoverable as one product surface: Council now has
+  visible entry points in the Canvas toolbar, Workbench explorer, and global
+  search; guided tours persist across Canvas/Workbench navigation; every
+  documented use case links to its tour; and the tour catalog now includes
+  search plus a dedicated reference-attachment workflow.
 - Added a Workbench Review Center with structured staged/unstaged Git status,
   branch synchronization, bounded Monaco diffs, persisted file/line comments,
   stale-context detection, task and agent context, and approve, request changes,

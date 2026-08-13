@@ -29,6 +29,8 @@
     WORKBENCH_OPEN_REQUEST,
     type WorkbenchOpenRequestDetail,
   } from './workbench-open.js';
+  import { workbenchControlCenterItemId } from './workbench-control-center.js';
+  import { workbenchReviewCenterItemId } from './workbench-review-center.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type PaletteKind = WorkspaceSearchResultKind | 'command';
@@ -56,13 +58,14 @@
   let selectedId = $state('');
   let loading = $state(false);
   let listElement = $state<HTMLElement | null>(null);
+  let commandWorkspaceId = $state('');
 
   function activeWorkspaceId(): string | null {
     return typeof localStorage === 'undefined' ? null : localStorage.getItem('orkestrai.activeWorkspaceId');
   }
 
   const commands = $derived.by<PaletteItem[]>(() => {
-    const workspaceId = activeWorkspaceId() ?? '';
+    const workspaceId = commandWorkspaceId;
     const command = (id: string, title: string, route: string): PaletteItem => ({
       id: `command:${id}`,
       kind: 'command',
@@ -77,9 +80,15 @@
       route,
       score: 0,
     });
+    const workspaceCommands = workspaceId ? [
+      command('council', m['global_search.command_council'](), `/canvas?workspace=${workspaceId}&council=1`),
+      command('control-center', m['global_search.command_control_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchControlCenterItemId(workspaceId))}`),
+      command('review-center', m['global_search.command_review_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchReviewCenterItemId(workspaceId))}`),
+    ] : [];
     return [
       command('canvas', m['global_search.command_canvas'](), workspaceId ? `/canvas?workspace=${workspaceId}` : '/canvas'),
       command('workbench', m['global_search.command_workbench'](), workspaceId ? `/terminal?workspace=${workspaceId}` : '/terminal'),
+      ...workspaceCommands,
       command('settings', m['global_search.command_settings'](), '/settings'),
       command('providers', m['global_search.command_providers'](), '/providers'),
       command('docs', m['global_search.command_docs'](), '/docs'),
@@ -207,6 +216,26 @@
     open = false;
     query = '';
 
+    if (item.id === 'command:council' && (location.pathname === '/canvas' || location.pathname === '/terminal')) {
+      window.dispatchEvent(new CustomEvent('orkestrai:open-council', {
+        detail: { workspaceId: item.workspaceId },
+      }));
+      return;
+    }
+    if (
+      location.pathname === '/terminal'
+      && (item.id === 'command:control-center' || item.id === 'command:review-center')
+      && item.workspaceId
+    ) {
+      const nodeId = item.id === 'command:control-center'
+        ? workbenchControlCenterItemId(item.workspaceId)
+        : workbenchReviewCenterItemId(item.workspaceId);
+      window.dispatchEvent(new CustomEvent<WorkbenchOpenRequestDetail>(WORKBENCH_OPEN_REQUEST, {
+        detail: { workspaceId: item.workspaceId, nodeId, direction: null },
+      }));
+      return;
+    }
+
     if (item.kind === 'role') {
       if (location.pathname === '/canvas') {
         window.dispatchEvent(new CustomEvent('orkestrai:menu-action', { detail: 'roles' }));
@@ -257,13 +286,18 @@
   onMount(() => {
     recents = parseStored(RECENTS_KEY);
     favorites = parseStored(FAVORITES_KEY);
+    commandWorkspaceId = activeWorkspaceId() ?? '';
     const handleShortcut = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLocaleLowerCase() !== 'k') return;
       event.preventDefault();
       open = !open;
-      if (open) selectedId = idleItems[0]?.id ?? '';
+      if (open) {
+        commandWorkspaceId = activeWorkspaceId() ?? '';
+        selectedId = idleItems[0]?.id ?? '';
+      }
     };
     const handleOpen = () => {
+      commandWorkspaceId = activeWorkspaceId() ?? '';
       open = true;
       selectedId = idleItems[0]?.id ?? '';
     };

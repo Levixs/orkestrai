@@ -14,6 +14,7 @@
     SquareTerminal,
     Activity,
     GitPullRequestArrow,
+    Scale,
   } from '@lucide/svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import * as InputGroup from '$lib/components/ui/input-group';
@@ -30,6 +31,7 @@
   import ControlCenterView from '$lib/components/agent-room/ControlCenterView.svelte';
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
+  import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
   import {
     WORKBENCH_EDITOR_STATE_EVENT,
     dirtyWorkbenchEditorKeys,
@@ -150,6 +152,7 @@
   let query = $state('');
   let loading = $state(true);
   let errorMessage = $state('');
+  let councilOpen = $state(false);
   let leaderDictationState = $state<LeaderDictationStatus>('idle');
   let leaderDictationNodeId = $state<string | null>(null);
   let loadedWorkspaceIds = $state<string[]>([]);
@@ -644,6 +647,11 @@
 
   onMount(() => {
     const handleEditorState = () => (dirtyEditorRevision += 1);
+    const handleCouncilOpen = (event: Event) => {
+      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      if (workspaceId) selectedWorkspaceId = workspaceId;
+      councilOpen = true;
+    };
     const guardDirtyBuffers = (event: BeforeUnloadEvent) => {
       if (!dirtyWorkbenchEditorKeys().length) return;
       event.preventDefault();
@@ -686,6 +694,7 @@
     window.addEventListener(LEADER_DICTATION_STATE, handleDictationState);
     window.addEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
     window.addEventListener(WORKBENCH_OPEN_REQUEST, handleWorkbenchOpen);
+    window.addEventListener('orkestrai:open-council', handleCouncilOpen);
     window.addEventListener('orkestrai:open-file', handleWorkbenchFileOpen);
     return () => {
       window.removeEventListener(WORKBENCH_EDITOR_STATE_EVENT, handleEditorState);
@@ -693,6 +702,7 @@
       window.removeEventListener(LEADER_DICTATION_STATE, handleDictationState);
       window.removeEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
       window.removeEventListener(WORKBENCH_OPEN_REQUEST, handleWorkbenchOpen);
+      window.removeEventListener('orkestrai:open-council', handleCouncilOpen);
       window.removeEventListener('orkestrai:open-file', handleWorkbenchFileOpen);
     };
   });
@@ -1041,6 +1051,20 @@
                     <span class="min-w-0 flex-1 truncate font-medium">{m['review_center.title']()}</span>
                   </button>
                 </div>
+                <div class="group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] text-[var(--app-text-soft)] transition-[background-color,color] hover:bg-[var(--app-surface-raised)]">
+                  <button
+                    class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]"
+                    aria-haspopup="dialog"
+                    onclick={() => {
+                      selectedWorkspaceId = workspace.id;
+                      councilOpen = true;
+                    }}
+                  >
+                    <Scale size={13} class="text-[var(--app-text-muted)]" aria-hidden="true" />
+                    <span class="min-w-0 flex-1 truncate font-medium">{m['council.title']()}</span>
+                    <span class="text-[9px] text-[var(--app-text-muted)]">{m['council.new']()}</span>
+                  </button>
+                </div>
                 <WorkbenchFileExplorer
                   workspaceId={workspace.id}
                   rootPath={workspace.workingDir}
@@ -1238,6 +1262,10 @@
     <WorkbenchUsageFooter workspaceId={selectedWorkspaceId} />
   </section>
 </main>
+
+{#if selectedWorkspace}
+  <CouncilDialog bind:open={councilOpen} workspaceId={selectedWorkspace.id} />
+{/if}
 
 <AlertDialog.Root open={Boolean(deletingNode)} onOpenChange={(open) => { if (!open) deletingNode = null; }}>
   <AlertDialog.Content>

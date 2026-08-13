@@ -13,6 +13,7 @@ export type TourAction =
   | { kind: 'createRoutine'; targetTitle: string; prompt: string; intervalMinutes?: number | null }
   | { kind: 'createFloor'; name: string }
   | { kind: 'installMcp'; key: string }
+  | { kind: 'openCouncil' }
   | { kind: 'openPage'; path: string };
 
 export type TourCheck =

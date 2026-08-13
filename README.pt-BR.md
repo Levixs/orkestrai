@@ -33,10 +33,11 @@ Baixe os instaladores mais recentes em
   acompanha o workspace ativo e seu líder.
   O rodapé mantém visíveis todas as janelas de cota reportadas por Claude, Codex
   e Kimi sem exigir a abertura de outro painel.
-- **iOS Simulator integrado:** abra Dispositivo móvel nas ferramentas do
-  Workbench em um Mac Apple Silicon para transmitir e controlar um iPhone ou
-  iPad Simulator, instalar e abrir apps do workspace, gerenciar permissões,
-  inspecionar logs e acessibilidade e salvar screenshots. Os agentes executam o
+- **iOS Simulator integrado:** adicione um node persistente de Dispositivo móvel
+  pela barra do Canvas; o Workbench lista e abre o mesmo node e a mesma sessão.
+  Em um Mac Apple Silicon, transmita e controle um iPhone ou
+  iPad Simulator, instale e abra apps do workspace, gerencie permissões,
+  inspecione logs e acessibilidade e salve screenshots. Os agentes executam o
   mesmo fluxo confinado ao workspace pela CLI ou pelas tools MCP incluídas.
   Android é um backend futuro separado.
 - **Central de controle operacional:** acompanhe tarefa atual, estado, duração,
@@ -51,7 +52,8 @@ Baixe os instaladores mais recentes em
   atenção, revise seu screenshot recortado e contexto visual seguro e registre
   o feedback em uma tarefa nova para triagem do líder, uma tarefa atribuída ou
   uma tarefa existente. Segredos e estado oculto ficam de fora.
-- **Decisões com Council:** peça perspectivas independentes e limitadas por
+- **Decisões com Council:** abra Conselho pela barra do Canvas, pelo workspace
+  no Workbench ou por `Cmd/Ctrl+K` e peça perspectivas independentes e limitadas por
   orçamento a dois a cinco agentes reais sobre uma tarefa ou objetivo, compare
   o mesmo contrato de evidências, riscos, testes, divergências e confiança e
   registre a seleção, pedido de consenso ou rejeição humana. Protótipos ficam

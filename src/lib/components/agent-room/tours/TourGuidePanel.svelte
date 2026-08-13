@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import { Button } from '$lib/components/ui/button';
   import * as m from '$lib/paraglide/messages.js';
   import { Check, CircleCheck, Loader2, Play, X } from '@lucide/svelte';
@@ -7,10 +8,24 @@
   const step = $derived(tourState.tour?.steps[tourState.stepIndex] ?? null);
   const total = $derived(tourState.tour?.steps.length ?? 0);
   const completed = $derived((id: string) => tourState.autoCompleted.has(id));
+
+  function portal(node: HTMLElement) {
+    document.body.appendChild(node);
+    return {
+      destroy() {
+        node.remove();
+      },
+    };
+  }
 </script>
 
 {#if tourState.tour && step}
-  <aside class="tour-panel nodrag nowheel" role="complementary" aria-label={m['tour.panel_aria']()}>
+  <aside
+    class="tour-panel nodrag nowheel"
+    class:workbench={page.url.pathname === '/terminal'}
+    use:portal
+    aria-label={m['tour.panel_aria']()}
+  >
     {#if tourState.done}
       <div class="tour-done">
         <CircleCheck size={20} aria-hidden="true" />
@@ -65,10 +80,11 @@
 
 <style>
   .tour-panel {
-    position: absolute;
+    position: fixed;
+    pointer-events: auto;
     left: 16px;
     bottom: 16px;
-    z-index: 30;
+    z-index: 60;
     width: 340px;
     max-width: calc(100vw - 40px);
     display: flex;
@@ -80,6 +96,12 @@
     background: color-mix(in srgb, var(--app-surface-raised) 96%, transparent);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
+  }
+
+  .tour-panel.workbench {
+    right: 16px;
+    bottom: 40px;
+    left: auto;
   }
 
   .tour-head {
@@ -197,7 +219,7 @@
     line-height: 1.6;
   }
 
-  .tour-spin {
+  :global(.tour-spin) {
     animation: tour-spin 1s linear infinite;
   }
 
@@ -207,8 +229,24 @@
     }
   }
 
+  @media (max-width: 600px) {
+    .tour-panel {
+      right: 12px;
+      bottom: 12px;
+      left: 12px;
+      width: auto;
+      max-width: none;
+    }
+
+    .tour-panel.workbench {
+      right: 12px;
+      bottom: 40px;
+      left: 12px;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .tour-spin {
+    :global(.tour-spin) {
       animation: none;
     }
   }

@@ -9,6 +9,7 @@
   import GlobalDictation from '$lib/components/agent-room/GlobalDictation.svelte';
   import DesktopTitlebar from '$lib/components/agent-room/DesktopTitlebar.svelte';
   import GlobalCommandPalette from '$lib/components/agent-room/GlobalCommandPalette.svelte';
+  import TourGuidePanel from '$lib/components/agent-room/tours/TourGuidePanel.svelte';
   import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
   import { appSettingsStore } from '$lib/components/agent-room/app-settings.svelte.js';
   import { applyAppTheme } from '$lib/components/agent-room/app-themes.js';
@@ -115,6 +116,7 @@
       </div>
       <GlobalDictation />
       <GlobalCommandPalette />
+      <TourGuidePanel />
     {/key}
   {/if}
 </Tooltip.Provider>

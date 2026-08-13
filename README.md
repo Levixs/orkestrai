@@ -32,8 +32,9 @@ Download the latest installers from
   files remain local editor tabs, and the global
   voice orb follows its active workspace and leader. Its footer keeps every
   reported Claude, Codex, and Kimi quota window visible without opening a panel.
-- **Integrated iOS Simulator:** open Mobile Device under Workbench tools on an
-  Apple Silicon Mac to stream and control an iPhone or iPad Simulator, install
+- **Integrated iOS Simulator:** add a persistent Mobile Device node from the
+  Canvas toolbar; Workbench lists and opens that same node and session. On an
+  Apple Silicon Mac, stream and control an iPhone or iPad Simulator, install
   and launch workspace apps, manage permissions, inspect logs and accessibility,
   and save screenshots. Agents can run the same workspace-scoped flow through
   the bundled CLI or MCP tools. Android support is a separate upcoming backend.
@@ -49,7 +50,8 @@ Download the latest installers from
   review its cropped screenshot and safe visual context, then track feedback in
   a new leader-triage task, a task assigned to an agent, or an existing task.
   Browser secrets and hidden state stay excluded.
-- **Council decisions:** ask two to five real agents for independent,
+- **Council decisions:** open Council from the Canvas toolbar, the workspace in
+  Workbench, or `Cmd/Ctrl+K`, then ask two to five real agents for independent,
   budget-limited perspectives on one task or objective, compare the same
   evidence, risk, test, disagreement, and confidence contract, then record the
   human selection, consensus request, or rejection. Implementation prototypes

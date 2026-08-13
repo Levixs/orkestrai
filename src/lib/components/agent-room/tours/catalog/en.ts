@@ -849,6 +849,31 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'share-reference-material',
+    icon: 'Paperclip',
+    title: 'Share reference material',
+    tagline: 'Keep images, PDFs, files, and links beside the brief agents receive.',
+    steps: [
+      {
+        id: 'prepare-reference-note',
+        title: 'Prepare a traceable brief',
+        body: 'Create a note to collect the objective, constraints, and work references. It remains a Canvas node and can also open in Workbench.',
+        action: { kind: 'createNote', title: 'Brief with references', content: '# Brief\n\n## Objective\n\n## References\n' },
+        check: { kind: 'nodeExists', nodeType: 'note', titleIncludes: 'Brief with references' },
+      },
+      {
+        id: 'attach-reference',
+        title: 'Attach it in the right context',
+        body: 'Drag, paste, or select an image, PDF, file, or HTTP/HTTPS link in the note, an agent composer, or a task. The item appears with its name, type, and an explicit remove action.',
+      },
+      {
+        id: 'deliver-complete-context',
+        title: 'Deliver the complete brief',
+        body: 'Connect the note to the leader or assign the task. The agent receives the title, description, and references with relative paths under .orkestrai/attachments, without relying on pasted text or conversation memory.',
+      },
+    ],
+  },
+  {
     id: 'universal-workspace-search',
     icon: 'Search',
     title: 'Use universal search',
@@ -881,7 +906,7 @@ export const TOURS_EN: Tour[] = [
         id: 'open-control-center',
         title: 'Open the operational view',
         body: 'Go to Workbench, expand a workspace, and open Control Center above Files. It is a local Workbench view and does not create another Canvas node.',
-        action: { kind: 'openPage', path: '/terminal' },
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-control-center:{workspace}' },
       },
       {
         id: 'read-agent-state',
@@ -910,7 +935,7 @@ export const TOURS_EN: Tour[] = [
         id: 'open-review-center',
         title: 'Open the Review Center',
         body: 'Go to Workbench, expand the workspace, and open Review Center above Files. It is a local view and does not add a node to Canvas.',
-        action: { kind: 'openPage', path: '/terminal' },
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-review-center:{workspace}' },
       },
       {
         id: 'inspect-diff',
@@ -967,8 +992,8 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open-council',
         title: 'Start from the work',
-        body: 'Open Ask perspectives from a task card or from the leader menu. A task supplies its complete brief automatically; the leader entry starts with that leader selected.',
-        action: { kind: 'openPage', path: '/canvas' },
+        body: 'Open Council directly from the Canvas toolbar or at the top of the workspace in Workbench. You can also use Ask perspectives on a task to carry its complete brief or from the leader menu to preselect that leader.',
+        action: { kind: 'openCouncil' },
       },
       {
         id: 'configure-council',

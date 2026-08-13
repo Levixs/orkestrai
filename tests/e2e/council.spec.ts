@@ -34,6 +34,13 @@ test.describe('Council', () => {
       }));
       await page.goto('/canvas');
       await page.getByRole('button', { name: workspace.name }).click();
+      await page.getByRole('button', { name: 'Council', exact: true }).click();
+
+      const directDialog = page.getByTestId('council-dialog');
+      await expect(directDialog).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(directDialog).toBeHidden();
+
       await page.getByRole('button', { name: 'Ask for perspectives' }).click();
 
       const dialog = page.getByTestId('council-dialog');

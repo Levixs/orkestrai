@@ -7,7 +7,7 @@
   import { Input } from '$lib/components/ui/input';
   import * as m from '$lib/paraglide/messages.js';
   import {
-    Activity, ArrowLeft, Cable, FileCode2, FolderPlus, GitBranch, GitPullRequestArrow, Languages, Layers, LayoutGrid, LayoutTemplate, Mic, Palette, PanelLeftOpen, Pin, RadioTower, Repeat, Rocket, Scale, ScanSearch, Search, Smartphone, Sparkles, Users, Workflow,
+    Activity, ArrowLeft, Cable, FileCode2, FolderPlus, GitBranch, GitPullRequestArrow, Languages, Layers, LayoutGrid, LayoutTemplate, Mic, Palette, PanelLeftOpen, Paperclip, Pin, RadioTower, Repeat, Rocket, Scale, ScanSearch, Search, Smartphone, Sparkles, Users, Workflow,
   } from '@lucide/svelte';
   import { toursCatalog, startTour } from './engine.svelte.js';
   import type { Tour } from './types.js';
@@ -22,11 +22,13 @@
     onCreateWorkspace: (input: { name: string; workingDir: string }) => Promise<Workspace | null>;
     /** Workspace ativo para iniciar o tour (se ja existir um). */
     activeWorkspaceId: string | null;
+    /** Abre o catalogo com um tour especifico ja selecionado (link da documentacao). */
+    requestedTourId?: string | null;
   };
 
-  let { open, onClose, onCreateWorkspace, activeWorkspaceId }: Props = $props();
+  let { open, onClose, onCreateWorkspace, activeWorkspaceId, requestedTourId = null }: Props = $props();
 
-  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, GitPullRequestArrow, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, Palette, PanelLeftOpen, FileCode2, Pin, RadioTower, Mic, Languages, Activity, Scale, ScanSearch, Smartphone };
+  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, GitPullRequestArrow, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, Palette, PanelLeftOpen, FileCode2, Paperclip, Pin, RadioTower, Mic, Languages, Activity, Scale, ScanSearch, Smartphone };
 
   type WizardStep = 'language' | 'welcome' | 'workspace' | 'usecase';
   type UiLanguage = 'pt-BR' | 'en' | 'es';
@@ -39,6 +41,7 @@
   let workspaceId = $state<string | null>(null);
   let pickedTour = $state<Tour | null>(null);
   let languageSaving = $state<UiLanguage | null>(null);
+  let tourQuery = $state('');
   let wasOpen = false;
 
   const desktop =
@@ -59,7 +62,8 @@
       step = savedStep;
       workspaceId = untrack(() => activeWorkspaceId);
       createError = '';
-      pickedTour = null;
+      pickedTour = requestedTourId ? toursCatalog().find((tour) => tour.id === requestedTourId) ?? null : null;
+      tourQuery = '';
       languageSaving = null;
     }
     wasOpen = open;
@@ -120,6 +124,11 @@
   }
 
   const tours = $derived(toursCatalog());
+  const filteredTours = $derived.by(() => {
+    const term = tourQuery.trim().toLocaleLowerCase();
+    if (!term) return tours;
+    return tours.filter((tour) => `${tour.title} ${tour.tagline}`.toLocaleLowerCase().includes(term));
+  });
 </script>
 
 <Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -196,8 +205,12 @@
         <Dialog.Title>{m['onboarding.pick_title']()}</Dialog.Title>
         <Dialog.Description>{m['onboarding.pick_body']()}</Dialog.Description>
       </Dialog.Header>
+      <label class="tour-search">
+        <Search size={14} aria-hidden="true" />
+        <Input bind:value={tourQuery} name="tour-search" autocomplete="off" placeholder={m['onboarding.search_tours']()} aria-label={m['onboarding.search_tours']()} />
+      </label>
       <div class="tour-grid">
-        {#each tours as tour (tour.id)}
+        {#each filteredTours as tour (tour.id)}
           {@const Icon = ICONS[tour.icon] ?? Sparkles}
           <button
             class="tour-card"
@@ -211,6 +224,8 @@
               <span class="tour-card-tagline">{tour.tagline}</span>
             </span>
           </button>
+        {:else}
+          <p class="tour-empty">{m['onboarding.no_tours']({ query: tourQuery.trim() })}</p>
         {/each}
       </div>
       <Dialog.Footer>
@@ -349,6 +364,26 @@
     /* Fade sutil no rodape para o corte do scroll nao parecer erro. */
     mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+  }
+
+  .tour-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--app-text-muted);
+  }
+
+  .tour-search :global(input) {
+    flex: 1;
+  }
+
+  .tour-empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--app-text-muted);
+    font-size: 12px;
   }
 
   .tour-card {

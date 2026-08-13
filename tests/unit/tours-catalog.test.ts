@@ -4,6 +4,8 @@ import { TOURS_EN } from '$lib/components/agent-room/tours/catalog/en.js';
 import { TOURS_ES } from '$lib/components/agent-room/tours/catalog/es.js';
 import { checkPasses, isTourComplete } from '$lib/components/agent-room/tours/checks.js';
 import type { Tour, WorkspaceSnapshot } from '$lib/components/agent-room/tours/types.js';
+import { DOCS_PT } from '$lib/i18n/docs/pt-BR.js';
+import { USE_CASE_TOUR_IDS } from '$lib/components/agent-room/tours/use-case-links.js';
 
 const CATALOGS = { 'pt-BR': TOURS_PT, en: TOURS_EN, es: TOURS_ES };
 
@@ -41,6 +43,21 @@ describe('catalogo de tours (integridade)', () => {
         expect(tour.title.length).toBeGreaterThan(3);
         expect(tour.tagline.length).toBeGreaterThan(10);
       }
+    }
+  });
+
+  it('todo caso de uso documentado abre um tour existente', () => {
+    const tourIds = new Set(TOURS_PT.map((tour) => tour.id));
+    expect(Object.keys(USE_CASE_TOUR_IDS).sort()).toEqual(DOCS_PT.useCases.map((useCase) => useCase.id).sort());
+    for (const useCase of DOCS_PT.useCases) {
+      expect(tourIds.has(USE_CASE_TOUR_IDS[useCase.id]), `${useCase.id}: tour inexistente`).toBe(true);
+    }
+  });
+
+  it('o tour de Council usa uma acao direta que funciona na rota atual', () => {
+    for (const catalog of Object.values(CATALOGS)) {
+      const council = catalog.find((tour) => tour.id === 'council-perspectives');
+      expect(council?.steps[0]?.action).toEqual({ kind: 'openCouncil' });
     }
   });
 

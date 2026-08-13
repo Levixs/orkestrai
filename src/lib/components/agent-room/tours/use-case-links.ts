@@ -1,0 +1,43 @@
+/** Maps every documented use case to the guided tour that exercises it. */
+export const USE_CASE_TOUR_IDS: Record<string, string> = {
+  'leader-team': 'team-leader',
+  'watch-24-7': 'vigia-24-7',
+  'parallel-features': 'duas-features',
+  'council-decision': 'council-perspectives',
+  'visual-qa': 'qa-visual',
+  'mobile-qa': 'mobile-device-testing',
+  'research-summary': 'pesquisa-resumo',
+  'inbox-files': 'inbox-arquivos',
+  'cross-review': 'revisao-cruzada',
+  'choose-agent-provider': 'choose-agent-provider',
+  'pin-favorite-agents': 'pin-favorite-agents',
+  'setup-agent-provider': 'provider-center-setup',
+  'deploy-sentinel': 'sentinela-deploy',
+  'framework-preset': 'preset-bootstrap',
+  'custom-workflow': 'custom-board-stages',
+  'campaign-launch': 'campaign-ready-team',
+  'orkestrai-contributing': 'orkestrai-consensus-team',
+  'approval-pipeline': 'pipeline-aprovacao',
+  'chained-flows': 'chained-flows',
+  'design-figma': 'design-figma',
+  'mcp-tools': 'mcp-tools',
+  'managed-ports': 'managed-ports',
+  'leader-dictation': 'leader-dictation',
+  'switch-agent-provider': 'switch-agent-provider',
+  'devin-local-agent': 'devin-local-agent',
+  'multilingual-spoken-replies': 'multilingual-spoken-replies',
+  'quota-aware-delegation': 'quota-aware-delegation',
+  'organize-canvas': 'organize-canvas',
+  'focused-workspace-view': 'focused-workspace-view',
+  'monitor-team-control-center': 'monitor-team-control-center',
+  'edit-and-preview-files': 'edit-and-preview-files',
+  'share-reference-material': 'share-reference-material',
+  'universal-workspace-search': 'universal-workspace-search',
+  'review-delivery': 'review-delivery',
+  'portal-design-feedback': 'portal-design-feedback',
+  'custom-app-theme': 'custom-app-theme',
+};
+
+export function tourIdForUseCase(useCaseId: string): string | null {
+  return USE_CASE_TOUR_IDS[useCaseId] ?? null;
+}

@@ -853,6 +853,31 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'share-reference-material',
+    icon: 'Paperclip',
+    title: 'Compartilhar materiais de referência',
+    tagline: 'Mantenha imagens, PDFs, arquivos e links junto do briefing que os agentes recebem.',
+    steps: [
+      {
+        id: 'prepare-reference-note',
+        title: 'Prepare um briefing rastreável',
+        body: 'Crie uma nota para reunir objetivo, restrições e referências do trabalho. Ela continua sendo um node do Canvas e pode ser aberta no Workbench.',
+        action: { kind: 'createNote', title: 'Briefing com referências', content: '# Briefing\n\n## Objetivo\n\n## Referências\n' },
+        check: { kind: 'nodeExists', nodeType: 'note', titleIncludes: 'Briefing com referências' },
+      },
+      {
+        id: 'attach-reference',
+        title: 'Anexe no contexto certo',
+        body: 'Arraste, cole ou selecione uma imagem, PDF, arquivo ou link HTTP/HTTPS na nota, no composer de um agente ou em uma tarefa. O item aparece com nome, tipo e ação de remoção explícita.',
+      },
+      {
+        id: 'deliver-complete-context',
+        title: 'Entregue o briefing completo',
+        body: 'Conecte a nota ao líder ou atribua a tarefa. O agente recebe título, descrição e referências com paths relativos sob .orkestrai/attachments, sem depender de texto colado ou memória da conversa.',
+      },
+    ],
+  },
+  {
     id: 'universal-workspace-search',
     icon: 'Search',
     title: 'Usar a busca universal',
@@ -885,7 +910,7 @@ export const TOURS_PT: Tour[] = [
         id: 'open-control-center',
         title: 'Abra a visão operacional',
         body: 'Vá ao Workbench, expanda um workspace e abra a Central de controle acima de Arquivos. Ela é uma visão local do Workbench e não cria outro nó no Canvas.',
-        action: { kind: 'openPage', path: '/terminal' },
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-control-center:{workspace}' },
       },
       {
         id: 'read-agent-state',
@@ -914,7 +939,7 @@ export const TOURS_PT: Tour[] = [
         id: 'open-review-center',
         title: 'Abra a Central de revisão',
         body: 'Vá ao Workbench, expanda o workspace e abra a Central de revisão acima de Arquivos. Ela é uma tela local e não adiciona outro nó ao Canvas.',
-        action: { kind: 'openPage', path: '/terminal' },
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-review-center:{workspace}' },
       },
       {
         id: 'inspect-diff',
@@ -971,8 +996,8 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'open-council',
         title: 'Comece pelo trabalho',
-        body: 'Abra Pedir perspectivas pelo cartão de uma tarefa ou pelo menu do líder. A tarefa fornece o briefing completo automaticamente; pelo líder, ele já começa selecionado.',
-        action: { kind: 'openPage', path: '/canvas' },
+        body: 'Abra Conselho diretamente na barra do Canvas ou no topo do workspace no Workbench. Você também pode usar Pedir perspectivas em uma tarefa para levar o briefing completo ou no menu do líder para já selecioná-lo.',
+        action: { kind: 'openCouncil' },
       },
       {
         id: 'configure-council',
