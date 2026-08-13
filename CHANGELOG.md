@@ -57,6 +57,14 @@ pt-BR, English, and Spanish translations.
   query strings, and hidden state are excluded from the captured context.
   Workspace and portal route parameters are validated explicitly so strict
   request validation does not block delivery.
+- Added a workspace-scoped Mobile Device tool to Workbench on Apple Silicon
+  Macs. It lists and attaches to local iOS Simulators, streams the screen, sends
+  taps, swipes, pinch gestures, rotation, Home, and text input, installs and
+  launches workspace apps, captures screenshots, and exposes bounded logs,
+  accessibility data, and simulator permissions. Matching `orkestrai device`
+  CLI and MCP tools let agents run the same flow. Orkestrai owns at most one
+  session per workspace and cleans up only helpers and simulators it started.
+  Android remains an explicit follow-up backend instead of appearing ready.
 
 ### Changed
 

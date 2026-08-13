@@ -33,6 +33,12 @@ Descarga los instaladores más recientes desde
   pestañas locales, y la esfera de voz sigue el workspace activo.
   El pie mantiene visibles todas las ventanas de cuota informadas por Claude,
   Codex y Kimi sin abrir otro panel.
+- **iOS Simulator integrado:** abre Dispositivo móvil en las herramientas del
+  Workbench en un Mac Apple Silicon para transmitir y controlar un iPhone o iPad
+  Simulator, instalar y abrir apps del workspace, gestionar permisos,
+  inspeccionar logs y accesibilidad y guardar capturas. Los agentes ejecutan el
+  mismo flujo limitado al workspace mediante la CLI o las tools MCP incluidas.
+  Android es un backend futuro separado.
 - **Centro de control operativo:** consulta la tarea actual, estado, duración,
   proveedor, rol y uso de cada agente. La bandeja persistente demuestra si cada
   handoff entró en cola, fue entregado, recibido, respondido o falló bajo un id
@@ -82,8 +88,8 @@ Descarga los instaladores más recientes desde
   catálogo de 12 roles y consulta el título, etapa y responsable de cada tarea,
   además del estado Git de cada piso.
 - **Puente nativo para agentes:** la CLI `orkestrai` y el servidor MCP incluidos
-  exponen comandos tipados para mensajes, tareas, notas, portales, pisos, roles y
-  notificaciones de escritorio.
+  exponen comandos tipados para mensajes, tareas, notas, portales, dispositivos
+  móviles, pisos, roles y notificaciones de escritorio.
 - **Workspaces paralelos:** los agentes continúan trabajando cuando cambias de
   workspace, con indicadores de actividad y notificaciones nativas.
 - **Pisos Git:** aísla el trabajo en worktrees, inspecciona conflictos e integra

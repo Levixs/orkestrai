@@ -150,6 +150,9 @@ export class WorkspaceRepository {
   }
 
   async deleteWorkspace(id: string): Promise<boolean> {
+    await (globalThis as typeof globalThis & {
+      __orkestraiStopWorkspaceDevice?: (workspaceId: string) => Promise<void>;
+    }).__orkestraiStopWorkspaceDevice?.(id).catch(() => undefined);
     await controlCenterRepository.deleteWorkspaceHistory(id);
     await reviewCenterRepository.deleteWorkspaceHistory(id);
     await councilRepository.deleteWorkspaceHistory(id);

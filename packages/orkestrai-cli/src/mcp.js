@@ -39,6 +39,21 @@ const TOOLS = [
   { name: 'floor_create', description: 'Cria um andar (worktree isolada com branch propria).', inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] } },
   { name: 'floor_preview', description: 'Previa da aterrissagem (merge) com conflitos.', inputSchema: { type: 'object', properties: { floorId: { type: 'string' } }, required: ['floorId'] } },
   { name: 'floor_land', description: 'Aterrissa o andar (merge da branch).', inputSchema: { type: 'object', properties: { floorId: { type: 'string' } }, required: ['floorId'] } },
+  { name: 'device_list', description: 'Lista simuladores/dispositivos e a sessao Device ativa do workspace.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'device_attach', description: 'Inicia ou anexa um device ao painel do Workbench.', inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, platform: { type: 'string', enum: ['ios', 'android'] } }, required: ['deviceId', 'platform'] } },
+  { name: 'device_tap', description: 'Toca coordenadas normalizadas 0..1 no device ativo.', inputSchema: { type: 'object', properties: { x: { type: 'number', minimum: 0, maximum: 1 }, y: { type: 'number', minimum: 0, maximum: 1 } }, required: ['x', 'y'] } },
+  { name: 'device_swipe', description: 'Desliza entre coordenadas normalizadas no device ativo.', inputSchema: { type: 'object', properties: { fromX: { type: 'number' }, fromY: { type: 'number' }, toX: { type: 'number' }, toY: { type: 'number' }, durationMs: { type: 'number' } }, required: ['fromX', 'fromY', 'toX', 'toY'] } },
+  { name: 'device_pinch', description: 'Executa pinch com dois toques em coordenadas normalizadas no device ativo.', inputSchema: { type: 'object', properties: { centerX: { type: 'number', minimum: 0, maximum: 1 }, centerY: { type: 'number', minimum: 0, maximum: 1 }, startDistance: { type: 'number', minimum: 0.02, maximum: 0.9 }, endDistance: { type: 'number', minimum: 0.02, maximum: 0.9 }, durationMs: { type: 'number' } }, required: ['centerX', 'centerY', 'startDistance', 'endDistance'] } },
+  { name: 'device_type', description: 'Digita texto no campo focado do device ativo.', inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] } },
+  { name: 'device_button', description: 'Pressiona um botao de sistema do device ativo.', inputSchema: { type: 'object', properties: { button: { type: 'string', enum: ['home', 'lock', 'app-switcher'] } }, required: ['button'] } },
+  { name: 'device_rotate', description: 'Muda a orientacao do device ativo.', inputSchema: { type: 'object', properties: { orientation: { type: 'string', enum: ['portrait', 'portrait_upside_down', 'landscape_left', 'landscape_right'] } }, required: ['orientation'] } },
+  { name: 'device_install', description: 'Instala um app do workspace no device ativo.', inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } },
+  { name: 'device_launch', description: 'Abre um bundle/package no device ativo.', inputSchema: { type: 'object', properties: { bundleId: { type: 'string' } }, required: ['bundleId'] } },
+  { name: 'device_logs', description: 'Le logs recentes e limitados do device ativo.', inputSchema: { type: 'object', properties: { minutes: { type: 'number', minimum: 1, maximum: 30 } } } },
+  { name: 'device_tree', description: 'Le a arvore de acessibilidade limitada do device ativo.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'device_permissions', description: 'Lista ou altera explicitamente uma permissao do app no device ativo.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['list', 'grant', 'revoke', 'reset'] }, permission: { type: 'string', enum: ['notifications', 'location', 'camera', 'microphone', 'photos', 'photos-add', 'contacts', 'calendar', 'reminders', 'motion', 'media-library', 'siri', 'speech', 'faceid', 'user-tracking', 'homekit', 'all'] }, bundleId: { type: 'string' }, value: { type: 'string' } }, required: ['action'] } },
+  { name: 'device_screenshot', description: 'Salva um screenshot no diretorio .orkestrai do workspace.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'device_stop', description: 'Desanexa e limpa o helper do device ativo.', inputSchema: { type: 'object', properties: {} } },
   { name: 'notify', description: 'Notificacao nativa de atencao ou conclusao do projeto. task_done ja notifica tarefas.', inputSchema: { type: 'object', properties: { message: { type: 'string' }, kind: { type: 'string', enum: ['info', 'attention', 'project', 'task'] }, title: { type: 'string' } }, required: ['message'] } },
   { name: 'status', description: 'Registra o estado semantico e a acao atual deste agente no Control Center.', inputSchema: { type: 'object', properties: { state: { type: 'string', enum: ['starting', 'working', 'waiting_input', 'waiting_permission', 'blocked', 'idle', 'done', 'error', 'disconnected'] }, action: { type: 'string' }, taskId: { type: 'string' } }, required: ['state'] } },
   { name: 'port', description: 'Devolve uma porta livre para subir servidores.', inputSchema: { type: 'object', properties: {} } },
@@ -97,6 +112,36 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', `/api/agent-room/bridge/floors/${encodeURIComponent(args.floorId)}/preview`);
     case 'floor_land':
       return bridge('POST', `/api/agent-room/bridge/floors/${encodeURIComponent(args.floorId)}/land`, {});
+    case 'device_list':
+      return bridge('GET', '/api/agent-room/bridge/devices');
+    case 'device_attach':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'start', deviceId: args.deviceId, platform: args.platform });
+    case 'device_tap':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'tap', x: args.x, y: args.y });
+    case 'device_swipe':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'swipe', fromX: args.fromX, fromY: args.fromY, toX: args.toX, toY: args.toY, durationMs: args.durationMs ?? 300 });
+    case 'device_pinch':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'pinch', centerX: args.centerX, centerY: args.centerY, startDistance: args.startDistance, endDistance: args.endDistance, durationMs: args.durationMs ?? 300 });
+    case 'device_type':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'type', text: args.text });
+    case 'device_button':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'button', button: args.button });
+    case 'device_rotate':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'rotate', orientation: args.orientation });
+    case 'device_install':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'install', path: args.path });
+    case 'device_launch':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'launch', bundleId: args.bundleId });
+    case 'device_logs':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'logs', minutes: args.minutes ?? 2 });
+    case 'device_tree':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'tree' });
+    case 'device_permissions':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'permissions', action: args.action, permission: args.permission, bundleId: args.bundleId, value: args.value });
+    case 'device_screenshot':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'screenshot' });
+    case 'device_stop':
+      return bridge('POST', '/api/agent-room/bridge/devices', { command: 'stop' });
     case 'notify':
       return bridge('POST', '/api/agent-room/bridge/notify', { message: args.message, kind: args.kind, title: args.title, from: selfAgent });
     case 'status': {

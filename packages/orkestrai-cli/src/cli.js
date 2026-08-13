@@ -65,6 +65,13 @@ Uso:
   orkestrai floor preview <floorId> [--target <branch>]
   orkestrai floor land <floorId> [--target <branch>]
   orkestrai floor remove <floorId> [--delete-branch]
+  orkestrai device list [--json]
+  orkestrai device attach <deviceId> [--platform ios|android]
+  orkestrai device tap <x> <y> | swipe <x1> <y1> <x2> <y2> [--duration <ms>]
+  orkestrai device pinch <centerX> <centerY> <startDistance> <endDistance> [--duration <ms>]
+  orkestrai device type <texto> | button <home|lock|app-switcher> | rotate <orientacao>
+  orkestrai device install <path> | launch <bundleId> | logs | tree | screenshot | stop
+  orkestrai device permissions <list|grant|revoke|reset> [permission] [bundleId] [--value <valor>]
   orkestrai port [--check <porta>]  — devolve uma porta livre (ou testa uma)
   orkestrai fs read <path> | fs write <path> <conteudo> | fs search <termo> [--content]
   orkestrai say <texto>  — fala no desktop com a voz configurada
@@ -580,6 +587,61 @@ export async function run(argv, options = {}) {
         return 0;
       }
       throw new Error('Uso: orkestrai floor <list|create|preview|land|remove> ...');
+    }
+    case 'device': {
+      const [action, ...values] = rest;
+      if (action === 'list') {
+        const data = await bridge(config, 'GET', '/api/agent-room/bridge/devices');
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else {
+          for (const device of data.devices ?? []) {
+            out(`- ${device.name} [${device.platform}/${device.state}] ${device.runtime ?? ''} (${device.id})`);
+          }
+          if (!data.devices?.length) out('(nenhum dispositivo disponivel)');
+          if (data.session) out(`Ativo: ${data.session.deviceName} [${data.session.status}]`);
+        }
+        return 0;
+      }
+      let body;
+      if (action === 'attach') {
+        if (!values[0]) throw new Error('Uso: orkestrai device attach <deviceId> [--platform ios|android]');
+        body = { command: 'start', platform: flags.platform ?? 'ios', deviceId: values[0] };
+      } else if (action === 'stop') body = { command: 'stop' };
+      else if (action === 'tap') {
+        if (values.length < 2) throw new Error('Uso: orkestrai device tap <x> <y> (coordenadas 0..1)');
+        body = { command: 'tap', x: Number(values[0]), y: Number(values[1]) };
+      } else if (action === 'swipe') {
+        if (values.length < 4) throw new Error('Uso: orkestrai device swipe <x1> <y1> <x2> <y2> [--duration ms]');
+        body = { command: 'swipe', fromX: Number(values[0]), fromY: Number(values[1]), toX: Number(values[2]), toY: Number(values[3]), durationMs: Number(flags.duration ?? 300) };
+      } else if (action === 'pinch') {
+        if (values.length < 4) throw new Error('Uso: orkestrai device pinch <centerX> <centerY> <startDistance> <endDistance> [--duration ms]');
+        body = { command: 'pinch', centerX: Number(values[0]), centerY: Number(values[1]), startDistance: Number(values[2]), endDistance: Number(values[3]), durationMs: Number(flags.duration ?? 300) };
+      } else if (action === 'type') {
+        const text = values.join(' ');
+        if (!text) throw new Error('Uso: orkestrai device type <texto>');
+        body = { command: 'type', text };
+      } else if (action === 'button') body = { command: 'button', button: values[0] ?? 'home' };
+      else if (action === 'rotate') {
+        if (!values[0]) throw new Error('Uso: orkestrai device rotate <portrait|portrait_upside_down|landscape_left|landscape_right>');
+        body = { command: 'rotate', orientation: values[0] };
+      } else if (action === 'install') {
+        if (!values[0]) throw new Error('Uso: orkestrai device install <path>');
+        body = { command: 'install', path: values.join(' ') };
+      } else if (action === 'launch') {
+        if (!values[0]) throw new Error('Uso: orkestrai device launch <bundleId>');
+        body = { command: 'launch', bundleId: values[0] };
+      } else if (action === 'permissions') {
+        const [permissionAction, permission, bundleId] = values;
+        if (!permissionAction) throw new Error('Uso: orkestrai device permissions <list|grant|revoke|reset> [permission] [bundleId]');
+        body = { command: 'permissions', action: permissionAction, permission, bundleId, value: flags.value };
+      } else if (action === 'logs') body = { command: 'logs', minutes: Number(flags.minutes ?? 2) };
+      else if (action === 'tree') body = { command: 'tree' };
+      else if (action === 'screenshot') body = { command: 'screenshot' };
+      else throw new Error('Uso: orkestrai device <list|attach|tap|swipe|pinch|type|button|rotate|install|launch|permissions|logs|tree|screenshot|stop> ...');
+      const data = await bridge(config, 'POST', '/api/agent-room/bridge/devices', body);
+      if (flags.json || data.result) out(JSON.stringify(data.result ?? data.snapshot, null, 2));
+      else out(data.snapshot?.session ? `Dispositivo ativo: ${data.snapshot.session.deviceName}` : 'Dispositivo parado.');
+      return 0;
     }
     case 'fs': {
       const [action, ...values] = rest;

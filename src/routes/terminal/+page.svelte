@@ -29,6 +29,7 @@
   import WorkbenchUsageFooter from '$lib/components/agent-room/WorkbenchUsageFooter.svelte';
   import ControlCenterView from '$lib/components/agent-room/ControlCenterView.svelte';
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
+  import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
   import {
     WORKBENCH_EDITOR_STATE_EVENT,
     dirtyWorkbenchEditorKeys,
@@ -93,6 +94,11 @@
     isWorkbenchReviewCenterItemId,
     workbenchReviewCenterItemId,
   } from '$lib/components/agent-room/workbench-review-center.js';
+  import {
+    createWorkbenchDeviceItem,
+    isWorkbenchDeviceItemId,
+    workbenchDeviceItemId,
+  } from '$lib/components/agent-room/workbench-device.js';
   import {
     readProviderCache,
     readWorkspaceListCache,
@@ -190,7 +196,17 @@
     const reviewCenter = workspace
       ? [createWorkbenchReviewCenterItem(workspace, m['review_center.title']())]
       : [];
-    return [...controlCenter, ...reviewCenter, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
+    const device = workspace
+      ? [createWorkbenchDeviceItem(workspace, m['device.title']())]
+      : [];
+    return [...controlCenter, ...reviewCenter, ...device, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
+  }
+
+  function isVirtualWorkbenchItemId(id: string | null | undefined): boolean {
+    return isWorkbenchFileItemId(id)
+      || isWorkbenchControlCenterItemId(id)
+      || isWorkbenchReviewCenterItemId(id)
+      || isWorkbenchDeviceItemId(id);
   }
 
   function rememberWorkbenchFiles(workspaceId: string, paths: string[]): void {
@@ -378,13 +394,19 @@
     applyWorkbenchLayout(selectedWorkspaceId, activateWorkbenchNode(selectedLayout, paneId, nodeId));
   }
 
-  function closeOpenNode(paneId: WorkbenchPaneId, nodeId: string) {
+  async function closeOpenNode(paneId: WorkbenchPaneId, nodeId: string) {
     if (!selectedWorkspaceId || !selectedLayout) return;
     const node = workbenchItems(selectedWorkspaceId).find((candidate) => candidate.id === nodeId);
     const path = filePathForItem(node) ?? '';
     if (node && path && isWorkbenchEditorBufferDirty(selectedWorkspaceId, path)) {
       pendingEditorClose = { paneId, node };
       return;
+    }
+    if (isWorkbenchDeviceItemId(nodeId)) {
+      await api(`/api/agent-room/workspaces/${selectedWorkspaceId}/devices`, {
+        method: 'POST',
+        body: JSON.stringify({ command: 'stop' }),
+      }).catch(() => toast.error(m['device.stop_failed']()));
     }
     applyWorkbenchLayout(selectedWorkspaceId, closeWorkbenchNode(selectedLayout, paneId, nodeId));
   }
@@ -511,6 +533,7 @@
     if (node.type === 'usage') return m['terminal_browser.kind_usage']();
     if (node.type === 'controlCenter') return m['control_center.title']();
     if (node.type === 'reviewCenter') return m['review_center.title']();
+    if (node.type === 'device') return m['device.title']();
     return node.type;
   }
 
@@ -567,7 +590,7 @@
   function handleKeydown(event: KeyboardEvent) {
     if ((event.metaKey || event.ctrlKey) && event.key === '1') {
       event.preventDefault();
-      const canvasNodeId = selectedNodeId && !isWorkbenchControlCenterItemId(selectedNodeId) && !isWorkbenchReviewCenterItemId(selectedNodeId) && !isWorkbenchFileItemId(selectedNodeId)
+      const canvasNodeId = selectedNodeId && !isVirtualWorkbenchItemId(selectedNodeId)
         ? selectedNodeId
         : null;
       void goto(selectedWorkspaceId ? `/canvas?workspace=${selectedWorkspaceId}${canvasNodeId ? `&node=${canvasNodeId}` : ''}` : '/canvas');
@@ -872,6 +895,10 @@
           {#key `${pane.id}:${paneNode.id}`}
             <WorkbenchReviewCenter workspaceId={selectedWorkspace.id} />
           {/key}
+        {:else if isWorkbenchDeviceItemId(paneNode.id)}
+          {#key `${pane.id}:${paneNode.id}`}
+            <DeviceWorkbenchPanel workspaceId={selectedWorkspace.id} />
+          {/key}
         {:else}
           {#key `${pane.id}:${paneNode.id}`}
             <FocusedCanvasNode
@@ -929,7 +956,7 @@
       <WorkspaceModeSwitch
         active="terminals"
         workspaceId={selectedWorkspaceId}
-        nodeId={isWorkbenchFileItemId(selectedNodeId) || isWorkbenchControlCenterItemId(selectedNodeId) || isWorkbenchReviewCenterItemId(selectedNodeId) ? null : selectedNodeId}
+        nodeId={isVirtualWorkbenchItemId(selectedNodeId) ? null : selectedNodeId}
       />
     </div>
 
@@ -1026,6 +1053,16 @@
                   >
                     <GitPullRequestArrow size={13} class={selectedNodeId === workbenchReviewCenterItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
                     <span class="min-w-0 flex-1 truncate font-medium">{m['review_center.title']()}</span>
+                  </button>
+                </div>
+                <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchDeviceItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>
+                  <button
+                    class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]"
+                    aria-current={selectedNodeId === workbenchDeviceItemId(workspace.id) ? 'page' : undefined}
+                    onclick={() => selectNode(workspace.id, workbenchDeviceItemId(workspace.id))}
+                  >
+                    <span class={selectedNodeId === workbenchDeviceItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'}><WorkbenchNodeIcon type="device" size={13} /></span>
+                    <span class="min-w-0 flex-1 truncate font-medium">{m['device.title']()}</span>
                   </button>
                 </div>
                 <WorkbenchFileExplorer
@@ -1184,7 +1221,7 @@
           </Tooltip.Trigger>
           <Tooltip.Content>{m['workbench.close_pane']()}</Tooltip.Content>
         </Tooltip.Root>
-        {#if selectedNode && !isWorkbenchFileItemId(selectedNode.id) && !isWorkbenchControlCenterItemId(selectedNode.id) && !isWorkbenchReviewCenterItemId(selectedNode.id)}
+        {#if selectedNode && !isVirtualWorkbenchItemId(selectedNode.id)}
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#snippet child({ props })}

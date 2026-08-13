@@ -60,6 +60,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `No aplicativo instalado, abra um Portal e escolha Inspecionar design no cabeçalho. O hover destaca o elemento real da página sem alterá-lo; o clique captura um seletor limitado, texto visível, estilos computados relevantes, viewport e um PNG recortado. Revise esse contexto, descreva o resultado esperado e registre-o em uma nova tarefa para triagem do líder, em uma nova tarefa já atribuída a um agente ou em uma tarefa existente. Screenshot e contexto ficam juntos no Kanban para manter a rastreabilidade. Esc cancela a inspeção. O HTML bruto serve apenas para a prévia sanitizada; query strings, cookies, headers, tokens, storage e estado oculto nunca entram automaticamente.`,
     },
     {
+      id: 'mobile-device',
+      title: 'Dispositivo móvel no Workbench',
+      body: `Abra Dispositivo móvel em Ferramentas no explorer do Workbench para conectar um iOS Simulator ao workspace sem sair do Orkestrai. Em Macs Apple Silicon com Xcode instalado, o painel lista os runtimes locais, inicia ou conecta ao simulador, transmite a tela e envia toques, swipes, gestos de pinça, rotação, botão Home e entrada de texto. A gaveta de ferramentas instala e abre apps do workspace, salva screenshots em .orkestrai/devices/screenshots, lê logs limitados e a árvore de acessibilidade e inspeciona ou altera permissões do simulador. Os agentes recebem as mesmas ações confinadas ao workspace pela CLI orkestrai device e pelas tools MCP, para reproduzir e documentar um fluxo mobile. O Orkestrai encerra apenas helpers e simuladores que ele iniciou; cada workspace admite uma sessão e sessões ociosas são limpas. Android aparece como uma etapa separada e ainda não é informado como disponível.`,
+    },
+    {
       id: 'notas',
       title: 'Notas como canais de trabalho',
       body: `Notas são markdown vivo compartilhado com os agentes. A convenção: conecte a nota a quem deve lê-la/escrevê-la e diga o propósito no título e no conteúdo. Ex.: nota “Backlog (líder escreve)” conectada ao líder — você escreve “quebre em tarefas para o time” e ele lê com orkestrai note read e distribui no quadro. Nota “Para mim (humano)” — peça ao líder para registrar status/decisões nela com orkestrai note write/edit, e você acompanha formatado (ícone de olho). Duplo-clique no título renomeia a nota. Solte, cole ou selecione imagens, PDFs, outros arquivos e links HTTP/HTTPS; arquivos de até 10 MB ficam em .orkestrai/attachments/ e a referência markdown entra no cursor. Ao remover um anexo pelo X, a referência também sai da nota e o arquivo armazenado no workspace é apagado.`,
@@ -117,7 +122,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'cli',
       title: 'CLI orkestrai (a ponte)',
-      body: `Os agentes usam a CLI orkestrai para agir no canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, port, fs, run, say, clip, notes e portals. ask preserva mensagens com várias palavras mesmo sem aspas, mas uma conversa só conta quando a ponte devolve Resposta confirmada; timeout ou resposta não confirmada termina com erro. usage devolve as cotas atuais e a recomendação configurada no nó Uso. task columns devolve as etapas definidas por você; task add --column e task move permitem que líder e equipe respeitem qualquer processo, não apenas um kanban de software. task done também avisa o líder automaticamente. Agentes que falam MCP recebem as mesmas ações como tools nativas via orkestrai mcp. O provisionamento da ponte é automático e o token fica em .orkestrai/workspace.json.`,
+      body: `Os agentes usam a CLI orkestrai para agir no canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, device, port, fs, run, say, clip, notes e portals. ask preserva mensagens com várias palavras mesmo sem aspas, mas uma conversa só conta quando a ponte devolve Resposta confirmada; timeout ou resposta não confirmada termina com erro. usage devolve as cotas atuais e a recomendação configurada no nó Uso. task columns devolve as etapas definidas por você; task add --column e task move permitem que líder e equipe respeitem qualquer processo, não apenas um kanban de software. device lista, conecta, controla, inspeciona, captura e encerra o simulador móvel do workspace. task done também avisa o líder automaticamente. Agentes que falam MCP recebem as mesmas ações como tools nativas via orkestrai mcp. O provisionamento da ponte é automático e o token fica em .orkestrai/workspace.json.`,
     },
     {
       id: 'usage-routing',
@@ -165,6 +170,12 @@ export const DOCS_PT: DocsCatalog = {
       title: 'QA visual da sua aplicação',
       body: 'Portal apontado para o dev server (http://localhost:5173) conectado a um agente: “abra o portal, faça o fluxo de checkout, tire screenshot e me diga o que quebrou”. O agente navega, executa JS, lê o DOM e reporta.',
       tags: ['Portal', 'screenshot', 'eval/dom'],
+    },
+    {
+      id: 'mobile-qa',
+      title: 'Reproduzir e validar um fluxo no iOS',
+      body: 'Abra Dispositivo móvel no Workbench, conecte um iPhone ou iPad Simulator disponível e instale um app do workspace. Você ou um agente pode tocar, arrastar, digitar, girar, alterar permissões, inspecionar a árvore de acessibilidade, capturar um screenshot e coletar logs limitados mantendo todos os artefatos dentro do projeto.',
+      tags: ['iOS Simulator', 'QA mobile', 'CLI/MCP'],
     },
     {
       id: 'research-summary',
@@ -349,7 +360,7 @@ export const DOCS_PT: DocsCatalog = {
   ],
   changelog: [
     {
-      date: '12 ago 2026 · Em desenvolvimento',
+      date: '13 ago 2026 · Em desenvolvimento',
       items: [
         'O modo focado evoluiu para Workbench, com itens abertos persistentes, abas verticais por padrão e abas horizontais opcionais em Configurações.',
         'Agora é possível organizar até oito artefatos ao vivo em divisões redimensionáveis para a direita ou para baixo, alternar o painel ativo e restaurar o layout por workspace sem duplicar sessões.',
@@ -375,6 +386,7 @@ export const DOCS_PT: DocsCatalog = {
         'O Workbench agora inclui uma Central de revisão com alterações Git preparadas e não preparadas estruturadas, sincronização de branch, diffs Monaco limitados, comentários persistidos por arquivo e linha, detecção de contexto desatualizado, tarefa e agente vinculados e decisões de aprovar, solicitar alterações ou rejeitar com envio direto ao agente.',
         'O Portal Design Mode agora destaca elementos reais da página, captura screenshot recortado e contexto seguro limitado, mostra uma prévia antes do envio e registra todo feedback no Kanban: como nova tarefa para triagem do líder, nova tarefa atribuída a um agente ou complemento de uma tarefa existente. Cookies, tokens, storage, headers e query strings ficam de fora.',
         'O Council agora executa de dois a cinco agentes reais como perspectivas independentes com orçamento limitado, evidências, riscos, testes, divergências e confiança estruturados, tolerância a falhas parciais, síntese opcional do líder e decisão humana persistida. Perspectivas de implementação usam andares Git isolados e exigem nova prévia limpa e sem conflitos antes de aterrissar o resultado selecionado e commitado.',
+        'O Workbench agora integra uma sessão de iOS Simulator por workspace em Macs Apple Silicon, com tela ao vivo, controles de toque e gestos, rotação, digitação, instalação e abertura de apps, screenshots, logs, árvore de acessibilidade, permissões, limpeza do ciclo de vida e comandos equivalentes na CLI orkestrai e no MCP. Android permanece como backend futuro explicitamente indisponível.',
       ],
     },
     {

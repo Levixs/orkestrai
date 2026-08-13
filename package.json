@@ -100,6 +100,7 @@
     "pdfjs-dist": "^6.2.108",
     "pdfkit": "^0.19.1",
     "postgres": "^3.4.5",
+    "serve-sim": "0.1.45",
     "sherpa-onnx-node": "^1.13.4",
     "svelte-sonner": "^1.1.1",
     "sveltekit-superforms": "^2.30.2",

@@ -91,6 +91,15 @@ These packages provide the local code editor and PDF preview. Their workers and
 assets are bundled with the desktop app so these surfaces remain available
 offline.
 
+## Apple Simulator Integration
+
+- `serve-sim`: Copyright Evan Bacon and contributors, Apache License 2.0.
+  Source: <https://github.com/EvanBacon/serve-sim>
+
+Orkestrai uses `serve-sim` as a loopback-only streaming and control helper for
+Apple Simulators. Xcode and Apple Simulator runtimes are supplied separately by
+Apple and are not distributed with Orkestrai.
+
 ## Agent Providers And Trademarks
 
 Claude and Anthropic are trademarks of Anthropic PBC. Codex and OpenAI are

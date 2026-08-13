@@ -32,6 +32,11 @@ Download the latest installers from
   files remain local editor tabs, and the global
   voice orb follows its active workspace and leader. Its footer keeps every
   reported Claude, Codex, and Kimi quota window visible without opening a panel.
+- **Integrated iOS Simulator:** open Mobile Device under Workbench tools on an
+  Apple Silicon Mac to stream and control an iPhone or iPad Simulator, install
+  and launch workspace apps, manage permissions, inspect logs and accessibility,
+  and save screenshots. Agents can run the same workspace-scoped flow through
+  the bundled CLI or MCP tools. Android support is a separate upcoming backend.
 - **Operational Control Center:** inspect every agent's current task, state,
   state duration, provider, role, and usage. Its persistent communications inbox
   proves whether each handoff was queued, delivered, acknowledged, replied to,
@@ -77,8 +82,8 @@ Download the latest installers from
 - **Operational team views:** install specialized roles from a 12-role catalog
   and inspect each task title, stage, assignee, and Git state across every floor.
 - **Native agent bridge:** the bundled `orkestrai` CLI and MCP server expose
-  typed commands for messages, tasks, notes, portals, floors, roles, and desktop
-  notifications.
+  typed commands for messages, tasks, notes, portals, mobile devices, floors,
+  roles, and desktop notifications.
 - **Parallel workspaces:** agents continue running when you switch to another
   workspace, with activity indicators and native notifications.
 - **Git floors:** isolate work in Git worktrees, inspect conflicts, and land

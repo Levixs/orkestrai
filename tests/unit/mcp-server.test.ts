@@ -52,7 +52,7 @@ describe('servidor MCP (orkestrai mcp)', () => {
     send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const list = await waitFor(2);
     const names = list.result.tools.map((tool) => tool.name);
-    for (const expected of ['ask', 'usage', 'note_create', 'task_list', 'task_columns', 'task_move', 'task_done', 'portal_dom', 'floor_land', 'notify', 'port', 'recruit']) {
+    for (const expected of ['ask', 'usage', 'note_create', 'task_list', 'task_columns', 'task_move', 'task_done', 'portal_dom', 'floor_land', 'device_attach', 'device_screenshot', 'notify', 'port', 'recruit']) {
       expect(names).toContain(expected);
     }
     input.end();
@@ -89,6 +89,26 @@ describe('servidor MCP (orkestrai mcp)', () => {
     expect(moved.path).toBe('/api/agent-room/bridge/tasks/t1');
     expect(moved.method).toBe('PATCH');
     expect(moved.body).toEqual({ status: 'Review' });
+    input.end();
+  });
+
+  it('routes mobile device tools through the workspace bridge', async () => {
+    const { send, waitFor, input } = startMcp();
+    send({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: {
+      name: 'device_pinch',
+      arguments: { centerX: 0.5, centerY: 0.45, startDistance: 0.18, endDistance: 0.42, durationMs: 360 },
+    } });
+    const pinch = JSON.parse((await waitFor(1)).result.content[0].text);
+    expect(pinch.method).toBe('POST');
+    expect(pinch.path).toBe('/api/agent-room/bridge/devices');
+    expect(pinch.body).toEqual({
+      command: 'pinch',
+      centerX: 0.5,
+      centerY: 0.45,
+      startDistance: 0.18,
+      endDistance: 0.42,
+      durationMs: 360,
+    });
     input.end();
   });
 

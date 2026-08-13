@@ -10,6 +10,9 @@ import { bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, brid
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { portalService } from '$lib/modules/agent-room/application/services/PortalService.js';
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
+import { deviceService } from '$lib/modules/agent-room/application/services/DeviceService.js';
+import { ExecuteDeviceCommandAction } from '$lib/modules/agent-room/application/actions/ExecuteDeviceCommandAction.js';
+import { ExecuteDeviceCommandDto } from '$lib/modules/agent-room/application/dto/ExecuteDeviceCommandDto.js';
 import { buildUsageRoutingReport } from '$lib/modules/agent-room/domain/usage-routing.js';
 import { z } from 'zod';
 import {
@@ -22,6 +25,7 @@ import {
   BridgeNotifyRequest,
   BridgeActivityRequest,
 } from '$lib/modules/agent-room/interface/http/requests/BridgeRequests.js';
+import { DeviceCommandRequest } from '$lib/modules/agent-room/interface/http/requests/DeviceCommandRequest.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -52,6 +56,28 @@ export class BridgeController extends Controller {
       return this.json({ data: buildUsageRoutingReport(await usageService.getAll(false), policy) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao consultar uso dos providers.', 401);
+    }
+  }
+
+  async deviceList(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await deviceService.snapshot(workspace.id) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar dispositivos.', 401);
+    }
+  }
+
+  async deviceCommand(event: any) {
+    try {
+      const input = await DeviceCommandRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await new ExecuteDeviceCommandAction().execute({
+        workspaceId: workspace.id,
+        dto: ExecuteDeviceCommandDto.from(input),
+      }) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao controlar dispositivo.');
     }
   }
 

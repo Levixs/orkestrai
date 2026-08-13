@@ -110,6 +110,27 @@ describe('orkestrai CLI', () => {
     expect(requests.at(-1).url).toBe('/api/agent-room/bridge/usage');
   });
 
+  it('device encaminha comandos estruturados para a sessao do workspace', async () => {
+    const { out } = capture();
+    const code = await run(['device', 'attach', 'simulator-1', '--platform', 'ios'], { cwd, out, env: {} });
+    expect(code).toBe(0);
+    expect(requests.at(-1)).toMatchObject({
+      method: 'POST',
+      url: '/api/agent-room/bridge/devices',
+      body: { command: 'start', platform: 'ios', deviceId: 'simulator-1' },
+    });
+
+    await run(['device', 'swipe', '0.1', '0.2', '0.8', '0.7', '--duration', '450'], { cwd, out, env: {} });
+    expect(requests.at(-1).body).toEqual({
+      command: 'swipe',
+      fromX: 0.1,
+      fromY: 0.2,
+      toX: 0.8,
+      toY: 0.7,
+      durationMs: 450,
+    });
+  });
+
   it('portal preserva o detalhe retornado pela ponte em erros HTTP 400', async () => {
     await expect(run(['portal', 'broken', 'dom'], { cwd, out: () => {}, env: {} })).rejects.toThrow(
       'Portal indisponível: servidor ainda não respondeu.'

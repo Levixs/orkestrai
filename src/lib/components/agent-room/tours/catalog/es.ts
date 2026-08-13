@@ -988,6 +988,35 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'mobile-device-testing',
+    icon: 'Smartphone',
+    title: 'Probar una app en iOS Simulator',
+    tagline: 'Controla, inspecciona y captura un flujo móvil sin salir del workspace.',
+    steps: [
+      {
+        id: 'open-mobile-device',
+        title: 'Abre Dispositivo móvil',
+        body: 'En Workbench, expande el workspace activo y abre Dispositivo móvil en Herramientas. Orkestrai lista los runtimes de iOS Simulator disponibles en este Mac Apple Silicon.',
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-device:{workspace}' },
+      },
+      {
+        id: 'attach-simulator',
+        title: 'Conecta un simulador',
+        body: 'Elige un iPhone o iPad y selecciona Iniciar. La pantalla se transmite dentro del panel; haz clic o arrastra sobre ella para tocar y deslizar, mientras la barra compacta ofrece Home, rotación, pinza, reinicio y detención.',
+      },
+      {
+        id: 'inspect-mobile-flow',
+        title: 'Inspecciona el flujo',
+        body: 'Abre Herramientas del dispositivo para escribir texto, instalar una app desde un path del workspace, abrir un bundle id, inspeccionar o cambiar permisos, leer logs limitados y el árbol de accesibilidad y guardar una captura en .orkestrai/devices/screenshots.',
+      },
+      {
+        id: 'delegate-mobile-check',
+        title: 'Delega con evidencias',
+        body: 'Pide a un agente que use orkestrai device o las tools MCP equivalentes. Sus toques, swipes, capturas, logs e inspección de accesibilidad usan la sesión de este workspace. Detén la sesión al terminar; Orkestrai también limpia los helpers inactivos iniciados por él.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar la apariencia',
