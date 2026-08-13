@@ -954,7 +954,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'send-feedback',
         title: 'Choose the responsible destination',
-        body: 'Send directly to a specialist or append the feedback and PNG to an existing task. An online assigned agent receives the handoff immediately; an offline task keeps the complete context for later.',
+        body: 'Create a task for leader triage, a task already assigned to a specialist, or append the feedback and PNG to an existing task. Every option keeps context and decisions traceable on the Kanban board.',
       },
     ],
   },

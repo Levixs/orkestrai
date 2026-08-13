@@ -41,6 +41,26 @@ function capture() {
   });
 }
 
+async function createFeedbackScenario(name: string) {
+  const dir = mkdtempSync(join(tmpdir(), 'orkestrai-portal-design-'));
+  tempDirs.push(dir);
+  const workspace = await workspaceRepository.createWorkspace({ name, workingDir: dir });
+  const portal = await workspaceRepository.createNode({
+    workspaceId: workspace.id,
+    type: 'portal',
+    title: 'Checkout preview',
+    payload: { url: 'https://example.com/checkout' },
+  });
+  const screenshot = await workspaceAttachmentService.create(
+    workspace.id,
+    WorkspaceAttachmentDto.fromFile(new File([
+      Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    ], 'portal-selection.png', { type: 'image/png' }) as unknown as globalThis.File),
+  );
+  const { html: _previewOnly, ...context } = capture();
+  return { workspace, portal, screenshot, context };
+}
+
 describe('PortalDesignFeedbackService', () => {
   useSvelarTest({ refreshDatabase: true });
 
@@ -85,7 +105,7 @@ describe('PortalDesignFeedbackService', () => {
     const updated = (await taskBoardService.list(workspace.id))[0];
 
     expect(result).toMatchObject({
-      destinationKind: 'task', destinationId: task.id, persisted: true, delivery: null,
+      destinationKind: 'task', destinationId: task.id, taskId: task.id, persisted: true, delivery: null,
     });
     expect(updated.description).toContain('Keep the existing context.');
     expect(updated.description).toContain('https://example.com/checkout');
@@ -96,6 +116,63 @@ describe('PortalDesignFeedbackService', () => {
     expect(updated.description).not.toContain('?token=hidden');
     expect(updated.attachments).toEqual([screenshot]);
     expect(updated.images).toEqual([screenshot.path]);
+  });
+
+  it('creates an unassigned Kanban task when feedback is sent for leader triage', async () => {
+    const { workspace, portal, screenshot, context } = await createFeedbackScenario('triage feedback');
+    const input = sendPortalDesignFeedbackSchema.parse({
+      capture: context,
+      screenshot,
+      instruction: 'Make the primary action easier to identify.',
+      destination: { kind: 'triage' },
+    });
+
+    const result = await portalDesignFeedbackService.send(
+      workspace.id,
+      portal.id,
+      PortalDesignFeedbackDto.fromInput(input),
+    );
+    const tasks = await taskBoardService.list(workspace.id);
+
+    expect(tasks).toHaveLength(1);
+    expect(result).toMatchObject({
+      destinationKind: 'triage', destinationId: tasks[0].id, taskId: tasks[0].id,
+      persisted: true, delivery: null,
+    });
+    expect(tasks[0]).toMatchObject({ assigneeNodeId: null, status: 'todo' });
+    expect(tasks[0].description).toContain('Make the primary action easier to identify.');
+    expect(tasks[0].attachments).toEqual([screenshot]);
+  });
+
+  it('tracks direct agent feedback as an assigned Kanban task', async () => {
+    const { workspace, portal, screenshot, context } = await createFeedbackScenario('assigned feedback');
+    const agent = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Frontend reviewer',
+      payload: { provider: 'claude', command: 'claude', role: 'Frontend reviewer' },
+    });
+    const input = sendPortalDesignFeedbackSchema.parse({
+      capture: context,
+      screenshot,
+      instruction: 'Align this control with the form grid.',
+      destination: { kind: 'agent', nodeId: agent.id },
+    });
+
+    const result = await portalDesignFeedbackService.send(
+      workspace.id,
+      portal.id,
+      PortalDesignFeedbackDto.fromInput(input),
+    );
+    const tasks = await taskBoardService.list(workspace.id);
+
+    expect(tasks).toHaveLength(1);
+    expect(result).toMatchObject({
+      destinationKind: 'agent', destinationId: agent.id, destinationTitle: 'Frontend reviewer',
+      taskId: tasks[0].id, persisted: true,
+    });
+    expect(tasks[0]).toMatchObject({ assigneeNodeId: agent.id, assigneeTitle: 'Frontend reviewer', status: 'doing' });
+    expect(tasks[0].attachments).toEqual([screenshot]);
   });
 
   it('keeps raw HTML preview-only and rejects unsafe page or screenshot context', () => {

@@ -954,7 +954,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'send-feedback',
         title: 'Elige el destino responsable',
-        body: 'Envía directamente a un especialista o agrega el feedback y PNG a una tarea existente. El agente asignado conectado recibe el handoff al instante; una tarea offline conserva todo el contexto para después.',
+        body: 'Crea una tarea para revisión del líder, una tarea ya asignada a un especialista o agrega el feedback y PNG a una tarea existente. Todas las opciones mantienen el contexto y las decisiones trazables en el Kanban.',
       },
     ],
   },

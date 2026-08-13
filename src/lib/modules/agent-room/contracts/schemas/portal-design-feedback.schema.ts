@@ -70,6 +70,7 @@ const portalScreenshotSchema = workspaceAttachmentSchema.refine(
 
 export const portalDesignDestinationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('agent'), nodeId: z.string().uuid() }).strict(),
+  z.object({ kind: z.literal('triage') }).strict(),
   z.object({ kind: z.literal('task'), taskId: z.string().uuid() }).strict(),
 ]);
 
@@ -81,9 +82,10 @@ export const sendPortalDesignFeedbackSchema = z.object({
 }).strict();
 
 export const portalDesignFeedbackResultSchema = z.object({
-  destinationKind: z.enum(['agent', 'task']),
+  destinationKind: z.enum(['agent', 'triage', 'task']),
   destinationId: z.string().uuid(),
   destinationTitle: z.string(),
+  taskId: z.string().uuid(),
   persisted: z.boolean(),
   delivery: z.object({
     delivered: z.boolean(),

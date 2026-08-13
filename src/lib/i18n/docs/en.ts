@@ -48,7 +48,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'portal-design-mode',
       title: 'Portal Design Mode',
-      body: `In the installed desktop app, open a Portal and choose Inspect design in its header. Hover highlights the real page element without changing it; click captures a bounded selector, visible text, relevant computed styles, viewport and a cropped PNG. Review that context, describe the expected result, and send it to an agent or append it to an existing task. Task feedback keeps the screenshot and full context together, and an assigned online agent is notified immediately. Escape cancels inspection. Raw HTML is preview-only and sanitized; query strings, cookies, headers, tokens, storage and hidden page state are never added automatically.`,
+      body: `In the installed desktop app, open a Portal and choose Inspect design in its header. Hover highlights the real page element without changing it; click captures a bounded selector, visible text, relevant computed styles, viewport and a cropped PNG. Review that context, describe the expected result, and track it as a new task for leader triage, a new task already assigned to an agent, or an update to an existing task. The screenshot and context stay together on the Kanban board for traceability. Escape cancels inspection. Raw HTML is preview-only and sanitized; query strings, cookies, headers, tokens, storage and hidden page state are never added automatically.`,
     },
     {
       id: 'notas',
@@ -322,7 +322,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'portal-design-feedback',
       title: 'Point at a visual problem instead of describing it from memory',
-      body: 'Open the app in a Portal and choose Inspect design. Click the exact button, heading, field, image, or layout area that needs attention, review the cropped screenshot and safe element context, describe the expected result, then send it to a specialist or an existing kanban task. The feedback reaches the same portal in Canvas or Workbench without exposing browser secrets.',
+      body: 'Open the app in a Portal and choose Inspect design. Click the exact button, heading, field, image, or layout area that needs attention, review the cropped screenshot and safe element context, and describe the expected result. Create an unassigned task for leader triage, a task already assigned to a specialist, or append the feedback to an existing task. Every submission remains traceable on the Kanban board without exposing browser secrets.',
       tags: ['Portal Design Mode', 'visual feedback', 'safe inspection'],
     },
     {
@@ -358,7 +358,7 @@ export const DOCS_EN: DocsCatalog = {
         'Canvas and Workbench activity indicators now update through WebSocket events instead of polling every ten seconds, and informational heartbeats no longer trigger native notifications.',
         'Agent names and roles now wrap onto dedicated lines in the Workbench explorer, and vertical open-item labels show their full names instead of hiding distinguishing text behind ellipses.',
         'Workbench now includes a Review Center with structured staged and unstaged changes, branch synchronization, bounded Monaco diffs, persisted file and line comments, stale-context detection, task and agent context, and approve, request changes, or reject decisions with direct agent handoff.',
-        'Portal Design Mode now highlights real page elements, captures a cropped screenshot and bounded safe context, previews it before sending, and hands visual feedback to an agent or existing task without collecting cookies, tokens, storage, headers, or query strings. Workspace and portal route parameters are validated explicitly so strict request validation does not block delivery.',
+        'Portal Design Mode now highlights real page elements, captures a cropped screenshot and bounded safe context, previews it before sending, and records every submission on the Kanban board: as a new leader-triage task, a new task assigned to an agent, or an update to an existing task. Cookies, tokens, storage, headers, and query strings remain excluded.',
       ],
     },
     {

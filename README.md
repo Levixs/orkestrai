@@ -41,8 +41,9 @@ Download the latest installers from
   file and line comments, and approve, reject, or request changes. Feedback is
   routed back to the responsible live agent without losing the review history.
 - **Portal Design Mode:** point at the exact interface element that needs work,
-  review its cropped screenshot and safe visual context, then send feedback to
-  an agent or existing task. Browser secrets and hidden state stay excluded.
+  review its cropped screenshot and safe visual context, then track feedback in
+  a new leader-triage task, a task assigned to an agent, or an existing task.
+  Browser secrets and hidden state stay excluded.
 - **Universal search:** press `Cmd/Ctrl+K` to find workspaces, agents, tasks,
   notes, roles, skills, files, settings, and commands, with recent and favorite
   items plus direct actions to open in the current pane, right, or below.

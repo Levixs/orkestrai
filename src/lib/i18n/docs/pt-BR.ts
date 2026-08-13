@@ -52,7 +52,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'portal-design-mode',
       title: 'Portal Design Mode',
-      body: `No aplicativo instalado, abra um Portal e escolha Inspecionar design no cabeçalho. O hover destaca o elemento real da página sem alterá-lo; o clique captura um seletor limitado, texto visível, estilos computados relevantes, viewport e um PNG recortado. Revise esse contexto, descreva o resultado esperado e envie para um agente ou acrescente a uma tarefa existente. O feedback da tarefa mantém screenshot e contexto juntos, e o agente responsável online recebe o aviso imediatamente. Esc cancela a inspeção. O HTML bruto serve apenas para a prévia sanitizada; query strings, cookies, headers, tokens, storage e estado oculto nunca entram automaticamente.`,
+      body: `No aplicativo instalado, abra um Portal e escolha Inspecionar design no cabeçalho. O hover destaca o elemento real da página sem alterá-lo; o clique captura um seletor limitado, texto visível, estilos computados relevantes, viewport e um PNG recortado. Revise esse contexto, descreva o resultado esperado e registre-o em uma nova tarefa para triagem do líder, em uma nova tarefa já atribuída a um agente ou em uma tarefa existente. Screenshot e contexto ficam juntos no Kanban para manter a rastreabilidade. Esc cancela a inspeção. O HTML bruto serve apenas para a prévia sanitizada; query strings, cookies, headers, tokens, storage e estado oculto nunca entram automaticamente.`,
     },
     {
       id: 'notas',
@@ -326,7 +326,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'portal-design-feedback',
       title: 'Apontar um problema visual em vez de descrevê-lo de memória',
-      body: 'Abra o app em um Portal e escolha Inspecionar design. Clique no botão, título, campo, imagem ou área de layout que precisa de atenção, revise o screenshot recortado e o contexto seguro do elemento, descreva o resultado esperado e envie para um especialista ou para uma tarefa existente do kanban. O feedback funciona no mesmo portal no Canvas ou Workbench sem expor segredos do browser.',
+      body: 'Abra o app em um Portal e escolha Inspecionar design. Clique no botão, título, campo, imagem ou área de layout que precisa de atenção, revise o screenshot recortado e o contexto seguro do elemento e descreva o resultado esperado. Crie uma tarefa sem responsável para triagem do líder, uma tarefa já atribuída a um especialista ou acrescente o feedback a uma tarefa existente. Todo envio fica rastreável no Kanban sem expor segredos do browser.',
       tags: ['Portal Design Mode', 'feedback visual', 'inspeção segura'],
     },
     {
@@ -362,7 +362,7 @@ export const DOCS_PT: DocsCatalog = {
         'Os indicadores de atividade do Canvas e Workbench agora atualizam por eventos WebSocket em vez de polling a cada dez segundos, e eventos informativos não disparam mais notificações nativas.',
         'Nomes e roles dos agentes agora quebram em linhas próprias no explorer do Workbench, e os itens abertos na vertical mostram o nome completo sem esconder a parte que diferencia cada agente com reticências.',
         'O Workbench agora inclui uma Central de revisão com alterações Git preparadas e não preparadas estruturadas, sincronização de branch, diffs Monaco limitados, comentários persistidos por arquivo e linha, detecção de contexto desatualizado, tarefa e agente vinculados e decisões de aprovar, solicitar alterações ou rejeitar com envio direto ao agente.',
-        'O Portal Design Mode agora destaca elementos reais da página, captura screenshot recortado e contexto seguro limitado, mostra uma prévia antes do envio e entrega o feedback visual a um agente ou tarefa existente sem coletar cookies, tokens, storage, headers ou query strings. Os parâmetros de rota do workspace e do portal são validados explicitamente para que a validação estrita não bloqueie a entrega.',
+        'O Portal Design Mode agora destaca elementos reais da página, captura screenshot recortado e contexto seguro limitado, mostra uma prévia antes do envio e registra todo feedback no Kanban: como nova tarefa para triagem do líder, nova tarefa atribuída a um agente ou complemento de uma tarefa existente. Cookies, tokens, storage, headers e query strings ficam de fora.',
       ],
     },
     {

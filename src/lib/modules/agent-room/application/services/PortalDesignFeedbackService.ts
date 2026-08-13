@@ -36,6 +36,11 @@ function formatFeedback(dto: PortalDesignFeedbackDto, portalTitle: string): stri
   ].filter(Boolean).join('\n\n');
 }
 
+function feedbackTaskTitle(dto: PortalDesignFeedbackDto, portalTitle: string): string {
+  const summary = redactPortalText(dto.instruction).split(/\r?\n/, 1)[0]?.trim();
+  return [portalTitle.trim(), summary].filter(Boolean).join(': ').slice(0, 180);
+}
+
 export class PortalDesignFeedbackService {
   async send(workspaceId: string, portalNodeId: string, dto: PortalDesignFeedbackDto): Promise<PortalDesignFeedbackResult> {
     const [workspace, portal, screenshotInfo, screenshotFile] = await Promise.all([
@@ -58,28 +63,38 @@ export class PortalDesignFeedbackService {
     if (dto.destination.kind === 'agent') {
       const target = (await bridgeService.listAgents(workspaceId)).find((agent) => agent.nodeId === dto.destination.nodeId);
       if (!target) throw new Error('Agente não encontrado neste workspace.');
-      try {
-        const sent = await bridgeService.sendOneWay(workspaceId, {
-          to: target.nodeId,
-          message: content,
-          kind: 'portal-design-feedback',
-        });
-        return {
-          destinationKind: 'agent',
-          destinationId: target.nodeId,
-          destinationTitle: target.title,
-          persisted: true,
-          delivery: { delivered: true, messageId: sent.messageId, error: null },
-        };
-      } catch (error) {
-        return {
-          destinationKind: 'agent',
-          destinationId: target.nodeId,
-          destinationTitle: target.title,
-          persisted: false,
-          delivery: { delivered: false, messageId: null, error: error instanceof Error ? error.message : String(error) },
-        };
-      }
+      const task = await taskBoardService.create(workspaceId, {
+        title: feedbackTaskTitle(dto, portal.title ?? 'Portal'),
+        description: content,
+        attachments: [dto.screenshot],
+        assigneeNodeId: target.nodeId,
+        createdBy: 'user',
+      });
+      return {
+        destinationKind: 'agent',
+        destinationId: target.nodeId,
+        destinationTitle: target.title,
+        taskId: task.id,
+        persisted: true,
+        delivery: null,
+      };
+    }
+
+    if (dto.destination.kind === 'triage') {
+      const task = await taskBoardService.create(workspaceId, {
+        title: feedbackTaskTitle(dto, portal.title ?? 'Portal'),
+        description: content,
+        attachments: [dto.screenshot],
+        createdBy: 'user',
+      });
+      return {
+        destinationKind: 'triage',
+        destinationId: task.id,
+        destinationTitle: task.title,
+        taskId: task.id,
+        persisted: true,
+        delivery: null,
+      };
     }
 
     const task = await taskBoardService.appendPortalFeedback(
@@ -105,6 +120,7 @@ export class PortalDesignFeedbackService {
       destinationKind: 'task',
       destinationId: task.id,
       destinationTitle: task.title,
+      taskId: task.id,
       persisted: true,
       delivery,
     };

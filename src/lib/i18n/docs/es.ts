@@ -48,7 +48,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'portal-design-mode',
       title: 'Portal Design Mode',
-      body: `En la aplicación instalada, abre un Portal y elige Inspeccionar diseño en su encabezado. El hover resalta el elemento real de la página sin modificarlo; el clic captura un selector limitado, texto visible, estilos computados relevantes, viewport y un PNG recortado. Revisa ese contexto, describe el resultado esperado y envíalo a un agente o agrégalo a una tarea existente. El feedback de la tarea mantiene la captura y el contexto juntos, y el agente asignado conectado recibe el aviso inmediatamente. Escape cancela la inspección. El HTML bruto se usa solo en la vista previa sanitizada; query strings, cookies, headers, tokens, storage y estado oculto nunca se agregan automáticamente.`,
+      body: `En la aplicación instalada, abre un Portal y elige Inspeccionar diseño en su encabezado. El hover resalta el elemento real de la página sin modificarlo; el clic captura un selector limitado, texto visible, estilos computados relevantes, viewport y un PNG recortado. Revisa ese contexto, describe el resultado esperado y regístralo como una tarea nueva para revisión del líder, una tarea nueva ya asignada a un agente o una actualización de una tarea existente. La captura y el contexto quedan juntos en el Kanban para mantener la trazabilidad. Escape cancela la inspección. El HTML bruto se usa solo en la vista previa sanitizada; query strings, cookies, headers, tokens, storage y estado oculto nunca se agregan automáticamente.`,
     },
     {
       id: 'notas',
@@ -322,7 +322,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'portal-design-feedback',
       title: 'Señalar un problema visual en vez de describirlo de memoria',
-      body: 'Abre la aplicación en un Portal y elige Inspeccionar diseño. Haz clic en el botón, título, campo, imagen o área de layout que necesita atención, revisa la captura recortada y el contexto seguro del elemento, describe el resultado esperado y envíalo a un especialista o a una tarea existente del kanban. El feedback funciona en el mismo portal de Canvas o Workbench sin exponer secretos del navegador.',
+      body: 'Abre la aplicación en un Portal y elige Inspeccionar diseño. Haz clic en el botón, título, campo, imagen o área de layout que necesita atención, revisa la captura recortada y el contexto seguro del elemento y describe el resultado esperado. Crea una tarea sin responsable para revisión del líder, una tarea ya asignada a un especialista o agrega el feedback a una tarea existente. Cada envío queda trazable en el Kanban sin exponer secretos del navegador.',
       tags: ['Portal Design Mode', 'feedback visual', 'inspección segura'],
     },
     {
@@ -358,7 +358,7 @@ export const DOCS_ES: DocsCatalog = {
         'Los indicadores de actividad de Canvas y Workbench ahora se actualizan por eventos WebSocket en vez de polling cada diez segundos, y los eventos informativos ya no disparan notificaciones nativas.',
         'Los nombres y roles de los agentes ahora se distribuyen en líneas propias en el explorador del Workbench, y los elementos abiertos en vertical muestran el nombre completo sin ocultar la parte que distingue a cada agente con puntos suspensivos.',
         'Workbench ahora incluye un Centro de revisión con cambios Git preparados y no preparados estructurados, sincronización de rama, diffs Monaco limitados, comentarios persistentes por archivo y línea, detección de contexto desactualizado, tarea y agente vinculados y decisiones de aprobar, solicitar cambios o rechazar con envío directo al agente.',
-        'Portal Design Mode ahora resalta elementos reales de la página, captura una imagen recortada y contexto seguro limitado, muestra una vista previa antes del envío y entrega feedback visual a un agente o tarea existente sin recopilar cookies, tokens, storage, headers ni query strings. Los parámetros de ruta del workspace y del portal se validan explícitamente para que la validación estricta no bloquee la entrega.',
+        'Portal Design Mode ahora resalta elementos reales de la página, captura una imagen recortada y contexto seguro limitado, muestra una vista previa antes del envío y registra cada feedback en el Kanban: como tarea nueva para revisión del líder, tarea nueva asignada a un agente o actualización de una tarea existente. Cookies, tokens, storage, headers y query strings quedan excluidos.',
       ],
     },
     {

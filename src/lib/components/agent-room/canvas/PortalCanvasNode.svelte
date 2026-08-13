@@ -55,6 +55,7 @@
 
   type AgentTarget = { id: string; title: string; role: string | null; maestro: boolean };
   type TaskTarget = { id: string; title: string; status: string; assigneeTitle: string | null };
+  const NEW_TASK_DESTINATION = 'new-task';
 
   let { id, data, selected } = $props<NodeProps & { data: PortalNodeData }>();
 
@@ -69,7 +70,7 @@
   let capture = $state<PortalDesignCapture | null>(null);
   let screenshotDataUrl = $state('');
   let instruction = $state('');
-  let destinationKind = $state<'agent' | 'task'>('agent');
+  let destinationKind = $state<'agent' | 'task'>('task');
   let destinationId = $state('');
   let agents = $state<AgentTarget[]>([]);
   let tasks = $state<TaskTarget[]>([]);
@@ -280,9 +281,14 @@
         status: task.status,
         assigneeTitle: task.assigneeTitle ?? null,
       }));
-      if (!agents.length && tasks.length) destinationKind = 'task';
       const options = destinationKind === 'agent' ? agents : tasks;
-      if (!options.some((target) => target.id === destinationId)) destinationId = options[0]?.id ?? '';
+      if (destinationKind === 'task') {
+        if (destinationId !== NEW_TASK_DESTINATION && !options.some((target) => target.id === destinationId)) {
+          destinationId = NEW_TASK_DESTINATION;
+        }
+      } else if (!options.some((target) => target.id === destinationId)) {
+        destinationId = options[0]?.id ?? '';
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : m['portal.design_targets_error']());
     } finally {
@@ -293,7 +299,7 @@
   function chooseDestination(kind: 'agent' | 'task') {
     destinationKind = kind;
     const options = kind === 'agent' ? agents : tasks;
-    destinationId = options[0]?.id ?? '';
+    destinationId = kind === 'task' ? NEW_TASK_DESTINATION : (options[0]?.id ?? '');
   }
 
   async function startInspection() {
@@ -372,7 +378,9 @@
         instruction,
         destination: destinationKind === 'agent'
           ? { kind: 'agent', nodeId: destinationId }
-          : { kind: 'task', taskId: destinationId },
+          : destinationId === NEW_TASK_DESTINATION
+            ? { kind: 'triage' }
+            : { kind: 'task', taskId: destinationId },
       });
       const response = await fetch(`/api/agent-room/workspaces/${data.workspaceId}/portal/${id}/design-feedback`, {
         method: 'POST',
@@ -560,19 +568,29 @@
                 <Button size="sm" variant={destinationKind === 'agent' ? 'secondary' : 'ghost'} aria-pressed={destinationKind === 'agent'} onclick={() => chooseDestination('agent')}>{m['portal.design_agent']()}</Button>
                 <Button size="sm" variant={destinationKind === 'task' ? 'secondary' : 'ghost'} aria-pressed={destinationKind === 'task'} onclick={() => chooseDestination('task')}>{m['portal.design_task']()}</Button>
               </div>
-              <NativeSelect.Root class="mt-2 w-full" bind:value={destinationId} disabled={targetsLoading || currentTargets.length === 0} aria-label={m['portal.design_destination']()}>
+              <NativeSelect.Root class="mt-2 w-full" bind:value={destinationId} disabled={targetsLoading || (destinationKind === 'agent' && currentTargets.length === 0)} aria-label={m['portal.design_destination']()}>
                 {#if targetsLoading}
                   <NativeSelect.Option value="">{m['portal.design_loading_targets']()}</NativeSelect.Option>
+                {:else if destinationKind === 'task'}
+                  <NativeSelect.Option value={NEW_TASK_DESTINATION}>{m['portal.design_new_task']()}</NativeSelect.Option>
+                  {#each tasks as target (target.id)}
+                    <NativeSelect.Option value={target.id}>{target.title} — {target.status}</NativeSelect.Option>
+                  {/each}
                 {:else if currentTargets.length === 0}
-                  <NativeSelect.Option value="">{destinationKind === 'agent' ? m['portal.design_no_agents']() : m['portal.design_no_tasks']()}</NativeSelect.Option>
+                  <NativeSelect.Option value="">{m['portal.design_no_agents']()}</NativeSelect.Option>
                 {:else}
                   {#each currentTargets as target (target.id)}
                     <NativeSelect.Option value={target.id}>
-                      {target.title}{destinationKind === 'agent' && 'role' in target && target.role ? ` — ${target.role}` : ''}{destinationKind === 'task' && 'status' in target ? ` — ${target.status}` : ''}
+                      {target.title}{'role' in target && target.role ? ` — ${target.role}` : ''}
                     </NativeSelect.Option>
                   {/each}
                 {/if}
               </NativeSelect.Root>
+              {#if destinationKind === 'agent'}
+                <p class="mt-1.5 text-[10px] leading-4 text-[var(--app-text-muted)]">{m['portal.design_agent_traceability']()}</p>
+              {:else if destinationId === NEW_TASK_DESTINATION}
+                <p class="mt-1.5 text-[10px] leading-4 text-[var(--app-text-muted)]">{m['portal.design_triage_hint']()}</p>
+              {/if}
             </fieldset>
 
             <div class="border-l-2 border-[var(--app-border-strong)] pl-3 text-[10px] leading-4 text-[var(--app-text-muted)]">
