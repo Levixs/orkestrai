@@ -14,6 +14,14 @@ export class AgentRoutine extends Model {
     'enabled',
     'last_run_at',
     'run_count',
+    'name',
+    'trigger_type',
+    'trigger_config_json',
+    'action_type',
+    'action_config_json',
+    'recipe_id',
+    'last_trigger_key',
+    'updated_at',
     'created_at',
   ];
 
@@ -23,6 +31,7 @@ export class AgentRoutine extends Model {
     run_count: 'number' as const,
     last_run_at: 'date' as const,
     created_at: 'date' as const,
+    updated_at: 'date' as const,
   };
 
   declare id: string;
@@ -33,5 +42,13 @@ export class AgentRoutine extends Model {
   declare enabled: boolean;
   declare last_run_at: Date | null;
   declare run_count: number;
+  declare name: string | null;
+  declare trigger_type: string | null;
+  declare trigger_config_json: string | null;
+  declare action_type: string | null;
+  declare action_config_json: string | null;
+  declare recipe_id: string | null;
+  declare last_trigger_key: string | null;
+  declare updated_at: Date | null;
   declare created_at: Date;
 }

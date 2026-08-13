@@ -102,8 +102,8 @@ export const DOCS_ES: DocsCatalog = {
     },
     {
       id: 'rotinas',
-      title: 'Rutinas',
-      body: `Prompts programados que disparan en una terminal cada X minutos (o una sola vez). Usa && en una línea para encadenar etapas. El historial muestra cada disparo. Ej.: "corre los tests cada 30 min", "verifica el deploy cada hora". Las rutinas disparan aun con el workspace en background.`,
+      title: 'Automatizaciones',
+      body: `Abre Automatizaciones desde la barra del Canvas, el explorador del Workbench o Command/Ctrl+K. El disparador puede ser manual, programado, un cambio de tarea, un mensaje confirmado de agente, commit Git, pull request de GitHub, webhook, cambio de archivo o carpeta o límite de uso de provider. Las acciones envían un prompt a un agente, crean una tarea trazable en Kanban o muestran una notificación explícita de escritorio. Las recetas de desarrollo, diseño, marketing, investigación y operaciones ofrecen puntos de partida seguros. Cada ejecución registra entrada, agente/provider de destino, snapshots de cuota, confirmación de salida, duración, intento y fallo recuperable; los reintentos son limitados y los eventos duplicados son idempotentes. Los tokens de GitHub se cifran con safeStorage de Electron y nunca entran en la base del workspace. Las Rutinas programadas anteriores siguen compatibles y aparecen aquí automáticamente.`,
     },
     {
       id: 'portal',
@@ -214,6 +214,12 @@ export const DOCS_ES: DocsCatalog = {
       title: 'Centinela de deploy/tests',
       body: 'Rutina cada hora en un shell o agente: "corre los tests; si fallan, abre una tarea para el equipo y notifícame (orkestrai notify)". Recibes notificación nativa del sistema y el kanban ya tiene la tarjeta.',
       tags: ['Rutinas', 'notify', 'CI local'],
+    },
+    {
+      id: 'automate-workspace',
+      title: 'Automatizar trabajo repetible con trazabilidad',
+      body: 'Abre Automatizaciones en Canvas o Workbench, empieza con una receta de operaciones, investigación, diseño, marketing o desarrollo y elige el disparador y la acción exactos. Usa eventos de tarea y mensaje para coordinación, cambios de archivo o commit para flujos locales, límites de uso como protección de routing, webhooks para sistemas externos y la conexión cifrada de GitHub para pull requests. El historial muestra qué disparó, qué agente lo recibió, qué acción terminó y si hay un reintento limitado disponible.',
+      tags: ['Automatizaciones', 'disparadores', 'historial de ejecución'],
     },
     {
       id: 'framework-preset',
@@ -358,6 +364,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: '13 ago 2026 · En desarrollo',
       items: [
+        'Las Rutinas evolucionaron a Automatizaciones con disparadores manual, agenda, tarea, mensaje, commit Git, pull request de GitHub, webhook, cambio de archivo y límite de uso; acciones de prompt, tarea y notificación; recetas; jobs idempotentes en cola; historial recuperable; y credenciales de GitHub cifradas por la app instalada.',
         'El modo enfocado evolucionó a Workbench con elementos abiertos persistentes, pestañas verticales por defecto y pestañas horizontales opcionales en Configuración.',
         'Ahora se pueden organizar hasta ocho artefactos en vivo en divisiones redimensionables hacia la derecha o abajo, cambiar el panel activo y restaurar el layout por workspace sin duplicar sesiones.',
         'El explorador ahora agrupa agentes, trabajo, contenido y herramientas; las pestañas se mueven arrastrando o por menú y los layouts anteriores migran de forma segura.',

@@ -1043,6 +1043,35 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'workspace-automations',
+    icon: 'Workflow',
+    title: 'Automatizar trabajo repetible del workspace',
+    tagline: 'Conecta un disparador preciso con una acción trazable sin ocultar qué se ejecutó.',
+    steps: [
+      {
+        id: 'open-automations',
+        title: 'Abre Automatizaciones',
+        body: 'Abre Automatizaciones desde la barra del Canvas, el explorador del Workbench o Command/Ctrl+K. Las mismas automatizaciones y el mismo historial aparecen en todos los accesos.',
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-automations:{workspace}' },
+      },
+      {
+        id: 'choose-recipe',
+        title: 'Empieza con una receta útil',
+        body: 'Abre Recetas y elige un punto de partida de desarrollo, diseño, marketing, investigación u operaciones. La receta llena el formulario, pero nunca se ejecuta antes de que la revises y guardes.',
+      },
+      {
+        id: 'configure-trigger-action',
+        title: 'Haz explícito el contrato',
+        body: 'Elige el evento y la acción exactos. Los disparadores de tarea, mensaje, Git, GitHub, webhook, archivo, uso, agenda y manual pueden enviar un prompt, crear una tarea Kanban o notificar el escritorio.',
+      },
+      {
+        id: 'inspect-history',
+        title: 'Sigue cada ejecución',
+        body: 'Usa el Historial de ejecuciones para revisar entrada, agente y provider destino, confirmación de salida, duración, intento y fallo. Las ejecuciones fallidas ofrecen un reintento limitado en lugar de desaparecer.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar la apariencia',

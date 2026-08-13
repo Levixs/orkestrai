@@ -10,6 +10,7 @@ import { filesystemService } from './FilesystemService.js';
 import { roleService } from './RoleService.js';
 import { skillMarketService } from './SkillMarketService.js';
 import { taskBoardService } from './TaskBoardService.js';
+import { routineService } from './RoutineService.js';
 import type { WorkspaceSearchDto } from '../dto/WorkspaceSearchDto.js';
 
 const INDEX_TTL_MS = 15_000;
@@ -153,11 +154,12 @@ export class WorkspaceSearchService {
       path: null,
       route: `/canvas?workspace=${workspace.id}`,
     })];
-    const [nodes, tasks, roles, skills] = await Promise.all([
+    const [nodes, tasks, roles, skills, automations] = await Promise.all([
       workspaceRepository.listNodes(workspace.id).catch(() => []),
       taskBoardService.list(workspace.id).catch(() => []),
       roleService.list(workspace.id).catch(() => []),
       skillMarketService.listInstalled(workspace.id).catch(() => []),
+      routineService.list(workspace.id).catch(() => []),
     ]);
     const taskBoardNode = nodes.find((node) => node.type === 'tasks');
 
@@ -232,6 +234,21 @@ export class WorkspaceSearchService {
         path: null,
         route: `/skills?workspace=${workspace.id}`,
       }, [skill.skillId]));
+    }
+    for (const automation of automations) {
+      results.push(indexed({
+        id: `automation:${automation.id}`,
+        kind: 'automation',
+        title: automation.name,
+        subtitle: `${workspace.name} · ${automation.triggerType}`,
+        preview: clip(automation.prompt || automation.actionConfig.message || automation.actionConfig.title),
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+        nodeId: `workbench-automations:${workspace.id}`,
+        taskId: null,
+        path: null,
+        route: `/terminal?workspace=${workspace.id}&node=${encodeURIComponent(`workbench-automations:${workspace.id}`)}`,
+      }, [automation.triggerType, automation.actionType, JSON.stringify(automation.triggerConfig)]));
     }
     return results;
   }

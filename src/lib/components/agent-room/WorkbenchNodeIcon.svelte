@@ -14,6 +14,7 @@
     Activity,
     GitPullRequestArrow,
     Smartphone,
+    Workflow as AutomationIcon,
   } from '@lucide/svelte';
   import type { CanvasNodeType } from '$lib/modules/agent-room/domain/types.js';
 
@@ -34,4 +35,5 @@
 {:else if type === 'controlCenter'}<Activity {size} aria-hidden="true" />
 {:else if type === 'reviewCenter'}<GitPullRequestArrow {size} aria-hidden="true" />
 {:else if type === 'device'}<Smartphone {size} aria-hidden="true" />
+{:else if type === 'automation'}<AutomationIcon {size} aria-hidden="true" />
 {/if}

@@ -106,8 +106,8 @@ export const DOCS_PT: DocsCatalog = {
     },
     {
       id: 'rotinas',
-      title: 'Rotinas',
-      body: `Prompts agendados que disparam num terminal a cada X minutos (ou uma vez só). Use && numa linha para encadear etapas. O histórico mostra cada disparo. Ex.: “rode os testes a cada 30 min”, “verifique o deploy de hora em hora”. Rotinas disparam mesmo com o workspace em background.`,
+      title: 'Automações',
+      body: `Abra Automações pela barra do Canvas, pelo explorer do Workbench ou por Command/Ctrl+K. O gatilho pode ser manual, agendado, uma mudança em tarefa, uma mensagem confirmada de agente, commit Git, pull request do GitHub, webhook, mudança em arquivo ou pasta ou limite de uso de provider. As ações enviam um prompt a um agente, criam uma tarefa rastreável no Kanban ou mostram uma notificação explícita no desktop. Receitas de desenvolvimento, design, marketing, pesquisa e operações oferecem pontos de partida seguros. Cada execução registra entrada do gatilho, agente/provider de destino, snapshots de cota, confirmação da saída, duração, tentativa e falha recuperável; retries são limitados e eventos duplicados são idempotentes. Tokens do GitHub ficam cifrados pelo safeStorage do Electron e nunca entram no banco do workspace. As Rotinas agendadas antigas continuam compatíveis e aparecem aqui automaticamente.`,
     },
     {
       id: 'portal',
@@ -218,6 +218,12 @@ export const DOCS_PT: DocsCatalog = {
       title: 'Sentinela de deploy/testes',
       body: 'Rotina de hora em hora num shell ou agente: “rode os testes; se falhar, abra uma tarefa para o time e me notifique (orkestrai notify)”. Você recebe notificação nativa do sistema e o kanban já tem o cartão.',
       tags: ['Rotinas', 'notify', 'CI local'],
+    },
+    {
+      id: 'automate-workspace',
+      title: 'Automatizar trabalho repetível com rastreabilidade',
+      body: 'Abra Automações no Canvas ou Workbench, comece por uma receita de operações, pesquisa, design, marketing ou desenvolvimento e escolha o gatilho e a ação exatos. Use eventos de tarefa e mensagem para coordenação, mudanças em arquivo ou commit para fluxos locais, limites de uso como proteção de roteamento, webhooks para sistemas externos e a conexão cifrada do GitHub para pull requests. O histórico mostra o que disparou, qual agente recebeu, qual ação terminou e se há retry limitado disponível.',
+      tags: ['Automações', 'gatilhos', 'histórico de execução'],
     },
     {
       id: 'framework-preset',
@@ -362,6 +368,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: '13 ago 2026 · Em desenvolvimento',
       items: [
+        'Rotinas evoluíram para Automações com gatilhos manual, agenda, tarefa, mensagem, commit Git, pull request do GitHub, webhook, mudança de arquivo e limite de uso; ações de prompt, tarefa e notificação; receitas prontas; jobs idempotentes em fila; histórico recuperável; e credenciais do GitHub cifradas pelo app instalado.',
         'O modo focado evoluiu para Workbench, com itens abertos persistentes, abas verticais por padrão e abas horizontais opcionais em Configurações.',
         'Agora é possível organizar até oito artefatos ao vivo em divisões redimensionáveis para a direita ou para baixo, alternar o painel ativo e restaurar o layout por workspace sem duplicar sessões.',
         'O explorer agora agrupa agentes, trabalho, conteúdo e ferramentas; as abas podem ser arrastadas ou movidas por menu, e layouts antigos migram com segurança para o novo formato.',

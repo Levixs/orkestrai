@@ -102,8 +102,8 @@ export const DOCS_EN: DocsCatalog = {
     },
     {
       id: 'rotinas',
-      title: 'Routines',
-      body: `Scheduled prompts that fire into a terminal every X minutes (or just once). Use && on a line to chain steps. The history shows every firing. E.g.: "run the tests every 30 min", "check the deploy every hour". Routines fire even with the workspace in the background.`,
+      title: 'Automations',
+      body: `Open Automations from the Canvas toolbar, the Workbench explorer, or Command/Ctrl+K. A trigger can be manual, scheduled, a task change, a confirmed agent message, a Git commit, a GitHub pull request, a webhook, a file or folder change, or a provider usage threshold. Actions send a prompt to one agent, create a traceable Kanban task, or show an explicit desktop notification. Development, design, marketing, research, and operations recipes provide safe starting points. Every run records trigger input, target agent/provider, quota snapshots, output acknowledgement, duration, attempt, and recoverable failure; retries are bounded and duplicate event deliveries are idempotent. GitHub tokens are encrypted by Electron safeStorage and never stored in the workspace database. Legacy scheduled Routines remain compatible and appear here automatically.`,
     },
     {
       id: 'portal',
@@ -214,6 +214,12 @@ export const DOCS_EN: DocsCatalog = {
       title: 'Deploy/test sentinel',
       body: 'Hourly routine on a shell or agent: "run the tests; if they fail, open a task for the team and notify me (orkestrai notify)". You get a native system notification and the kanban already has the card.',
       tags: ['Routines', 'notify', 'local CI'],
+    },
+    {
+      id: 'automate-workspace',
+      title: 'Automate repeatable work with an audit trail',
+      body: 'Open Automations in Canvas or Workbench, start from an operations, research, design, marketing, or development recipe, then choose the exact trigger and action. Use task and message events for coordination, file or commit changes for local workflows, usage thresholds for routing safeguards, webhooks for external systems, and the encrypted GitHub connection for pull requests. The execution history shows what fired, which agent received it, what action completed, and whether a bounded retry is available.',
+      tags: ['Automations', 'triggers', 'execution history'],
     },
     {
       id: 'framework-preset',
@@ -358,6 +364,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 13, 2026 · In development',
       items: [
+        'Routines evolved into Automations with manual, schedule, task, message, Git commit, GitHub pull request, webhook, file-change, and usage-threshold triggers; prompt, task, and desktop-notification actions; ready recipes; idempotent queued jobs; recoverable execution history; and GitHub credentials encrypted by the installed app.',
         'The focused mode evolved into Workbench with persistent open items, vertical tabs by default, and optional horizontal tabs in Settings.',
         'Up to eight live artifacts can now be arranged in resizable right/down splits, with active-pane switching and per-workspace layout restoration without duplicate sessions.',
         'The explorer now groups agents, work, content, and tools; tabs move by drag or menu, and old layouts migrate safely to the new format.',

@@ -5,6 +5,7 @@ import CleanExpiredSessions from './CleanExpiredSessions.js';
 import DailyDigestEmail from './DailyDigestEmail.js';
 import PruneAuditLogs from './PruneAuditLogs.js';
 import QueueHealthCheck from './QueueHealthCheck.js';
+import DispatchDueAutomations from './DispatchDueAutomations.js';
 
 export function createScheduler(): Scheduler {
   const scheduler = new Scheduler().persistToDatabase();
@@ -15,6 +16,7 @@ export function createScheduler(): Scheduler {
     new DailyDigestEmail(),
     new PruneAuditLogs(),
     new QueueHealthCheck(),
+    new DispatchDueAutomations(),
   ]);
 
   ScheduleMonitor.configure(scheduler);

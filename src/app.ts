@@ -27,6 +27,7 @@ import { Broadcast } from '@beeblock/svelar/broadcasting';
 import { createScheduler } from '$lib/shared/scheduler/index.js';
 import { User } from '$lib/modules/auth/domain/models/User.js';
 import { EventServiceProvider } from '$lib/shared/providers/EventServiceProvider.js';
+import { container } from '@beeblock/svelar/container';
 import '$lib/modules/auth/domain/policies/gates.js';
 
 await config.loadFromDirectory('config');
@@ -244,12 +245,13 @@ export const scheduler = createScheduler();
 import { SendWelcomeEmail } from '$lib/shared/jobs/SendWelcomeEmail.js';
 import { DailyDigestJob } from '$lib/shared/jobs/DailyDigestJob.js';
 import { ExportDataJob } from '$lib/shared/jobs/ExportDataJob.js';
+import { RunAutomationJob } from '$lib/modules/agent-room/application/jobs/RunAutomationJob.js';
 
-Queue.registerAll([SendWelcomeEmail, DailyDigestJob, ExportDataJob]);
+Queue.registerAll([SendWelcomeEmail, DailyDigestJob, ExportDataJob, RunAutomationJob]);
 
 // ── Events (boot listeners + observers) ──────────────────
-const esp = new EventServiceProvider();
-esp.boot();
+const esp = new EventServiceProvider(container);
+await esp.boot();
 
 // ── Auth Feature Toggles ─────────────────────────────────
 export const authConfig = {

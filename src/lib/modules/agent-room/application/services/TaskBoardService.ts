@@ -1,4 +1,5 @@
 import { uuidv7 } from '@beeblock/svelar/support';
+import { Event } from '@beeblock/svelar/events';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
@@ -10,6 +11,7 @@ import {
   MAX_WORKSPACE_ATTACHMENTS,
   workspaceAttachmentSchema,
 } from '../../contracts/schemas/workspaceAttachmentSchemas.js';
+import { AutomationTriggerReceived } from '../../domain/events/AutomationTriggerReceived.js';
 
 export type BoardTask = {
   id: string;
@@ -290,7 +292,13 @@ export class TaskBoardService {
       await this.notifyLeader(workspaceId, id, Boolean(input.assigneeNodeId)).catch(() => {});
     }
     notifyWorkspaceChanged(workspaceId);
-    return this.mapWithTitles(task);
+    const created = await this.mapWithTitles(task);
+    if (createdBy !== 'automation') {
+      await Event.dispatch(new AutomationTriggerReceived(
+        workspaceId, 'task', 'created', `task:${created.id}:created`, created as unknown as Record<string, unknown>,
+      )).catch(() => undefined);
+    }
+    return created;
   }
 
   async update(
@@ -331,6 +339,14 @@ export class TaskBoardService {
     }
     notifyWorkspaceChanged(workspaceId);
     const updated = await this.mapWithTitles(await this.requireTask(workspaceId, taskId));
+    const taskEvent = !wasDone && updated.status === 'done'
+      ? 'completed'
+      : input.status !== undefined && input.status !== task.getAttribute('status')
+        ? 'status_changed'
+        : 'updated';
+    await Event.dispatch(new AutomationTriggerReceived(
+      workspaceId, 'task', taskEvent, `task:${updated.id}:${updated.updatedAt}:${taskEvent}`, updated as unknown as Record<string, unknown>,
+    )).catch(() => undefined);
     if (!wasDone && updated.status === 'done' && updated.assigneeNodeId) {
       await controlCenterService.recordActivity({
         workspaceId,

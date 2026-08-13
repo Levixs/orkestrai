@@ -45,6 +45,12 @@ Download the latest installers from
   state duration, provider, role, and usage. Its persistent communications inbox
   proves whether each handoff was queued, delivered, acknowledged, replied to,
   or failed under one message id, without waking idle terminals after restart.
+- **Traceable automations:** trigger work manually, on a schedule, from task or
+  message events, Git commits, GitHub pull requests, webhooks, file changes, or
+  provider usage thresholds. Actions can prompt an agent, create a Kanban task,
+  or notify the desktop. Ready recipes, idempotent queued jobs, bounded retries,
+  and execution history keep every run visible; GitHub credentials remain
+  encrypted in Electron secure storage instead of the workspace database.
 - **Git Review Center:** inspect staged and unstaged changes, compare files in a
   Monaco diff, create reviews linked to tasks and assignees, leave persistent
   file and line comments, and approve, reject, or request changes. Feedback is

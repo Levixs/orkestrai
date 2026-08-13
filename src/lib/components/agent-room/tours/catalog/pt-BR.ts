@@ -1047,6 +1047,35 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'workspace-automations',
+    icon: 'Workflow',
+    title: 'Automatizar trabalho repetível do workspace',
+    tagline: 'Conecte um gatilho preciso a uma ação rastreável sem esconder o que rodou.',
+    steps: [
+      {
+        id: 'open-automations',
+        title: 'Abra Automações',
+        body: 'Abra Automações pela barra do Canvas, pelo explorer do Workbench ou por Command/Ctrl+K. As mesmas automações e o mesmo histórico do workspace aparecem em todos os acessos.',
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-automations:{workspace}' },
+      },
+      {
+        id: 'choose-recipe',
+        title: 'Comece por uma receita útil',
+        body: 'Abra Receitas e escolha um ponto de partida de desenvolvimento, design, marketing, pesquisa ou operações. A receita preenche o formulário, mas nunca executa antes de você revisar e salvar.',
+      },
+      {
+        id: 'configure-trigger-action',
+        title: 'Deixe o contrato explícito',
+        body: 'Escolha o evento e a ação exatos. Gatilhos de tarefa, mensagem, Git, GitHub, webhook, arquivo, uso, agenda e manual podem enviar prompt, criar tarefa no Kanban ou notificar o desktop.',
+      },
+      {
+        id: 'inspect-history',
+        title: 'Acompanhe cada execução',
+        body: 'Use o Histórico de execuções para inspecionar entrada, agente e provider de destino, confirmação da saída, duração, tentativa e falha. Execuções com erro oferecem retry limitado em vez de desaparecer.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar a aparência',

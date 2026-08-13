@@ -15,6 +15,7 @@
     Activity,
     GitPullRequestArrow,
     Scale,
+    Workflow,
   } from '@lucide/svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import * as InputGroup from '$lib/components/ui/input-group';
@@ -32,6 +33,7 @@
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
+  import AutomationWorkspace from '$lib/components/agent-room/AutomationWorkspace.svelte';
   import {
     WORKBENCH_EDITOR_STATE_EVENT,
     dirtyWorkbenchEditorKeys,
@@ -96,6 +98,11 @@
     isWorkbenchReviewCenterItemId,
     workbenchReviewCenterItemId,
   } from '$lib/components/agent-room/workbench-review-center.js';
+  import {
+    createWorkbenchAutomationsItem,
+    isWorkbenchAutomationsItemId,
+    workbenchAutomationsItemId,
+  } from '$lib/components/agent-room/workbench-automations.js';
   import {
     readProviderCache,
     readWorkspaceListCache,
@@ -195,13 +202,17 @@
     const reviewCenter = workspace
       ? [createWorkbenchReviewCenterItem(workspace, m['review_center.title']())]
       : [];
-    return [...controlCenter, ...reviewCenter, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
+    const automations = workspace
+      ? [createWorkbenchAutomationsItem(workspace, m['automation.title']())]
+      : [];
+    return [...controlCenter, ...reviewCenter, ...automations, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
   }
 
   function isVirtualWorkbenchItemId(id: string | null | undefined): boolean {
     return isWorkbenchFileItemId(id)
       || isWorkbenchControlCenterItemId(id)
-      || isWorkbenchReviewCenterItemId(id);
+      || isWorkbenchReviewCenterItemId(id)
+      || isWorkbenchAutomationsItemId(id);
   }
 
   function rememberWorkbenchFiles(workspaceId: string, paths: string[]): void {
@@ -522,6 +533,7 @@
     if (node.type === 'usage') return m['terminal_browser.kind_usage']();
     if (node.type === 'controlCenter') return m['control_center.title']();
     if (node.type === 'reviewCenter') return m['review_center.title']();
+    if (node.type === 'automation') return m['automation.title']();
     if (node.type === 'device') return m['device.title']();
     return node.type;
   }
@@ -891,6 +903,13 @@
           {#key `${pane.id}:${paneNode.id}`}
             <WorkbenchReviewCenter workspaceId={selectedWorkspace.id} />
           {/key}
+        {:else if isWorkbenchAutomationsItemId(paneNode.id)}
+          {#key `${pane.id}:${paneNode.id}`}
+            <AutomationWorkspace
+              workspaceId={selectedWorkspace.id}
+              terminals={(nodesByWorkspace[selectedWorkspace.id] ?? []).filter((item) => item.type === 'terminal').map((item) => ({ id: item.id, title: item.title || m['terminal_browser.kind_terminal']() }))}
+            />
+          {/key}
         {:else if paneNode.type === 'device'}
           {#key `${pane.id}:${paneNode.id}`}
             <DeviceWorkbenchPanel workspaceId={selectedWorkspace.id} />
@@ -1063,6 +1082,16 @@
                     <Scale size={13} class="text-[var(--app-text-muted)]" aria-hidden="true" />
                     <span class="min-w-0 flex-1 truncate font-medium">{m['council.title']()}</span>
                     <span class="text-[9px] text-[var(--app-text-muted)]">{m['council.new']()}</span>
+                  </button>
+                </div>
+                <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchAutomationsItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>
+                  <button
+                    class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]"
+                    aria-current={selectedNodeId === workbenchAutomationsItemId(workspace.id) ? 'page' : undefined}
+                    onclick={() => selectNode(workspace.id, workbenchAutomationsItemId(workspace.id))}
+                  >
+                    <Workflow size={13} class={selectedNodeId === workbenchAutomationsItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
+                    <span class="min-w-0 flex-1 truncate font-medium">{m['automation.title']()}</span>
                   </button>
                 </div>
                 <WorkbenchFileExplorer

@@ -199,7 +199,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'device';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'automation' | 'device';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 
 export type AgentActivityState =
@@ -375,6 +375,7 @@ export type WorkspaceSearchResultKind =
   | 'artifact'
   | 'role'
   | 'skill'
+  | 'automation'
   | 'file';
 
 export type WorkspaceSearchResult = {
@@ -426,10 +427,25 @@ export type WorkspaceHooks = {
   autoRunSetup?: boolean;
 };
 
+export type AutomationTriggerType =
+  | 'manual'
+  | 'schedule'
+  | 'task'
+  | 'message'
+  | 'git_commit'
+  | 'github_pull_request'
+  | 'webhook'
+  | 'file_change'
+  | 'usage_threshold';
+
+export type AutomationActionType = 'prompt_agent' | 'create_task' | 'notify';
+export type AutomationRunStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+
 export type Routine = {
   id: string;
   workspaceId: string;
-  targetNodeId: string;
+  name: string;
+  targetNodeId: string | null;
   /** Prompt(s) a enviar ao terminal; multiplas etapas separadas por linha com &&. */
   prompt: string;
   /** Intervalo em minutos entre disparos (null = execucao unica). */
@@ -437,5 +453,49 @@ export type Routine = {
   enabled: boolean;
   lastRunAt: string | null;
   runCount: number;
+  triggerType: AutomationTriggerType;
+  triggerConfig: Record<string, unknown>;
+  actionType: AutomationActionType;
+  actionConfig: Record<string, unknown>;
+  recipeId: string | null;
   createdAt: string;
+  updatedAt: string;
+};
+
+export type AutomationRun = {
+  id: string;
+  routineId: string;
+  ranAt: string;
+  status: AutomationRunStatus;
+  ok: boolean;
+  triggerType: AutomationTriggerType;
+  triggerKey: string | null;
+  detail: string | null;
+  input: Record<string, unknown> | null;
+  output: Record<string, unknown> | null;
+  error: string | null;
+  agentNodeId: string | null;
+  provider: string | null;
+  usageBefore: unknown;
+  usageAfter: unknown;
+  startedAt: string | null;
+  finishedAt: string | null;
+  durationMs: number | null;
+  attempt: number;
+  retryOfId: string | null;
+  recoverable: boolean;
+};
+
+export type AutomationIntegration = {
+  id: string;
+  workspaceId: string;
+  type: 'github';
+  name: string;
+  config: { owner: string; repo: string };
+  secretKey: string | null;
+  status: 'connected' | 'disconnected' | 'error';
+  lastCheckedAt: string | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
 };

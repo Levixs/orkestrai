@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { Event } from '@beeblock/svelar/events';
 import { uuidv7 } from '@beeblock/svelar/support';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -14,6 +15,7 @@ import { nativeNotificationService, type NativeNotificationKind } from './Native
 import { defaultShell } from '../../infrastructure/workspace.js';
 import { upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
 import { controlCenterService } from './ControlCenterService.js';
+import { AutomationTriggerReceived } from '../../domain/events/AutomationTriggerReceived.js';
 
 export function resolveAgentReplyText(
   transcriptText: string | null,
@@ -369,6 +371,20 @@ export class BridgeService {
     // terminal; TTS na voz/idioma configurados — ver /api/agent-room/voice/speak).
     const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
     broadcast?.({ type: 'agentReply', workspaceId, to: target.nodeId, from: origin?.title ?? null, text: replyText });
+    await Event.dispatch(new AutomationTriggerReceived(
+      workspaceId,
+      'message',
+      'received',
+      `message:${messageId}`,
+      {
+        message: input.message,
+        reply: replyText,
+        fromNodeId: origin?.nodeId ?? null,
+        fromTitle: origin?.title ?? null,
+        toNodeId: target.nodeId,
+        toTitle: target.title,
+      },
+    )).catch(() => undefined);
 
     return {
       to: target.title,

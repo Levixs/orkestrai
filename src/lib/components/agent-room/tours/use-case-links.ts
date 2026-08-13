@@ -13,6 +13,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'pin-favorite-agents': 'pin-favorite-agents',
   'setup-agent-provider': 'provider-center-setup',
   'deploy-sentinel': 'sentinela-deploy',
+  'automate-workspace': 'workspace-automations',
   'framework-preset': 'preset-bootstrap',
   'custom-workflow': 'custom-board-stages',
   'campaign-launch': 'campaign-ready-team',

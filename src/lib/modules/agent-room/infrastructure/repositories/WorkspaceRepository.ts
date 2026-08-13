@@ -14,6 +14,7 @@ import { AgentCanvasEdge } from '../../domain/models/AgentCanvasEdge.js';
 import { AgentFloor } from '../../domain/models/AgentFloor.js';
 import { AgentRoutine } from '../../domain/models/AgentRoutine.js';
 import { AgentRoutineRun } from '../../domain/models/AgentRoutineRun.js';
+import { AgentAutomationIntegration } from '../../domain/models/AgentAutomationIntegration.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { AgentBoardColumn } from '../../domain/models/AgentBoardColumn.js';
 import { controlCenterRepository } from './ControlCenterRepository.js';
@@ -166,6 +167,7 @@ export class WorkspaceRepository {
       await AgentRoutineRun.query().where('routine_id', routineId).delete();
     }
     await AgentRoutine.query().where('workspace_id', id).delete();
+    await AgentAutomationIntegration.query().where('workspace_id', id).delete();
     const deleted = await AgentWorkspace.query().where('id', id).delete();
     return deleted > 0;
   }

@@ -9,6 +9,16 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Evoluiu as Rotinas legadas para Automações rastreáveis, com gatilhos manuais,
+  agendados, por tarefa, mensagem, commit Git, pull request do GitHub, webhook,
+  alteração de arquivo e uso de provider; ações para instruir agente, criar
+  tarefa ou notificar o desktop; receitas para desenvolvimento, design,
+  marketing, pesquisa e operações; jobs Svelar idempotentes; tentativas
+  limitadas; e histórico detalhado de execução.
+- Adicionou Automações ao Canvas, Workbench, busca universal, documentação e
+  onboarding. As credenciais do GitHub são criptografadas com o `safeStorage`
+  do Electron, solicitadas pelo processo servidor via IPC e nunca persistidas
+  no SQLite.
 - Evolved the focused workspace view into Workbench with persistent open items,
   vertical tabs by default, optional horizontal tabs, and up to eight recursive
   right/down resizable panes for live canvas artifacts.

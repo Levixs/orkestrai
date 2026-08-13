@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('orkestraiDesktop', {
   platform: process.platform,
   /** Versao atual do app (ex.: "0.0.1"). */
   appVersion: () => ipcRenderer.invoke('orkestrai:app-version'),
+  automationSecretStatus: (key) => ipcRenderer.invoke('orkestrai:automation-secret-status', key),
+  saveAutomationSecret: (key, value) => ipcRenderer.invoke('orkestrai:automation-secret-save', key, value),
+  deleteAutomationSecret: (key) => ipcRenderer.invoke('orkestrai:automation-secret-delete', key),
   /** Checagem manual de atualizacao (a automatica roda no boot + a cada 6h). */
   checkForUpdates: () => ipcRenderer.invoke('orkestrai:update-check'),
   /** Ultimo estado conhecido, inclusive se o renderer montou depois do check do boot. */

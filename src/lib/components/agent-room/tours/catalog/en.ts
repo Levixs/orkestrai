@@ -1043,6 +1043,35 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'workspace-automations',
+    icon: 'Workflow',
+    title: 'Automate repeatable workspace work',
+    tagline: 'Connect a precise trigger to a traceable action without hiding what ran.',
+    steps: [
+      {
+        id: 'open-automations',
+        title: 'Open Automations',
+        body: 'Open Automations from the Canvas toolbar, Workbench explorer, or Command/Ctrl+K. The same workspace automations and execution history appear in every entry point.',
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-automations:{workspace}' },
+      },
+      {
+        id: 'choose-recipe',
+        title: 'Start from a useful recipe',
+        body: 'Open Recipes and choose a development, design, marketing, research, or operations starting point. A recipe fills the form but never runs until you review and save it.',
+      },
+      {
+        id: 'configure-trigger-action',
+        title: 'Make the contract explicit',
+        body: 'Choose the exact event and action. Task, message, Git, GitHub, webhook, file, usage, schedule, and manual triggers can prompt an agent, create a Kanban task, or notify the desktop.',
+      },
+      {
+        id: 'inspect-history',
+        title: 'Follow every execution',
+        body: 'Use Execution history to inspect trigger input, target agent and provider, output acknowledgement, duration, attempt, and failure. Failed runs expose a bounded retry instead of disappearing.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Customize the appearance',

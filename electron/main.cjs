@@ -7,7 +7,7 @@
  * node-pty) precisam estar rebuildados para o ABI do Electron
  * (npm run electron:rebuild).
  */
-const { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, session, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, safeStorage, session, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -28,6 +28,61 @@ let serverPort = null;
 let tray = null;
 let pendingNotifications = 0;
 let menuLocale = 'en';
+
+function secureSecretsPath() {
+  return path.join(app.getPath('userData'), 'secure', 'automation-secrets.json');
+}
+
+function validAutomationSecretKey(key) {
+  return typeof key === 'string' && /^automation:[a-z0-9:_-]{1,240}$/i.test(key);
+}
+
+function readSecureSecrets() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(secureSecretsPath(), 'utf8'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSecureSecrets(secrets) {
+  const destination = secureSecretsPath();
+  fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o700 });
+  const temporary = `${destination}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(secrets, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(temporary, destination);
+}
+
+function readAutomationSecret(key) {
+  if (!validAutomationSecretKey(key) || !safeStorage.isEncryptionAvailable()) return null;
+  const encrypted = readSecureSecrets()[key];
+  if (typeof encrypted !== 'string' || !encrypted) return null;
+  try {
+    return safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
+  } catch {
+    return null;
+  }
+}
+
+function saveAutomationSecret(key, value) {
+  if (!validAutomationSecretKey(key)) throw new Error('Invalid automation secret key.');
+  if (typeof value !== 'string' || !value.trim()) throw new Error('Credential cannot be empty.');
+  if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this device.');
+  const secrets = readSecureSecrets();
+  secrets[key] = safeStorage.encryptString(value.trim()).toString('base64');
+  writeSecureSecrets(secrets);
+  return { stored: true };
+}
+
+function deleteAutomationSecret(key) {
+  if (!validAutomationSecretKey(key)) throw new Error('Invalid automation secret key.');
+  const secrets = readSecureSecrets();
+  const existed = Object.hasOwn(secrets, key);
+  delete secrets[key];
+  writeSecureSecrets(secrets);
+  return { deleted: existed };
+}
 
 const MENU_COPY = {
   'pt-BR': {
@@ -263,7 +318,24 @@ async function startServer(port) {
       // em dev, usa a pasta do projeto como sempre.
       ...(app.isPackaged ? { ORKESTRAI_DATA_DIR: app.getPath('userData') } : {}),
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+  });
+
+  serverProcess.on('message', (message) => {
+    if (!message || message.type !== 'orkestrai:secret:get' || !message.requestId) return;
+    try {
+      serverProcess?.send?.({
+        type: 'orkestrai:secret:result',
+        requestId: message.requestId,
+        value: readAutomationSecret(message.key),
+      });
+    } catch (error) {
+      serverProcess?.send?.({
+        type: 'orkestrai:secret:result',
+        requestId: message.requestId,
+        error: error?.message ?? String(error),
+      });
+    }
   });
 
   serverProcess.stdout.on('data', (chunk) => {
@@ -507,6 +579,15 @@ ipcMain.handle('orkestrai:update-install', () => {
 });
 
 ipcMain.handle('orkestrai:app-version', () => app.getVersion());
+
+ipcMain.handle('orkestrai:automation-secret-status', (_event, key) => {
+  if (!validAutomationSecretKey(key)) throw new Error('Invalid automation secret key.');
+  return { available: safeStorage.isEncryptionAvailable(), stored: Boolean(readAutomationSecret(key)) };
+});
+
+ipcMain.handle('orkestrai:automation-secret-save', (_event, key, value) => saveAutomationSecret(key, value));
+
+ipcMain.handle('orkestrai:automation-secret-delete', (_event, key) => deleteAutomationSecret(key));
 
 ipcMain.handle('orkestrai:open-external', (_event, url) => {
   // Só https — nunca abre esquema arbitrario vindo do renderer.

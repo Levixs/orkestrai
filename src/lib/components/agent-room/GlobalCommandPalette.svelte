@@ -17,6 +17,7 @@
     Star,
     StickyNote,
     UserRoundCog,
+    Workflow,
   } from '@lucide/svelte';
   import * as Command from '$lib/components/ui/command';
   import * as Tooltip from '$lib/components/ui/tooltip';
@@ -31,6 +32,7 @@
   } from './workbench-open.js';
   import { workbenchControlCenterItemId } from './workbench-control-center.js';
   import { workbenchReviewCenterItemId } from './workbench-review-center.js';
+  import { workbenchAutomationsItemId } from './workbench-automations.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type PaletteKind = WorkspaceSearchResultKind | 'command';
@@ -47,6 +49,7 @@
     'artifact',
     'role',
     'skill',
+    'automation',
     'file',
   ];
 
@@ -84,6 +87,7 @@
       command('council', m['global_search.command_council'](), `/canvas?workspace=${workspaceId}&council=1`),
       command('control-center', m['global_search.command_control_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchControlCenterItemId(workspaceId))}`),
       command('review-center', m['global_search.command_review_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchReviewCenterItemId(workspaceId))}`),
+      command('automations', m['global_search.command_automations'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchAutomationsItemId(workspaceId))}`),
     ] : [];
     return [
       command('canvas', m['global_search.command_canvas'](), workspaceId ? `/canvas?workspace=${workspaceId}` : '/canvas'),
@@ -180,6 +184,7 @@
       artifact: m['global_search.kind_artifact'],
       role: m['global_search.kind_role'],
       skill: m['global_search.kind_skill'],
+      automation: m['global_search.kind_automation'],
       file: m['global_search.kind_file'],
       command: m['global_search.kind_command'],
     };
@@ -224,12 +229,14 @@
     }
     if (
       location.pathname === '/terminal'
-      && (item.id === 'command:control-center' || item.id === 'command:review-center')
+      && (item.id === 'command:control-center' || item.id === 'command:review-center' || item.id === 'command:automations')
       && item.workspaceId
     ) {
       const nodeId = item.id === 'command:control-center'
         ? workbenchControlCenterItemId(item.workspaceId)
-        : workbenchReviewCenterItemId(item.workspaceId);
+        : item.id === 'command:review-center'
+          ? workbenchReviewCenterItemId(item.workspaceId)
+          : workbenchAutomationsItemId(item.workspaceId);
       window.dispatchEvent(new CustomEvent<WorkbenchOpenRequestDetail>(WORKBENCH_OPEN_REQUEST, {
         detail: { workspaceId: item.workspaceId, nodeId, direction: null },
       }));
@@ -320,6 +327,7 @@
   {:else if kind === 'artifact'}<Blocks size={15} aria-hidden="true" />
   {:else if kind === 'role'}<UserRoundCog size={15} aria-hidden="true" />
   {:else if kind === 'skill'}<Sparkles size={15} aria-hidden="true" />
+  {:else if kind === 'automation'}<Workflow size={15} aria-hidden="true" />
   {:else if kind === 'file'}<File size={15} aria-hidden="true" />
   {:else}<Search size={15} aria-hidden="true" />
   {/if}
