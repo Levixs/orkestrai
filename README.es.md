@@ -42,8 +42,15 @@ Descarga los instaladores más recientes desde
   deja comentarios persistentes por archivo y línea, y aprueba, rechaza o solicita
   cambios. El feedback vuelve al agente responsable sin perder el historial.
 - **Portal Design Mode:** señala el elemento exacto de la interfaz que necesita
-  atención, revisa su captura recortada y contexto visual seguro y envía el
-  feedback a un agente o tarea existente. Los secretos y el estado oculto se excluyen.
+  atención, revisa su captura recortada y contexto visual seguro y registra el
+  feedback en una tarea nueva para revisión del líder, una tarea asignada o una
+  tarea existente. Los secretos y el estado oculto se excluyen.
+- **Decisiones con Council:** pide perspectivas independientes y limitadas por
+  presupuesto a entre dos y cinco agentes reales sobre una tarea u objetivo,
+  compara el mismo contrato de evidencias, riesgos, pruebas, divergencias y
+  confianza y registra la selección, solicitud de consenso o rechazo humano.
+  Los prototipos permanecen en pisos Git aislados y solo aterrizan después de
+  una vista previa segura explícita.
 - **Búsqueda universal:** presiona `Cmd/Ctrl+K` para encontrar workspaces,
   agentes, tareas, notas, roles, skills, archivos, configuración y comandos,
   con elementos recientes/favoritos y apertura en el panel actual, derecho o inferior.

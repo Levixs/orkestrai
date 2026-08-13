@@ -37,6 +37,14 @@ pt-BR, English, and Spanish translations.
   inbox that survives view changes and restarts without waking idle terminals.
 - Added persistent message delivery tracking under one message id across
   queued, sent, delivered, acknowledged, replied, and failed transitions.
+- Added Council decisions from task cards and leader menus: two to five real
+  agents run independent, budget-limited perspectives against one structured
+  evidence, risk, test, divergence, recommendation, and confidence contract.
+  Partial provider failures preserve successful answers, optional leader
+  synthesis remains advisory, and the final selection, consensus request, or
+  rejection is always human and persisted. Implementation runs use isolated
+  Git floors and can land only the selected committed result after a fresh
+  clean-target and conflict preview; Council never pushes or merges by itself.
 - Added a Workbench Review Center with structured staged/unstaged Git status,
   branch synchronization, bounded Monaco diffs, persisted file/line comments,
   stale-context detection, task and agent context, and approve, request changes,

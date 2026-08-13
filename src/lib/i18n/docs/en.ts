@@ -36,6 +36,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `All agents run in parallel (independent processes). Coordination happens through connections: agent asks agent with orkestrai ask, or the Leader (★ Maestro) distributes with task/ask and recruits/dismisses with recruit/dismiss. The Loop Ralph node is the sequential mode: leader plans → engineer implements → tester reviews, for up to N rounds. Routines fire scheduled prompts into any terminal.`,
     },
     {
+      id: 'council',
+      title: 'Council: compare independent perspectives',
+      body: `Open Ask perspectives from a task card or the leader menu to run two to five real agents against the same objective. Choose advisory or implementation mode, give each agent a distinct approach, select the decision criterion, and set a hard execution budget before starting. Every perspective returns the same structured evidence, risks, tests, disagreements, recommendation, and confidence contract; one failed provider does not discard successful answers. An optional leader synthesis consumes one more execution, but the final select, request-consensus, or reject decision is always human and persisted. Council is the decision layer; Floors are the isolation layer. Git implementation perspectives run in separate floors, and only the selected committed result can be landed after a fresh diff, dirty-check, and conflict preview. Nothing merges or pushes automatically.`,
+    },
+    {
       id: 'control-center',
       title: 'Control Center and verified communications',
       body: `Open Control Center at the top of each expanded workspace in the Workbench explorer. It reconstructs every agent's state from an append-only event history: starting, working, waiting for input or permission, blocked, idle, done, error, or disconnected. Each row shows the current task, last significant action, time in state, provider, role, and available usage. The Communications inbox records queued, sent, delivered, acknowledged, replied, and failed transitions under one message id; orkestrai ask succeeds only after a confirmed reply. These states survive view changes and app restarts without waking idle terminals. Canvas edges remain a visual history of real conversations, while delivery itself uses the bridge and does not depend on an edge. Native notifications are reserved for explicit attention, task completion, or project completion instead of routine activity.`,
@@ -144,6 +149,12 @@ export const DOCS_EN: DocsCatalog = {
       title: 'Two features in parallel with no conflicts',
       body: 'One floor (worktree) per feature: team A on the Ground floor on main, team B on the "auth-refactor" floor. When done, floor preview shows conflicts first; land merges. A conflict becomes a task for an agent to resolve.',
       tags: ['Floors/worktrees', 'floor land', 'branches'],
+    },
+    {
+      id: 'council-decision',
+      title: 'Compare approaches before committing the team',
+      body: 'From a task card, ask three agents to independently evaluate architecture, delivery risk, and cost. Keep advisory mode for a decision only, or implementation mode for isolated prototypes. Compare the normalized matrix, read the optional leader synthesis, and record your own selection, consensus request, or rejection. Only a selected implementation with a clean target and conflict-free preview can be landed.',
+      tags: ['Council', 'human decision', 'isolated floors'],
     },
     {
       id: 'visual-qa',
@@ -359,6 +370,7 @@ export const DOCS_EN: DocsCatalog = {
         'Agent names and roles now wrap onto dedicated lines in the Workbench explorer, and vertical open-item labels show their full names instead of hiding distinguishing text behind ellipses.',
         'Workbench now includes a Review Center with structured staged and unstaged changes, branch synchronization, bounded Monaco diffs, persisted file and line comments, stale-context detection, task and agent context, and approve, request changes, or reject decisions with direct agent handoff.',
         'Portal Design Mode now highlights real page elements, captures a cropped screenshot and bounded safe context, previews it before sending, and records every submission on the Kanban board: as a new leader-triage task, a new task assigned to an agent, or an update to an existing task. Cookies, tokens, storage, headers, and query strings remain excluded.',
+        'Council now runs two to five real agents as independent, budget-limited perspectives with structured evidence, risks, tests, disagreements, confidence, partial-failure handling, optional leader synthesis, and a persisted human decision. Implementation perspectives use isolated Git floors and require a fresh clean, conflict-free preview before the selected committed result can be landed.',
       ],
     },
     {

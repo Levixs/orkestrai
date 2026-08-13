@@ -959,6 +959,35 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'council-perspectives',
+    icon: 'Scale',
+    title: 'Compare perspectives with Council',
+    tagline: 'Give independent agents the same question and keep the final decision human.',
+    steps: [
+      {
+        id: 'open-council',
+        title: 'Start from the work',
+        body: 'Open Ask perspectives from a task card or from the leader menu. A task supplies its complete brief automatically; the leader entry starts with that leader selected.',
+        action: { kind: 'openPage', path: '/canvas' },
+      },
+      {
+        id: 'configure-council',
+        title: 'Bound the comparison',
+        body: 'Choose two to five real agents, give each a distinct approach, select advisory or implementation mode and a decision criterion, then set the maximum execution count. Optional leader synthesis uses one execution from that budget.',
+      },
+      {
+        id: 'compare-council',
+        title: 'Compare the same contract',
+        body: 'Review proposal, verified evidence, risks, tests, disagreements, recommendation, and confidence side by side. Completed perspectives remain usable when another provider fails; the leader suggestion is advice, not an automatic verdict.',
+      },
+      {
+        id: 'decide-council',
+        title: 'Record the human decision',
+        body: 'Select one perspective, request more consensus, or reject the round and save your rationale. In implementation mode, only a selected committed floor can be landed, after a fresh clean and conflict-free preview. Council never pushes or merges by itself.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Customize the appearance',

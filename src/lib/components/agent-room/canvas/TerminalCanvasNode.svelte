@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowLeftRight, BadgeCheck, Ellipsis, Paperclip, RotateCcw, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { ArrowLeftRight, BadgeCheck, Ellipsis, Paperclip, RotateCcw, Scale, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
@@ -20,6 +20,7 @@
     transferHasWorkspaceAttachments,
     uploadWorkspaceAttachment,
   } from '../workspace-attachments.js';
+  import CouncilDialog from '../CouncilDialog.svelte';
 
   export type MentionTarget = { id: string; title: string; type: string };
 
@@ -63,6 +64,7 @@
   /** Session-id descoberto no momento do respawn (cobre o caso do watch ter
       expirado antes da primeira mensagem — Claude grava o jsonl so na 1a msg). */
   let respawnAgentSessionId = $state<string | null>(null);
+  let councilOpen = $state(false);
 
   async function resolveRespawn() {
     const payload = data.payload as TerminalNodePayload & { provider?: string };
@@ -485,6 +487,13 @@
           </DropdownMenu.SubContent>
         </DropdownMenu.Sub>
         <DropdownMenu.Separator />
+        {#if data.payload.maestro}
+          <DropdownMenu.Item onclick={() => (councilOpen = true)}>
+            <Scale size={14} />
+            {m['council.ask_perspectives']()}
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator />
+        {/if}
         <DropdownMenu.Item onclick={reloadTerminal}>
           <RotateCcw size={14} />
           {m['term.reload']()}
@@ -569,6 +578,7 @@
     <p class="voice-error">{providerError}</p>
   {/if}
   <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => (voiceOn = true)} onCancel={() => {}} />
+  <CouncilDialog bind:open={councilOpen} workspaceId={data.workspaceId} source={{ leaderNodeId: id }} />
 
   <div
     class="composer nodrag"

@@ -40,6 +40,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `Todos os agentes rodam em paralelo (processos independentes). A coordenação é por conexões: agente pergunta a agente com orkestrai ask, ou o Líder (★ Maestro) distribui com task/ask e recruta/demite com recruit/dismiss. O nó Loop Ralph é o modo sequencial: líder planeja → engenheiro implementa → tester revisa, até N rodadas. Rotinas disparam prompts agendados em qualquer terminal.`,
     },
     {
+      id: 'council',
+      title: 'Council: compare perspectivas independentes',
+      body: `Abra Pedir perspectivas pelo cartão de uma tarefa ou pelo menu do líder para executar de dois a cinco agentes reais sobre o mesmo objetivo. Escolha modo consultivo ou implementação, dê uma abordagem diferente a cada agente, selecione o critério de decisão e defina um limite rígido de execuções antes de iniciar. Toda perspectiva devolve o mesmo contrato estruturado de evidências, riscos, testes, divergências, recomendação e confiança; a falha de um provider não descarta as respostas concluídas. Uma síntese opcional do líder consome mais uma execução, mas a decisão final de selecionar, pedir consenso ou rejeitar é sempre humana e persistida. Council é a camada de decisão; Andares são a camada de isolamento. Implementações Git rodam em andares separados e somente o resultado selecionado e commitado pode ser aterrissado depois de nova prévia de diff, alterações pendentes e conflitos. Nada faz merge ou push automaticamente.`,
+    },
+    {
       id: 'control-center',
       title: 'Central de controle e comunicações verificadas',
       body: `Abra a Central de controle no topo de cada workspace expandido no explorer do Workbench. Ela reconstrói o estado de cada agente a partir de um histórico append-only: iniciando, trabalhando, aguardando resposta ou permissão, bloqueado, ocioso, concluído, erro ou desconectado. Cada linha mostra tarefa atual, última ação relevante, tempo no estado, provider, role e uso disponível. A caixa de Comunicações registra as transições na fila, enviada, entregue, recebida, respondida e falhou sob um único id de mensagem; orkestrai ask só termina com sucesso após resposta confirmada. Esses estados sobrevivem à troca de tela e ao reinício do app sem acordar terminais ociosos. As edges continuam como histórico visual de conversas reais, mas a entrega usa a ponte e não depende de uma edge. Notificações nativas ficam reservadas para atenção explícita, conclusão de tarefa ou conclusão do projeto, sem ruído de atividade comum.`,
@@ -148,6 +153,12 @@ export const DOCS_PT: DocsCatalog = {
       title: 'Duas features em paralelo sem conflito',
       body: 'Um andar (worktree) por feature: time A no Térreo na main, time B no andar “auth-refactor”. Ao terminar, floor preview mostra conflitos antes; o land mergeia. Conflito vira tarefa para um agente resolver.',
       tags: ['Andares/worktrees', 'floor land', 'branches'],
+    },
+    {
+      id: 'council-decision',
+      title: 'Compare abordagens antes de comprometer o time',
+      body: 'Pelo cartão de uma tarefa, peça a três agentes para avaliarem de forma independente arquitetura, risco de entrega e custo. Use o modo consultivo quando quiser apenas decidir ou implementação para protótipos isolados. Compare a matriz normalizada, leia a síntese opcional do líder e registre sua seleção, pedido de consenso ou rejeição. Somente uma implementação selecionada, com destino limpo e prévia sem conflitos, pode ser aterrissada.',
+      tags: ['Council', 'decisão humana', 'andares isolados'],
     },
     {
       id: 'visual-qa',
@@ -363,6 +374,7 @@ export const DOCS_PT: DocsCatalog = {
         'Nomes e roles dos agentes agora quebram em linhas próprias no explorer do Workbench, e os itens abertos na vertical mostram o nome completo sem esconder a parte que diferencia cada agente com reticências.',
         'O Workbench agora inclui uma Central de revisão com alterações Git preparadas e não preparadas estruturadas, sincronização de branch, diffs Monaco limitados, comentários persistidos por arquivo e linha, detecção de contexto desatualizado, tarefa e agente vinculados e decisões de aprovar, solicitar alterações ou rejeitar com envio direto ao agente.',
         'O Portal Design Mode agora destaca elementos reais da página, captura screenshot recortado e contexto seguro limitado, mostra uma prévia antes do envio e registra todo feedback no Kanban: como nova tarefa para triagem do líder, nova tarefa atribuída a um agente ou complemento de uma tarefa existente. Cookies, tokens, storage, headers e query strings ficam de fora.',
+        'O Council agora executa de dois a cinco agentes reais como perspectivas independentes com orçamento limitado, evidências, riscos, testes, divergências e confiança estruturados, tolerância a falhas parciais, síntese opcional do líder e decisão humana persistida. Perspectivas de implementação usam andares Git isolados e exigem nova prévia limpa e sem conflitos antes de aterrissar o resultado selecionado e commitado.',
       ],
     },
     {

@@ -959,6 +959,35 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'council-perspectives',
+    icon: 'Scale',
+    title: 'Comparar perspectivas con Council',
+    tagline: 'Haz la misma pregunta a agentes independientes y conserva la decisión final humana.',
+    steps: [
+      {
+        id: 'open-council',
+        title: 'Empieza desde el trabajo',
+        body: 'Abre Pedir perspectivas desde una tarjeta de tarea o el menú del líder. La tarea aporta el briefing completo automáticamente; desde el líder, este ya queda seleccionado.',
+        action: { kind: 'openPage', path: '/canvas' },
+      },
+      {
+        id: 'configure-council',
+        title: 'Limita la comparación',
+        body: 'Elige entre dos y cinco agentes reales, asigna un enfoque distinto a cada uno, selecciona modo consultivo o implementación y un criterio de decisión, y define el máximo de ejecuciones. La síntesis opcional del líder consume una ejecución de ese límite.',
+      },
+      {
+        id: 'compare-council',
+        title: 'Compara el mismo contrato',
+        body: 'Revisa lado a lado propuesta, evidencias verificadas, riesgos, pruebas, divergencias, recomendación y confianza. Las perspectivas completadas siguen siendo útiles cuando falla otro provider; la sugerencia del líder es consultiva, no un veredicto automático.',
+      },
+      {
+        id: 'decide-council',
+        title: 'Registra la decisión humana',
+        body: 'Selecciona una perspectiva, pide más consenso o rechaza la ronda y guarda tu justificación. En modo implementación, solo un piso seleccionado y confirmado en commit puede aterrizar, después de una nueva vista previa limpia y sin conflictos. Council nunca hace push ni merge por sí solo.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar la apariencia',

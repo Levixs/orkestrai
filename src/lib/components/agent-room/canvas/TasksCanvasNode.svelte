@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Columns3, History, Link2, Paperclip, Plus, SquareKanban, StickyNote, Trash2, X } from '@lucide/svelte';
+  import { Archive, ArchiveRestore, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Columns3, History, Link2, Paperclip, Plus, Scale, SquareKanban, StickyNote, Trash2, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Dialog from '$lib/components/ui/dialog';
   import NodeShell from './NodeShell.svelte';
@@ -17,6 +17,7 @@
   import * as m from '$lib/paraglide/messages.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import type { WorkspaceAttachment } from '$lib/modules/agent-room/domain/types.js';
+  import CouncilDialog from '../CouncilDialog.svelte';
 
   type BoardTask = {
     id: string;
@@ -92,6 +93,13 @@
   let columnError = $state('');
   let newColumnName = $state('');
   let newColumnColor = $state('#9675ff');
+  let councilOpen = $state(false);
+  let councilSource = $state<{ taskId: string; taskTitle: string; taskDescription: string | null } | null>(null);
+
+  function openCouncil(task: BoardTask): void {
+    councilSource = { taskId: task.id, taskTitle: task.title, taskDescription: task.description };
+    councilOpen = true;
+  }
 
   // -- Historico / arquivamento ------------------------------------------------
   // Quadro mostra so tarefas vivas; concluidas podem ser arquivadas (saem do
@@ -687,9 +695,14 @@
                   <!-- svelte-ignore a11y_no_static_element_interactions -->
                   <span class="tb-title" title={undefined} ondblclick={() => startEdit(task)}>{task.title}</span>
                 {/if}
-                <HeaderIconButton label={m['tasks.remove_task']()} class="tb-icon-btn" side="top" onclick={() => removeTask(task)}>
-                  <Trash2 size={11} />
-                </HeaderIconButton>
+                <div class="flex shrink-0 items-center gap-0.5">
+                  <HeaderIconButton label={m['council.ask_perspectives']()} class="tb-icon-btn subtle" side="top" onclick={() => openCouncil(task)}>
+                    <Scale size={11} />
+                  </HeaderIconButton>
+                  <HeaderIconButton label={m['tasks.remove_task']()} class="tb-icon-btn" side="top" onclick={() => removeTask(task)}>
+                    <Trash2 size={11} />
+                  </HeaderIconButton>
+                </div>
               </div>
               {#if task.description?.trim()}
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -774,6 +787,8 @@
   </div>
   {/if}
 </NodeShell>
+
+<CouncilDialog bind:open={councilOpen} workspaceId={data.workspaceId} source={councilSource} />
 
 {#if viewerTask}
   <Dialog.Root open={viewerTask !== null} onOpenChange={(open: boolean) => !open && (viewerTask = null)}>

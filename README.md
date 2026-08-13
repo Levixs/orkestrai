@@ -44,6 +44,11 @@ Download the latest installers from
   review its cropped screenshot and safe visual context, then track feedback in
   a new leader-triage task, a task assigned to an agent, or an existing task.
   Browser secrets and hidden state stay excluded.
+- **Council decisions:** ask two to five real agents for independent,
+  budget-limited perspectives on one task or objective, compare the same
+  evidence, risk, test, disagreement, and confidence contract, then record the
+  human selection, consensus request, or rejection. Implementation prototypes
+  stay in isolated Git floors and land only after an explicit safe preview.
 - **Universal search:** press `Cmd/Ctrl+K` to find workspaces, agents, tasks,
   notes, roles, skills, files, settings, and commands, with recent and favorite
   items plus direct actions to open in the current pane, right, or below.

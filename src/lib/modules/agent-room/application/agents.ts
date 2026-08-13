@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
 import type { AgentRunRequest, AgentRunResult } from '../domain/types.js';
 import { assertWritableProjectPath, resolveSafeProjectPath } from '../infrastructure/workspace.js';
 import { agentEnv, resolveCommand, IS_WIN } from '../infrastructure/agent-path.js';
@@ -157,8 +159,31 @@ function runCommand(
 }
 
 export async function runAgent(request: AgentRunRequest, options: AgentRunOptions = {}): Promise<AgentRunResult> {
-  const adapter = getAgentAdapter(request.agent);
   const cwd = resolveWorkingDirectory(request);
+  return executeAgent(request, cwd, options);
+}
+
+/**
+ * Runs a one-shot agent inside a workspace path already authorized by the
+ * persisted workspace record. The containment check stays here so callers
+ * cannot accidentally turn a request path into arbitrary filesystem access.
+ */
+export async function runAgentInWorkspace(
+  request: AgentRunRequest,
+  workspaceRoot: string,
+  options: AgentRunOptions = {},
+): Promise<AgentRunResult> {
+  const root = realpathSync(resolve(workspaceRoot));
+  const cwd = realpathSync(resolve(request.workingDirectory ?? workspaceRoot));
+  const nested = relative(root, cwd);
+  if (nested.startsWith('..') || isAbsolute(nested)) {
+    throw new Error('The council execution directory must stay inside the workspace.');
+  }
+  return executeAgent(request, cwd, options);
+}
+
+async function executeAgent(request: AgentRunRequest, cwd: string, options: AgentRunOptions): Promise<AgentRunResult> {
+  const adapter = getAgentAdapter(request.agent);
   const spec = adapter.buildCommand(request);
   const result = await runCommand(spec.command, spec.args, cwd, {
     ...options,
