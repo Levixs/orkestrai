@@ -13,7 +13,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'workspaces',
       title: 'Workspaces',
-      body: `A workspace = a team on a project: working directory, icon and canvas layout saved. Create it with the + button in the sidebar. Several workspaces run at the same time — agents stay alive in the background when you switch. Instructions in AGENTS.md/CLAUDE.md are injected into the agents (edit with the pencil next to the name). The ⏻ button (Unload) shuts down the live terminals of the active workspace — frees memory/CPU without deleting anything: the layout stays saved and each agent resumes the conversation when the terminal reopens.`,
+      body: `A workspace = a team on a project: working directory, icon and canvas layout saved. Create it with the + button in the sidebar. Several workspaces run at the same time — agents stay alive in the background when you switch. Instructions in AGENTS.md/CLAUDE.md are injected into the agents (edit with the pencil next to the name). The ⏻ button (Unload) shuts down the live terminals of the active workspace — frees memory/CPU without deleting anything: the layout stays saved and each agent resumes the conversation when the terminal reopens. On macOS, projects in Downloads, Documents, or Desktop require system consent; if access expires, Canvas and Workbench show Authorize folder so you can select the same directory again and continue without restarting the app.`,
     },
     {
       id: 'agentes',
@@ -370,6 +370,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 14, 2026 · In development',
       items: [
+        'Workspace folders protected by macOS now have localized privacy descriptions. Canvas and Workbench replace raw EPERM/EACCES errors with recovery that reauthorizes the exact folder and retries the workspace without restarting the app.',
         'Workspace sharing now offers separate Browser/mobile and Orkestrai app invitations. The installable Remote PWA follows agents, tasks, reviews, activity, and provider usage, persists a non-extractable WebCrypto key, and removes the invitation secret from the URL before connecting.',
         'Workspace sharing now uses the production relay.orkestrai.app endpoint by default. The relay accepts the installed app\'s dynamic local origin and configured official web origins while rejecting unrelated websites.',
         'Experimental workspace sharing now creates an end-to-end encrypted host session with one-time link and QR invites, explicit device fingerprint approval, Viewer/Collaborator/Operator/Administrator roles, immediate revocation, command audit, and a bounded remote companion for team state, tasks, reviews, and leader messages. The opaque relay never receives plaintext, while PTY output, files, notes, portals, credentials, private URLs, and local paths remain excluded.',

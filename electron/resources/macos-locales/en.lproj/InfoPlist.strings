@@ -1,0 +1,4 @@
+"NSMicrophoneUsageDescription" = "Orkestrai uses the microphone only when you start voice dictation.";
+"NSDownloadsFolderUsageDescription" = "Orkestrai needs access to projects you choose inside Downloads.";
+"NSDocumentsFolderUsageDescription" = "Orkestrai needs access to projects you choose inside Documents.";
+"NSDesktopFolderUsageDescription" = "Orkestrai needs access to projects you choose on the Desktop.";

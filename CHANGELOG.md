@@ -96,6 +96,10 @@ pt-BR, English, and Spanish translations.
 
 ### Changed
 
+- Protected workspace folders on macOS now declare localized Downloads,
+  Documents, and Desktop access reasons. Canvas and Workbench replace raw
+  `EPERM`/`EACCES` errors with a recovery panel that can reauthorize the exact
+  project folder and retry without restarting the app.
 - Workspace sharing now defaults to the production
   `wss://relay.orkestrai.app/v1/connect` endpoint. The containerized relay
   accepts the installed app's dynamic loopback origins and the official website

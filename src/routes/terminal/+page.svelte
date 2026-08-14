@@ -79,6 +79,8 @@
   import { TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from '$lib/components/agent-room/text-dictation.js';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
+  import WorkspacePermissionNotice from '$lib/components/agent-room/WorkspacePermissionNotice.svelte';
+  import { isWorkspacePermissionError } from '$lib/components/agent-room/workspace-permission.js';
   import {
     WORKBENCH_OPEN_REQUEST,
     type WorkbenchOpenRequestDetail,
@@ -161,6 +163,8 @@
   let query = $state('');
   let loading = $state(true);
   let errorMessage = $state('');
+  let permissionWorkspaceId = $state<string | null>(null);
+  const permissionWorkspace = $derived(workspaces.find((workspace) => workspace.id === permissionWorkspaceId) ?? null);
   let councilOpen = $state(false);
   let sharingOpen = $state(false);
   let leaderDictationState = $state<LeaderDictationStatus>('idle');
@@ -310,9 +314,25 @@
       if (workspace) {
         writeWorkspaceViewCache({ workspace, nodes, edges, floors });
       }
-    })().finally(() => workspaceLoadRequests.delete(workspaceId));
+      if (permissionWorkspaceId === workspaceId) permissionWorkspaceId = null;
+      errorMessage = '';
+    })().catch((error) => {
+      if (isWorkspacePermissionError(error)) {
+        permissionWorkspaceId = workspaceId;
+        errorMessage = '';
+      } else {
+        errorMessage = error instanceof Error ? error.message : m['terminal_browser.load_error']();
+      }
+      throw error;
+    }).finally(() => workspaceLoadRequests.delete(workspaceId));
     workspaceLoadRequests.set(workspaceId, request);
     return request;
+  }
+
+  async function retryWorkspaceAccess(): Promise<void> {
+    const workspaceId = permissionWorkspaceId;
+    if (!workspaceId) return;
+    await loadWorkspace(workspaceId).catch(() => undefined);
   }
 
   function storedWorkbenchLayout(workspaceId: string): unknown {
@@ -490,7 +510,7 @@
       return;
     }
     expandedWorkspaceIds = [...expandedWorkspaceIds, workspaceId];
-    if (!loadedWorkspaceIds.includes(workspaceId)) await loadWorkspace(workspaceId);
+    if (!loadedWorkspaceIds.includes(workspaceId)) await loadWorkspace(workspaceId).catch(() => undefined);
   }
 
   function updateNode(updated: CanvasNode) {
@@ -838,7 +858,9 @@
           })
           .catch(() => undefined);
       } catch (error) {
-        if (!destroyed) errorMessage = error instanceof Error ? error.message : m['terminal_browser.load_error']();
+        if (!destroyed && !permissionWorkspaceId) {
+          errorMessage = error instanceof Error ? error.message : m['terminal_browser.load_error']();
+        }
       } finally {
         if (!destroyed) loading = false;
       }
@@ -1028,6 +1050,10 @@
           {#each [0, 1, 2, 3] as item (item)}
             <Skeleton class="h-8 w-full bg-[var(--app-surface-raised)]" />
           {/each}
+        </div>
+      {:else if permissionWorkspace}
+        <div class="px-2 py-3">
+          <WorkspacePermissionNotice workingDir={permissionWorkspace.workingDir} onRetry={retryWorkspaceAccess} />
         </div>
       {:else if errorMessage}
         <p class="px-3 py-4 text-xs leading-5 text-[var(--app-danger)]">{errorMessage}</p>

@@ -13,7 +13,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'workspaces',
       title: 'Workspaces',
-      body: `Un workspace = un equipo en un proyecto: directorio de trabajo, ícono y layout del canvas guardados. Créalo con el botón + en la barra lateral. Varios workspaces corren al mismo tiempo — los agentes siguen vivos en background al cambiar. Las instrucciones en AGENTS.md/CLAUDE.md se inyectan en los agentes (edita con el lápiz junto al nombre). El botón ⏻ (Descargar) cierra las terminales vivas del workspace activo — libera memoria/CPU sin borrar nada: el layout queda guardado y cada agente retoma la conversación al reabrir la terminal.`,
+      body: `Un workspace = un equipo en un proyecto: directorio de trabajo, ícono y layout del canvas guardados. Créalo con el botón + en la barra lateral. Varios workspaces corren al mismo tiempo — los agentes siguen vivos en background al cambiar. Las instrucciones en AGENTS.md/CLAUDE.md se inyectan en los agentes (edita con el lápiz junto al nombre). El botón ⏻ (Descargar) cierra las terminales vivas del workspace activo — libera memoria/CPU sin borrar nada: el layout queda guardado y cada agente retoma la conversación al reabrir la terminal. En macOS, los proyectos dentro de Descargas, Documentos o Escritorio requieren consentimiento del sistema; si el acceso expira, Canvas y Workbench muestran Autorizar carpeta para elegir nuevamente el mismo directorio y continuar sin reiniciar la app.`,
     },
     {
       id: 'agentes',
@@ -370,6 +370,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: '14 ago 2026 · En desarrollo',
       items: [
+        'Las carpetas de workspace protegidas por macOS ahora tienen descripciones de privacidad localizadas. Canvas y Workbench sustituyen los errores técnicos EPERM/EACCES por una recuperación que vuelve a autorizar la carpeta exacta y reintenta abrir el workspace sin reiniciar la app.',
         'El uso compartido ahora ofrece invitaciones separadas para Navegador/móvil y App Orkestrai. La PWA Remote instalable sigue agentes, tareas, revisiones, actividad y uso de proveedores, conserva una clave WebCrypto no extraíble y elimina el secreto de la invitación de la URL antes de conectar.',
         'El uso compartido del workspace ahora utiliza de forma predeterminada el endpoint de producción relay.orkestrai.app. El relay acepta el origen local dinámico de la aplicación instalada y los orígenes web oficiales configurados, mientras rechaza sitios no relacionados.',
         'El uso compartido experimental de workspace ahora crea una sesión host cifrada de extremo a extremo con invitaciones únicas por enlace y código QR, aprobación explícita mediante la huella digital del dispositivo, roles Lector/Colaborador/Operador/Administrador, revocación inmediata, auditoría de comandos y un companion remoto limitado para estado del equipo, tareas, revisiones y mensajes al líder. El relay opaco nunca recibe contenido en texto abierto, mientras que la salida PTY, archivos, notas, portales, credenciales, URLs privadas y rutas locales quedan excluidos.',

@@ -41,6 +41,8 @@
   import WorkspaceSharingDialog from '$lib/components/collaboration/WorkspaceSharingDialog.svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
+  import WorkspacePermissionNotice from '$lib/components/agent-room/WorkspacePermissionNotice.svelte';
+  import { isWorkspacePermissionError } from '$lib/components/agent-room/workspace-permission.js';
   import {
     readProviderCache,
     readWorkspaceListCache,
@@ -128,6 +130,7 @@
   let nodes = $state<Node[]>([]);
   let edges = $state<Edge[]>([]);
   let errorMessage = $state('');
+  let permissionWorkspace = $state<Workspace | null>(null);
 
   // Formulario de novo workspace
   let showWorkspaceForm = $state(false);
@@ -848,6 +851,7 @@
     const changingWorkspace = activeWorkspace?.id !== id;
     const requestId = ++selectionRequestId;
     errorMessage = '';
+    permissionWorkspace = null;
     const cached = !options.force ? readWorkspaceViewCache(id) : null;
     if (cached) {
       activeWorkspace = cached.workspace;
@@ -885,8 +889,19 @@
       edges = canvasEdges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
       writeWorkspaceViewCache({ workspace, nodes: canvasNodes, edges: canvasEdges, floors: floorList });
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : m['canvas.error_open_ws']();
+      if (isWorkspacePermissionError(error)) {
+        permissionWorkspace = workspaces.find((workspace) => workspace.id === id) ?? null;
+        errorMessage = '';
+      } else {
+        errorMessage = error instanceof Error ? error.message : m['canvas.error_open_ws']();
+      }
     }
+  }
+
+  async function retryWorkspaceAccess(): Promise<void> {
+    const workspace = permissionWorkspace;
+    if (!workspace) return;
+    await selectWorkspace(workspace.id, { force: true });
   }
 
   async function selectFloor(floorId: string | null) {
@@ -2049,7 +2064,11 @@
     {#if editingWorkspace}
       <WorkspaceEditDialog workspace={editingWorkspace} onSave={saveWorkspace} onClose={() => (editingWorkspace = null)} />
     {/if}
-    {#if errorMessage}
+    {#if permissionWorkspace}
+      <div class="permission-banner">
+        <WorkspacePermissionNotice workingDir={permissionWorkspace.workingDir} onRetry={retryWorkspaceAccess} />
+      </div>
+    {:else if errorMessage}
       <p class="error-banner">{errorMessage}</p>
     {/if}
     {#if unloadMessage}
@@ -2551,6 +2570,15 @@
     padding: 6px 14px;
     border-radius: 8px;
     font-size: 12px;
+  }
+
+  .permission-banner {
+    position: absolute;
+    z-index: 30;
+    bottom: 12px;
+    left: 50%;
+    width: min(520px, calc(100% - 24px));
+    transform: translateX(-50%);
   }
 
   .notice-banner {
