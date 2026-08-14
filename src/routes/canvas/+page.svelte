@@ -82,7 +82,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -1697,6 +1697,7 @@
             </DropdownMenu.Trigger>
             <DropdownMenu.Content align="end" class="min-w-[220px]">
               <DropdownMenu.Item onclick={() => void goto('/docs')}><CircleHelp size={14} />{m['canvas.how_to_use']()}</DropdownMenu.Item>
+              <DropdownMenu.Item onclick={() => void goto('/remote')}><MonitorUp size={14} />{m['remote.open']()}</DropdownMenu.Item>
               <DropdownMenu.Item onclick={() => void goto('/providers')}><Cable size={14} />{m['providers.title']()}</DropdownMenu.Item>
               <DropdownMenu.Item onclick={() => void goto(activeWorkspace ? `/skills?workspace=${activeWorkspace.id}` : '/skills')}><Blocks size={14} />{m['skills.title']()}</DropdownMenu.Item>
               <DropdownMenu.Item onclick={() => void goto('/settings')}><Settings size={14} />{m['settings.title']()}</DropdownMenu.Item>
@@ -1914,7 +1915,7 @@
             <ToolbarButton label={m['tool.ports']()} active={showPortsPanel} onclick={() => toggleSidePanel('ports')}>
               <RadioTower size={15} class="tool-icon-svg" /> {m['canvas.label_ports']()}
             </ToolbarButton>
-            <WorkspaceSharingButton workspaceId={activeWorkspace?.id ?? null} onOpen={() => (sharingOpen = true)} />
+            <WorkspaceSharingButton variant="icon" workspaceId={activeWorkspace?.id ?? null} onOpen={() => (sharingOpen = true)} />
             </div>
             {#if canScrollRight}
               <button class="toolbar-arrow" aria-label={m['canvas.scroll_right']()} onclick={() => scrollToolbar(1)}>

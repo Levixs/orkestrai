@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { Component } from 'svelte';
   import {
-    Activity, ArrowLeft, BookOpen, Bot, Cable, FolderPlus, Gauge, GitBranch, GitPullRequestArrow,
+    Activity, ArrowLeft, BookOpen, Bot, Cable, ChevronDown, FolderPlus, Gauge, GitBranch, GitPullRequestArrow,
     History, Layers, Link2, MessageSquare, Palette, PanelLeftOpen, Paperclip, PlayCircle, RadioTower, Repeat,
     Rocket, Scale, ScanSearch, Search, Smartphone, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
   } from '@lucide/svelte';
@@ -177,13 +177,13 @@
 
 
 <main class="docs-page">
-  <header class="docs-header">
+  <header class="sticky top-0 z-20 flex min-h-[68px] items-center gap-2.5 border-b border-[var(--line)] bg-[var(--page)] py-3">
     <Button variant="ghost" size="sm" href="/canvas">
       <ArrowLeft size={15} aria-hidden="true" />
       {m['docs.back_canvas']()}
     </Button>
-    <h1>{m['docs.heading']()}</h1>
-    <span class="docs-spacer"></span>
+    <h1 class="m-0 font-['Sora_Variable'] text-[21px] font-[650] text-balance">{m['docs.heading']()}</h1>
+    <span class="flex-1"></span>
     <Button variant="outline" size="sm" onclick={rewatchOnboarding}>
       <PlayCircle size={15} aria-hidden="true" />
       {m['docs.rewatch']()}
@@ -269,16 +269,25 @@
           <h2>{m['docs.changelog_title']()}</h2>
           <a href="#changelog" class="anchor-link" aria-label={m['docs.anchor_aria']({ title: m['docs.changelog_title']() })}>#</a>
         </header>
-        <div class="changelog-list">
+        <div class="grid">
           {#each changelog as entry (entry.date)}
-            <section class="changelog-entry">
-              <h3 class="changelog-date">{entry.date}</h3>
-              <ul>
+            <details class="group border-t border-[var(--line)] first:border-t-0">
+              <summary class="flex min-h-12 cursor-pointer list-none items-center gap-3 py-3 outline-none transition-colors hover:text-[var(--app-accent)] focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]/45 [&::-webkit-details-marker]:hidden">
+                <span class="min-w-0 flex-1 font-['Sora_Variable'] text-xs font-semibold text-[var(--cyan)] tabular-nums">{entry.date}</span>
+                <span class="text-[10.5px] text-[var(--copy-muted)] tabular-nums">
+                  {m['docs.changelog_change_count']({ count: String(entry.items.length) })}
+                </span>
+                <ChevronDown size={14} class="shrink-0 text-[var(--copy-muted)] transition-transform duration-150 group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <ol class="grid list-none p-0 pb-2">
                 {#each entry.items as item, index (index)}
-                  <li>{item}</li>
+                  <li class="grid grid-cols-[30px_minmax(0,1fr)] gap-3 border-t border-[var(--line)] py-3.5">
+                    <span class="pt-0.5 font-mono text-[10px] text-[var(--copy-muted)] tabular-nums">{String(index + 1).padStart(2, '0')}</span>
+                    <p class="m-0 text-[12.5px] leading-5 text-pretty text-[var(--copy-soft)]">{item}</p>
+                  </li>
                 {/each}
-              </ul>
-            </section>
+              </ol>
+            </details>
           {/each}
         </div>
       </article>
@@ -352,27 +361,6 @@
     width: min(1240px, 100%);
   }
 
-  .docs-header {
-    min-height: 68px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .docs-header h1 {
-    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
-    font-size: 21px;
-    font-weight: 650;
-    letter-spacing: 0;
-    margin: 0;
-    text-wrap: balance;
-  }
-
-  .docs-spacer {
-    flex: 1;
-  }
-
   .docs-layout {
     display: grid;
     grid-template-columns: 240px minmax(0, 1fr);
@@ -383,11 +371,11 @@
   /* ---- Navegacao lateral ---------------------------------------------- */
   .docs-nav {
     position: sticky;
-    top: 18px;
+    top: 84px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 104px);
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -645,38 +633,6 @@
     font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-  }
-
-  /* ---- Changelog -------------------------------------------------------- */
-  .changelog-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .changelog-date {
-    margin: 0 0 6px;
-    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--cyan);
-    letter-spacing: 0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .changelog-entry ul {
-    margin: 0;
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .changelog-entry li {
-    font-size: 12.5px;
-    line-height: 1.6;
-    color: var(--copy-soft);
-    text-wrap: pretty;
   }
 
   @media (max-width: 900px) {

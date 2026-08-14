@@ -1086,7 +1086,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'create-invite',
         title: 'Elige el destino y el acceso',
-        body: 'Selecciona Lector, Colaborador, Operador o Administrador y después Navegador/móvil para la PWA Remote o App Orkestrai para otro escritorio instalado. Envía solo el enlace o código QR correspondiente por un canal confiable.',
+        body: 'Selecciona Lector, Colaborador, Operador o Administrador y después Navegador/móvil para la PWA Remote o App Orkestrai para otro escritorio instalado. El invitado puede pulsar la invitación de la app para abrir Orkestrai automáticamente o usar Workspace → Entrar a workspace remoto para pegarla manualmente. Envía solo el enlace o código QR correspondiente por un canal confiable.',
       },
       {
         id: 'approve-device',
@@ -1096,7 +1096,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'work-remotely',
         title: 'Usa o instala Remote',
-        body: 'En el navegador o PWA instalable, el invitado sigue el resumen sanitizado, estado del equipo, tareas, revisiones, actividad y uso de proveedores. Su clave de emparejamiento queda no extraíble en ese navegador. El rol puede permitir cambios en tareas, decisiones de revisión o mensajes al líder; la salida PTY, archivos, notas, portales, credenciales y rutas locales nunca entran en la proyección compartida.',
+        body: 'Después de que el invitado solicite acceso, el host abre Compartir workspace → Accesos, compara la huella y aprueba el dispositivo. En la app, navegador o PWA instalable, el invitado sigue el resumen sanitizado, estado del equipo, tareas, revisiones, actividad y uso de proveedores. El rol puede permitir cambios en tareas, decisiones de revisión o mensajes al líder; la salida PTY, archivos, notas, portales, credenciales y rutas locales nunca entran en la proyección compartida.',
       },
       {
         id: 'stop-sharing',

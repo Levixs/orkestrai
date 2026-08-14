@@ -56,6 +56,7 @@
       if (action === 'canvas') void goto('/canvas');
       else if (action === 'terminals') void goto('/terminal');
       else if (action === 'providers') void goto('/providers');
+      else if (action === 'remote') void goto('/remote');
       else if (action === 'settings') void goto('/settings');
       else if (action === 'docs') void goto('/docs');
       else if (action === 'changelog') void goto('/docs#changelog');

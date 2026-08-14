@@ -51,7 +51,9 @@ Download the latest installers from
   role. The installable Remote PWA follows sanitized team state, tasks, reviews,
   activity, provider usage, and leader messages; its pairing key stays
   non-extractable in the browser and the invitation secret is removed from the
-  URL before connecting. Terminals, files, notes, portals, credentials, private
+  URL before connecting. Installed-app invites open Orkestrai automatically;
+  guests can also paste one through **Workspace → Join remote workspace**.
+  Terminals, files, notes, portals, credentials, private
   URLs, and local paths stay on the host. Access is revocable and every command
   is audited.
 - **Traceable automations:** trigger work manually, on a schedule, from task or

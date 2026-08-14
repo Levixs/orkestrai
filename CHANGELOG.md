@@ -96,6 +96,11 @@ pt-BR, English, and Spanish translations.
 
 ### Changed
 
+- Made the Canvas tool strip icon-first with accessible tooltips, kept the
+  documentation header available while scrolling, reorganized changelog
+  releases into collapsible numbered changes, aligned sharing form controls,
+  and added explicit Canvas and native Workspace menu entry points for joining
+  a remote workspace.
 - Rebuilt the application visual system around semantic theme tokens. The
   default dark palette now pairs graphite surfaces with the Orkestrai gold,
   the light palette has deliberate contrast, and Canvas, Workbench, Settings,

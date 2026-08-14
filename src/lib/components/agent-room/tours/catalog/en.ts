@@ -1086,7 +1086,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'create-invite',
         title: 'Choose the destination and access',
-        body: 'Select Viewer, Collaborator, Operator, or Administrator, then choose Browser/mobile for the Remote PWA or Orkestrai app for another installed desktop. Share only the matching link or QR code through a trusted channel.',
+        body: 'Select Viewer, Collaborator, Operator, or Administrator, then choose Browser/mobile for the Remote PWA or Orkestrai app for another installed desktop. The guest can click the app invite to open Orkestrai automatically or use Workspace → Join remote workspace to paste it manually. Share only the matching link or QR code through a trusted channel.',
       },
       {
         id: 'approve-device',
@@ -1096,7 +1096,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'work-remotely',
         title: 'Use or install Remote',
-        body: 'In the browser or installable PWA, the guest follows the sanitized overview, team state, tasks, reviews, activity, and provider usage. Its pairing key stays non-extractable in that browser. The role may allow task changes, review decisions, or leader messages; PTY output, files, notes, portals, credentials, and local paths never enter the shared projection.',
+        body: 'After the guest requests access, the host opens Share workspace → Access, compares the fingerprint, and approves the device. In the app, browser, or installable PWA, the guest follows the sanitized overview, team state, tasks, reviews, activity, and provider usage. The role may allow task changes, review decisions, or leader messages; PTY output, files, notes, portals, credentials, and local paths never enter the shared projection.',
       },
       {
         id: 'stop-sharing',

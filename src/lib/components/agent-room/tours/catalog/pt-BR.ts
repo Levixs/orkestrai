@@ -1090,7 +1090,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'create-invite',
         title: 'Escolha o destino e o acesso',
-        body: 'Selecione Leitor, Colaborador, Operador ou Administrador e escolha Navegador/celular para abrir o PWA Remote ou App Orkestrai para outro desktop instalado. Envie somente o link ou QR code correspondente por um canal confiável.',
+        body: 'Selecione Leitor, Colaborador, Operador ou Administrador e escolha Navegador/celular para abrir o PWA Remote ou App Orkestrai para outro desktop instalado. O convidado pode clicar no convite do app para abrir o Orkestrai automaticamente ou usar Workspace → Entrar em workspace remoto para colá-lo manualmente. Envie somente o link ou QR code correspondente por um canal confiável.',
       },
       {
         id: 'approve-device',
@@ -1100,7 +1100,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'work-remotely',
         title: 'Use ou instale o Remote',
-        body: 'No navegador ou PWA instalável, o convidado acompanha a visão sanitizada, estado do time, tarefas, revisões, atividade e uso dos providers. A chave de pareamento fica não extraível naquele navegador. A função pode permitir mudanças em tarefas, decisões de revisão ou mensagens ao líder; saída de PTY, arquivos, notas, portais, credenciais e caminhos locais nunca entram na projeção compartilhada.',
+        body: 'Depois que o convidado solicita acesso, o host abre Compartilhar workspace → Acessos, compara a impressão digital e aprova o dispositivo. No app, navegador ou PWA instalável, o convidado acompanha a visão sanitizada, estado do time, tarefas, revisões, atividade e uso dos providers. A função pode permitir mudanças em tarefas, decisões de revisão ou mensagens ao líder; saída de PTY, arquivos, notas, portais, credenciais e caminhos locais nunca entram na projeção compartilhada.',
       },
       {
         id: 'stop-sharing',

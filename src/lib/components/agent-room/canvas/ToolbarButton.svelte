@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as Tooltip from '$lib/components/ui/tooltip';
+  import { cn } from '$lib/utils.js';
   import type { Snippet } from 'svelte';
 
   type Props = {
@@ -17,58 +18,20 @@
 <Tooltip.Root>
   <Tooltip.Trigger>
     {#snippet child({ props })}
-      <button {...props} class:active {disabled} {onclick}>
+      <button
+        {...props}
+        type="button"
+        class={cn(
+          'group inline-flex size-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-0 bg-transparent p-0 text-[0px] text-[var(--app-text-soft)] outline-none transition-[color,background-color,box-shadow] duration-150 hover:bg-[var(--app-border)] hover:text-[var(--app-text)] focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]/45 disabled:pointer-events-none disabled:opacity-40 [&_.tool-icon-svg]:text-[var(--app-text-muted)] hover:[&_.tool-icon-svg]:text-current',
+          active && 'bg-[var(--app-accent-soft)] text-[var(--app-accent)] [&_.tool-icon-svg]:text-current',
+        )}
+        aria-label={label}
+        {disabled}
+        {onclick}
+      >
         {@render children()}
       </button>
     {/snippet}
   </Tooltip.Trigger>
   <Tooltip.Content side="top">{label}</Tooltip.Content>
 </Tooltip.Root>
-
-<style>
-  /* Os estilos da toolbar vivem na pagina (escopo Svelte) — o botao deste
-     componente precisa da propria copia, senao herda o estilo global. */
-  button {
-    display: inline-flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 32px;
-    padding: 0 9px;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
-    color: var(--app-text-soft);
-    cursor: pointer;
-    font-size: 10.5px;
-    font-weight: 550;
-    line-height: 1.1;
-    flex-shrink: 0;
-    font-family: inherit;
-  }
-
-  button:hover {
-    background: var(--app-border);
-    color: var(--app-text);
-  }
-
-  button.active {
-    background: var(--app-accent-soft);
-    color: var(--app-accent);
-  }
-
-  button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  button :global(.tool-icon-svg) {
-    color: var(--app-text-muted);
-  }
-
-  button.active :global(.tool-icon-svg),
-  button:hover :global(.tool-icon-svg) {
-    color: currentColor;
-  }
-</style>

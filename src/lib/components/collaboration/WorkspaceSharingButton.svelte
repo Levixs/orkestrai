@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { RadioTower } from "@lucide/svelte";
+  import { Share2 } from "@lucide/svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import * as m from "$lib/paraglide/messages.js";
 
@@ -72,7 +72,7 @@
         data-tour="workspace-sharing"
         onclick={onOpen}
       >
-        <RadioTower size={15} aria-hidden="true" />
+        <Share2 size={15} aria-hidden="true" />
         {#if variant === "toolbar"}<span
             >{m["collaboration.share_workspace"]()}</span
           >{/if}

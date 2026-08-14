@@ -483,9 +483,9 @@
               {m["collaboration.private_body"]()}
             </p>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <label class="grid gap-1.5 text-xs font-medium"
-              >{m["collaboration.default_role"]()}
+          <div class="grid items-start gap-4 sm:grid-cols-2">
+            <label class="flex self-start flex-col items-stretch gap-1.5 text-xs font-medium">
+              <span class="min-h-4 leading-4">{m["collaboration.default_role"]()}</span>
               <Select.Root
                 type="single"
                 value={$formData.defaultRole as string}
@@ -512,8 +512,8 @@
                 )}</span
               >
             </label>
-            <label class="grid gap-1.5 text-xs font-medium"
-              >{m["collaboration.expires"]()}
+            <label class="flex self-start flex-col items-stretch gap-1.5 text-xs font-medium">
+              <span class="min-h-4 leading-4">{m["collaboration.expires"]()}</span>
               <Select.Root
                 type="single"
                 value={String($formData.expiresInMinutes)}
@@ -533,22 +533,22 @@
               </Select.Root>
             </label>
           </div>
-          <div class="grid gap-4 sm:grid-cols-[1fr_140px]">
-            <label class="grid gap-1.5 text-xs font-medium"
-              >{m["collaboration.relay"]()}<Input
+          <div class="grid items-start gap-4 sm:grid-cols-[1fr_140px]">
+            <label class="flex self-start flex-col items-stretch gap-1.5 text-xs font-medium">
+              <span class="min-h-4 leading-4">{m["collaboration.relay"]()}</span><Input
                 bind:value={$formData.relayUrl}
                 autocomplete="off"
                 spellcheck="false"
-              /></label
-            >
-            <label class="grid gap-1.5 text-xs font-medium"
-              >{m["collaboration.max_peers"]()}<Input
+              />
+            </label>
+            <label class="flex self-start flex-col items-stretch gap-1.5 text-xs font-medium">
+              <span class="min-h-4 leading-4">{m["collaboration.max_peers"]()}</span><Input
                 type="number"
                 min="1"
                 max="5"
                 bind:value={$formData.maxPeers}
-              /></label
-            >
+              />
+            </label>
           </div>
           <p class="text-xs leading-5 text-[var(--app-text-muted)]">
             {m["collaboration.relay_help"]()}

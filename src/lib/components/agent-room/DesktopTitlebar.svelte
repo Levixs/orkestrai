@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AppWindow, CheckCircle2, FileText, LayoutGrid, LifeBuoy, Maximize2, Minus, PanelTop, RefreshCw, Search, Settings, SquareTerminal, X } from '@lucide/svelte';
+  import { AppWindow, CheckCircle2, FileText, LayoutGrid, LifeBuoy, Maximize2, Minus, MonitorUp, PanelTop, RefreshCw, Search, Settings, SquareTerminal, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as m from '$lib/paraglide/messages.js';
 
@@ -21,6 +21,7 @@
         <DropdownMenu.Item onclick={() => run('canvas')}><AppWindow size={14} />{m['desktop.canvas']()}<DropdownMenu.Shortcut>Ctrl+1</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('terminals')}><SquareTerminal size={14} />{m['workspace_view.workbench']()}<DropdownMenu.Shortcut>Ctrl+Shift+1</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('providers')}><PanelTop size={14} />{m['desktop.providers']()}<DropdownMenu.Shortcut>Ctrl+2</DropdownMenu.Shortcut></DropdownMenu.Item>
+        <DropdownMenu.Item onclick={() => run('remote')}><MonitorUp size={14} />{m['remote.open']()}</DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('new-workspace')}>{m['desktop.new_workspace']()}<DropdownMenu.Shortcut>Ctrl+N</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('presets')}>{m['desktop.presets']()}</DropdownMenu.Item>
         <DropdownMenu.Separator />
