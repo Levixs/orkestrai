@@ -5,6 +5,7 @@ import { floorService } from '$lib/modules/agent-room/application/services/Floor
 import { reviewCenterService } from '$lib/modules/agent-room/application/services/ReviewCenterService.js';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
+import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
 import type { SharedCanvasNodeDto, SharedWorkspaceDto } from '../../domain/types.js';
 import { MAX_PLAINTEXT_BYTES } from '@orkestrai/collaboration-protocol';
 import { collaborationRepository } from '../../infrastructure/repositories/CollaborationRepository.js';
@@ -35,6 +36,8 @@ export function fitSharedWorkspaceSnapshot(snapshot: SharedWorkspaceDto): Shared
       floors: snapshot.floors.slice(0, 50),
       roles: snapshot.roles.slice(0, 100),
       reviews: snapshot.reviews.slice(0, 100).map((review) => ({ ...review, summary: review.summary?.slice(0, descriptionLimit) ?? null })),
+      usage: snapshot.usage.slice(0, 3),
+      activity: snapshot.activity.slice(0, 40),
     };
   };
   for (const limits of [[150, 1_200, 300, 150], [100, 600, 220, 120], [60, 300, 150, 80], [30, 160, 100, 50]] as const) {
@@ -171,6 +174,43 @@ export class SharedWorkspaceQuery {
         createdAt: review.createdAt,
         updatedAt: review.updatedAt,
       })),
+      usage: usageService.cached().map((usage) => ({
+        provider: usage.provider,
+        plan: usage.plan ? sanitizeSharedText(usage.plan).slice(0, 80) : null,
+        windows: usage.windows.map((window) => ({
+          kind: window.kind,
+          usedPercent: window.usedPercent,
+          resetsAt: window.resetsAt,
+        })),
+        available: !usage.error && usage.windows.length > 0,
+        fetchedAt: usage.fetchedAt,
+      })),
+      activity: [
+        ...control.agents.map((agent) => ({
+          id: `agent_${agent.nodeId}_${agent.stateSince}`,
+          kind: 'agent' as const,
+          title: sanitizeSharedText(agent.title),
+          detail: agent.currentTask ? sanitizeSharedText(agent.currentTask.title) : null,
+          state: agent.state,
+          occurredAt: agent.stateSince,
+        })),
+        ...projectedTasks.map((task) => ({
+          id: `task_${task.id}_${task.updatedAt}`,
+          kind: 'task' as const,
+          title: task.title,
+          detail: task.assigneeTitle,
+          state: task.status,
+          occurredAt: task.updatedAt,
+        })),
+        ...reviews.reviews.map((review) => ({
+          id: `review_${review.id}_${review.updatedAt}`,
+          kind: 'review' as const,
+          title: sanitizeSharedText(review.title),
+          detail: review.assigneeTitle ? sanitizeSharedText(review.assigneeTitle) : null,
+          state: review.status,
+          occurredAt: review.updatedAt,
+        })),
+      ].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 40),
       generatedAt: new Date().toISOString(),
     };
     const fitted = fitSharedWorkspaceSnapshot(projection);

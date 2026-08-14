@@ -73,6 +73,12 @@ export class UsageService {
     return Promise.all(['claude', 'codex', 'kimi'].map((provider) => this.getUsage(provider, forceRefresh)));
   }
 
+  cached(): ProviderUsage[] {
+    return ['claude', 'codex', 'kimi']
+      .map((provider) => this.cache.get(provider)?.usage ?? null)
+      .filter((usage): usage is ProviderUsage => Boolean(usage));
+  }
+
   async getUsage(provider: string, forceRefresh = false): Promise<ProviderUsage> {
     const cached = this.cache.get(provider);
     if (!forceRefresh && cached && Date.now() - cached.at < USAGE_REFRESH_INTERVAL_MS) return cached.usage;

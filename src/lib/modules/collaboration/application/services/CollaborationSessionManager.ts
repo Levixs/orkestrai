@@ -19,6 +19,7 @@ import { ExecuteCollaborationCommandDto } from '../dto/CollaborationDto.js';
 import { sharedWorkspaceCommandBus } from './SharedWorkspaceCommandBus.js';
 import { collaborationRuntime } from './CollaborationRuntime.js';
 import { withCollaborationShareLock } from './CollaborationShareLock.js';
+import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
 
 type HostPeer = {
   peerId: string;
@@ -61,7 +62,7 @@ type GuestSession = {
   relayUrl: string;
   deviceId: string;
   displayName: string;
-  platform: 'darwin' | 'win32' | 'linux';
+  platform: 'darwin' | 'win32' | 'linux' | 'ios' | 'android' | 'web';
   guestNonce: string;
   hostDeviceId: string | null;
   socket: WebSocket | null;
@@ -99,6 +100,7 @@ export class CollaborationSessionManager {
     };
     managerState.hosts.set(shareId, host);
     this.connectHost(host);
+    void usageService.getAll(false).then(() => this.publishChangedSnapshot(host)).catch(() => undefined);
     host.projectionTimer = setInterval(() => void this.publishChangedSnapshot(host).catch(() => undefined), 5_000);
     host.projectionTimer.unref?.();
   }
@@ -167,7 +169,7 @@ export class CollaborationSessionManager {
   }
 
   async join(input: {
-    inviteUri: string; relayUrl: string; displayName: string; platform: 'darwin' | 'win32' | 'linux';
+    inviteUri: string; relayUrl: string; displayName: string; platform: 'darwin' | 'win32' | 'linux' | 'ios' | 'android' | 'web';
   }): Promise<RemoteCollaborationState> {
     this.leaveGuest();
     const invite = parseInviteUri(input.inviteUri);

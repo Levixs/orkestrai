@@ -12,7 +12,7 @@ export const createCollaborationShareSchema = z.object({
 export const collaborationJoinRequestSchema = z.object({
   deviceId: z.string().min(8).max(128).regex(/^[a-zA-Z0-9_-]+$/),
   displayName: z.string().trim().min(1).max(80),
-  platform: z.enum(['darwin', 'win32', 'linux']),
+  platform: z.enum(['darwin', 'win32', 'linux', 'ios', 'android', 'web']),
   requestedRole: collaborationRoleSchema.default('viewer'),
   guestNonce: z.string().min(40).max(64).regex(/^[a-zA-Z0-9_-]+$/),
   appVersion: z.string().min(1).max(32),
@@ -69,7 +69,7 @@ export const joinRemoteCollaborationSchema = z.object({
   inviteUri: z.string().trim().min(60).max(1_000).regex(/^orkestrai:\/\/join\/[a-zA-Z0-9_-]+#[a-zA-Z0-9_-]{43}$/),
   relayUrl: z.string().url().max(500),
   displayName: z.string().trim().min(1).max(80),
-  platform: z.enum(['darwin', 'win32', 'linux']),
+  platform: z.enum(['darwin', 'win32', 'linux', 'ios', 'android', 'web']),
 }).strict();
 
 export const sendRemoteCollaborationCommandSchema = collaborationCommandSchema;

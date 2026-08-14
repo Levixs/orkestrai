@@ -9,25 +9,26 @@ export const collaborationEnvelopeSchema: z.ZodTypeAny;
 export type CollaborationMessage = z.infer<typeof collaborationMessageSchema>;
 export type CollaborationEnvelope = z.infer<typeof collaborationEnvelopeSchema>;
 
-export type SessionMaterial = {
-  hostToGuestKey: Buffer;
-  guestToHostKey: Buffer;
+export type BrowserSessionMaterial = {
+  hostToGuestKey: CryptoKey;
+  guestToHostKey: CryptoKey;
   keyId: string;
 };
 
 export function generatePairingSecret(): string;
 export function generateHandshakeNonce(): string;
+export function importPairingSecret(pairingSecret: string): Promise<CryptoKey>;
 export function createInviteUri(shareId: string, pairingSecret: string): string;
 export function createWebInviteUri(baseUrl: string, shareId: string, pairingSecret: string): string;
 export function parseInviteUri(uri: string): { shareId: string; pairingSecret: string };
 export function deriveSessionMaterial(input: {
-  pairingSecret: string;
+  pairingKey: CryptoKey;
   shareId: string;
   sessionId: string;
   hostNonce: string;
   guestNonce: string;
-}): SessionMaterial;
-export function derivePairingMaterial(input: { pairingSecret: string; shareId: string }): SessionMaterial;
+}): Promise<BrowserSessionMaterial>;
+export function derivePairingMaterial(input: { pairingKey: CryptoKey; shareId: string }): Promise<BrowserSessionMaterial>;
 
 export class SecureCollaborationChannel {
   constructor(input: {
@@ -35,10 +36,10 @@ export class SecureCollaborationChannel {
     shareId: string;
     localDeviceId: string;
     remoteDeviceId: string;
-    material: SessionMaterial;
+    material: BrowserSessionMaterial;
   });
-  encrypt(message: CollaborationMessage, recipientPeerId?: string | null): CollaborationEnvelope;
-  decrypt(envelope: CollaborationEnvelope): CollaborationMessage;
+  encrypt(message: CollaborationMessage, recipientPeerId?: string | null): Promise<CollaborationEnvelope>;
+  decrypt(envelope: CollaborationEnvelope): Promise<CollaborationMessage>;
   readonly sentSequence: number;
   readonly receivedSequence: number;
   readonly keyId: string;

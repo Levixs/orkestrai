@@ -33,7 +33,7 @@ export class CollaborationController extends Controller {
   }
 
   async invite(event: any) {
-    return this.run(async () => ({ inviteUri: await collaborationShareService.invite(event.params.id, event.params.shareId) }));
+    return this.run(() => collaborationShareService.invite(event.params.id, event.params.shareId));
   }
 
   async stopShare(event: any) {

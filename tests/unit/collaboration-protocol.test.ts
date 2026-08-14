@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
   SecureCollaborationChannel,
   createInviteUri,
+  createWebInviteUri,
   deriveSessionMaterial,
   generateHandshakeNonce,
   generatePairingSecret,
   parseInviteUri,
 } from '@orkestrai/collaboration-protocol';
+import {
+  SecureCollaborationChannel as SecureBrowserCollaborationChannel,
+  deriveSessionMaterial as deriveBrowserSessionMaterial,
+  importPairingSecret,
+} from '@orkestrai/collaboration-protocol/browser';
 
 function channelPair() {
   const pairingSecret = generatePairingSecret();
@@ -34,6 +40,46 @@ describe('collaboration protocol', () => {
     expect(uri).toBe(`orkestrai://join/share_private_preview#${secret}`);
     expect(new URL(uri).search).toBe('');
     expect(parseInviteUri(uri)).toEqual({ shareId: 'share_private_preview', pairingSecret: secret });
+    const webUri = createWebInviteUri('https://remote.orkestrai.app', 'share_private_preview', secret);
+    expect(webUri).toBe(`https://remote.orkestrai.app/join/share_private_preview#${secret}`);
+    expect(new URL(webUri).search).toBe('');
+    expect(parseInviteUri(webUri)).toEqual({ shareId: 'share_private_preview', pairingSecret: secret });
+  });
+
+  it('exchanges encrypted frames between Node and Web Crypto clients', async () => {
+    const pairingSecret = generatePairingSecret();
+    const hostNonce = generateHandshakeNonce();
+    const guestNonce = generateHandshakeNonce();
+    const input = {
+      pairingSecret,
+      shareId: 'share_browser_compatibility',
+      sessionId: 'session_browser_compatibility',
+      hostNonce,
+      guestNonce,
+    };
+    const nodeMaterial = deriveSessionMaterial(input);
+    const browserMaterial = await deriveBrowserSessionMaterial({
+      pairingKey: await importPairingSecret(pairingSecret),
+      shareId: input.shareId,
+      sessionId: input.sessionId,
+      hostNonce,
+      guestNonce,
+    });
+    expect(browserMaterial.keyId).toBe(nodeMaterial.keyId);
+
+    const host = new SecureCollaborationChannel({
+      role: 'host', shareId: input.shareId, localDeviceId: 'host_browser_compat',
+      remoteDeviceId: 'guest_browser_compat', material: nodeMaterial,
+    });
+    const guest = new SecureBrowserCollaborationChannel({
+      role: 'guest', shareId: input.shareId, localDeviceId: 'guest_browser_compat',
+      remoteDeviceId: 'host_browser_compat', material: browserMaterial,
+    });
+
+    expect(await guest.decrypt(host.encrypt({ type: 'ping', sentAt: 84 }, 'guest_browser_compat')))
+      .toEqual({ type: 'ping', sentAt: 84 });
+    expect(host.decrypt(await guest.encrypt({ type: 'pong', sentAt: 84 }, 'host_browser_compat')))
+      .toEqual({ type: 'pong', sentAt: 84 });
   });
 
   it('derives independent directional keys and exchanges authenticated messages', () => {

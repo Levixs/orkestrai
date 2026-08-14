@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Features } from '@beeblock/svelar/feature-flags';
-import { createInviteUri } from '@orkestrai/collaboration-protocol';
+import { createInviteUri, createWebInviteUri } from '@orkestrai/collaboration-protocol';
 import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
 import type { CreateCollaborationShareDto, ApproveCollaborationDeviceDto } from '../dto/CollaborationDto.js';
 import type { CollaborationJoinRequestInput } from '../../contracts/schemas/collaboration.schema.js';
@@ -71,16 +71,16 @@ export class CollaborationShareService {
       workspaceId, shareId: share.id, eventType: 'share.started',
       metadata: { role: share.defaultRole, maxPeers: share.maxPeers, expiresAt: share.expiresAt },
     });
-    return { share, inviteUri: createInviteUri(share.id, runtime.pairingSecret) };
+    return { share, ...this.inviteLinks(share.id, runtime.pairingSecret) };
   }
 
-  async invite(workspaceId: string, shareId: string): Promise<string> {
+  async invite(workspaceId: string, shareId: string): Promise<{ inviteUri: string; webInviteUri: string }> {
     const share = await collaborationRepository.findShare(shareId);
     const runtime = collaborationRuntime.get(shareId);
     if (!share || share.workspaceId !== workspaceId || share.status !== 'active' || !runtime?.pairingSecret) {
       throw new Error('INVITE_UNAVAILABLE');
     }
-    return createInviteUri(share.id, runtime.pairingSecret);
+    return this.inviteLinks(share.id, runtime.pairingSecret);
   }
 
   async requestDevice(shareId: string, input: CollaborationJoinRequestInput) {
@@ -177,6 +177,13 @@ export class CollaborationShareService {
     if (url.protocol === 'wss:') return;
     if (url.protocol === 'ws:' && ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname)) return;
     throw new Error('COLLABORATION_RELAY_MUST_USE_WSS');
+  }
+
+  private inviteLinks(shareId: string, pairingSecret: string): { inviteUri: string; webInviteUri: string } {
+    return {
+      inviteUri: createInviteUri(shareId, pairingSecret),
+      webInviteUri: createWebInviteUri(process.env.ORKESTRAI_REMOTE_URL ?? 'https://remote.orkestrai.app', shareId, pairingSecret),
+    };
   }
 }
 

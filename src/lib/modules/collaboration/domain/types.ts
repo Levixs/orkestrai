@@ -34,7 +34,7 @@ export type CollaborationDeviceData = {
   workspaceId: string;
   deviceId: string;
   displayName: string;
-  platform: 'darwin' | 'win32' | 'linux';
+  platform: 'darwin' | 'win32' | 'linux' | 'ios' | 'android' | 'web';
   fingerprint: string;
   role: CollaborationRole;
   scopes: CollaborationScope[];
@@ -88,6 +88,21 @@ export type SharedWorkspaceDto = {
     id: string; title: string; summary: string | null; status: string; taskTitle: string | null;
     assigneeTitle: string | null; evidenceCount: number; testCount: number; riskCount: number;
     decidedAt: string | null; createdAt: string; updatedAt: string;
+  }>;
+  usage: Array<{
+    provider: 'claude' | 'codex' | 'kimi';
+    plan: string | null;
+    windows: Array<{ kind: '5h' | 'weekly' | 'monthly'; usedPercent: number; resetsAt: string | null }>;
+    available: boolean;
+    fetchedAt: string;
+  }>;
+  activity: Array<{
+    id: string;
+    kind: 'agent' | 'task' | 'review';
+    title: string;
+    detail: string | null;
+    state: string;
+    occurredAt: string;
   }>;
   generatedAt: string;
 };
