@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import {
   COLLABORATION_PROTOCOL,
   MAX_ENCRYPTED_FRAME_BYTES,
@@ -13,12 +13,30 @@ const MAX_ATTEMPTS_PER_IP = 30;
 const MAX_ROOM_BYTES_PER_SECOND = 1024 * 1024;
 const OPAQUE_ID = /^[a-zA-Z0-9_-]{8,128}$/;
 
+/**
+ * @typedef {{ allowedOrigins?: string, maxPeers?: number }} RelayOptions
+ * @typedef {{ shareId: string, peerId: string, role: 'host' | 'guest' }} RelayRegistration
+ * @typedef {{ id: string, role: 'host' | 'guest', websocket: WebSocket, alive: boolean }} RelayPeer
+ * @typedef {{
+ *   host: RelayPeer | null,
+ *   guests: Map<string, RelayPeer>,
+ *   maxPeers: number,
+ *   lastActivityAt: number,
+ *   byteWindowStartedAt: number,
+ *   bytesInWindow: number,
+ * }} RelayRoom
+ */
+
+/** @param {unknown} raw */
 function parseAllowedOrigins(raw) {
   return new Set(String(raw ?? '').split(',').map((value) => value.trim()).filter(Boolean));
 }
 
+/** @param {RelayOptions} [options] */
 export function createRelayServer(options = {}) {
+  /** @type {Map<string, RelayRoom>} */
   const rooms = new Map();
+  /** @type {Map<string, { startedAt: number, count: number }>} */
   const attempts = new Map();
   const allowedOrigins = parseAllowedOrigins(options.allowedOrigins ?? process.env.ORKESTRAI_RELAY_ALLOWED_ORIGINS);
   const metrics = {
@@ -55,6 +73,11 @@ export function createRelayServer(options = {}) {
     },
   });
 
+  /**
+   * @param {import('node:stream').Duplex} socket
+   * @param {string} status
+   * @param {string} message
+   */
   function rejectUpgrade(socket, status, message) {
     metrics.connectionsRejected += 1;
     socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: ${Buffer.byteLength(message)}\r\n\r\n${message}`);
@@ -88,7 +111,11 @@ export function createRelayServer(options = {}) {
     });
   });
 
-  wss.on('connection', (websocket, _request, registration) => {
+  wss.on('connection', (
+    /** @type {WebSocket} */ websocket,
+    /** @type {import('node:http').IncomingMessage} */ _request,
+    /** @type {RelayRegistration} */ registration,
+  ) => {
     const { shareId, peerId, role } = registration;
     const room = rooms.get(shareId) ?? {
       host: null,
@@ -99,6 +126,7 @@ export function createRelayServer(options = {}) {
       bytesInWindow: 0,
     };
     rooms.set(shareId, room);
+    /** @type {RelayPeer} */
     const peer = { id: peerId, role, websocket, alive: true };
     if (role === 'host') room.host = peer;
     else room.guests.set(peerId, peer);
@@ -107,7 +135,8 @@ export function createRelayServer(options = {}) {
 
     websocket.on('pong', () => { peer.alive = true; });
     websocket.on('message', (data, isBinary) => {
-      const bytes = Buffer.byteLength(data);
+      const payload = rawDataToBuffer(data);
+      const bytes = payload.byteLength;
       if (!consumeRoomBytes(room, bytes)) {
         metrics.rateLimited += 1;
         websocket.close(1008, 'Room bandwidth limit exceeded.');
@@ -115,7 +144,7 @@ export function createRelayServer(options = {}) {
       }
       let envelope;
       try {
-        envelope = collaborationEnvelopeSchema.parse(JSON.parse(Buffer.from(data).toString('utf8')));
+        envelope = collaborationEnvelopeSchema.parse(JSON.parse(payload.toString('utf8')));
       } catch {
         metrics.protocolErrors += 1;
         websocket.close(1008, 'Invalid collaboration envelope.');
@@ -133,7 +162,7 @@ export function createRelayServer(options = {}) {
           : [...room.guests.values()]
         : [room.host];
       for (const target of targets) {
-        if (!target || target.websocket.readyState !== target.websocket.OPEN) continue;
+        if (!target || target.websocket.readyState !== WebSocket.OPEN) continue;
         target.websocket.send(data, { binary: isBinary, compress: false });
         metrics.framesForwarded += 1;
         metrics.bytesForwarded += bytes;
@@ -180,7 +209,7 @@ export function createRelayServer(options = {}) {
     async listen(port = 8787, host = '127.0.0.1') {
       await new Promise((resolve, reject) => {
         server.once('error', reject);
-        server.listen(port, host, () => { server.off('error', reject); resolve(); });
+        server.listen(port, host, () => { server.off('error', reject); resolve(undefined); });
       });
       return server.address();
     },
@@ -196,12 +225,21 @@ export function createRelayServer(options = {}) {
   };
 }
 
+/** @param {import('ws').RawData} data */
+function rawDataToBuffer(data) {
+  if (Array.isArray(data)) return Buffer.concat(data);
+  if (data instanceof ArrayBuffer) return Buffer.from(data);
+  return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+}
+
+/** @param {Map<string, RelayRoom>} rooms */
 function activeConnectionCount(rooms) {
   let count = 0;
   for (const room of rooms.values()) count += (room.host ? 1 : 0) + room.guests.size;
   return count;
 }
 
+/** @param {Map<string, { startedAt: number, count: number }>} attempts @param {string} ip */
 function consumeAttempt(attempts, ip) {
   const now = Date.now();
   const existing = attempts.get(ip);
@@ -213,6 +251,7 @@ function consumeAttempt(attempts, ip) {
   return existing.count <= MAX_ATTEMPTS_PER_IP;
 }
 
+/** @param {RelayRoom} room @param {number} bytes */
 function consumeRoomBytes(room, bytes) {
   const now = Date.now();
   if (now - room.byteWindowStartedAt >= 1_000) {

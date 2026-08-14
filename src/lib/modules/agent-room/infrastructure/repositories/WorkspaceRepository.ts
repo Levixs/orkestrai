@@ -154,6 +154,9 @@ export class WorkspaceRepository {
     await (globalThis as typeof globalThis & {
       __orkestraiStopWorkspaceDevice?: (workspaceId: string) => Promise<void>;
     }).__orkestraiStopWorkspaceDevice?.(id).catch(() => undefined);
+    await (globalThis as typeof globalThis & {
+      __orkestraiDeleteCollaborationWorkspace?: (workspaceId: string) => Promise<void>;
+    }).__orkestraiDeleteCollaborationWorkspace?.(id);
     await controlCenterRepository.deleteWorkspaceHistory(id);
     await reviewCenterRepository.deleteWorkspaceHistory(id);
     await councilRepository.deleteWorkspaceHistory(id);

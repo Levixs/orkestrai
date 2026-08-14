@@ -136,6 +136,16 @@ export function deriveSessionMaterial({ pairingSecret, shareId, sessionId, hostN
   return { hostToGuestKey, guestToHostKey, keyId };
 }
 
+export function derivePairingMaterial({ pairingSecret, shareId }) {
+  const secret = decodeFixed(pairingSecret, 32, 'Pairing secret');
+  assertOpaqueId(shareId, 'Share id');
+  const salt = createHash('sha256').update(`${COLLABORATION_PROTOCOL}:${shareId}:pairing`).digest();
+  const hostToGuestKey = Buffer.from(hkdfSync('sha256', secret, salt, `${COLLABORATION_PROTOCOL}:pairing:host-to-guest`, 32));
+  const guestToHostKey = Buffer.from(hkdfSync('sha256', secret, salt, `${COLLABORATION_PROTOCOL}:pairing:guest-to-host`, 32));
+  const keyId = createHash('sha256').update(hostToGuestKey).update(guestToHostKey).digest('base64url').slice(0, 24);
+  return { hostToGuestKey, guestToHostKey, keyId };
+}
+
 function authenticatedData(envelope) {
   return Buffer.from(JSON.stringify([
     envelope.protocol,

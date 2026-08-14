@@ -15,7 +15,12 @@ function connect(url: string): Promise<WebSocket> {
 
 function nextMessage(socket: WebSocket): Promise<string> {
   return new Promise((resolve, reject) => {
-    socket.once('message', (data) => resolve(Buffer.from(data).toString('utf8')));
+    socket.once('message', (data) => {
+      if (typeof data === 'string') return resolve(data);
+      if (data instanceof ArrayBuffer) return resolve(Buffer.from(data).toString('utf8'));
+      if (Array.isArray(data)) return resolve(Buffer.concat(data).toString('utf8'));
+      return resolve(Buffer.from(data.buffer, data.byteOffset, data.byteLength).toString('utf8'));
+    });
     socket.once('error', reject);
   });
 }

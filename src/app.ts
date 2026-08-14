@@ -29,6 +29,7 @@ import { User } from '$lib/modules/auth/domain/models/User.js';
 import { EventServiceProvider } from '$lib/shared/providers/EventServiceProvider.js';
 import { container } from '@beeblock/svelar/container';
 import '$lib/modules/auth/domain/policies/gates.js';
+import '$lib/modules/collaboration/app.js';
 
 await config.loadFromDirectory('config');
 

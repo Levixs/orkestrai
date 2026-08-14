@@ -26,6 +26,7 @@ export function deriveSessionMaterial(input: {
   hostNonce: string;
   guestNonce: string;
 }): SessionMaterial;
+export function derivePairingMaterial(input: { pairingSecret: string; shareId: string }): SessionMaterial;
 
 export class SecureCollaborationChannel {
   constructor(input: {
@@ -39,4 +40,5 @@ export class SecureCollaborationChannel {
   decrypt(envelope: CollaborationEnvelope): CollaborationMessage;
   readonly sentSequence: number;
   readonly receivedSequence: number;
+  readonly keyId: string;
 }

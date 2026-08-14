@@ -188,6 +188,7 @@ server.listen(port, host, () => {
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
+    await globalThis.__orkestraiShutdownCollaboration?.().catch(() => undefined);
     await globalThis.__orkestraiShutdownDevices?.().catch(() => undefined);
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 15_000).unref();
