@@ -96,6 +96,11 @@ pt-BR, English, and Spanish translations.
 
 ### Changed
 
+- Rebuilt the application visual system around semantic theme tokens. The
+  default dark palette now pairs graphite surfaces with the Orkestrai gold,
+  the light palette has deliberate contrast, and Canvas, Workbench, Settings,
+  documentation, Provider Center, side panels, dialogs, menus, fields, and
+  voice-orb docking now share one compact responsive hierarchy.
 - Protected workspace folders on macOS now declare localized Downloads,
   Documents, and Desktop access reasons. Canvas and Workbench replace raw
   `EPERM`/`EACCES` errors with a recovery panel that can reauthorize the exact

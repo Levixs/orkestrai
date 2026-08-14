@@ -128,7 +128,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'appearance',
       title: 'Temas y apariencia',
-      body: `En Configuración → Apariencia, elige Orkestrai Dark, Graphite, Midnight u Orkestrai Light. El tema claro mantiene contraste legible en paneles, nodos, iconos, marcas de providers, botones y estados hover. Para personalizar, duplica cualquier tema y edita sus tokens semánticos; la vista previa aparece al instante y Guardar conserva la elección. Los temas personalizados se pueden exportar o importar como JSON validado, sin aceptar CSS arbitrario.`,
+      body: `En Configuración → Apariencia, elige Orkestrai Dark, Graphite, Midnight u Orkestrai Light. El modo oscuro predeterminado combina superficies grafito con el dorado de la marca; el tema claro mantiene contraste legible en paneles, nodos, iconos, marcas de providers, botones y estados hover. Para personalizar, duplica cualquier tema y edita sus tokens semánticos; la vista previa aparece al instante y Guardar conserva la elección. Los temas personalizados se pueden exportar o importar como JSON validado, sin aceptar CSS arbitrario.`,
     },
     {
       id: 'atalhos',
@@ -370,6 +370,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: '14 ago 2026 · En desarrollo',
       items: [
+        'La interfaz de la app se reconstruyó sobre tokens semánticos de tema: el modo oscuro predeterminado combina superficies grafito con el dorado de la marca, el tema claro ganó contraste real, y Canvas, Workbench, Configuración, documentación, Central de Providers, paneles, modales, menús, campos y acople de la esfera de voz comparten una misma jerarquía adaptable.',
         'Las carpetas de workspace protegidas por macOS ahora tienen descripciones de privacidad localizadas. Canvas y Workbench sustituyen los errores técnicos EPERM/EACCES por una recuperación que vuelve a autorizar la carpeta exacta y reintenta abrir el workspace sin reiniciar la app.',
         'El uso compartido ahora ofrece invitaciones separadas para Navegador/móvil y App Orkestrai. La PWA Remote instalable sigue agentes, tareas, revisiones, actividad y uso de proveedores, conserva una clave WebCrypto no extraíble y elimina el secreto de la invitación de la URL antes de conectar.',
         'El uso compartido del workspace ahora utiliza de forma predeterminada el endpoint de producción relay.orkestrai.app. El relay acepta el origen local dinámico de la aplicación instalada y los orígenes web oficiales configurados, mientras rechaza sitios no relacionados.',

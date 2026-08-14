@@ -117,7 +117,8 @@ Descarga los instaladores más recientes desde
   configura origen, fallback, ventana de 5 horas/semanal/mensual y límite, y deja
   que el líder consulte la misma recomendación por CLI o MCP antes de asignar
   trabajo nuevo.
-- **Apariencia personalizada:** elige entre tres temas oscuros y uno claro, o
+- **Apariencia personalizada:** parte del sistema oscuro grafito y dorado de la
+  marca o del tema claro de alto contraste, elige los demás temas incluidos o
   duplica uno y edita tokens semánticos con vista previa e importación/exportación JSON.
 - **Terminales legibles:** elige 1 de 10 paletas ANSI completas desde el menú
   compacto de la terminal, junto a los controles de provider, rol, recarga y Maestro.

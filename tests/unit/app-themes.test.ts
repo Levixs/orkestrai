@@ -45,7 +45,7 @@ describe('app themes', () => {
 
   it('mantem o texto e os estados do tema claro com contraste acessivel', () => {
     const light = resolveAppTheme({ appTheme: 'orkestrai-light' }).tokens;
-    for (const background of [light.page, light.canvas, light.sidebar, light.surface, light.surfaceSubtle]) {
+    for (const background of [light.page, light.canvas, light.sidebar, light.surface, light.surfaceRaised, light.surfaceSubtle]) {
       expect(contrast(light.text, background)).toBeGreaterThanOrEqual(7);
       expect(contrast(light.textSoft, background)).toBeGreaterThanOrEqual(4.5);
       expect(contrast(light.textMuted, background)).toBeGreaterThanOrEqual(4.5);
@@ -54,5 +54,16 @@ describe('app themes', () => {
     for (const state of [light.accent, light.secondary, light.success, light.warning, light.danger]) {
       expect(contrast(state, light.surface)).toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  it('mantem a hierarquia principal do tema padrao com contraste acessivel', () => {
+    const dark = resolveAppTheme({ appTheme: 'orkestrai-dark' }).tokens;
+    for (const background of [dark.page, dark.canvas, dark.sidebar, dark.surface, dark.surfaceRaised, dark.surfaceSubtle]) {
+      expect(contrast(dark.text, background)).toBeGreaterThanOrEqual(7);
+      expect(contrast(dark.textSoft, background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(dark.textMuted, background)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(dark.accentContrast, dark.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(dark.accent, dark.surface)).toBeGreaterThanOrEqual(4.5);
   });
 });

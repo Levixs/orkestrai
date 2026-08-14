@@ -132,7 +132,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'appearance',
       title: 'Temas e aparência',
-      body: `Em Configurações → Aparência, escolha Orkestrai Dark, Graphite, Midnight ou Orkestrai Light. O tema claro mantém contraste legível em painéis, nós, ícones, marcas dos providers, botões e hovers. Para personalizar, duplique qualquer tema e edite seus tokens semânticos; a prévia aparece imediatamente e Salvar persiste a escolha. Temas personalizados podem ser exportados ou importados como JSON validado, sem aceitar CSS arbitrário.`,
+      body: `Em Configurações → Aparência, escolha Orkestrai Dark, Graphite, Midnight ou Orkestrai Light. O padrão escuro combina superfícies grafite com o amarelo da marca; o tema claro mantém contraste legível em painéis, nós, ícones, marcas dos providers, botões e hovers. Para personalizar, duplique qualquer tema e edite seus tokens semânticos; a prévia aparece imediatamente e Salvar persiste a escolha. Temas personalizados podem ser exportados ou importados como JSON validado, sem aceitar CSS arbitrário.`,
     },
     {
       id: 'atalhos',
@@ -374,6 +374,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: '14 ago 2026 · Em desenvolvimento',
       items: [
+        'A interface do app foi reconstruída sobre os tokens semânticos de tema: o padrão escuro agora combina superfícies grafite com o amarelo da marca, o tema claro ganhou contraste real, e Canvas, Workbench, Configurações, documentação, Central de Providers, painéis, modais, menus, campos e encaixe da bolinha de voz seguem a mesma hierarquia responsiva.',
         'Pastas de workspace protegidas pelo macOS agora têm descrições de privacidade localizadas. Canvas e Workbench substituem o erro técnico EPERM/EACCES por uma recuperação que autoriza novamente a pasta exata e tenta abrir o workspace sem reiniciar o app.',
         'O compartilhamento agora oferece convites separados para Navegador/celular e App Orkestrai. O PWA Remote instalável acompanha agentes, tarefas, revisões, atividade e uso dos providers, persiste uma chave WebCrypto não extraível e remove o segredo do convite da URL antes de conectar.',
         'O compartilhamento de workspace agora usa por padrão o endpoint de produção relay.orkestrai.app. O relay aceita a origem local dinâmica do app instalado e as origens web oficiais configuradas, enquanto rejeita sites não relacionados.',

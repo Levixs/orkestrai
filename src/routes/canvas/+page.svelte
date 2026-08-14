@@ -20,6 +20,7 @@
   import WorkspaceEditDialog from '$lib/components/agent-room/canvas/WorkspaceEditDialog.svelte';
   import WorkspaceCreateDialog from '$lib/components/agent-room/canvas/WorkspaceCreateDialog.svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import * as m from '$lib/paraglide/messages.js';
@@ -81,7 +82,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -1678,41 +1679,35 @@
         />
       </div>
     {/if}
-    <div class="sidebar-header">
-      {#if !sidebarCollapsed}
-        <h2>{m['canvas.workspaces']()}</h2>
-      {/if}
-      <div class="sidebar-header-actions">
+      <div class="sidebar-header">
         {#if !sidebarCollapsed}
-          <HeaderIconButton label={m['canvas.how_to_use']()} href="/docs">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-          </HeaderIconButton>
-          <HeaderIconButton label={m['providers.title']()} href="/providers">
-            <Cable size={14} />
-          </HeaderIconButton>
-          <HeaderIconButton label="Skills (skills.sh)" href={activeWorkspace ? `/skills?workspace=${activeWorkspace.id}` : '/skills'}>
-            <Blocks size={14} />
-          </HeaderIconButton>
-          <HeaderIconButton label={m['settings.title']()} href="/settings">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          </HeaderIconButton>
-          <HeaderIconButton label={m['canvas.import_ws']()} onclick={() => importInput.click()}>
-            <Upload size={14} />
-          </HeaderIconButton>
-          {#if activeWorkspace}
-            <HeaderIconButton label={m['canvas.export_ws']()} onclick={exportActiveWorkspace}>
-              <Download size={14} />
-            </HeaderIconButton>
-            <HeaderIconButton label={m['canvas.unload_tooltip']()} onclick={() => (confirmUnload = true)}>
-              <Power size={14} />
-            </HeaderIconButton>
-          {/if}
+          <h2>{m['canvas.workspaces']()}</h2>
+        {/if}
+        <div class="sidebar-header-actions">
+          {#if !sidebarCollapsed}
           <HeaderIconButton label={m['tool.presets']()} onclick={() => toggleSidePanel('presets')}>
             <LayoutTemplate size={14} />
           </HeaderIconButton>
-          <HeaderIconButton label={m['canvas.new_ws']()} onclick={() => { initialPresetId = ''; showWorkspaceForm = !showWorkspaceForm; }}>
+          <HeaderIconButton class="icon-btn !bg-[var(--app-accent)] !text-[var(--app-accent-contrast)] hover:!brightness-110" label={m['canvas.new_ws']()} onclick={() => { initialPresetId = ''; showWorkspaceForm = !showWorkspaceForm; }}>
             <Plus size={15} />
           </HeaderIconButton>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger class="grid size-7 cursor-pointer place-items-center rounded-md border-0 bg-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)] data-[state=open]:bg-[var(--app-surface-raised)] data-[state=open]:text-[var(--app-text)]" aria-label={m['canvas.workspace_actions']()}>
+              <MoreHorizontal size={15} />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="end" class="min-w-[220px]">
+              <DropdownMenu.Item onclick={() => void goto('/docs')}><CircleHelp size={14} />{m['canvas.how_to_use']()}</DropdownMenu.Item>
+              <DropdownMenu.Item onclick={() => void goto('/providers')}><Cable size={14} />{m['providers.title']()}</DropdownMenu.Item>
+              <DropdownMenu.Item onclick={() => void goto(activeWorkspace ? `/skills?workspace=${activeWorkspace.id}` : '/skills')}><Blocks size={14} />{m['skills.title']()}</DropdownMenu.Item>
+              <DropdownMenu.Item onclick={() => void goto('/settings')}><Settings size={14} />{m['settings.title']()}</DropdownMenu.Item>
+              <DropdownMenu.Separator />
+              <DropdownMenu.Item onclick={() => importInput.click()}><Upload size={14} />{m['canvas.import_ws']()}</DropdownMenu.Item>
+              {#if activeWorkspace}
+                <DropdownMenu.Item onclick={exportActiveWorkspace}><Download size={14} />{m['canvas.export_ws']()}</DropdownMenu.Item>
+                <DropdownMenu.Item onclick={() => (confirmUnload = true)}><Power size={14} />{m['canvas.unload_tooltip']()}</DropdownMenu.Item>
+              {/if}
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
         {/if}
         <HeaderIconButton
           label={sidebarCollapsed ? m['canvas.sidebar_expand']() : m['canvas.sidebar_collapse']()}
@@ -2100,11 +2095,10 @@
   }
 
   .sidebar {
-    /* Largura para o cabecalho caber em UMA linha: titulo + 8 icones. */
-    width: 332px;
+    width: 288px;
     flex-shrink: 0;
     border-right: 1px solid var(--app-border);
-    padding: 10px;
+    padding: 12px 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -2117,17 +2111,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    /* Muitos botoes no cabecalho: deixa quebrar para uma segunda linha em
-       vez de gerar scroll horizontal na sidebar. */
-    flex-wrap: wrap;
-    row-gap: 4px;
+    min-height: 34px;
     flex-shrink: 0;
   }
 
   .sidebar-header h2 {
-    font-size: 13px;
+    font-size: 10px;
+    font-weight: 650;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
     color: var(--app-text-muted);
     margin: 0;
     white-space: nowrap;
@@ -2137,15 +2129,16 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 2px 2px 6px;
+    min-height: 34px;
+    padding: 0 3px 9px;
     border-bottom: 1px solid var(--app-border);
   }
 
   .brand-name {
     font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
-    font-size: 16.5px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: 0;
     color: var(--app-text);
   }
 
@@ -2154,7 +2147,8 @@
     align-items: center;
     gap: 7px;
     padding: 6px 9px;
-    border-radius: 9px;
+    min-height: 34px;
+    border-radius: 6px;
     border: 1px solid var(--app-border);
     background: color-mix(in srgb, var(--app-canvas) 60%, transparent);
     color: var(--app-text-muted);
@@ -2204,22 +2198,14 @@
     display: flex;
     align-items: center;
     gap: 2px;
+    min-height: 34px;
     border-radius: 6px;
     padding-right: 2px;
   }
 
-  .workspace-list li .icon-btn {
-    flex-shrink: 0;
-    opacity: 0.45;
-  }
-
-  .workspace-list li:hover .icon-btn,
-  .workspace-list li.active .icon-btn {
-    opacity: 1;
-  }
-
   .workspace-list li.active {
-    background: var(--app-surface-raised);
+    background: var(--app-accent-soft);
+    box-shadow: inset 2px 0 0 var(--app-accent);
   }
 
   .workspace-list.collapsed li {
@@ -2239,9 +2225,8 @@
   .sidebar-header-actions {
     display: flex;
     align-items: center;
-    gap: 1px;
+    gap: 3px;
     margin-left: auto;
-    flex-wrap: wrap;
   }
 
   .hidden-input {
@@ -2327,7 +2312,11 @@
     color: var(--app-text-muted);
     cursor: pointer;
     font-size: 15px;
-    padding: 2px 6px;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    padding: 0;
     border-radius: 6px;
   }
 
@@ -2364,15 +2353,16 @@
   .canvas-area :global(.svelte-flow__minimap) {
     background: var(--app-surface);
     border: 1px solid var(--app-border);
-    border-radius: 10px;
+    border-radius: 7px;
     overflow: hidden;
   }
 
 
   .canvas-area :global(.svelte-flow__controls) {
-    border-radius: 10px;
+    border: 1px solid var(--app-border);
+    border-radius: 7px;
     overflow: hidden;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
   }
 
   .canvas-area :global(.svelte-flow__controls-button) {
@@ -2439,16 +2429,11 @@
     pointer-events: none;
   }
 
-  .toolbar button.active {
-    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
-    color: var(--app-text);
-  }
-
   .toolbar-wrap {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   .toolbar-arrow {
@@ -2458,13 +2443,13 @@
     width: 26px;
     height: 26px;
     flex-shrink: 0;
-    border-radius: 999px;
+    border-radius: 6px;
     border: 1px solid var(--app-border);
     background: color-mix(in srgb, var(--app-surface-raised) 92%, transparent);
     color: var(--app-text-soft);
     cursor: pointer;
     backdrop-filter: blur(12px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
     transition: color 120ms ease, background 120ms ease;
   }
 
@@ -2476,16 +2461,16 @@
   .toolbar {
     display: flex;
     gap: 4px;
-    padding: 6px 8px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--app-surface-raised) 92%, transparent);
+    padding: 4px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--app-surface) 94%, transparent);
     border: 1px solid var(--app-border);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(12px);
     /* Muitos botoes (providers + paineis): rola em vez de cortar fora da tela.
        O painel do xyflow nao tem largura propria — limita pelo viewport
        (sidebar 332 + painel lateral 300 + setas 58 + margens). */
-    max-width: max(320px, calc(100vw - 738px));
+    max-width: max(320px, calc(100vw - 360px));
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -2494,53 +2479,10 @@
     display: none;
   }
 
-  .toolbar button {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 5px 10px;
-    border-radius: 10px;
-    border: none;
-    background: transparent;
-    color: var(--app-text-soft);
-    cursor: pointer;
-    font-size: 10.5px;
-    font-weight: 500;
-    line-height: 1.1;
-    flex-shrink: 0;
-  }
-
-  .toolbar .tool-icon {
-    display: block;
-    flex-shrink: 0;
-  }
-
-  .toolbar .tool-icon-svg {
-    flex-shrink: 0;
-    color: var(--app-text-muted);
-  }
-
-  .toolbar button.active .tool-icon-svg,
-  .toolbar button:hover .tool-icon-svg {
-    color: currentColor;
-  }
-
-  .toolbar button:hover {
-    background: var(--app-border);
-    color: var(--app-text);
-  }
-
-  .toolbar button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
   .toolbar-sep {
     width: 1px;
     background: var(--app-border);
-    margin: 4px 4px;
+    margin: 3px 2px;
   }
 
   .canvas-empty {

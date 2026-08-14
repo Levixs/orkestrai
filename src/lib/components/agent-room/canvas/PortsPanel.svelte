@@ -207,11 +207,11 @@
 
 <style>
   .ports-panel {
-    width: 300px;
+    width: 320px;
     flex-shrink: 0;
     border-left: 1px solid var(--app-border);
     background: var(--app-sidebar);
-    padding: 12px;
+    padding: 14px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -242,7 +242,7 @@
     margin: 0;
     font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0;
   }
 
   .panel-actions {
@@ -272,7 +272,7 @@
     padding: 10px;
     border: 1px solid var(--app-border);
     border-radius: 8px;
-    background: var(--app-surface);
+    background: var(--app-surface-subtle);
   }
 
   .port-card:has(:global(.kill-button)) {

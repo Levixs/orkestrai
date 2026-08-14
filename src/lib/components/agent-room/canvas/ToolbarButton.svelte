@@ -30,18 +30,19 @@
      componente precisa da propria copia, senao herda o estilo global. */
   button {
     display: inline-flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 5px 10px;
-    border-radius: 10px;
+    gap: 6px;
+    height: 32px;
+    padding: 0 9px;
+    border-radius: 6px;
     border: none;
     background: transparent;
     color: var(--app-text-soft);
     cursor: pointer;
     font-size: 10.5px;
-    font-weight: 500;
+    font-weight: 550;
     line-height: 1.1;
     flex-shrink: 0;
     font-family: inherit;
@@ -53,8 +54,8 @@
   }
 
   button.active {
-    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
-    color: var(--app-text);
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
   }
 
   button:disabled {

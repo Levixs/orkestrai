@@ -120,15 +120,13 @@
 <style>
   :global(.agents-trigger) {
     position: relative;
-    display: inline-grid;
-    grid-template-columns: 15px auto 11px;
-    grid-template-rows: 15px auto;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    column-gap: 3px;
-    row-gap: 3px;
+    gap: 6px;
+    height: 32px;
     min-width: 64px;
-    padding: 5px 9px;
+    padding: 0 9px;
     border: 0;
     border-radius: 8px;
     background: transparent;
@@ -144,18 +142,14 @@
   }
 
   :global(.agents-trigger > svg:first-child) {
-    grid-column: 1 / 4;
-    justify-self: center;
     color: var(--app-text-muted);
   }
 
   :global(.agents-trigger > span) {
-    grid-column: 1 / 3;
-    justify-self: end;
+    min-width: 0;
   }
 
   :global(.agents-trigger .agents-chevron) {
-    grid-column: 3;
     color: var(--app-text-muted);
     transition: transform 120ms ease;
   }

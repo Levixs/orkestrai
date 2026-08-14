@@ -101,6 +101,7 @@
   "node.image_empty": "Click to pick an image",
   "node.image_empty_hint": "or paste with Ctrl+V",
   "canvas.empty": "Create or select a workspace to open the canvas.",
+  "canvas.workspace_actions": "Workspace actions",
   "onboarding.welcome_title": "Welcome to Orkestrai",
   "onboarding.welcome_body": "A canvas where you build teams of AI agents doing real work on your project. Let's get started in 1 minute.",
   "onboarding.ws_title": "Create your workspace",

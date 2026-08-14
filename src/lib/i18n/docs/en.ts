@@ -128,7 +128,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'appearance',
       title: 'Themes and appearance',
-      body: `In Settings → Appearance, choose Orkestrai Dark, Graphite, Midnight, or Orkestrai Light. The light theme keeps readable contrast across panels, canvas nodes, icons, provider marks, buttons, and hover states. To personalize one, duplicate any theme and edit its semantic tokens; the preview appears immediately and Save persists it. Custom themes can be exported or imported as validated JSON without accepting arbitrary CSS.`,
+      body: `In Settings → Appearance, choose Orkestrai Dark, Graphite, Midnight, or Orkestrai Light. The default dark palette pairs graphite surfaces with the brand gold; the light theme keeps readable contrast across panels, canvas nodes, icons, provider marks, buttons, and hover states. To personalize one, duplicate any theme and edit its semantic tokens; the preview appears immediately and Save persists it. Custom themes can be exported or imported as validated JSON without accepting arbitrary CSS.`,
     },
     {
       id: 'atalhos',
@@ -370,6 +370,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 14, 2026 · In development',
       items: [
+        'The app interface was rebuilt on semantic theme tokens: the default dark palette now pairs graphite surfaces with the brand gold, the light theme has strong contrast, and Canvas, Workbench, Settings, documentation, Provider Center, panels, dialogs, menus, fields, and voice-orb docking now share one responsive hierarchy.',
         'Workspace folders protected by macOS now have localized privacy descriptions. Canvas and Workbench replace raw EPERM/EACCES errors with recovery that reauthorizes the exact folder and retries the workspace without restarting the app.',
         'Workspace sharing now offers separate Browser/mobile and Orkestrai app invitations. The installable Remote PWA follows agents, tasks, reviews, activity, and provider usage, persists a non-extractable WebCrypto key, and removes the invitation secret from the URL before connecting.',
         'Workspace sharing now uses the production relay.orkestrai.app endpoint by default. The relay accepts the installed app\'s dynamic local origin and configured official web origins while rejecting unrelated websites.',

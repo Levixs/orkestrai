@@ -85,7 +85,6 @@
   const changelog = $derived(catalog.changelog);
 
   onMount(() => {
-    document.documentElement.style.colorScheme = 'dark';
     // Atalho global (Cmd/Ctrl+K de qualquer tela): abre a paleta ja focada.
     if (new URLSearchParams(location.search).has('search')) {
       history.replaceState(null, '', '/docs');
@@ -174,7 +173,6 @@
 
 <svelte:head>
   <title>{m['docs.page_title']()}</title>
-  <meta name="theme-color" content="#0d0b2e" />
 </svelte:head>
 
 
@@ -190,6 +188,7 @@
       <PlayCircle size={15} aria-hidden="true" />
       {m['docs.rewatch']()}
     </Button>
+    <span class="h-full w-[60px] shrink-0" data-dictation-dock aria-hidden="true"></span>
   </header>
 
   <div class="docs-layout">
@@ -344,25 +343,27 @@
     padding: 24px 24px 80px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 8px;
     align-items: center;
     scroll-behavior: smooth;
   }
 
   .docs-page > :not(.palette-overlay) {
-    width: min(1200px, 100%);
+    width: min(1240px, 100%);
   }
 
   .docs-header {
+    min-height: 68px;
     display: flex;
     align-items: center;
     gap: 10px;
+    border-bottom: 1px solid var(--line);
   }
 
   .docs-header h1 {
     font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
-    font-size: 19px;
-    font-weight: 600;
+    font-size: 21px;
+    font-weight: 650;
     letter-spacing: 0;
     margin: 0;
     text-wrap: balance;
@@ -374,15 +375,15 @@
 
   .docs-layout {
     display: grid;
-    grid-template-columns: 230px 1fr;
-    gap: 28px;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 40px;
     align-items: start;
   }
 
   /* ---- Navegacao lateral ---------------------------------------------- */
   .docs-nav {
     position: sticky;
-    top: 20px;
+    top: 18px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -425,12 +426,16 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
+    border-left: 1px solid var(--line);
   }
 
   .nav-link {
     display: block;
-    padding: 6px 10px;
-    border-radius: 8px;
+    min-height: 32px;
+    margin-left: -1px;
+    padding: 6px 11px;
+    border-left: 2px solid transparent;
+    border-radius: 0 6px 6px 0;
     color: var(--copy-soft);
     font-size: 12.5px;
     text-decoration: none;
@@ -439,6 +444,7 @@
   }
 
   .nav-link:hover {
+    border-left-color: var(--app-accent);
     color: var(--copy);
     background: var(--surface-raised);
   }
@@ -465,8 +471,8 @@
   .doc-card {
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: var(--surface);
-    padding: 18px 20px;
+    background: color-mix(in srgb, var(--surface) 76%, transparent);
+    padding: 20px 22px;
     scroll-margin-top: 20px;
     transition: border-color 160ms ease;
   }
@@ -489,8 +495,9 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    background: var(--violet-soft);
-    color: var(--cyan);
+    border: 1px solid var(--line);
+    background: var(--surface-raised);
+    color: var(--app-accent);
     flex-shrink: 0;
   }
 
@@ -536,8 +543,8 @@
 
   /* ---- Quickstart ------------------------------------------------------ */
   .quickstart {
-    border-color: color-mix(in srgb, var(--violet) 42%, var(--line));
-    background: var(--surface-raised);
+    border-color: color-mix(in srgb, var(--app-accent) 42%, var(--line));
+    background: var(--surface-subtle);
   }
 
   .quickstart ol {

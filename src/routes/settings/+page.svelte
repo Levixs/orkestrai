@@ -34,6 +34,8 @@
 
   const hotkeyLabel = $derived(comboLabel(settings.dictationHotkey || DEFAULT_DICTATION_HOTKEY));
   const ttsSpeed = $derived(normalizeEmbeddedTtsSpeed(settings.voiceTtsSpeed));
+  const settingsSectionClasses = 'settings-section flex scroll-mt-[84px] flex-col gap-[18px] border-0 border-t border-[var(--line)] bg-transparent px-0 py-6 first:border-t-0 max-[560px]:py-5';
+  const settingsNavLinkClasses = 'flex min-h-[34px] items-center gap-[9px] border-l-2 border-transparent py-[7px] pr-[11px] pl-[10px] text-xs leading-[1.35] text-[var(--copy-muted)] no-underline transition-[color,background-color,border-color] duration-150 hover:border-l-[var(--app-accent)] hover:bg-[var(--surface-subtle)] hover:text-[var(--copy)] focus-visible:border-l-[var(--app-accent)] focus-visible:bg-[var(--surface-subtle)] focus-visible:text-[var(--copy)] [&_svg]:shrink-0 [&_svg]:text-[var(--app-text-muted)] hover:[&_svg]:text-[var(--app-accent)] focus-visible:[&_svg]:text-[var(--app-accent)] max-[900px]:mb-[-1px] max-[900px]:min-h-10 max-[900px]:whitespace-nowrap max-[900px]:border-l-0 max-[900px]:border-b-2 max-[900px]:hover:border-b-[var(--app-accent)] max-[900px]:focus-visible:border-b-[var(--app-accent)]';
 
   function captureHotkey(event: KeyboardEvent) {
     if (!capturingHotkey) return;
@@ -307,25 +309,40 @@
 
 <svelte:window onkeydown={captureHotkey} />
 
-<main class="settings-page">
-  <header class="settings-header">
+<main class="settings-page gap-1">
+  <header class="settings-header min-h-[70px] w-[min(1120px,100%)] pt-2.5 pb-3 max-[560px]:grid max-[560px]:grid-cols-[auto_minmax(0,1fr)_60px] max-[560px]:pr-0">
     <Button variant="ghost" size="sm" href="/canvas">
       <ArrowLeft size={15} aria-hidden="true" />
       {m['settings.back_canvas']()}
     </Button>
-    <div class="header-titles">
-      <h1>{m['settings.title']()}</h1>
-      <p>{m['settings.subtitle']()}</p>
+    <div class="header-titles max-[560px]:col-[1/4] max-[560px]:row-start-2 max-[560px]:min-w-0">
+      <h1 class="m-0 font-['Sora_Variable'] text-[21px] font-[650]">{m['settings.title']()}</h1>
+      <p class="mt-[3px] mb-0 text-xs text-[var(--copy-muted)] max-[560px]:text-pretty">{m['settings.subtitle']()}</p>
     </div>
-    <span class="header-spacer"></span>
-    <Button size="sm" onclick={save} class="save-btn">
+    <span class="header-spacer max-[560px]:hidden"></span>
+    <Button size="sm" onclick={save} class="save-btn min-w-[132px] active:scale-[.97] max-[560px]:col-start-2 max-[560px]:row-start-1 max-[560px]:min-w-0 max-[560px]:justify-self-end">
       {#if saved}<Check size={14} aria-hidden="true" />{m['settings.saved']()}{:else}{m['settings.save']()}{/if}
     </Button>
+    <span class="h-full w-[60px] shrink-0 max-[560px]:col-start-3 max-[560px]:row-start-1 max-[560px]:h-[60px]" data-dictation-dock aria-hidden="true"></span>
   </header>
 
+  <div class="grid w-[min(1120px,100%)] grid-cols-[210px_minmax(0,1fr)] items-start gap-10 max-[900px]:grid-cols-1 max-[900px]:gap-0">
+    <aside class="sticky top-[82px] max-h-[calc(100vh-102px)] overflow-y-auto max-[900px]:top-[70px] max-[900px]:z-[9] max-[900px]:max-h-none max-[900px]:overflow-x-auto max-[900px]:overflow-y-hidden max-[900px]:bg-[color-mix(in_srgb,var(--page)_94%,transparent)] max-[900px]:backdrop-blur-xl max-[900px]:[scrollbar-width:none]" aria-label={m['settings.title']()}>
+      <nav class="grid gap-0.5 border-l border-[var(--line)] py-1 max-[900px]:flex max-[900px]:w-max max-[900px]:min-w-full max-[900px]:border-l-0 max-[900px]:border-b">
+        <a class={settingsNavLinkClasses} href="#terminal"><SquareTerminal size={14} />{m['settings.section_terminal']()}</a>
+        <a class={settingsNavLinkClasses} href="#appearance"><Palette size={14} />{m['settings.section_appearance']()}</a>
+        <a class={settingsNavLinkClasses} href="#dictation"><Mic size={14} />{m['settings.section_dictation']()}</a>
+        <a class={settingsNavLinkClasses} href="#voice"><Volume2 size={14} />{m['settings.section_voice']()}</a>
+        <a class={settingsNavLinkClasses} href="#shortcuts"><Keyboard size={14} />{m['settings.section_shortcuts']()}</a>
+        <a class={settingsNavLinkClasses} href="#presets"><Layers size={14} />{m['settings.section_presets']()}</a>
+        <a class={settingsNavLinkClasses} href="#updates"><RefreshCw size={14} />{m['settings.section_updates']()}</a>
+        <a class={settingsNavLinkClasses} href="#language"><Languages size={14} />{m['settings.language']()}</a>
+      </nav>
+    </aside>
+    <div class="grid min-w-0">
   {#if !loaded}
     {#each [0, 1, 2] as index (index)}
-      <section class="settings-section" aria-hidden="true">
+      <section class={settingsSectionClasses} aria-hidden="true">
         <div class="section-skeleton-head">
           <Skeleton class="h-[30px] w-[30px] rounded-[9px] bg-[var(--app-surface-raised)]" />
           <div class="section-skeleton-titles">
@@ -341,7 +358,7 @@
       </section>
     {/each}
   {:else}
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="terminal">
     <header class="section-head">
       <span class="icon-chip"><SquareTerminal size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -425,7 +442,7 @@
     </div>
   </section>
 
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="appearance">
     <header class="section-head">
       <span class="icon-chip"><Palette size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -479,7 +496,7 @@
     <AppThemeSettings {settings} onChange={(next) => (settings = next)} />
   </section>
 
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="dictation">
     <header class="section-head">
       <span class="icon-chip"><Mic size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -523,7 +540,7 @@
     </div>
   </section>
 
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="voice">
     <header class="section-head">
       <span class="icon-chip"><Volume2 size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -669,7 +686,7 @@
     onCancel={() => (confirmVoiceDownload = false)}
   />
 
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="shortcuts">
     <header class="section-head">
       <span class="icon-chip"><Keyboard size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -687,7 +704,7 @@
     </div>
   </section>
 
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="presets">
     <header class="section-head">
       <span class="icon-chip"><Layers size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -744,7 +761,7 @@
     </AlertDialog.Content>
   </AlertDialog.Root>
 
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="updates">
     <header class="section-head">
       <span class="icon-chip"><RefreshCw size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -765,7 +782,7 @@
     {/if}
   </section>
 
-  <section class="settings-section">
+  <section class={settingsSectionClasses} id="language">
     <header class="section-head">
       <span class="icon-chip"><Languages size={15} aria-hidden="true" /></span>
       <div class="section-titles">
@@ -787,6 +804,8 @@
     </div>
   </section>
   {/if}
+    </div>
+  </div>
 </main>
 
 <style>
@@ -797,13 +816,8 @@
     padding: 24px 24px 80px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
     align-items: center;
     -webkit-font-smoothing: antialiased;
-  }
-
-  .settings-page > * {
-    width: min(760px, 100%);
   }
 
   /* ---- Cabecalho fixo com o Salvar sempre a mao ------------------------ */
@@ -814,52 +828,12 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 0 14px;
     background: color-mix(in srgb, var(--page) 92%, transparent);
     backdrop-filter: blur(12px);
   }
 
-  .header-titles h1 {
-    font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
-    font-size: 19px;
-    font-weight: 600;
-    letter-spacing: 0;
-    margin: 0;
-  }
-
-  .header-titles p {
-    margin: 1px 0 0;
-    font-size: 12px;
-    color: var(--copy-muted);
-  }
-
   .header-spacer {
     flex: 1;
-  }
-
-  :global(.save-btn) {
-    min-width: 132px;
-    transition: transform 120ms ease;
-  }
-
-  :global(.save-btn:active) {
-    transform: scale(0.97);
-  }
-
-  /* ---- Secoes como cartoes (mesma linguagem da pagina Como usar) ------- */
-  .settings-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--surface);
-    padding: 18px 20px 20px;
-    transition: border-color 160ms ease;
-  }
-
-  .settings-section:hover {
-    border-color: var(--line-strong);
   }
 
   .section-head {
@@ -874,16 +848,17 @@
     justify-content: center;
     width: 30px;
     height: 30px;
-    border-radius: 7px;
-    background: var(--violet-soft);
-    color: var(--cyan);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface-raised);
+    color: var(--app-accent);
     flex-shrink: 0;
   }
 
   .section-titles h2 {
     font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif;
-    font-size: 14.5px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 650;
     letter-spacing: 0;
     margin: 0;
     color: var(--copy);
@@ -994,38 +969,6 @@
     .settings-page {
       padding: 12px 12px 64px;
       overflow-x: hidden;
-    }
-
-    .settings-header {
-      grid-template-columns: auto minmax(0, 1fr);
-      display: grid;
-      align-items: center;
-      padding-right: 56px;
-    }
-
-    .header-titles {
-      grid-column: 1 / -1;
-      grid-row: 2;
-      min-width: 0;
-    }
-
-    .header-titles p {
-      text-wrap: pretty;
-    }
-
-    .header-spacer {
-      display: none;
-    }
-
-    :global(.save-btn) {
-      grid-column: 2;
-      grid-row: 1;
-      min-width: 0;
-      justify-self: end;
-    }
-
-    .settings-section {
-      padding: 16px;
     }
 
     .span-2 {

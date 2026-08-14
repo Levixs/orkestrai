@@ -114,8 +114,9 @@ Baixe os instaladores mais recentes em
   origem, fallback, janela de 5 horas/semanal/mensal e limite e deixe o líder
   consultar a mesma recomendação pela CLI ou ponte MCP antes de atribuir trabalho
   novo.
-- **Aparência personalizada:** escolha entre três temas escuros e um claro ou
-  duplique um deles e edite tokens semânticos com prévia e importação/exportação JSON.
+- **Aparência personalizada:** comece pelo sistema escuro grafite e amarelo da
+  marca ou pelo tema claro de alto contraste, escolha os outros temas internos
+  ou duplique um deles e edite tokens semânticos com prévia e importação/exportação JSON.
 - **Terminais legíveis:** escolha uma entre 10 paletas ANSI completas no menu
   compacto do terminal, junto aos controles de provider, role, recarga e Maestro.
 - **Controles operacionais:** gerencie portas de portais locais, configure rotinas

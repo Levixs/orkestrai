@@ -118,8 +118,9 @@ Download the latest installers from
   configure a source, fallback, 5-hour/weekly/monthly window, and threshold,
   and let the leader consult the same recommendation through the CLI or MCP
   before assigning new work.
-- **Custom appearance:** choose from three dark themes and one light theme, or
-  duplicate one and edit semantic tokens with live preview and JSON import/export.
+- **Custom appearance:** start from a coherent graphite-and-gold dark system or
+  a high-contrast light palette, choose the other built-in themes, or duplicate
+  one and edit semantic tokens with live preview and JSON import/export.
 - **Readable terminals:** choose 1 of 10 complete ANSI palettes from the compact
   terminal options menu, alongside provider, role, reload, and Maestro controls.
 - **Operational controls:** manage local portal ports, configure recurring

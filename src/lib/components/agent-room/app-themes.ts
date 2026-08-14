@@ -47,10 +47,10 @@ export const BUILTIN_APP_THEMES: AppTheme[] = [
     dark: true,
     builtin: true,
     tokens: {
-      page: '#090912', canvas: '#0d0b2e', sidebar: '#100e2a', surface: '#1c1946', surfaceRaised: '#262155', surfaceSubtle: '#151238',
-      text: '#f4f3f8', textSoft: '#c7c8d0', textMuted: '#8b8c96', border: '#302b62', borderStrong: '#4a4580',
-      accent: '#9675ff', accentSoft: '#2a2254', accentContrast: '#0d0b2e', secondary: '#25baf5', success: '#3dd68c', warning: '#ffc857',
-      danger: '#e6545d', grid: '#2c2760', edge: '#5c5696',
+      page: '#0d0f12', canvas: '#0a0d10', sidebar: '#111419', surface: '#171b20', surfaceRaised: '#20262d', surfaceSubtle: '#12161b',
+      text: '#f4f5f6', textSoft: '#c2c7cd', textMuted: '#85909a', border: '#2a3037', borderStrong: '#404852',
+      accent: '#f3c34f', accentSoft: '#302915', accentContrast: '#17130a', secondary: '#63b3d1', success: '#42c990', warning: '#e7b557',
+      danger: '#e26670', grid: '#252b31', edge: '#59636e',
     },
   },
   {
@@ -83,10 +83,10 @@ export const BUILTIN_APP_THEMES: AppTheme[] = [
     dark: false,
     builtin: true,
     tokens: {
-      page: '#f4f5f8', canvas: '#eef0f7', sidebar: '#ffffff', surface: '#ffffff', surfaceRaised: '#e7e9f1', surfaceSubtle: '#f6f7fa',
-      text: '#181822', textSoft: '#474957', textMuted: '#686b7a', border: '#d7d9e3', borderStrong: '#b8bbc9',
-      accent: '#6543d8', accentSoft: '#e9e3ff', accentContrast: '#ffffff', secondary: '#087da4', success: '#16845b', warning: '#9a6500',
-      danger: '#c53b45', grid: '#cdd1df', edge: '#8d84b8',
+      page: '#f5f6f7', canvas: '#edf0f2', sidebar: '#fbfcfd', surface: '#ffffff', surfaceRaised: '#e7ebee', surfaceSubtle: '#f2f4f5',
+      text: '#171a1f', textSoft: '#424951', textMuted: '#606a74', border: '#d4d9de', borderStrong: '#adb5bd',
+      accent: '#8a6300', accentSoft: '#fff1c7', accentContrast: '#ffffff', secondary: '#116f8f', success: '#167a55', warning: '#8a5c00',
+      danger: '#b83440', grid: '#cbd1d6', edge: '#7d8791',
     },
   },
 ];

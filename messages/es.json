@@ -101,6 +101,7 @@
   "node.image_empty": "Haz clic para elegir una imagen",
   "node.image_empty_hint": "o pega con Ctrl+V",
   "canvas.empty": "Crea o selecciona un workspace para abrir el canvas.",
+  "canvas.workspace_actions": "Acciones del workspace",
   "onboarding.welcome_title": "Bienvenido a Orkestrai",
   "onboarding.welcome_body": "Un canvas donde armas equipos de agentes de IA trabajando de verdad en tu proyecto. Empecemos en 1 minuto.",
   "onboarding.ws_title": "Crea tu workspace",

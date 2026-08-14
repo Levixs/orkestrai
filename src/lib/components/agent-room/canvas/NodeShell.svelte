@@ -169,12 +169,12 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-    border-radius: 14px;
+    border-radius: 8px;
     border: 1px solid var(--app-border);
     background: var(--app-surface);
     box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.35),
-      0 10px 32px rgba(0, 0, 0, 0.38);
+      0 1px 2px rgba(0, 0, 0, 0.28),
+      0 10px 28px rgba(0, 0, 0, 0.24);
     /* overflow visivel: os handles ficam a cavalo da borda (estilo Maestri)
        e precisam ser clicaveis fora da caixa; o recorte dos cantos fica a
        cargo do header/body. */
@@ -183,8 +183,8 @@
   }
 
   .node-shell.selected {
-    border: 1.5px dashed var(--accent);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent), 0 14px 34px rgba(0, 0, 0, 0.28);
   }
 
   .node-header {
@@ -194,7 +194,7 @@
     padding: 7px 10px;
     background: var(--app-surface-raised);
     border-bottom: 1px solid var(--app-border);
-    border-radius: 13px 13px 0 0;
+    border-radius: 7px 7px 0 0;
     color: var(--app-text-soft);
     font-size: 12px;
     font-weight: 500;

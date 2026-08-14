@@ -103,6 +103,7 @@
       <RefreshCw size={14} class={refreshing ? 'provider-refresh-spin' : ''} aria-hidden="true" />
       {refreshing ? m['providers.refreshing']() : m['providers.refresh']()}
     </Button>
+    <span class="h-full w-[60px] shrink-0" data-dictation-dock aria-hidden="true"></span>
   </header>
 
   <section class="overview" aria-label={m['providers.summary']({ ready: readyCount, total: providers.length })}>
@@ -222,22 +223,24 @@
 
 <style>
   .providers-page {
-    min-height: 100vh;
-    padding: 28px clamp(20px, 4vw, 64px) 64px;
+    min-height: 100dvh;
+    padding: 20px clamp(20px, 4vw, 64px) 64px;
     background: var(--app-page);
     color: var(--copy);
   }
 
   .page-header {
     width: min(1100px, 100%);
-    margin: 0 auto 24px;
+    min-height: 70px;
+    margin: 0 auto 16px;
     display: flex;
     align-items: center;
     gap: 18px;
+    border-bottom: 1px solid var(--line);
   }
 
   .header-titles { min-width: 0; }
-  .header-titles h1 { margin: 0; font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif; font-size: 22px; font-weight: 600; }
+  .header-titles h1 { margin: 0; font-family: 'Sora Variable', 'Sora', 'Inter Variable', 'Inter', sans-serif; font-size: 22px; font-weight: 650; }
   .header-titles p { margin: 5px 0 0; color: var(--copy-muted); font-size: 13px; line-height: 1.5; }
   .header-spacer { flex: 1; }
 
@@ -251,7 +254,7 @@
     gap: 18px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: var(--surface);
+    background: var(--surface-subtle);
   }
 
   .overview-copy { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -273,7 +276,8 @@
   .filters button.active { background: var(--app-accent-soft); color: var(--app-accent); }
 
   .provider-list { width: min(1100px, 100%); margin: 0 auto; display: grid; gap: 9px; }
-  .provider-row { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .provider-row { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 82%, transparent); overflow: hidden; transition: border-color 140ms ease, background-color 140ms ease; }
+  .provider-row:hover { border-color: var(--line-strong); background: var(--surface); }
   .provider-row.available { border-color: color-mix(in srgb, var(--app-success) 36%, var(--line)); }
   .provider-main { min-height: 126px; padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 14px; }
   .provider-icon { width: 38px; height: 38px; border-radius: 7px; }

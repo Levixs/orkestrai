@@ -997,15 +997,19 @@
   {/if}
 {/snippet}
 
-<main class="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)] overflow-hidden bg-[var(--app-canvas)] text-[var(--app-text)] max-[720px]:grid-cols-[228px_minmax(420px,1fr)]" data-testid="workbench-shell">
+<main class="grid h-full min-h-0 grid-cols-[300px_minmax(0,1fr)] overflow-hidden bg-[var(--app-canvas)] text-[var(--app-text)] max-[720px]:grid-cols-[236px_minmax(420px,1fr)]" data-testid="workbench-shell">
   <aside class="flex min-h-0 flex-col border-r border-[var(--app-border)] bg-[var(--app-sidebar)]">
-    <div class="flex h-[52px] shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3">
+    <div class="flex h-11 shrink-0 items-center gap-2 px-3">
+      <img src="/brand/icon.svg" width="20" height="20" alt="" />
+      <strong class="font-['Sora_Variable'] text-[14px] font-semibold text-[var(--app-text)]">Orkestrai</strong>
+      <div class="ml-auto"><WorkspaceSharingButton variant="icon" workspaceId={selectedWorkspaceId} onOpen={() => (sharingOpen = true)} /></div>
+    </div>
+    <div class="flex h-11 shrink-0 items-center border-b border-[var(--app-border)] px-3">
       <WorkspaceModeSwitch
         active="terminals"
         workspaceId={selectedWorkspaceId}
         nodeId={isVirtualWorkbenchItemId(selectedNodeId) ? null : selectedNodeId}
       />
-      <div class="ml-auto"><WorkspaceSharingButton variant="icon" workspaceId={selectedWorkspaceId} onOpen={() => (sharingOpen = true)} /></div>
     </div>
 
     <div class="shrink-0 p-2.5">
@@ -1213,7 +1217,7 @@
     </div>
   </aside>
 
-  <section class="grid min-h-0 min-w-0 grid-rows-[52px_minmax(0,1fr)_28px]">
+  <section class="grid min-h-0 min-w-0 grid-rows-[48px_minmax(0,1fr)_28px]">
     <header class="flex min-w-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3" data-testid="terminal-workspace-header">
       {#if selectedWorkspace && selectedLayout}
         <WorkspaceIcon name={selectedWorkspace.icon} size={15} />
@@ -1227,12 +1231,13 @@
         {:else}
           <span class="ml-auto"></span>
         {/if}
-        <span
-          class="shrink-0 text-[10px] tabular-nums text-[var(--app-text-muted)]"
-          aria-label={m['workbench.pane_count']({ current: visiblePanes.length, max: MAX_WORKBENCH_PANES })}
-          title={visiblePanes.length >= MAX_WORKBENCH_PANES ? m['workbench.pane_limit']({ count: MAX_WORKBENCH_PANES }) : undefined}
-          data-testid="workbench-pane-count"
-        >{visiblePanes.length}/{MAX_WORKBENCH_PANES}</span>
+        <div class="flex shrink-0 items-center gap-0.5 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-subtle)] p-0.5">
+          <span
+            class="px-1.5 text-[9px] tabular-nums text-[var(--app-text-muted)]"
+            aria-label={m['workbench.pane_count']({ current: visiblePanes.length, max: MAX_WORKBENCH_PANES })}
+            title={visiblePanes.length >= MAX_WORKBENCH_PANES ? m['workbench.pane_limit']({ count: MAX_WORKBENCH_PANES }) : undefined}
+            data-testid="workbench-pane-count"
+          >{visiblePanes.length}/{MAX_WORKBENCH_PANES}</span>
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}
@@ -1306,6 +1311,7 @@
             <Tooltip.Content>{m['terminal_browser.open_canvas']()}</Tooltip.Content>
           </Tooltip.Root>
         {/if}
+        </div>
         <span class="h-full w-[60px] shrink-0" data-dictation-dock aria-hidden="true"></span>
       {:else}
         <span class="text-xs text-[var(--app-text-muted)]">{m['workbench.title']()}</span>
