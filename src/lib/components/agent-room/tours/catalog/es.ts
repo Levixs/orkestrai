@@ -1101,7 +1101,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'use-remote-voice-terminal',
         title: 'Dicta o abre el terminal correcto',
-        body: 'En Remote, usa el micrófono del mensaje al líder para transcribir mediante el STT local del host; el audio permanece cifrado y el relay nunca lo procesa. En una conversación con un agente, Abrir terminal cierra el modal y ocupa la pantalla mientras ajusta fuente, columnas y filas al móvil, tablet o escritorio.',
+        body: 'En Remote, usa el micrófono en la conversación con el líder, con otro agente o en el terminal. El STT se ejecuta localmente en el host, el audio permanece cifrado y el relay nunca lo procesa. La pantalla principal conserva el historial del líder y publica la respuesta solo después del final real del turno, reuniendo los mensajes intermedios con el resultado final. En el terminal, el dictado solo inserta texto. Abrir terminal cierra el modal y ocupa la pantalla mientras ajusta fuente, columnas y filas al móvil, tablet o escritorio.',
       },
       {
         id: 'work-remotely',

@@ -8,6 +8,7 @@ import {
   parseKimiTranscriptReply,
   parseStructuredMessagesReply,
   parseTranscriptReplyForPrompt,
+  parseTranscriptReplyStateForPrompt,
 } from '$lib/modules/agent-room/infrastructure/transcript/AgentTranscript.js';
 
 describe('parseClaudeTranscriptReply', () => {
@@ -41,6 +42,28 @@ describe('parseClaudeTranscriptReply', () => {
 
   it('sem resposta retorna null', () => {
     expect(parseClaudeTranscriptReply(JSON.stringify({ type: 'user', message: { role: 'user', content: 'so pergunta' } }))).toBeNull();
+  });
+
+  it('ignora mensagens meta e espera o end_turn antes de fechar uma resposta com tools', () => {
+    const partial = [
+      { type: 'user', origin: { kind: 'human' }, message: { content: 'como esta o projeto?' } },
+      { type: 'assistant', message: { stop_reason: 'tool_use', content: [{ type: 'text', text: 'Vou verificar.' }] } },
+      { type: 'user', isMeta: true, message: { content: [{ type: 'text', text: 'Base directory for this skill: /tmp/skill' }] } },
+      { type: 'user', message: { content: [{ type: 'tool_result', content: 'resultado' }] } },
+    ].map(JSON.stringify).join('\n');
+    expect(parseTranscriptReplyStateForPrompt('claude-project-jsonl', partial, 'como esta o projeto?')).toEqual({
+      text: 'Vou verificar.',
+      complete: false,
+    });
+
+    const complete = `${partial}\n${JSON.stringify({
+      type: 'assistant',
+      message: { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Projeto concluido.' }] },
+    })}`;
+    expect(parseTranscriptReplyStateForPrompt('claude-project-jsonl', complete, 'como esta o projeto?')).toEqual({
+      text: 'Vou verificar.\n\nProjeto concluido.',
+      complete: true,
+    });
   });
 });
 

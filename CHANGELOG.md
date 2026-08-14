@@ -156,6 +156,11 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Routed Remote leader messages through the same correlated conversation path
+  as direct agent chat, so the overview shows the sent prompt, delivery state,
+  and reply. Claude turns that pause for tools now wait for the real `end_turn`
+  and combine every assistant text block instead of publishing an interim
+  "I will check" message as the final answer.
 - Bound remote chat replies to the exact injected prompt for every registered
   provider and repaired stale conversation IDs before publishing a reply,
   preventing output from another CLI session from appearing in the browser.

@@ -54,9 +54,11 @@ Download the latest installers from
   URL before connecting. Installed-app invites open Orkestrai automatically;
   guests can also paste one through **Workspace → Join remote workspace**.
   Operators can hold a traceable structured conversation whose reply is bound
-  to the exact turn across every registered provider, and can dictate leader
-  messages through the host's local STT without exposing plaintext audio to the
-  relay.
+  to the exact turn across every registered provider. The overview keeps the
+  leader thread visible and waits through intermediate tool use until the
+  provider finishes the turn. Dictation is available for leader, agent, and
+  terminal input through the host's local STT without exposing plaintext audio
+  to the relay; terminal dictation inserts text without submitting it.
   Administrators can start or restore an agent. Raw terminal control is a
   separate Administrator-only switch for each approved device, disabled by
   default, responsive to its viewport, rate-limited, limited to one terminal,

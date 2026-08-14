@@ -306,6 +306,15 @@ export class BridgeService {
         await terminalReply.catch(() => undefined);
       } else {
         reply = winner.kind === 'terminal' ? winner.value : await terminalReply;
+        const immediate = await this.transcriptReply(
+          workspaceId,
+          target.nodeId,
+          target.sessionId,
+          input.message,
+          requestStartedAt,
+        ).catch(() => null);
+        if (immediate?.complete) transcriptMatch = immediate;
+        else if (immediate) transcriptMatch = await structuredReply ?? immediate;
       }
     } catch (error) {
       await controlCenterService.recordDelivery({
@@ -327,13 +336,16 @@ export class BridgeService {
 
     // O transcrito estruturado evita ANSI/redraw e só é aceito quando a última
     // pergunta coincide exatamente com a mensagem injetada nesta chamada.
-    transcriptMatch ??= await this.transcriptReply(
+    let incompleteTranscript: MatchedTranscriptReply | null = null;
+    const immediateTranscript = await this.transcriptReply(
       workspaceId,
       target.nodeId,
       target.sessionId,
       input.message,
       requestStartedAt,
     ).catch(() => null);
+    if (immediateTranscript?.complete) transcriptMatch ??= immediateTranscript;
+    else incompleteTranscript = immediateTranscript;
     if (!transcriptMatch) {
       const node = await workspaceRepository.getNode(target.nodeId);
       const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
@@ -343,16 +355,19 @@ export class BridgeService {
         const deadline = Date.now() + 90_000;
         while (!transcriptMatch && Date.now() < deadline) {
           await new Promise((resolve) => setTimeout(resolve, 2_000));
-          transcriptMatch = await this.transcriptReply(
+          const candidate = await this.transcriptReply(
             workspaceId,
             target.nodeId,
             target.sessionId,
             input.message,
             requestStartedAt,
           ).catch(() => null);
+          if (candidate?.complete) transcriptMatch = candidate;
+          else if (candidate) incompleteTranscript = candidate;
         }
       }
     }
+    transcriptMatch ??= incompleteTranscript;
     const transcriptText = transcriptMatch?.text ?? null;
     // Usa o provider da sessao PTY real, não apenas o metadata do nó. Isso
     // mantém shells explícitos utilizáveis e protege somente TUIs de agentes.
@@ -461,12 +476,14 @@ export class BridgeService {
     signal: AbortSignal,
   ): Promise<MatchedTranscriptReply | null> {
     const deadline = Date.now() + timeoutMs;
+    let incomplete: MatchedTranscriptReply | null = null;
     while (!signal.aborted && Date.now() < deadline) {
       const match = await this.transcriptReply(workspaceId, nodeId, ptySessionId, prompt, since).catch(() => null);
-      if (match) return match;
+      if (match?.complete) return match;
+      if (match) incomplete = match;
       await new Promise((resolve) => setTimeout(resolve, 750));
     }
-    return null;
+    return incomplete;
   }
 
   /** Resposta vinculada à pergunta exata e à sessão real do terminal alvo. */

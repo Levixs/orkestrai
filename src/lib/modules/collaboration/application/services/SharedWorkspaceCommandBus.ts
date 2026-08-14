@@ -138,12 +138,19 @@ export class SharedWorkspaceCommandBus {
     }
     const leader = (await bridgeService.listAgents(workspaceId)).find((agent) => agent.maestro);
     if (!leader) throw new Error('Workspace leader is unavailable.');
-    const delivery = await bridgeService.sendOneWay(workspaceId, {
+    if (!leader.sessionAlive) throw new Error('Workspace leader is offline.');
+    const messageId = uuidv7();
+    void bridgeService.ask(workspaceId, {
       to: leader.nodeId,
       message: command.message,
-      kind: 'remote-collaboration',
-    });
-    return { messageId: delivery.messageId, delivered: delivery.sent, leaderTitle: leader.title };
+      messageId,
+      metadata: {
+        remoteCollaboration: true,
+        remoteShareId: shareId,
+        remoteDeviceId: deviceId,
+      },
+    }).catch(() => undefined);
+    return { messageId, agentNodeId: leader.nodeId, leaderTitle: leader.title };
   }
 }
 

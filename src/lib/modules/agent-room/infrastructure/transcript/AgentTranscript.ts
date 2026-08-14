@@ -28,6 +28,13 @@ const TAIL_BYTES = 512 * 1024;
 export type MatchedTranscriptReply = {
   sessionId: string;
   text: string;
+  complete: boolean;
+};
+
+type ParsedTranscriptTurn = {
+  prompt: string | null;
+  reply: string | null;
+  complete: boolean;
 };
 
 type ReadonlySqliteDatabase = {
@@ -86,14 +93,7 @@ export function parseClaudeTranscriptReply(jsonl: string): string | null {
       if (texts.length) parts.unshift(texts.join('\n'));
       continue;
     }
-    if (event.type === 'user') {
-      const content = event.message?.content;
-      const realUser =
-        typeof content === 'string'
-          ? content.trim().length > 0
-          : Array.isArray(content) && content.some((block: any) => block?.type === 'text' && String(block.text ?? '').trim().length > 0);
-      if (realUser) break; // fronteira: a pergunta ditada — para aqui
-    }
+    if (isClaudeUserPrompt(event)) break; // fronteira: a pergunta ditada — para aqui
   }
   const text = parts.join('\n\n').trim();
   return text || null;
@@ -199,6 +199,34 @@ function normalizedPrompt(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function isClaudeUserPrompt(event: any): boolean {
+  if (event?.type !== 'user' || event.isMeta === true) return false;
+  const content = event.message?.content;
+  return typeof content === 'string'
+    ? content.trim().length > 0
+    : Array.isArray(content) && content.some((block: any) => block?.type === 'text' && String(block.text ?? '').trim().length > 0);
+}
+
+function claudeTurnComplete(jsonl: string): boolean {
+  let sawLifecycle = false;
+  let complete = false;
+  for (const line of jsonl.trim().split('\n').reverse()) {
+    let event: any;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (isClaudeUserPrompt(event)) break;
+    if (event.type !== 'assistant' || typeof event.message?.stop_reason !== 'string') continue;
+    sawLifecycle = true;
+    if (event.message.stop_reason === 'end_turn') complete = true;
+  }
+  // Older Claude transcripts did not persist stop_reason. Preserve their
+  // previous behavior while current transcripts wait for the real end_turn.
+  return !sawLifecycle || complete;
+}
+
 function claudePrompt(jsonl: string): string | null {
   for (const line of jsonl.trim().split('\n').reverse()) {
     let event: any;
@@ -207,7 +235,7 @@ function claudePrompt(jsonl: string): string | null {
     } catch {
       continue;
     }
-    if (event.type !== 'user') continue;
+    if (!isClaudeUserPrompt(event)) continue;
     const content = event.message?.content;
     if (typeof content === 'string' && content.trim()) return content.trim();
     if (!Array.isArray(content)) continue;
@@ -320,15 +348,15 @@ function devinTurn(json: string): { prompt: string | null; reply: string | null 
   }
 }
 
-function parserForStorage(storage: string | undefined): ((jsonl: string) => { prompt: string | null; reply: string | null }) | null {
-  if (storage === 'claude-project-jsonl') return (jsonl) => ({ prompt: claudePrompt(jsonl), reply: parseClaudeTranscriptReply(jsonl) });
-  if (storage === 'codex-rollout-jsonl') return (jsonl) => ({ prompt: codexPrompt(jsonl), reply: parseCodexTranscriptReply(jsonl) });
-  if (storage === 'kimi-session-dir') return (jsonl) => ({ prompt: kimiPrompt(jsonl), reply: parseKimiTranscriptReply(jsonl) });
+function parserForStorage(storage: string | undefined): ((jsonl: string) => ParsedTranscriptTurn) | null {
+  if (storage === 'claude-project-jsonl') return (jsonl) => ({ prompt: claudePrompt(jsonl), reply: parseClaudeTranscriptReply(jsonl), complete: claudeTurnComplete(jsonl) });
+  if (storage === 'codex-rollout-jsonl') return (jsonl) => ({ prompt: codexPrompt(jsonl), reply: parseCodexTranscriptReply(jsonl), complete: true });
+  if (storage === 'kimi-session-dir') return (jsonl) => ({ prompt: kimiPrompt(jsonl), reply: parseKimiTranscriptReply(jsonl), complete: true });
   if (['opencode-session-json', 'cursor-transcript-jsonl', 'antigravity-workspace-cache'].includes(storage ?? '')) {
-    return (jsonl) => ({ prompt: genericPrompt(jsonl), reply: parseGenericTranscriptReply(jsonl) });
+    return (jsonl) => ({ prompt: genericPrompt(jsonl), reply: parseGenericTranscriptReply(jsonl), complete: true });
   }
-  if (storage === 'cline-session-manifest') return clineTurn;
-  if (storage === 'devin-session-db') return devinTurn;
+  if (storage === 'cline-session-manifest') return (jsonl) => ({ ...clineTurn(jsonl), complete: true });
+  if (storage === 'devin-session-db') return (jsonl) => ({ ...devinTurn(jsonl), complete: true });
   return null;
 }
 
@@ -337,11 +365,20 @@ export function parseCodexTranscriptReplyForPrompt(jsonl: string, expectedPrompt
 }
 
 export function parseTranscriptReplyForPrompt(storage: string, transcript: string, expectedPrompt: string): string | null {
+  return parseTranscriptReplyStateForPrompt(storage, transcript, expectedPrompt)?.text ?? null;
+}
+
+export function parseTranscriptReplyStateForPrompt(
+  storage: string,
+  transcript: string,
+  expectedPrompt: string,
+): { text: string; complete: boolean } | null {
   const parser = parserForStorage(storage);
   if (!parser) return null;
   const turn = parser(transcript);
   if (!turn.prompt || normalizedPrompt(turn.prompt) !== normalizedPrompt(expectedPrompt)) return null;
-  return turn.reply?.trim() || null;
+  const text = turn.reply?.trim();
+  return text ? { text, complete: turn.complete } : null;
 }
 
 /**
@@ -745,11 +782,11 @@ function sessionIdForPath(storage: string | undefined, path: string): string | n
   return basename(path, '.jsonl');
 }
 
-function replyAtPath(storage: string | undefined, path: string, expectedPrompt: string): string | null {
+function replyAtPath(storage: string | undefined, path: string, expectedPrompt: string): { text: string; complete: boolean } | null {
   const transcript = ['cline-session-manifest', 'devin-session-db'].includes(storage ?? '')
     ? readFileSync(path, 'utf8')
     : readTail(path);
-  return transcript && storage ? parseTranscriptReplyForPrompt(storage, transcript, expectedPrompt) : null;
+  return transcript && storage ? parseTranscriptReplyStateForPrompt(storage, transcript, expectedPrompt) : null;
 }
 
 /**
@@ -776,27 +813,27 @@ export async function findReplyToPrompt(
           && normalizedPrompt(turn.prompt) === normalizedPrompt(expectedPrompt)
           && turn.reply?.trim()
         ) {
-          return { sessionId, text: turn.reply.trim() };
+          return { sessionId, text: turn.reply.trim(), complete: true };
         }
       }
       return null;
     }
     const preferredPath = preferredTranscriptPath(storage, cwd, preferredSessionId);
     if (preferredPath && statSync(preferredPath).mtimeMs >= since - 2_000) {
-      const text = replyAtPath(storage, preferredPath, expectedPrompt);
-      if (text) return { sessionId: preferredSessionId, text };
+      const reply = replyAtPath(storage, preferredPath, expectedPrompt);
+      if (reply) return { sessionId: preferredSessionId, ...reply };
     }
     for (const path of candidateTranscriptPaths(storage, cwd, since)) {
       if (path === preferredPath) continue;
-      const text = replyAtPath(storage, path, expectedPrompt);
-      const sessionId = text ? sessionIdForPath(storage, path) : null;
-      if (text && sessionId) return { sessionId, text };
+      const reply = replyAtPath(storage, path, expectedPrompt);
+      const sessionId = reply ? sessionIdForPath(storage, path) : null;
+      if (reply && sessionId) return { sessionId, ...reply };
     }
     for (const sessionId of candidateSessionIds(storage, cwd, preferredSessionId)) {
       const path = preferredTranscriptPath(storage, cwd, sessionId);
       if (!path || path === preferredPath || statSync(path).mtimeMs < since - 2_000) continue;
-      const text = replyAtPath(storage, path, expectedPrompt);
-      if (text) return { sessionId, text };
+      const reply = replyAtPath(storage, path, expectedPrompt);
+      if (reply) return { sessionId, ...reply };
     }
     return null;
   } catch {

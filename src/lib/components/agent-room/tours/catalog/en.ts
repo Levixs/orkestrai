@@ -1101,7 +1101,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'use-remote-voice-terminal',
         title: 'Dictate or open the right terminal',
-        body: 'In Remote, use the leader-message microphone to transcribe through the host local STT; audio stays encrypted and is never processed by the relay. In an agent conversation, Open terminal closes the dialog and takes over the screen while fitting font, columns, and rows to a phone, tablet, or desktop.',
+        body: 'In Remote, use the microphone in the leader conversation, another agent conversation, or the terminal. STT runs locally on the host, audio stays encrypted, and the relay never processes it. The overview preserves the leader history and publishes the reply only after the real end of the turn, combining intermediate messages with the final result. Terminal dictation only inserts text. Open terminal closes the dialog and takes over the screen while fitting font, columns, and rows to a phone, tablet, or desktop.',
       },
       {
         id: 'work-remotely',

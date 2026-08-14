@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useSvelarTest } from '@beeblock/svelar/testing';
 import { uuidv7 } from '@beeblock/svelar/support';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
@@ -18,6 +18,7 @@ import { ApproveCollaborationDeviceRequest } from '$lib/modules/collaboration/in
 import { ExecuteCollaborationCommandDto } from '$lib/modules/collaboration/application/dto/CollaborationDto.js';
 import { controlCenterService } from '$lib/modules/agent-room/application/services/ControlCenterService.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.js';
+import { bridgeService } from '$lib/modules/agent-room/application/services/BridgeService.js';
 
 async function setup(role: 'viewer' | 'operator' | 'administrator' = 'operator') {
   const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-collaboration-'));
@@ -72,6 +73,8 @@ async function setup(role: 'viewer' | 'operator' | 'administrator' = 'operator')
 describe('collaboration host core', () => {
   useSvelarTest({ refreshDatabase: true });
 
+  afterEach(() => vi.restoreAllMocks());
+
   it('projects only allowlisted workspace data and redacts paths, secrets, and private URLs', async () => {
     const { share } = await setup();
     const snapshot = await sharedWorkspaceQuery.snapshot(share.id);
@@ -103,6 +106,45 @@ describe('collaboration host core', () => {
     expect(snapshot.conversations).toHaveLength(1);
     expect(snapshot.conversations[0]).toMatchObject({ message: 'Remote question', reply: 'Remote answer' });
     expect(JSON.stringify(snapshot.conversations)).not.toContain('Internal secret');
+  });
+
+  it('routes leader messages through the correlated remote conversation flow', async () => {
+    const { share, workspace, device, agent } = await setup('operator');
+    vi.spyOn(bridgeService, 'listAgents').mockResolvedValue([{
+      nodeId: agent.id,
+      title: 'Leader',
+      provider: 'claude',
+      command: 'claude',
+      sessionId: 'leader-session',
+      sessionAlive: true,
+      maestro: true,
+    }]);
+    const ask = vi.spyOn(bridgeService, 'ask').mockResolvedValue({
+      to: 'Leader',
+      reply: 'Done',
+      delivered: true,
+      replyConfirmed: true,
+      timedOut: false,
+      messageId: uuidv7(),
+      deliveryState: 'replied',
+    });
+
+    const result = await sharedWorkspaceCommandBus.execute(share.id, device.id, new ExecuteCollaborationCommandDto(
+      `command_${uuidv7().replaceAll('-', '_')}`,
+      0,
+      { type: 'leader.message', message: 'Review the release.' },
+    ));
+
+    expect(result).toMatchObject({ accepted: true, errorCode: null });
+    expect(ask).toHaveBeenCalledWith(workspace.id, expect.objectContaining({
+      to: agent.id,
+      message: 'Review the release.',
+      metadata: expect.objectContaining({
+        remoteCollaboration: true,
+        remoteShareId: share.id,
+        remoteDeviceId: device.deviceId,
+      }),
+    }));
   });
 
   it('keeps raw terminal access off by default and only grants an explicit administrator opt-in', () => {
