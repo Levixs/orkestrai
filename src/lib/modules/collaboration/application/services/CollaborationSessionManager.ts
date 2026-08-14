@@ -20,8 +20,23 @@ import { sharedWorkspaceCommandBus } from './SharedWorkspaceCommandBus.js';
 import { collaborationRuntime } from './CollaborationRuntime.js';
 import { withCollaborationShareLock } from './CollaborationShareLock.js';
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
+import { voiceService, VOICE_MODELS_MISSING_ERROR } from '$lib/modules/agent-room/application/services/VoiceService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.js';
+
+const MAX_REMOTE_VOICE_BYTES = 3 * 1024 * 1024;
+const MAX_REMOTE_VOICE_CHUNK_BYTES = 48 * 1024;
+const MAX_REMOTE_VOICE_REQUESTS_PER_MINUTE = 6;
+
+type HostVoiceRequest = {
+  requestId: string;
+  language: 'auto' | 'pt' | 'en' | 'es';
+  byteLength: number;
+  chunkCount: number;
+  chunks: Buffer[];
+  receivedBytes: number;
+  timer: ReturnType<typeof setTimeout>;
+};
 
 type HostTerminalAttachment = {
   nodeId: string;
@@ -39,6 +54,10 @@ type HostPeer = {
   terminal: HostTerminalAttachment | null;
   inputWindowStartedAt: number;
   inputBytesInWindow: number;
+  voiceRequest: HostVoiceRequest | null;
+  voiceTranscribing: boolean;
+  voiceWindowStartedAt: number;
+  voiceRequestsInWindow: number;
 };
 
 type HostSession = {
@@ -124,6 +143,7 @@ export class CollaborationSessionManager {
     if (host.projectionTimer) clearInterval(host.projectionTimer);
     for (const peer of host.peers.values()) {
       this.detachTerminal(peer);
+      this.clearVoiceRequest(peer);
       try {
         this.send(host.socket, peer.pairingChannel.encrypt({ type: 'join.rejected', reason }, peer.peerId));
       } catch {
@@ -175,6 +195,7 @@ export class CollaborationSessionManager {
     const peer = host ? [...host.peers.values()].find((candidate) => candidate.deviceRecordId === deviceRecordId) : null;
     if (host && peer) {
       this.detachTerminal(peer);
+      this.clearVoiceRequest(peer);
       this.send(host.socket, peer.pairingChannel.encrypt({ type: 'join.rejected', reason: reason === 'revoked' ? 'revoked' : 'denied' }, peer.peerId));
       peer.sessionChannel = null;
       host.peers.delete(peer.peerId);
@@ -266,6 +287,7 @@ export class CollaborationSessionManager {
       host.transportState = host.stopped ? 'offline' : 'reconnecting';
       for (const peer of host.peers.values()) peer.sessionChannel = null;
       for (const peer of host.peers.values()) this.detachTerminal(peer);
+      for (const peer of host.peers.values()) this.clearVoiceRequest(peer);
       if (!host.stopped) host.reconnectTimer = setTimeout(() => this.connectHost(host), 2_000);
     });
     socket.on('error', () => undefined);
@@ -289,6 +311,10 @@ export class CollaborationSessionManager {
         terminal: null,
         inputWindowStartedAt: Date.now(),
         inputBytesInWindow: 0,
+        voiceRequest: null,
+        voiceTranscribing: false,
+        voiceWindowStartedAt: Date.now(),
+        voiceRequestsInWindow: 0,
       };
       host.peers.set(peer.peerId, peer);
     }
@@ -347,6 +373,18 @@ export class CollaborationSessionManager {
     }
     if (message.type === 'terminal.close' && peer.sessionChannel && peer.deviceRecordId) {
       await this.closeTerminal(host, peer, message.nodeId);
+      return;
+    }
+    if (message.type === 'voice.transcription.start' && peer.sessionChannel && peer.deviceRecordId) {
+      await this.startVoiceTranscription(host, peer, message);
+      return;
+    }
+    if (message.type === 'voice.transcription.chunk' && peer.sessionChannel && peer.deviceRecordId) {
+      this.appendVoiceChunk(host, peer, message);
+      return;
+    }
+    if (message.type === 'voice.transcription.finish' && peer.sessionChannel && peer.deviceRecordId) {
+      await this.finishVoiceTranscription(host, peer, message.requestId);
       return;
     }
     if (message.type === 'command' && peer.sessionChannel && peer.deviceRecordId) {
@@ -566,6 +604,145 @@ export class CollaborationSessionManager {
         eventType: 'terminal.closed',
         metadata: { nodeId },
       });
+    }
+  }
+
+  private async startVoiceTranscription(
+    host: HostSession,
+    peer: HostPeer,
+    message: { requestId: string; language: 'auto' | 'pt' | 'en' | 'es'; byteLength: number; chunks: number },
+  ): Promise<void> {
+    const device = await collaborationRepository.findDevice(peer.deviceRecordId);
+    if (!device?.approvedAt || device.revokedAt || !device.scopes.includes('voice.transcribe')) {
+      this.sendVoiceError(host, peer, message.requestId, 'VOICE_ACCESS_DENIED');
+      return;
+    }
+    if (peer.voiceRequest || peer.voiceTranscribing) {
+      this.sendVoiceError(host, peer, message.requestId, 'VOICE_BUSY');
+      return;
+    }
+    const now = Date.now();
+    if (now - peer.voiceWindowStartedAt >= 60_000) {
+      peer.voiceWindowStartedAt = now;
+      peer.voiceRequestsInWindow = 0;
+    }
+    peer.voiceRequestsInWindow += 1;
+    if (peer.voiceRequestsInWindow > MAX_REMOTE_VOICE_REQUESTS_PER_MINUTE) {
+      this.sendVoiceError(host, peer, message.requestId, 'VOICE_RATE_LIMITED');
+      return;
+    }
+    if (message.byteLength > MAX_REMOTE_VOICE_BYTES || message.chunks > 64) {
+      this.sendVoiceError(host, peer, message.requestId, 'VOICE_RECORDING_TOO_LONG');
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (peer.voiceRequest?.requestId !== message.requestId) return;
+      this.clearVoiceRequest(peer);
+      this.sendVoiceError(host, peer, message.requestId, 'VOICE_UPLOAD_TIMEOUT');
+    }, 30_000);
+    timer.unref?.();
+    peer.voiceRequest = {
+      requestId: message.requestId,
+      language: message.language,
+      byteLength: message.byteLength,
+      chunkCount: message.chunks,
+      chunks: [],
+      receivedBytes: 0,
+      timer,
+    };
+  }
+
+  private appendVoiceChunk(
+    host: HostSession,
+    peer: HostPeer,
+    message: { requestId: string; index: number; data: string },
+  ): void {
+    const request = peer.voiceRequest;
+    if (!request || request.requestId !== message.requestId) {
+      this.sendVoiceError(host, peer, message.requestId, 'VOICE_REQUEST_NOT_FOUND');
+      return;
+    }
+    if (message.index !== request.chunks.length || message.index >= request.chunkCount) {
+      this.abortVoiceRequest(host, peer, message.requestId, 'VOICE_CHUNK_ORDER_INVALID');
+      return;
+    }
+    const chunk = Buffer.from(message.data, 'base64url');
+    if (!chunk.length || chunk.byteLength > MAX_REMOTE_VOICE_CHUNK_BYTES) {
+      this.abortVoiceRequest(host, peer, message.requestId, 'VOICE_CHUNK_INVALID');
+      return;
+    }
+    request.receivedBytes += chunk.byteLength;
+    if (request.receivedBytes > request.byteLength || request.receivedBytes > MAX_REMOTE_VOICE_BYTES) {
+      chunk.fill(0);
+      this.abortVoiceRequest(host, peer, message.requestId, 'VOICE_RECORDING_TOO_LONG');
+      return;
+    }
+    request.chunks.push(chunk);
+  }
+
+  private async finishVoiceTranscription(host: HostSession, peer: HostPeer, requestId: string): Promise<void> {
+    const request = peer.voiceRequest;
+    if (!request || request.requestId !== requestId) {
+      this.sendVoiceError(host, peer, requestId, 'VOICE_REQUEST_NOT_FOUND');
+      return;
+    }
+    if (request.chunks.length !== request.chunkCount || request.receivedBytes !== request.byteLength) {
+      this.abortVoiceRequest(host, peer, requestId, 'VOICE_UPLOAD_INCOMPLETE');
+      return;
+    }
+    const language = request.language;
+    const audio = Buffer.concat(request.chunks, request.byteLength);
+    this.clearVoiceRequest(peer);
+    peer.voiceTranscribing = true;
+    try {
+      const text = (await voiceService.transcribe(audio, 'remote-dictation.wav', language)).trim();
+      if (!text) {
+        this.sendVoiceError(host, peer, requestId, 'VOICE_NOTHING_TRANSCRIBED');
+        return;
+      }
+      if (peer.sessionChannel) {
+        this.send(host.socket, peer.sessionChannel.encrypt({ type: 'voice.transcription.result', requestId, text }, peer.peerId));
+      }
+      const device = await collaborationRepository.findDevice(peer.deviceRecordId);
+      if (device) {
+        await collaborationRepository.appendAudit({
+          workspaceId: host.workspaceId,
+          shareId: host.shareId,
+          actorDeviceId: device.deviceId,
+          eventType: 'voice.transcribed',
+          metadata: { byteLength: audio.byteLength, language },
+        });
+      }
+    } catch (error) {
+      const code = error instanceof Error && error.message === VOICE_MODELS_MISSING_ERROR
+        ? 'VOICE_MODELS_MISSING'
+        : 'VOICE_TRANSCRIPTION_FAILED';
+      this.sendVoiceError(host, peer, requestId, code);
+    } finally {
+      audio.fill(0);
+      peer.voiceTranscribing = false;
+    }
+  }
+
+  private abortVoiceRequest(host: HostSession, peer: HostPeer, requestId: string, code: string): void {
+    this.clearVoiceRequest(peer);
+    this.sendVoiceError(host, peer, requestId, code);
+  }
+
+  private clearVoiceRequest(peer: HostPeer): void {
+    const request = peer.voiceRequest;
+    if (!request) return;
+    clearTimeout(request.timer);
+    for (const chunk of request.chunks) chunk.fill(0);
+    peer.voiceRequest = null;
+  }
+
+  private sendVoiceError(host: HostSession, peer: HostPeer, requestId: string, code: string): void {
+    if (!peer.sessionChannel) return;
+    try {
+      this.send(host.socket, peer.sessionChannel.encrypt({ type: 'voice.transcription.error', requestId, code }, peer.peerId));
+    } catch {
+      this.clearVoiceRequest(peer);
     }
   }
 

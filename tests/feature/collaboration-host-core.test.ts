@@ -107,6 +107,8 @@ describe('collaboration host core', () => {
 
   it('keeps raw terminal access off by default and only grants an explicit administrator opt-in', () => {
     expect(collaborationPolicy.scopesForRole('administrator')).not.toContain('terminal.control');
+    expect(collaborationPolicy.scopesForRole('operator')).toContain('voice.transcribe');
+    expect(collaborationPolicy.scopesForRole('collaborator')).not.toContain('voice.transcribe');
     expect(collaborationPolicy.scopesForApproval('operator', true)).not.toContain('terminal.control');
     expect(collaborationPolicy.scopesForApproval('administrator', true)).toContain('terminal.control');
   });

@@ -87,6 +87,30 @@ export const collaborationMessageSchema = z.discriminatedUnion('type', [
     nodeId: opaqueIdSchema.optional(),
     code: z.string().min(1).max(80),
   }).strict(),
+  z.object({
+    type: z.literal('voice.transcription.start'),
+    requestId: opaqueIdSchema,
+    language: z.enum(['auto', 'pt', 'en', 'es']),
+    byteLength: z.number().int().min(45).max(3 * 1024 * 1024),
+    chunks: z.number().int().min(1).max(64),
+  }).strict(),
+  z.object({
+    type: z.literal('voice.transcription.chunk'),
+    requestId: opaqueIdSchema,
+    index: z.number().int().min(0).max(63),
+    data: z.string().min(1).max(65_536).regex(/^[a-zA-Z0-9_-]+$/),
+  }).strict(),
+  z.object({ type: z.literal('voice.transcription.finish'), requestId: opaqueIdSchema }).strict(),
+  z.object({
+    type: z.literal('voice.transcription.result'),
+    requestId: opaqueIdSchema,
+    text: z.string().trim().min(1).max(10_000),
+  }).strict(),
+  z.object({
+    type: z.literal('voice.transcription.error'),
+    requestId: opaqueIdSchema,
+    code: z.string().min(1).max(80),
+  }).strict(),
   z.object({ type: z.literal('ping'), sentAt: z.number().int().nonnegative() }).strict(),
   z.object({ type: z.literal('pong'), sentAt: z.number().int().nonnegative() }).strict(),
 ]);

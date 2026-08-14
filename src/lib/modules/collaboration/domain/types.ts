@@ -8,6 +8,7 @@ export type CollaborationScope =
   | 'approvals.view'
   | 'approvals.decide'
   | 'leader.message'
+  | 'voice.transcribe'
   | 'agents.message'
   | 'agents.invoke'
   | 'terminal.control'

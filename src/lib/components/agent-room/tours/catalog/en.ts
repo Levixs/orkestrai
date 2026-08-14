@@ -1099,6 +1099,11 @@ export const TOURS_EN: Tour[] = [
         body: 'Operators can use the safe agent conversation. Administrators can also start or restore an agent. Enable raw terminal access separately for one trusted Administrator device only when needed; it is off by default, limited to one terminal, rate-limited, encrypted, and audited.',
       },
       {
+        id: 'use-remote-voice-terminal',
+        title: 'Dictate or open the right terminal',
+        body: 'In Remote, use the leader-message microphone to transcribe through the host local STT; audio stays encrypted and is never processed by the relay. In an agent conversation, Open terminal closes the dialog and takes over the screen while fitting font, columns, and rows to a phone, tablet, or desktop.',
+      },
+      {
         id: 'work-remotely',
         title: 'Use or install Remote',
         body: 'After the guest requests access, the host opens Share workspace → Access, compares the fingerprint, and approves the device. In the browser or installable PWA, the guest follows the sanitized overview and can use only the granted commands. Files, notes, portals, mobile devices, credentials, local paths, and Canvas editing remain unavailable; raw terminal output appears only while its separate permission is enabled.',

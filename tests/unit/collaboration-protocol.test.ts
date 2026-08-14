@@ -104,6 +104,22 @@ describe('collaboration protocol', () => {
     expect(guest.decrypt(output)).toMatchObject({ type: 'terminal.output', data: '\u001b[32mready\u001b[0m' });
   });
 
+  it('encrypts bounded remote voice transcription frames', () => {
+    const { host, guest } = channelPair();
+    const requestId = 'voice_request_01';
+    const audioBytes = Buffer.alloc(48, 1);
+    const audio = audioBytes.toString('base64url');
+    expect(host.decrypt(guest.encrypt({
+      type: 'voice.transcription.start', requestId, language: 'pt', byteLength: audioBytes.byteLength, chunks: 1,
+    }, 'host_device_01'))).toMatchObject({ type: 'voice.transcription.start', requestId, language: 'pt' });
+    expect(host.decrypt(guest.encrypt({
+      type: 'voice.transcription.chunk', requestId, index: 0, data: audio,
+    }, 'host_device_01'))).toMatchObject({ type: 'voice.transcription.chunk', requestId, data: audio });
+    expect(guest.decrypt(host.encrypt({
+      type: 'voice.transcription.result', requestId, text: 'Mensagem ditada.',
+    }, 'guest_device_01'))).toMatchObject({ type: 'voice.transcription.result', text: 'Mensagem ditada.' });
+  });
+
   it('rejects replayed and out-of-order envelopes', () => {
     const { host, guest } = channelPair();
     const first = host.encrypt({ type: 'ping', sentAt: 1 }, 'guest_device_01');

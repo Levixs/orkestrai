@@ -24,6 +24,8 @@ pt-BR, English, and Spanish translations.
   Administrator permission that is disabled by default, rate-limited, audited,
   and limited to one terminal at a time. Files, notes, portals, credentials,
   tokens, private URLs, and local paths remain on the host.
+  Operator and Administrator devices can also dictate leader messages through
+  the host's local STT model without sending plaintext audio to the relay.
 - Evolved legacy Routines into traceable Automations with manual, schedule,
   task, message, Git commit, GitHub pull request, webhook, file-change, and
   provider-usage triggers; agent prompt, task creation, and desktop notification
@@ -154,6 +156,13 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Bound remote chat replies to the exact injected prompt and repaired stale
+  provider conversation IDs before publishing a reply, preventing output from
+  another Codex session from appearing in the browser. Structured transcript
+  completion now also returns without waiting for the terminal redraw timeout.
+- Made the encrypted remote terminal fit phone, tablet, and desktop viewports,
+  recalculate PTY columns on visual viewport changes, and close the agent chat
+  dialog before opening the full-screen terminal.
 - Let Workbench agent names and roles wrap onto dedicated lines in the explorer,
   and let vertical open-item labels grow to their full name instead of hiding
   distinguishing text behind ellipses.

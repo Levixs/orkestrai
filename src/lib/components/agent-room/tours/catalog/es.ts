@@ -1099,6 +1099,11 @@ export const TOURS_ES: Tour[] = [
         body: 'Los Operadores pueden usar la conversación segura con el agente. Los Administradores también pueden iniciar o restaurar un agente. Habilita el terminal sin filtrar por separado para un dispositivo Administrador confiable solo cuando sea necesario; viene desactivado, se limita a un terminal, controla el tráfico, usa cifrado y genera auditoría.',
       },
       {
+        id: 'use-remote-voice-terminal',
+        title: 'Dicta o abre el terminal correcto',
+        body: 'En Remote, usa el micrófono del mensaje al líder para transcribir mediante el STT local del host; el audio permanece cifrado y el relay nunca lo procesa. En una conversación con un agente, Abrir terminal cierra el modal y ocupa la pantalla mientras ajusta fuente, columnas y filas al móvil, tablet o escritorio.',
+      },
+      {
         id: 'work-remotely',
         title: 'Usa o instala Remote',
         body: 'Después de que el invitado solicite acceso, el host abre Compartir workspace → Accesos, compara la huella y aprueba el dispositivo. En el navegador o PWA instalable, sigue el resumen sanitizado y usa solo los comandos concedidos. Archivos, notas, Portales, dispositivos móviles, credenciales, rutas locales y edición del Canvas siguen sin estar disponibles; la salida sin filtrar solo aparece mientras su permiso separado está habilitado.',

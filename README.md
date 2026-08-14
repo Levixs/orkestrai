@@ -53,10 +53,13 @@ Download the latest installers from
   non-extractable in the browser and the invitation secret is removed from the
   URL before connecting. Installed-app invites open Orkestrai automatically;
   guests can also paste one through **Workspace → Join remote workspace**.
-  Operators can hold a traceable structured conversation with an agent;
-  Administrators can start or restore it. Raw terminal control is a separate
-  Administrator-only switch for each approved device, disabled by default,
-  rate-limited, limited to one terminal, and audited. Files, notes, portals,
+  Operators can hold a traceable structured conversation whose reply is bound
+  to the exact provider turn, and can dictate leader messages through the
+  host's local STT without exposing plaintext audio to the relay.
+  Administrators can start or restore an agent. Raw terminal control is a
+  separate Administrator-only switch for each approved device, disabled by
+  default, responsive to its viewport, rate-limited, limited to one terminal,
+  and audited. Files, notes, portals,
   credentials, private URLs, and local paths stay on the host. Access is
   revocable and every command is audited.
 - **Traceable automations:** trigger work manually, on a schedule, from task or

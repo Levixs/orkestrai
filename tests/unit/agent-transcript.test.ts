@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseClaudeTranscriptReply,
   parseCodexTranscriptReply,
+  parseCodexTranscriptReplyForPrompt,
   parseDevinTranscriptReply,
   parseGenericTranscriptReply,
   parseKimiTranscriptReply,
@@ -64,6 +65,15 @@ describe('parseCodexTranscriptReply', () => {
 
   it('sem resposta retorna null', () => {
     expect(parseCodexTranscriptReply('{"type":"session_meta","payload":{}}')).toBeNull();
+  });
+
+  it('nunca associa a resposta de outra pergunta ao chat remoto', () => {
+    const jsonl = [
+      JSON.stringify({ type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'corrija o lockfile' }] } }),
+      JSON.stringify({ type: 'response_item', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Vou restaurar o lock validado.' }] } }),
+    ].join('\n');
+    expect(parseCodexTranscriptReplyForPrompt(jsonl, 'Oi tudo bem?')).toBeNull();
+    expect(parseCodexTranscriptReplyForPrompt(jsonl, '  corrija   o lockfile ')).toBe('Vou restaurar o lock validado.');
   });
 });
 

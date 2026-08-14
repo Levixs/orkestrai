@@ -5,11 +5,11 @@ const ROLE_SCOPES: Record<CollaborationRole, readonly CollaborationScope[]> = {
   collaborator: ['workspace.view', 'activity.view', 'tasks.view', 'tasks.write', 'approvals.view'],
   operator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
-    'approvals.view', 'approvals.decide', 'leader.message', 'agents.message',
+    'approvals.view', 'approvals.decide', 'leader.message', 'voice.transcribe', 'agents.message',
   ],
   administrator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
-    'approvals.view', 'approvals.decide', 'leader.message', 'agents.message',
+    'approvals.view', 'approvals.decide', 'leader.message', 'voice.transcribe', 'agents.message',
     'agents.invoke', 'peers.manage',
   ],
 };

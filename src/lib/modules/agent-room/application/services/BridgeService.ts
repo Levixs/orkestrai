@@ -8,7 +8,7 @@ import type { AgentActivityState, CanvasNode, Workspace } from '../../domain/typ
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pty/PtySessionManager.ts';
-import { lastReplyText } from '../../infrastructure/transcript/AgentTranscript.js';
+import { findReplyToPrompt, type MatchedTranscriptReply } from '../../infrastructure/transcript/AgentTranscript.js';
 import { floorService } from './FloorService.js';
 import { getAgentAdapter, hasAgentAdapter, listAgentAdapters } from '../adapters/registry.js';
 import { nativeNotificationService, type NativeNotificationKind } from './NativeNotificationService.js';
@@ -225,6 +225,7 @@ export class BridgeService {
     const origin = input.from ? this.findAgent(agents, input.from) : null;
     if (origin) await this.ensureEdge(workspaceId, origin.nodeId, target.nodeId);
     const messageId = input.messageId ?? uuidv7();
+    const requestStartedAt = Date.now();
     const metadata = input.metadata ?? {};
     await controlCenterService.recordDelivery({
       messageId,
@@ -245,19 +246,23 @@ export class BridgeService {
       metadata,
     });
 
-    // Baseline ANTES de mandar: a resposta só vale quando o transcrito muda
-    // (assistente novo depois da nossa mensagem) — nunca o boot do TUI.
-    const baseline = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
-
     this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, true);
     let reply: { text: string; timedOut: boolean };
+    let transcriptMatch: MatchedTranscriptReply | null = null;
     let terminalDelivered = false;
+    const transcriptAbort = new AbortController();
+    const abortFromCaller = () => transcriptAbort.abort();
+    input.signal?.addEventListener('abort', abortFromCaller, { once: true });
+    let markSubmitted: (() => void) | null = null;
+    const submitted = new Promise<void>((resolve) => {
+      markSubmitted = resolve;
+    });
     try {
-      reply = await this.askAndWait(
+      const terminalReply = this.askAndWait(
         target.sessionId,
         input.message,
         input.timeoutMs ?? 180_000,
-        input.signal,
+        transcriptAbort.signal,
         target.provider,
         async () => {
           terminalDelivered = true;
@@ -277,8 +282,29 @@ export class BridgeService {
             action: 'system:message_received',
             metadata: { ...metadata, fromTitle: origin?.title ?? null },
           });
+          markSubmitted?.();
         },
       );
+      const structuredReply = submitted.then(() => this.waitForTranscriptReply(
+        workspaceId,
+        target.nodeId,
+        input.message,
+        requestStartedAt,
+        input.timeoutMs ?? 180_000,
+        transcriptAbort.signal,
+      ));
+      const winner = await Promise.race([
+        terminalReply.then((value) => ({ kind: 'terminal' as const, value })),
+        structuredReply.then((value) => ({ kind: 'transcript' as const, value })),
+      ]);
+      if (winner.kind === 'transcript' && winner.value) {
+        transcriptMatch = winner.value;
+        reply = { text: '', timedOut: false };
+        transcriptAbort.abort();
+        await terminalReply.catch(() => undefined);
+      } else {
+        reply = winner.kind === 'terminal' ? winner.value : await terminalReply;
+      }
     } catch (error) {
       await controlCenterService.recordDelivery({
         messageId,
@@ -292,31 +318,38 @@ export class BridgeService {
       });
       throw error;
     } finally {
+      transcriptAbort.abort();
+      input.signal?.removeEventListener('abort', abortFromCaller);
       this.broadcastTalking(workspaceId, origin?.nodeId ?? null, target.nodeId, false);
     }
 
-    // Resposta LIMPA pelo transcrito da CLI (JSONL em disco — sem lixo de
-    // TUI/ANSI, sem status bar, sem caracteres duplicados de redraw). A
-    // raspagem de tela crua vazava tudo isso para o composer do outro agente
-    // (quebras de linha soltas disparavam submits parciais e até o editor
-    // externo do Claude Code). Se o transcrito ainda não mudou (silencio cedo
-    // demais: boot, trust screen, composer ecoando), espera ele encher.
-    let transcriptText = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
-    if (transcriptText && transcriptText === baseline) transcriptText = null;
-    if (!transcriptText) {
+    // O transcrito estruturado evita ANSI/redraw e só é aceito quando a última
+    // pergunta coincide exatamente com a mensagem injetada nesta chamada.
+    transcriptMatch ??= await this.transcriptReply(
+      workspaceId,
+      target.nodeId,
+      input.message,
+      requestStartedAt,
+    ).catch(() => null);
+    if (!transcriptMatch) {
       const node = await workspaceRepository.getNode(target.nodeId);
       const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
-      // Só espera quando a sessão da CLI já foi identificada (transcrito
-      // localizavel) — sem isso não há o que pollar e o fallback e imediato.
+      // Só espera quando a sessão da CLI já foi identificada; sem isso não há
+      // um transcrito estruturado que possa confirmar a resposta com segurança.
       if (payload.provider && payload.agentSessionId) {
         const deadline = Date.now() + 90_000;
-        while (!transcriptText && Date.now() < deadline) {
+        while (!transcriptMatch && Date.now() < deadline) {
           await new Promise((resolve) => setTimeout(resolve, 2_000));
-          const attempt = await this.transcriptReply(workspaceId, target.nodeId).catch(() => null);
-          if (attempt && attempt !== baseline) transcriptText = attempt;
+          transcriptMatch = await this.transcriptReply(
+            workspaceId,
+            target.nodeId,
+            input.message,
+            requestStartedAt,
+          ).catch(() => null);
         }
       }
     }
+    const transcriptText = transcriptMatch?.text ?? null;
     // Usa o provider da sessao PTY real, não apenas o metadata do nó. Isso
     // mantém shells explícitos utilizáveis e protege somente TUIs de agentes.
     const activeProvider = target.sessionId ? ptySessionManager.get(target.sessionId)?.provider : null;
@@ -414,8 +447,30 @@ export class BridgeService {
     };
   }
 
-  /** Ultima resposta do agente pelo transcrito da CLI (null = indisponivel). */
-  private async transcriptReply(workspaceId: string, nodeId: string): Promise<string | null> {
+  private async waitForTranscriptReply(
+    workspaceId: string,
+    nodeId: string,
+    prompt: string,
+    since: number,
+    timeoutMs: number,
+    signal: AbortSignal,
+  ): Promise<MatchedTranscriptReply | null> {
+    const deadline = Date.now() + timeoutMs;
+    while (!signal.aborted && Date.now() < deadline) {
+      const match = await this.transcriptReply(workspaceId, nodeId, prompt, since).catch(() => null);
+      if (match) return match;
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    }
+    return null;
+  }
+
+  /** Resposta vinculada à pergunta exata e à sessão real do terminal alvo. */
+  private async transcriptReply(
+    workspaceId: string,
+    nodeId: string,
+    prompt: string,
+    since: number,
+  ): Promise<MatchedTranscriptReply | null> {
     const node = await workspaceRepository.getNode(nodeId);
     const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
     if (!node || !payload.provider || !payload.agentSessionId) return null;
@@ -425,7 +480,14 @@ export class BridgeService {
       const floor = await floorService.get(node.floorId).catch(() => null);
       if (floor?.path) cwd = floor.path;
     }
-    return lastReplyText(payload.provider, cwd, payload.agentSessionId);
+    const match = await findReplyToPrompt(payload.provider, cwd, payload.agentSessionId, prompt, since);
+    if (!match || match.sessionId === payload.agentSessionId) return match;
+    await workspaceRepository.updateNode(node.id, {
+      payload: { ...payload, agentSessionId: match.sessionId } as never,
+    });
+    const broadcast = (globalThis as { __orkestraiBroadcast?: (frame: Record<string, unknown>) => void }).__orkestraiBroadcast;
+    broadcast?.({ type: 'workspaceChanged', workspaceId, nodeId: node.id });
+    return match;
   }
 
   /** Avisa o canvas (via broadcast WS) que uma edge esta conversando. */
