@@ -356,8 +356,8 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'remote-collaboration',
       title: 'Compartir un workspace sin compartir tu equipo',
-      body: 'Habilita el uso compartido experimental, inicia una sesión cifrada de extremo a extremo y envía el enlace único o código QR a una persona de confianza. Comprueba la huella digital del dispositivo y elige Lector, Colaborador, Operador o Administrador. El companion remoto recibe solo una proyección sanitizada del estado del equipo, tareas y revisiones; según su rol, puede actualizar tareas, decidir revisiones o enviar mensajes al líder. La salida de terminal, archivos, notas, portales, credenciales, tokens, URLs privadas y rutas locales permanecen en el host. Revoca un dispositivo o detén la sesión en cualquier momento y consulta los comandos aceptados y rechazados en la auditoría.',
-      tags: ['Uso compartido cifrado', 'aprobación de dispositivo', 'acceso por rol'],
+      body: 'Habilita el uso compartido experimental, inicia una sesión cifrada de extremo a extremo y elige una invitación para Navegador/móvil o App Orkestrai. El enlace web abre la PWA Remote instalable, elimina el secreto de la URL antes de conectar y guarda una clave de emparejamiento no extraíble solo en ese navegador. Comprueba la huella del dispositivo y elige Lector, Colaborador, Operador o Administrador. El companion sigue el estado del equipo, tareas, revisiones, actividad y uso de proveedores; según su rol, puede actualizar tareas, decidir revisiones o enviar mensajes al líder. La salida de terminal, archivos, notas, portales, credenciales, tokens, URLs privadas y rutas locales permanecen en el host. Revoca un dispositivo o detén la sesión en cualquier momento y consulta los comandos aceptados y rechazados en la auditoría.',
+      tags: ['PWA Remote cifrada', 'aprobación de dispositivo', 'acceso por rol'],
     },
     {
       id: 'custom-app-theme',
@@ -370,6 +370,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: '14 ago 2026 · En desarrollo',
       items: [
+        'El uso compartido ahora ofrece invitaciones separadas para Navegador/móvil y App Orkestrai. La PWA Remote instalable sigue agentes, tareas, revisiones, actividad y uso de proveedores, conserva una clave WebCrypto no extraíble y elimina el secreto de la invitación de la URL antes de conectar.',
         'El uso compartido del workspace ahora utiliza de forma predeterminada el endpoint de producción relay.orkestrai.app. El relay acepta el origen local dinámico de la aplicación instalada y los orígenes web oficiales configurados, mientras rechaza sitios no relacionados.',
         'El uso compartido experimental de workspace ahora crea una sesión host cifrada de extremo a extremo con invitaciones únicas por enlace y código QR, aprobación explícita mediante la huella digital del dispositivo, roles Lector/Colaborador/Operador/Administrador, revocación inmediata, auditoría de comandos y un companion remoto limitado para estado del equipo, tareas, revisiones y mensajes al líder. El relay opaco nunca recibe contenido en texto abierto, mientras que la salida PTY, archivos, notas, portales, credenciales, URLs privadas y rutas locales quedan excluidos.',
         'Las Rutinas evolucionaron a Automatizaciones con disparadores manual, agenda, tarea, mensaje, commit Git, pull request de GitHub, webhook, cambio de archivo y límite de uso; acciones de prompt, tarea y notificación; recetas; jobs idempotentes en cola; historial recuperable; y credenciales de GitHub cifradas por la app instalada.',

@@ -35,6 +35,7 @@
   let trigger = $state<HTMLButtonElement | null>(null);
   let placement = $state({ x: 0, y: 56, pinned: true });
   let dockPosition = $state<{ x: number; y: number } | null>(null);
+  let hiddenBySurface = $state(false);
   let placementReady = $state(false);
   let placementMenuOpen = $state(false);
   let placementModifier = $state('Ctrl');
@@ -314,6 +315,7 @@
     placementReady = true;
     let observedSurface: HTMLElement | null = null;
     const syncPlacementSurface = () => {
+      hiddenBySurface = Boolean(document.querySelector('[data-dictation-hidden]'));
       const dock = document.querySelector<HTMLElement>('[data-dictation-dock]');
       if (dock) {
         const rect = dock.getBoundingClientRect();
@@ -386,7 +388,7 @@
   });
 </script>
 
-{#if supported && placementReady}
+{#if supported && placementReady && !hiddenBySurface}
   <div
     class="fixed z-30 size-12"
     data-dictation-trigger

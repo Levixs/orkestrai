@@ -10,9 +10,13 @@ pt-BR, English, and Spanish translations.
 ### Added
 
 - Added experimental end-to-end encrypted workspace sharing with one-time link
-  and QR invites, explicit device fingerprint approval, Viewer, Collaborator,
+  and QR invites for either a browser/mobile companion or another installed
+  Orkestrai app, explicit device fingerprint approval, Viewer, Collaborator,
   Operator, and Administrator roles, immediate revocation, command audit, and a
-  bounded remote companion for team state, tasks, reviews, and leader messages.
+  bounded remote PWA for live team state, tasks, reviews, activity, provider
+  usage, and leader messages. The browser stores its pairing key as a
+  non-extractable WebCrypto key and removes the invitation secret from the URL
+  before connecting.
   A versioned HKDF/AES-GCM protocol protects against replay and tampering; the
   opaque rate-limited WebSocket relay cannot decrypt content. PTY output, files,
   notes, portals, credentials, tokens, private URLs, and local paths remain on
@@ -94,8 +98,9 @@ pt-BR, English, and Spanish translations.
 
 - Workspace sharing now defaults to the production
   `wss://relay.orkestrai.app/v1/connect` endpoint. The containerized relay
-  accepts the installed app's dynamic loopback origins and configured official
-  web origins, while rejecting unrelated browser origins.
+  accepts the installed app's dynamic loopback origins and the official website
+  and Remote PWA origins, while rejecting unrelated browser origins. The web
+  companion reconnects with bounded exponential backoff when its host is away.
 - Restarting an Android stream now reopens its stable AVD definition instead
   of trying to boot the expired temporary `emulator-*` serial.
 - Mobile Device streams now fit the complete device screen inside both the

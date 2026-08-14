@@ -1089,8 +1089,8 @@ export const TOURS_PT: Tour[] = [
       },
       {
         id: 'create-invite',
-        title: 'Escolha o nível de acesso',
-        body: 'Selecione Leitor, Colaborador, Operador ou Administrador, inicie a sessão criptografada e envie o link de convite único ou QR code por um canal confiável.',
+        title: 'Escolha o destino e o acesso',
+        body: 'Selecione Leitor, Colaborador, Operador ou Administrador e escolha Navegador/celular para abrir o PWA Remote ou App Orkestrai para outro desktop instalado. Envie somente o link ou QR code correspondente por um canal confiável.',
       },
       {
         id: 'approve-device',
@@ -1099,8 +1099,8 @@ export const TOURS_PT: Tour[] = [
       },
       {
         id: 'work-remotely',
-        title: 'Use o companion limitado',
-        body: 'O convidado vê uma visão sanitizada, o estado do time, tarefas e revisões. A função pode permitir mudanças em tarefas, decisões de revisão ou mensagens ao líder; saída de PTY, arquivos, notas, portais, credenciais e caminhos locais nunca entram na projeção compartilhada.',
+        title: 'Use ou instale o Remote',
+        body: 'No navegador ou PWA instalável, o convidado acompanha a visão sanitizada, estado do time, tarefas, revisões, atividade e uso dos providers. A chave de pareamento fica não extraível naquele navegador. A função pode permitir mudanças em tarefas, decisões de revisão ou mensagens ao líder; saída de PTY, arquivos, notas, portais, credenciais e caminhos locais nunca entram na projeção compartilhada.',
       },
       {
         id: 'stop-sharing',

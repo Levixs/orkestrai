@@ -3,30 +3,20 @@
   import { getCsrfToken } from "@beeblock/svelar/http";
   import { toast } from "@beeblock/svelar/ui";
   import {
-    Activity,
     ArrowRight,
-    CheckCircle2,
-    CircleDot,
-    Clock3,
-    KanbanSquare,
     LoaderCircle,
     LogOut,
-    MessageSquareText,
     MonitorUp,
-    Plus,
     RadioTower,
-    RefreshCw,
     ShieldCheck,
-    UsersRound,
     XCircle,
   } from "@lucide/svelte";
   import * as Dialog from "$lib/components/ui/dialog";
   import * as Select from "$lib/components/ui/select";
-  import * as Tabs from "$lib/components/ui/tabs";
-  import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Textarea } from "$lib/components/ui/textarea";
+  import RemoteWorkspaceShell from "$lib/components/collaboration/RemoteWorkspaceShell.svelte";
   import type {
     CollaborationCommand,
     CollaborationCommandResult,
@@ -62,6 +52,7 @@
     consumeCollaborationInvite?: () => Promise<string | null>;
     onCollaborationInvite?: (callback: () => void) => () => void;
   };
+  type RemoteTab = "overview" | "team" | "tasks" | "reviews" | "activity";
 
   let remoteState = $state<RemoteState>({
     status: "idle",
@@ -80,7 +71,7 @@
   let inviteUri = $state("");
   let relayUrl = $state("wss://relay.orkestrai.app/v1/connect");
   let displayName = $state("");
-  let activeTab = $state("overview");
+  let activeTab = $state<RemoteTab>("overview");
   let taskDialogOpen = $state(false);
   let taskTitle = $state("");
   let taskDescription = $state("");
@@ -92,13 +83,6 @@
   );
   const desktopAvailable = $derived(Boolean(desktop) || import.meta.env.DEV);
   const snapshot = $derived(remoteState.snapshot);
-  const canWriteTasks = $derived(remoteState.scopes.includes("tasks.write"));
-  const canDecideReviews = $derived(
-    remoteState.scopes.includes("approvals.decide"),
-  );
-  const canMessageLeader = $derived(
-    remoteState.scopes.includes("leader.message"),
-  );
 
   function headers(): Record<string, string> {
     const csrf = getCsrfToken();
@@ -258,29 +242,6 @@
     return labels[status]();
   }
 
-  function roleLabel(role: string | null): string {
-    const labels: Record<string, () => string> = {
-      viewer: m["collaboration.role_viewer"],
-      collaborator: m["collaboration.role_collaborator"],
-      operator: m["collaboration.role_operator"],
-      administrator: m["collaboration.role_administrator"],
-    };
-    return role ? (labels[role]?.() ?? role) : "";
-  }
-
-  function nodeStyle(node: SharedWorkspaceDto["nodes"][number]): string {
-    if (!snapshot?.nodes.length) return "";
-    const minX = Math.min(...snapshot.nodes.map((item) => item.x));
-    const minY = Math.min(...snapshot.nodes.map((item) => item.y));
-    const maxX = Math.max(...snapshot.nodes.map((item) => item.x + item.width));
-    const maxY = Math.max(
-      ...snapshot.nodes.map((item) => item.y + item.height),
-    );
-    const width = Math.max(1, maxX - minX);
-    const height = Math.max(1, maxY - minY);
-    return `left:${((node.x - minX) / width) * 100}%;top:${((node.y - minY) / height) * 100}%;width:${Math.max(5, (node.width / width) * 100)}%;height:${Math.max(7, (node.height / height) * 100)}%`;
-  }
-
   onMount(() => {
     displayName = `${m["remote.device_default"]()} (${desktop?.platform ?? platformFromNavigator()})`;
     void refresh().then(consumeInvite);
@@ -300,6 +261,7 @@
 
 {#if !desktopAvailable}
   <main
+    data-dictation-hidden
     class="grid h-full place-items-center bg-[var(--app-canvas)] p-6 text-[var(--app-text)]"
   >
     <div class="max-w-md text-center">
@@ -315,11 +277,12 @@
     </div>
   </main>
 {:else if loading}
-  <main class="grid h-full place-items-center bg-[var(--app-canvas)]">
+  <main data-dictation-hidden class="grid h-full place-items-center bg-[var(--app-canvas)]">
     <LoaderCircle size={24} class="animate-spin text-[var(--app-accent)]" />
   </main>
 {:else if remoteState.status === "idle" || ["rejected", "expired", "incompatible", "revoked", "error"].includes(remoteState.status)}
   <main
+    data-dictation-hidden
     class="grid h-full overflow-y-auto bg-[var(--app-canvas)] p-5 text-[var(--app-text)] lg:grid-cols-[minmax(320px,560px)_minmax(280px,1fr)] lg:items-center lg:gap-12 lg:p-12"
   >
     <section class="mx-auto w-full max-w-xl">
@@ -420,6 +383,7 @@
   </main>
 {:else if remoteState.status !== "connected" || !snapshot}
   <main
+    data-dictation-hidden
     class="grid h-full place-items-center bg-[var(--app-canvas)] p-6 text-[var(--app-text)]"
   >
     <div class="max-w-md text-center">
@@ -446,339 +410,21 @@
     </div>
   </main>
 {:else}
-  <main
-    class="grid h-full min-h-0 grid-rows-[56px_minmax(0,1fr)] bg-[var(--app-canvas)] text-[var(--app-text)]"
-  >
-    <header
-      class="flex items-center gap-3 border-b border-[var(--app-border)] bg-[var(--app-sidebar)] px-4"
-    >
-      <span
-        class="grid size-8 place-items-center rounded-lg bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
-        ><RadioTower size={16} /></span
-      >
-      <div class="min-w-0">
-        <h1 class="truncate text-sm font-semibold">
-          {snapshot.workspace.name}
-        </h1>
-        <p class="text-[10px] text-[var(--app-text-muted)]">
-          {roleLabel(remoteState.role)} · {m["remote.revision"]({
-            revision: remoteState.revision,
-          })}
-        </p>
-      </div>
-      <div
-        class="ml-auto size-14 shrink-0"
-        data-dictation-dock
-        aria-hidden="true"
-      ></div>
-      <Badge variant="outline" class="gap-1 border-[var(--app-border)]"
-        ><span class="size-1.5 rounded-full bg-[var(--app-success)]"></span>{m[
-          "remote.live"
-        ]()}</Badge
-      >
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={m["remote.refresh"]()}
-        onclick={refresh}><RefreshCw /></Button
-      >
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={m["remote.leave"]()}
-        onclick={leave}><LogOut /></Button
-      >
-    </header>
-    <Tabs.Root
-      bind:value={activeTab}
-      orientation="vertical"
-      class="grid min-h-0 grid-cols-[180px_minmax(0,1fr)] gap-0 max-[720px]:grid-cols-[64px_minmax(0,1fr)]"
-    >
-      <Tabs.List
-        class="h-full min-h-0 flex-col items-stretch justify-start rounded-none border-r border-[var(--app-border)] bg-[var(--app-sidebar)] p-2"
-      >
-        <Tabs.Trigger
-          value="overview"
-          class="justify-start gap-2 max-[720px]:justify-center"
-          ><Activity /><span class="max-[720px]:hidden"
-            >{m["remote.overview"]()}</span
-          ></Tabs.Trigger
-        >
-        <Tabs.Trigger
-          value="tasks"
-          class="justify-start gap-2 max-[720px]:justify-center"
-          ><KanbanSquare /><span class="max-[720px]:hidden"
-            >{m["remote.tasks"]()}</span
-          ></Tabs.Trigger
-        >
-        <Tabs.Trigger
-          value="reviews"
-          class="justify-start gap-2 max-[720px]:justify-center"
-          ><CheckCircle2 /><span class="max-[720px]:hidden"
-            >{m["remote.approvals"]()}</span
-          ></Tabs.Trigger
-        >
-        <Tabs.Trigger
-          value="team"
-          class="justify-start gap-2 max-[720px]:justify-center"
-          ><UsersRound /><span class="max-[720px]:hidden"
-            >{m["remote.team"]()}</span
-          ></Tabs.Trigger
-        >
-      </Tabs.List>
-
-      <Tabs.Content value="overview" class="m-0 min-h-0 overflow-y-auto p-5">
-        <div class="mx-auto max-w-6xl">
-          <div class="grid gap-4 sm:grid-cols-3">
-            <div class="rounded-lg border border-[var(--app-border)] p-4">
-              <p class="text-[10px] uppercase text-[var(--app-text-muted)]">
-                {m["remote.agents_working"]()}
-              </p>
-              <strong class="mt-2 block text-2xl tabular-nums"
-                >{snapshot.agents.filter((agent) => agent.state === "working")
-                  .length}</strong
-              >
-            </div>
-            <div class="rounded-lg border border-[var(--app-border)] p-4">
-              <p class="text-[10px] uppercase text-[var(--app-text-muted)]">
-                {m["remote.open_tasks"]()}
-              </p>
-              <strong class="mt-2 block text-2xl tabular-nums"
-                >{snapshot.tasks.filter((task) => task.status !== "done")
-                  .length}</strong
-              >
-            </div>
-            <div class="rounded-lg border border-[var(--app-border)] p-4">
-              <p class="text-[10px] uppercase text-[var(--app-text-muted)]">
-                {m["remote.pending_reviews"]()}
-              </p>
-              <strong class="mt-2 block text-2xl tabular-nums"
-                >{snapshot.reviews.filter(
-                  (review) => review.status === "pending",
-                ).length}</strong
-              >
-            </div>
-          </div>
-          <section class="mt-5">
-            <h2
-              class="mb-2 text-xs font-semibold uppercase text-[var(--app-text-muted)]"
-            >
-              {m["remote.canvas_map"]()}
-            </h2>
-            <div
-              class="relative aspect-[16/7] min-h-64 overflow-hidden rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] [background-image:radial-gradient(var(--app-border)_1px,transparent_1px)] [background-size:18px_18px]"
-            >
-              {#each snapshot.nodes as node (node.id)}<div
-                  class={`absolute flex min-h-8 items-center overflow-hidden rounded-md border px-2 text-[9px] shadow-sm ${node.type === "agent" ? "border-[var(--app-accent)]/50 bg-[var(--app-accent-soft)] text-[var(--app-text)]" : "border-[var(--app-border)] bg-[var(--app-surface-raised)] text-[var(--app-text-soft)]"}`}
-                  style={nodeStyle(node)}
-                  title={node.title ?? node.type}
-                >
-                  <span class="truncate">{node.title ?? node.type}</span>
-                </div>{/each}
-            </div>
-          </section>
-          {#if canMessageLeader}<section class="mt-5">
-              <h2
-                class="mb-2 text-xs font-semibold uppercase text-[var(--app-text-muted)]"
-              >
-                {m["remote.message_leader"]()}
-              </h2>
-              <div class="flex gap-2">
-                <Textarea
-                  bind:value={leaderMessage}
-                  class="min-h-20 resize-y"
-                  placeholder={m["remote.message_placeholder"]()}
-                /><Button
-                  class="self-end"
-                  disabled={busy || !leaderMessage.trim()}
-                  onclick={sendLeaderMessage}
-                  ><MessageSquareText />{m["remote.send"]()}</Button
-                >
-              </div>
-            </section>{/if}
-        </div>
-      </Tabs.Content>
-
-      <Tabs.Content value="tasks" class="m-0 min-h-0 overflow-y-auto p-5">
-        <div class="mx-auto max-w-6xl">
-          <div class="mb-4 flex items-center">
-            <div>
-              <h2 class="text-base font-semibold">{m["remote.tasks"]()}</h2>
-              <p class="text-xs text-[var(--app-text-muted)]">
-                {m["remote.tasks_body"]()}
-              </p>
-            </div>
-            {#if canWriteTasks}<Button
-                class="ml-auto"
-                size="sm"
-                onclick={() => (taskDialogOpen = true)}
-                ><Plus />{m["remote.create_task"]()}</Button
-              >{/if}
-          </div>
-          <div class="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {#each snapshot.columns as column (column.id)}<section
-                class="min-w-0 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)]"
-              >
-                <header
-                  class="flex h-10 items-center gap-2 border-b border-[var(--app-border)] px-3"
-                >
-                  <span
-                    class="size-2 rounded-full"
-                    style:background={column.color}
-                  ></span>
-                  <h3 class="truncate text-xs font-semibold">
-                    {column.name ?? column.key}
-                  </h3>
-                  <span
-                    class="ml-auto text-[10px] tabular-nums text-[var(--app-text-muted)]"
-                    >{snapshot.tasks.filter(
-                      (task) =>
-                        task.status === column.key ||
-                        task.status === column.name,
-                    ).length}</span
-                  >
-                </header>
-                <div class="space-y-2 p-2">
-                  {#each snapshot.tasks.filter((task) => task.status === column.key || task.status === column.name) as task (task.id)}<article
-                      class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-raised)] p-3"
-                    >
-                      <h4 class="text-xs font-medium leading-5">
-                        {task.title}
-                      </h4>
-                      {#if task.description}<p
-                          class="mt-1 line-clamp-3 text-[10px] leading-4 text-[var(--app-text-muted)]"
-                        >
-                          {task.description}
-                        </p>{/if}
-                      <div class="mt-2 flex items-center gap-2">
-                        <span
-                          class="min-w-0 flex-1 truncate text-[9px] text-[var(--app-text-soft)]"
-                          >{task.assigneeTitle ??
-                            m["remote.unassigned"]()}</span
-                        >{#if canWriteTasks}<Select.Root
-                            type="single"
-                            value={task.status}
-                            onValueChange={(value: string) =>
-                              void updateTask(task.id, value)}
-                            disabled={busy}
-                            ><Select.Trigger
-                              size="sm"
-                              class="h-6 max-w-28 text-[9px]"
-                              ><span class="truncate"
-                                >{column.name ?? column.key}</span
-                              ></Select.Trigger
-                            ><Select.Content
-                              >{#each snapshot.columns as target}<Select.Item
-                                  value={target.key}
-                                  >{target.name ?? target.key}</Select.Item
-                                >{/each}</Select.Content
-                            ></Select.Root
-                          >{/if}
-                      </div>
-                    </article>{:else}<p
-                      class="py-5 text-center text-[10px] text-[var(--app-text-muted)]"
-                    >
-                      {m["remote.column_empty"]()}
-                    </p>{/each}
-                </div>
-              </section>{/each}
-          </div>
-        </div>
-      </Tabs.Content>
-
-      <Tabs.Content value="reviews" class="m-0 min-h-0 overflow-y-auto p-5"
-        ><div class="mx-auto max-w-4xl">
-          <h2 class="text-base font-semibold">{m["remote.approvals"]()}</h2>
-          <div class="mt-4 space-y-3">
-            {#each snapshot.reviews as review (review.id)}<article
-                class="rounded-lg border border-[var(--app-border)] p-4"
-              >
-                <div class="flex items-start gap-3">
-                  <div class="min-w-0 flex-1">
-                    <h3 class="text-sm font-semibold">{review.title}</h3>
-                    {#if review.summary}<p
-                        class="mt-1 text-xs leading-5 text-[var(--app-text-muted)]"
-                      >
-                        {review.summary}
-                      </p>{/if}
-                    <p class="mt-2 text-[10px] text-[var(--app-text-soft)]">
-                      {review.evidenceCount}
-                      {m["remote.evidence"]()} · {review.testCount}
-                      {m["remote.tests"]()} · {review.riskCount}
-                      {m["remote.risks"]()}
-                    </p>
-                  </div>
-                  <Badge variant="outline">{review.status}</Badge>
-                </div>
-                {#if canDecideReviews && review.status === "pending"}<div
-                    class="mt-3 flex flex-wrap gap-2"
-                  >
-                    <Button
-                      size="sm"
-                      onclick={() => decideReview(review.id, "approved")}
-                      ><CheckCircle2 />{m["remote.approve"]()}</Button
-                    ><Button
-                      size="sm"
-                      variant="outline"
-                      onclick={() =>
-                        decideReview(review.id, "changes_requested")}
-                      ><RefreshCw />{m["remote.request_changes"]()}</Button
-                    ><Button
-                      size="sm"
-                      variant="destructive"
-                      onclick={() => decideReview(review.id, "rejected")}
-                      ><XCircle />{m["remote.reject"]()}</Button
-                    >
-                  </div>{/if}
-              </article>{:else}<p
-                class="rounded-lg border border-dashed border-[var(--app-border)] p-8 text-center text-xs text-[var(--app-text-muted)]"
-              >
-                {m["remote.no_reviews"]()}
-              </p>{/each}
-          </div>
-        </div></Tabs.Content
-      >
-
-      <Tabs.Content value="team" class="m-0 min-h-0 overflow-y-auto p-5"
-        ><div class="mx-auto max-w-4xl">
-          <h2 class="text-base font-semibold">{m["remote.team"]()}</h2>
-          <div
-            class="mt-4 divide-y divide-[var(--app-border)] rounded-lg border border-[var(--app-border)]"
-          >
-            {#each snapshot.agents as agent (agent.id)}<div
-                class="flex items-center gap-3 p-3"
-              >
-                <span
-                  class={`size-2 rounded-full ${agent.state === "working" ? "bg-[var(--app-success)]" : agent.state.includes("waiting") ? "bg-[var(--app-warning)]" : "bg-[var(--app-text-muted)]"}`}
-                ></span>
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium">{agent.title}</p>
-                  <p
-                    class="mt-0.5 truncate text-[10px] text-[var(--app-text-muted)]"
-                  >
-                    {agent.role ?? agent.provider ?? ""}
-                  </p>
-                </div>
-                <div class="max-w-52 text-right">
-                  <p class="text-[10px] text-[var(--app-text-soft)]">
-                    {agent.state}
-                  </p>
-                  {#if agent.currentTask}<p
-                      class="mt-0.5 truncate text-[9px] text-[var(--app-text-muted)]"
-                    >
-                      {agent.currentTask.title}
-                    </p>{/if}
-                </div>
-              </div>{:else}<p
-                class="p-8 text-center text-xs text-[var(--app-text-muted)]"
-              >
-                {m["remote.no_agents"]()}
-              </p>{/each}
-          </div>
-        </div></Tabs.Content
-      >
-    </Tabs.Root>
-  </main>
+  <RemoteWorkspaceShell
+    {snapshot}
+    role={remoteState.role}
+    scopes={remoteState.scopes}
+    revision={remoteState.revision}
+    {busy}
+    bind:activeTab
+    bind:leaderMessage
+    onRefresh={refresh}
+    onLeave={leave}
+    onCreateTask={() => (taskDialogOpen = true)}
+    onUpdateTask={updateTask}
+    onDecideReview={decideReview}
+    onSendLeaderMessage={sendLeaderMessage}
+  />
 {/if}
 
 <Dialog.Root bind:open={taskDialogOpen}>

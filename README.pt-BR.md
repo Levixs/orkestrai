@@ -47,13 +47,15 @@ Baixe os instaladores mais recentes em
   handoff entrou na fila, foi entregue, recebido, respondido ou falhou sob um
   id de mensagem, sem acordar terminais ociosos após reiniciar.
 - **Compartilhamento criptografado de workspace (experimental):** hospede uma
-  sessão criptografada de ponta a ponta, convide um dispositivo confiável por
-  link único ou QR code, confira sua impressão digital e atribua a função
-  Leitor, Colaborador, Operador ou Administrador. O companion remoto fica
-  limitado ao estado sanitizado do time, tarefas, revisões e mensagens ao
-  líder; terminais, arquivos, notas, portais, credenciais, URLs privadas e
-  caminhos locais permanecem no host. O acesso pode ser revogado e cada comando
-  fica registrado na auditoria.
+  sessão criptografada de ponta a ponta, escolha um convite para
+  navegador/celular ou outro app instalado, confira a impressão digital do
+  dispositivo e atribua a função Leitor, Colaborador, Operador ou Administrador.
+  O PWA Remote instalável acompanha estado sanitizado do time, tarefas, revisões,
+  atividade, uso dos providers e mensagens ao líder; sua chave de pareamento não
+  pode ser extraída do navegador e o segredo sai da URL antes da conexão.
+  Terminais, arquivos, notas, portais, credenciais, URLs privadas e caminhos
+  locais permanecem no host. O acesso pode ser revogado e cada comando fica
+  registrado na auditoria.
 - **Central de revisão Git:** inspecione alterações staged e unstaged, compare
   arquivos em um diff Monaco, crie revisões ligadas a tarefas e responsáveis,
   deixe comentários persistentes por arquivo e linha, e aprove, rejeite ou peça
@@ -193,7 +195,8 @@ Orkestrai utiliza Svelte 5, SvelteKit, Electron, Svelar, SQLite, `node-pty` e
   workspace desktop.
 - `packages/orkestrai-cli/` fornece a CLI e a ponte MCP usadas pelos agentes.
 - `packages/orkestrai-collaboration-protocol/` define o envelope criptografado
-  versionado; `packages/orkestrai-relay/` é um transporte
+  versionado para clientes Node e WebCrypto no navegador;
+  `packages/orkestrai-relay/` é um transporte
   WebSocket opaco que não consegue descriptografar o conteúdo do workspace. O
   serviço de produção está em `wss://relay.orkestrai.app/v1/connect`.
 - `electron/` controla o ciclo de vida desktop, notificações nativas e updates.

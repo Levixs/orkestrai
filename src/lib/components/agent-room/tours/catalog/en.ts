@@ -1085,8 +1085,8 @@ export const TOURS_EN: Tour[] = [
       },
       {
         id: 'create-invite',
-        title: 'Choose the access level',
-        body: 'Select Viewer, Collaborator, Operator, or Administrator, start the encrypted session, and share the one-time invite link or QR code through a trusted channel.',
+        title: 'Choose the destination and access',
+        body: 'Select Viewer, Collaborator, Operator, or Administrator, then choose Browser/mobile for the Remote PWA or Orkestrai app for another installed desktop. Share only the matching link or QR code through a trusted channel.',
       },
       {
         id: 'approve-device',
@@ -1095,8 +1095,8 @@ export const TOURS_EN: Tour[] = [
       },
       {
         id: 'work-remotely',
-        title: 'Use the bounded companion',
-        body: 'The guest sees a sanitized overview, team state, tasks, and reviews. Its role may allow task changes, review decisions, or leader messages; PTY output, files, notes, portals, credentials, and local paths never enter the shared projection.',
+        title: 'Use or install Remote',
+        body: 'In the browser or installable PWA, the guest follows the sanitized overview, team state, tasks, reviews, activity, and provider usage. Its pairing key stays non-extractable in that browser. The role may allow task changes, review decisions, or leader messages; PTY output, files, notes, portals, credentials, and local paths never enter the shared projection.',
       },
       {
         id: 'stop-sharing',

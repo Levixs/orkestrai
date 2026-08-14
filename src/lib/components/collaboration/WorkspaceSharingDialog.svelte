@@ -19,6 +19,8 @@
     Signal,
     UserCheck,
     UserX,
+    MonitorSmartphone,
+    AppWindow,
   } from "@lucide/svelte";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import * as Dialog from "$lib/components/ui/dialog";
@@ -57,6 +59,8 @@
   let busy = $state(false);
   let activeTab = $state("invite");
   let inviteUri = $state("");
+  let webInviteUri = $state("");
+  let inviteTarget = $state<"web" | "app">("web");
   let qrDataUrl = $state("");
   let copied = $state(false);
   let confirmStop = $state(false);
@@ -97,6 +101,7 @@
       (device) => device.approvedAt && !device.revokedAt,
     ) ?? [],
   );
+  const selectedInviteUri = $derived(inviteTarget === "web" ? webInviteUri : inviteUri);
 
   function headers(): Record<string, string> {
     const csrf = getCsrfToken();
@@ -176,8 +181,8 @@
   }
 
   async function renderQr(): Promise<void> {
-    qrDataUrl = inviteUri
-      ? await QRCode.toDataURL(inviteUri, {
+    qrDataUrl = selectedInviteUri
+      ? await QRCode.toDataURL(selectedInviteUri, {
           width: 224,
           margin: 2,
           errorCorrectionLevel: "M",
@@ -197,11 +202,13 @@
       const created = await api<{
         share: CollaborationShareData;
         inviteUri: string;
+        webInviteUri: string;
       }>(`/api/agent-room/workspaces/${workspaceId}/collaboration`, {
         method: "POST",
         body: JSON.stringify(input),
       });
       inviteUri = created.inviteUri;
+      webInviteUri = created.webInviteUri;
       await renderQr();
       toast.success(m["collaboration.started"]());
       await refresh(true);
@@ -218,10 +225,11 @@
     if (!status?.share) return;
     busy = true;
     try {
-      const data = await api<{ inviteUri: string }>(
+      const data = await api<{ inviteUri: string; webInviteUri: string }>(
         `/api/agent-room/workspaces/${workspaceId}/collaboration/${status.share.id}/invite`,
       );
       inviteUri = data.inviteUri;
+      webInviteUri = data.webInviteUri;
       copied = false;
       await renderQr();
     } catch (error) {
@@ -234,8 +242,8 @@
   }
 
   async function copyInvite(): Promise<void> {
-    if (!inviteUri) return;
-    await navigator.clipboard.writeText(inviteUri);
+    if (!selectedInviteUri) return;
+    await navigator.clipboard.writeText(selectedInviteUri);
     copied = true;
     setTimeout(() => (copied = false), 2_000);
   }
@@ -259,6 +267,7 @@
       );
       if (approved) {
         inviteUri = "";
+        webInviteUri = "";
         qrDataUrl = "";
         toast.success(
           m["collaboration.device_approved"]({ name: device.displayName }),
@@ -298,6 +307,7 @@
         { method: "DELETE" },
       );
       inviteUri = "";
+      webInviteUri = "";
       qrDataUrl = "";
       confirmStop = false;
       await refresh(true);
@@ -383,6 +393,7 @@
     return () => {
       clearInterval(timer);
       inviteUri = "";
+      webInviteUri = "";
       qrDataUrl = "";
     };
   });
@@ -582,6 +593,11 @@
                 <p class="mt-2 text-xs leading-5 text-[var(--app-text-muted)]">
                   {m["collaboration.invite_help"]()}
                 </p>
+                <div class="mt-4 grid grid-cols-2 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-raised)] p-1" role="tablist" aria-label={m["collaboration.invite_target"]()}>
+                  <button type="button" role="tab" aria-selected={inviteTarget === "web"} class={`flex min-h-9 items-center justify-center gap-2 rounded-md px-2 text-[11px] font-medium transition-colors ${inviteTarget === "web" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "text-[var(--app-text-muted)] hover:text-[var(--app-text)]"}`} onclick={() => { inviteTarget = "web"; copied = false; void renderQr(); }}><MonitorSmartphone size={14} />{m["collaboration.invite_web"]()}</button>
+                  <button type="button" role="tab" aria-selected={inviteTarget === "app"} class={`flex min-h-9 items-center justify-center gap-2 rounded-md px-2 text-[11px] font-medium transition-colors ${inviteTarget === "app" ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm" : "text-[var(--app-text-muted)] hover:text-[var(--app-text)]"}`} onclick={() => { inviteTarget = "app"; copied = false; void renderQr(); }}><AppWindow size={14} />{m["collaboration.invite_app"]()}</button>
+                </div>
+                <p class="mt-2 text-[10px] leading-4 text-[var(--app-text-muted)]">{inviteTarget === "web" ? m["collaboration.invite_web_help"]() : m["collaboration.invite_app_help"]()}</p>
                 <div
                   class="mt-4 grid grid-cols-2 gap-2 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-raised)] p-3 text-xs"
                 >
@@ -599,11 +615,11 @@
                     )}</strong
                   >
                 </div>
-                {#if inviteUri}
+                {#if selectedInviteUri}
                   <div class="mt-4 flex min-w-0 gap-2">
                     <Input
                       readonly
-                      value={inviteUri}
+                      value={selectedInviteUri}
                       class="min-w-0 font-mono text-[11px]"
                     /><Button
                       variant="outline"

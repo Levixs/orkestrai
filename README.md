@@ -46,12 +46,14 @@ Download the latest installers from
   proves whether each handoff was queued, delivered, acknowledged, replied to,
   or failed under one message id, without waking idle terminals after restart.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
-  session, invite a trusted device by one-time link or QR code, approve its
+  session, choose a browser/mobile or installed-app invite, approve the device
   fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator
-  role. The remote companion is limited to sanitized team state, tasks,
-  reviews, and leader messages; terminals, files, notes, portals, credentials,
-  private URLs, and local paths stay on the host. Access is revocable and every
-  command is audited.
+  role. The installable Remote PWA follows sanitized team state, tasks, reviews,
+  activity, provider usage, and leader messages; its pairing key stays
+  non-extractable in the browser and the invitation secret is removed from the
+  URL before connecting. Terminals, files, notes, portals, credentials, private
+  URLs, and local paths stay on the host. Access is revocable and every command
+  is audited.
 - **Traceable automations:** trigger work manually, on a schedule, from task or
   message events, Git commits, GitHub pull requests, webhooks, file changes, or
   provider usage thresholds. Actions can prompt an agent, create a Kanban task,
@@ -195,7 +197,8 @@ Orkestrai is built with Svelte 5, SvelteKit, Electron, Svelar, SQLite,
   views.
 - `packages/orkestrai-cli/` provides the agent-facing CLI and MCP bridge.
 - `packages/orkestrai-collaboration-protocol/` defines the versioned encrypted
-  envelope; `packages/orkestrai-relay/` is an opaque WebSocket
+  envelope for Node and browser WebCrypto clients;
+  `packages/orkestrai-relay/` is an opaque WebSocket
   transport that cannot decrypt workspace content. The production service is
   available at `wss://relay.orkestrai.app/v1/connect`.
 - `electron/` owns the desktop lifecycle, native notifications, and updates.

@@ -47,12 +47,14 @@ Descarga los instaladores más recientes desde
   handoff entró en cola, fue entregado, recibido, respondido o falló bajo un id
   de mensaje, sin despertar terminales inactivos tras reiniciar.
 - **Uso compartido cifrado del workspace (experimental):** aloja una sesión
-  cifrada de extremo a extremo, invita un dispositivo confiable mediante un
-  enlace único o código QR, comprueba su huella digital y asigna el rol Lector,
-  Colaborador, Operador o Administrador. El companion remoto queda limitado al
-  estado sanitizado del equipo, tareas, revisiones y mensajes al líder; las
-  terminales, archivos, notas, portales, credenciales, URLs privadas y rutas
-  locales permanecen en el host. El acceso puede revocarse y cada comando queda
+  cifrada de extremo a extremo, elige una invitación para navegador/móvil u otra
+  aplicación instalada, comprueba la huella del dispositivo y asigna el rol
+  Lector, Colaborador, Operador o Administrador. La PWA Remote instalable sigue
+  el estado sanitizado del equipo, tareas, revisiones, actividad, uso de
+  proveedores y mensajes al líder; su clave de emparejamiento no puede extraerse
+  del navegador y el secreto sale de la URL antes de conectar. Terminales,
+  archivos, notas, portales, credenciales, URLs privadas y rutas locales
+  permanecen en el host. El acceso puede revocarse y cada comando queda
   registrado en la auditoría.
 - **Centro de revisión Git:** inspecciona cambios staged y unstaged, compara
   archivos en un diff Monaco, crea revisiones vinculadas a tareas y responsables,
@@ -196,7 +198,8 @@ Orkestrai está construido con Svelte 5, SvelteKit, Electron, Svelar, SQLite,
   workspace de escritorio.
 - `packages/orkestrai-cli/` ofrece la CLI y el puente MCP para los agentes.
 - `packages/orkestrai-collaboration-protocol/` define el sobre cifrado
-  versionado; `packages/orkestrai-relay/` es un transporte
+  versionado para clientes Node y WebCrypto en el navegador;
+  `packages/orkestrai-relay/` es un transporte
   WebSocket opaco que no puede descifrar el contenido del workspace. El
   servicio de producción está en `wss://relay.orkestrai.app/v1/connect`.
 - `electron/` controla el ciclo de vida de escritorio, las notificaciones

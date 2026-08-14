@@ -356,8 +356,8 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'remote-collaboration',
       title: 'Share a workspace without sharing your machine',
-      body: 'Enable experimental workspace sharing, start an end-to-end encrypted session, and send the one-time link or QR code to a trusted person. Approve the exact device fingerprint and choose Viewer, Collaborator, Operator, or Administrator. The remote companion receives only a sanitized projection of team state, tasks, and reviews; depending on its role, it can update tasks, decide reviews, or message the leader. Terminal output, files, notes, portals, credentials, tokens, private URLs, and local paths remain on the host. Revoke a device or stop the session at any time, and inspect accepted and rejected commands in the audit trail.',
-      tags: ['Encrypted sharing', 'device approval', 'role-based access'],
+      body: 'Enable experimental workspace sharing, start an end-to-end encrypted session, and choose a Browser/mobile or Orkestrai app invite. The web link opens the installable Remote PWA, removes its secret from the URL before connecting, and stores a non-extractable pairing key only in that browser. Approve the exact device fingerprint and choose Viewer, Collaborator, Operator, or Administrator. The companion follows team state, tasks, reviews, activity, and provider usage; depending on its role, it can update tasks, decide reviews, or message the leader. Terminal output, files, notes, portals, credentials, tokens, private URLs, and local paths remain on the host. Revoke a device or stop the session at any time, and inspect accepted and rejected commands in the audit trail.',
+      tags: ['Encrypted Remote PWA', 'device approval', 'role-based access'],
     },
     {
       id: 'custom-app-theme',
@@ -370,6 +370,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 14, 2026 · In development',
       items: [
+        'Workspace sharing now offers separate Browser/mobile and Orkestrai app invitations. The installable Remote PWA follows agents, tasks, reviews, activity, and provider usage, persists a non-extractable WebCrypto key, and removes the invitation secret from the URL before connecting.',
         'Workspace sharing now uses the production relay.orkestrai.app endpoint by default. The relay accepts the installed app\'s dynamic local origin and configured official web origins while rejecting unrelated websites.',
         'Experimental workspace sharing now creates an end-to-end encrypted host session with one-time link and QR invites, explicit device fingerprint approval, Viewer/Collaborator/Operator/Administrator roles, immediate revocation, command audit, and a bounded remote companion for team state, tasks, reviews, and leader messages. The opaque relay never receives plaintext, while PTY output, files, notes, portals, credentials, private URLs, and local paths remain excluded.',
         'Routines evolved into Automations with manual, schedule, task, message, Git commit, GitHub pull request, webhook, file-change, and usage-threshold triggers; prompt, task, and desktop-notification actions; ready recipes; idempotent queued jobs; recoverable execution history; and GitHub credentials encrypted by the installed app.',
