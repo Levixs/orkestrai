@@ -354,6 +354,12 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['Portal Design Mode', 'visual feedback', 'safe inspection'],
     },
     {
+      id: 'remote-collaboration',
+      title: 'Share a workspace without sharing your machine',
+      body: 'Enable experimental workspace sharing, start an end-to-end encrypted session, and send the one-time link or QR code to a trusted person. Approve the exact device fingerprint and choose Viewer, Collaborator, Operator, or Administrator. The remote companion receives only a sanitized projection of team state, tasks, and reviews; depending on its role, it can update tasks, decide reviews, or message the leader. Terminal output, files, notes, portals, credentials, tokens, private URLs, and local paths remain on the host. Revoke a device or stop the session at any time, and inspect accepted and rejected commands in the audit trail.',
+      tags: ['Encrypted sharing', 'device approval', 'role-based access'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adapt the app appearance to your work',
       body: 'Choose one of three dark themes or the high-contrast light theme under Settings → Appearance. Duplicate the closest option, adjust semantic color tokens with an immediate preview, and export the JSON to use the same theme in another installation.',
@@ -364,6 +370,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 13, 2026 · In development',
       items: [
+        'Experimental workspace sharing now creates an end-to-end encrypted host session with one-time link and QR invites, explicit device fingerprint approval, Viewer/Collaborator/Operator/Administrator roles, immediate revocation, command audit, and a bounded remote companion for team state, tasks, reviews, and leader messages. The opaque relay never receives plaintext, while PTY output, files, notes, portals, credentials, private URLs, and local paths remain excluded.',
         'Routines evolved into Automations with manual, schedule, task, message, Git commit, GitHub pull request, webhook, file-change, and usage-threshold triggers; prompt, task, and desktop-notification actions; ready recipes; idempotent queued jobs; recoverable execution history; and GitHub credentials encrypted by the installed app.',
         'The focused mode evolved into Workbench with persistent open items, vertical tabs by default, and optional horizontal tabs in Settings.',
         'Up to eight live artifacts can now be arranged in resizable right/down splits, with active-pane switching and per-workspace layout restoration without duplicate sessions.',

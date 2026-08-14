@@ -3,7 +3,7 @@
   import type { Component } from 'svelte';
   import {
     Activity, ArrowLeft, BookOpen, Bot, Cable, FolderPlus, Gauge, GitBranch, GitPullRequestArrow,
-    History, Layers, Link2, MessageSquare, Palette, PanelLeftOpen, Paperclip, PlayCircle, Repeat,
+    History, Layers, Link2, MessageSquare, Palette, PanelLeftOpen, Paperclip, PlayCircle, RadioTower, Repeat,
     Rocket, Scale, ScanSearch, Search, Smartphone, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
@@ -71,6 +71,7 @@
     'universal-workspace-search': Search,
     'review-delivery': GitPullRequestArrow,
     'portal-design-feedback': ScanSearch,
+    'remote-collaboration': RadioTower,
     'custom-app-theme': Palette,
   };
 

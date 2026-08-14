@@ -37,6 +37,8 @@
   import OnboardingWizard from '$lib/components/agent-room/tours/OnboardingWizard.svelte';
   import { startTour } from '$lib/components/agent-room/tours/engine.svelte.js';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
+  import WorkspaceSharingButton from '$lib/components/collaboration/WorkspaceSharingButton.svelte';
+  import WorkspaceSharingDialog from '$lib/components/collaboration/WorkspaceSharingDialog.svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
   import {
@@ -133,6 +135,7 @@
   let showOnboarding = $state(false);
   let requestedTourId = $state<string | null>(null);
   let councilOpen = $state(false);
+  let sharingOpen = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
   let editingWorkspace = $state<Workspace | null>(null);
@@ -436,12 +439,21 @@
       }
       councilOpen = true;
     };
+    const openSharingListener = (event: Event) => {
+      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      if (workspaceId && workspaceId !== activeWorkspace?.id) {
+        void selectWorkspace(workspaceId).then(() => (sharingOpen = true));
+        return;
+      }
+      sharingOpen = true;
+    };
     const openFileListener = (event: Event) => {
       const detail = (event as CustomEvent<{ workspaceId?: string; path?: string }>).detail;
       if (detail?.workspaceId && detail.path) void openFileFromSearch(detail.workspaceId, detail.path);
     };
     window.addEventListener('orkestrai:menu-action', listener);
     window.addEventListener('orkestrai:open-council', openCouncilListener);
+    window.addEventListener('orkestrai:open-sharing', openSharingListener);
     window.addEventListener('orkestrai:open-file', openFileListener);
     const pending = sessionStorage.getItem('orkestrai.menu-action');
     if (pending) {
@@ -451,6 +463,7 @@
     return () => {
       window.removeEventListener('orkestrai:menu-action', listener);
       window.removeEventListener('orkestrai:open-council', openCouncilListener);
+      window.removeEventListener('orkestrai:open-sharing', openSharingListener);
       window.removeEventListener('orkestrai:open-file', openFileListener);
     };
   });
@@ -1386,6 +1399,7 @@
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
     { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
+    { id: 'share-workspace', label: m['collaboration.share_workspace'](), hint: m['canvas.hint_action'](), run: () => (sharingOpen = true) },
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
     { id: 'council', label: m['council.open'](), hint: m['canvas.hint_action'](), run: () => (councilOpen = true) },
     ...providers
@@ -1890,6 +1904,7 @@
             <ToolbarButton label={m['tool.ports']()} active={showPortsPanel} onclick={() => toggleSidePanel('ports')}>
               <RadioTower size={15} class="tool-icon-svg" /> {m['canvas.label_ports']()}
             </ToolbarButton>
+            <WorkspaceSharingButton workspaceId={activeWorkspace?.id ?? null} onOpen={() => (sharingOpen = true)} />
             </div>
             {#if canScrollRight}
               <button class="toolbar-arrow" aria-label={m['canvas.scroll_right']()} onclick={() => scrollToolbar(1)}>
@@ -1980,6 +1995,9 @@
     />
     {#if activeWorkspace}
       <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} />
+    {/if}
+    {#if sharingOpen && activeWorkspace}
+      <WorkspaceSharingDialog workspaceId={activeWorkspace.id} onClose={() => (sharingOpen = false)} />
     {/if}
     <AlertDialog.Root open={deletingWorkspace !== null} onOpenChange={(isOpen) => !isOpen && (deletingWorkspace = null)}>
       <AlertDialog.Content>

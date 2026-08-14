@@ -46,6 +46,14 @@ Descarga los instaladores más recientes desde
   proveedor, rol y uso de cada agente. La bandeja persistente demuestra si cada
   handoff entró en cola, fue entregado, recibido, respondido o falló bajo un id
   de mensaje, sin despertar terminales inactivos tras reiniciar.
+- **Uso compartido cifrado del workspace (experimental):** aloja una sesión
+  cifrada de extremo a extremo, invita un dispositivo confiable mediante un
+  enlace único o código QR, comprueba su huella digital y asigna el rol Lector,
+  Colaborador, Operador o Administrador. El companion remoto queda limitado al
+  estado sanitizado del equipo, tareas, revisiones y mensajes al líder; las
+  terminales, archivos, notas, portales, credenciales, URLs privadas y rutas
+  locales permanecen en el host. El acceso puede revocarse y cada comando queda
+  registrado en la auditoría.
 - **Centro de revisión Git:** inspecciona cambios staged y unstaged, compara
   archivos en un diff Monaco, crea revisiones vinculadas a tareas y responsables,
   deja comentarios persistentes por archivo y línea, y aprueba, rechaza o solicita
@@ -180,10 +188,16 @@ Orkestrai está construido con Svelte 5, SvelteKit, Electron, Svelar, SQLite,
 
 - `src/lib/modules/agent-room/` contiene las capas de aplicación, dominio,
   persistencia, PTY, bridge, voz y adaptadores de proveedores.
+- `src/lib/modules/collaboration/` controla sesiones host, proyecciones
+  sanitizadas, políticas de rol, comandos, aprobación y revocación de
+  dispositivos y registros de auditoría.
 - `src/routes/canvas/`, `src/routes/terminal/` y
   `src/lib/components/agent-room/canvas/` implementan las dos vistas del
   workspace de escritorio.
 - `packages/orkestrai-cli/` ofrece la CLI y el puente MCP para los agentes.
+- `packages/orkestrai-collaboration-protocol/` define el sobre cifrado
+  versionado; `packages/orkestrai-relay/` es un transporte
+  WebSocket opaco que no puede descifrar el contenido del workspace.
 - `electron/` controla el ciclo de vida de escritorio, las notificaciones
   nativas y las actualizaciones.
 - `docs/` contiene la documentación de build y releases.

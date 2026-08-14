@@ -33,6 +33,8 @@
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
+  import WorkspaceSharingButton from '$lib/components/collaboration/WorkspaceSharingButton.svelte';
+  import WorkspaceSharingDialog from '$lib/components/collaboration/WorkspaceSharingDialog.svelte';
   import AutomationWorkspace from '$lib/components/agent-room/AutomationWorkspace.svelte';
   import {
     WORKBENCH_EDITOR_STATE_EVENT,
@@ -160,6 +162,7 @@
   let loading = $state(true);
   let errorMessage = $state('');
   let councilOpen = $state(false);
+  let sharingOpen = $state(false);
   let leaderDictationState = $state<LeaderDictationStatus>('idle');
   let leaderDictationNodeId = $state<string | null>(null);
   let loadedWorkspaceIds = $state<string[]>([]);
@@ -664,6 +667,11 @@
       if (workspaceId) selectedWorkspaceId = workspaceId;
       councilOpen = true;
     };
+    const handleSharingOpen = (event: Event) => {
+      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      if (workspaceId) selectedWorkspaceId = workspaceId;
+      sharingOpen = true;
+    };
     const guardDirtyBuffers = (event: BeforeUnloadEvent) => {
       if (!dirtyWorkbenchEditorKeys().length) return;
       event.preventDefault();
@@ -707,6 +715,7 @@
     window.addEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
     window.addEventListener(WORKBENCH_OPEN_REQUEST, handleWorkbenchOpen);
     window.addEventListener('orkestrai:open-council', handleCouncilOpen);
+    window.addEventListener('orkestrai:open-sharing', handleSharingOpen);
     window.addEventListener('orkestrai:open-file', handleWorkbenchFileOpen);
     return () => {
       window.removeEventListener(WORKBENCH_EDITOR_STATE_EVENT, handleEditorState);
@@ -715,6 +724,7 @@
       window.removeEventListener(TEXT_DICTATION_FALLBACK, handleFallback);
       window.removeEventListener(WORKBENCH_OPEN_REQUEST, handleWorkbenchOpen);
       window.removeEventListener('orkestrai:open-council', handleCouncilOpen);
+      window.removeEventListener('orkestrai:open-sharing', handleSharingOpen);
       window.removeEventListener('orkestrai:open-file', handleWorkbenchFileOpen);
     };
   });
@@ -967,12 +977,13 @@
 
 <main class="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)] overflow-hidden bg-[var(--app-canvas)] text-[var(--app-text)] max-[720px]:grid-cols-[228px_minmax(420px,1fr)]" data-testid="workbench-shell">
   <aside class="flex min-h-0 flex-col border-r border-[var(--app-border)] bg-[var(--app-sidebar)]">
-    <div class="flex h-[52px] shrink-0 items-center border-b border-[var(--app-border)] px-3">
+    <div class="flex h-[52px] shrink-0 items-center gap-2 border-b border-[var(--app-border)] px-3">
       <WorkspaceModeSwitch
         active="terminals"
         workspaceId={selectedWorkspaceId}
         nodeId={isVirtualWorkbenchItemId(selectedNodeId) ? null : selectedNodeId}
       />
+      <div class="ml-auto"><WorkspaceSharingButton variant="icon" workspaceId={selectedWorkspaceId} onOpen={() => (sharingOpen = true)} /></div>
     </div>
 
     <div class="shrink-0 p-2.5">
@@ -1294,6 +1305,9 @@
 
 {#if selectedWorkspace}
   <CouncilDialog bind:open={councilOpen} workspaceId={selectedWorkspace.id} />
+{/if}
+{#if sharingOpen && selectedWorkspace}
+  <WorkspaceSharingDialog workspaceId={selectedWorkspace.id} onClose={() => (sharingOpen = false)} />
 {/if}
 
 <AlertDialog.Root open={Boolean(deletingNode)} onOpenChange={(open) => { if (!open) deletingNode = null; }}>

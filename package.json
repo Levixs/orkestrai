@@ -51,6 +51,7 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/table-core": "^8.21.3",
+    "@types/qrcode": "^1.5.6",
     "@types/ws": "^8.18.1",
     "electron": "^42.8.1",
     "electron-builder": "^26.15.3",
@@ -108,6 +109,7 @@
     "pdfjs-dist": "^6.2.108",
     "pdfkit": "^0.19.1",
     "postgres": "^3.4.5",
+    "qrcode": "^1.5.4",
     "serve-sim": "0.1.45",
     "sherpa-onnx-node": "^1.13.4",
     "svelte-sonner": "^1.1.1",
@@ -132,6 +134,14 @@
   "build": {
     "appId": "com.orkestrai.desktop",
     "productName": "Orkestrai",
+    "protocols": [
+      {
+        "name": "Orkestrai Collaboration",
+        "schemes": [
+          "orkestrai"
+        ]
+      }
+    ],
     "icon": "electron/resources/icon.png",
     "asar": false,
     "directories": {

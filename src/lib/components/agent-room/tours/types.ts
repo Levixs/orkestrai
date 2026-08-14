@@ -14,6 +14,7 @@ export type TourAction =
   | { kind: 'createFloor'; name: string }
   | { kind: 'installMcp'; key: string }
   | { kind: 'openCouncil' }
+  | { kind: 'openSharing' }
   | { kind: 'openPage'; path: string };
 
 export type TourCheck =

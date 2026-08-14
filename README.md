@@ -45,6 +45,13 @@ Download the latest installers from
   state duration, provider, role, and usage. Its persistent communications inbox
   proves whether each handoff was queued, delivered, acknowledged, replied to,
   or failed under one message id, without waking idle terminals after restart.
+- **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
+  session, invite a trusted device by one-time link or QR code, approve its
+  fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator
+  role. The remote companion is limited to sanitized team state, tasks,
+  reviews, and leader messages; terminals, files, notes, portals, credentials,
+  private URLs, and local paths stay on the host. Access is revocable and every
+  command is audited.
 - **Traceable automations:** trigger work manually, on a schedule, from task or
   message events, Git commits, GitHub pull requests, webhooks, file changes, or
   provider usage thresholds. Actions can prompt an agent, create a Kanban task,
@@ -181,10 +188,15 @@ Orkestrai is built with Svelte 5, SvelteKit, Electron, Svelar, SQLite,
 
 - `src/lib/modules/agent-room/` contains the application, domain, persistence,
   PTY, bridge, voice, and provider adapter layers.
+- `src/lib/modules/collaboration/` owns host sessions, sanitized projections,
+  role policies, commands, device approval, revocation, and audit records.
 - `src/routes/canvas/`, `src/routes/terminal/`, and
   `src/lib/components/agent-room/canvas/` implement the two desktop workspace
   views.
 - `packages/orkestrai-cli/` provides the agent-facing CLI and MCP bridge.
+- `packages/orkestrai-collaboration-protocol/` defines the versioned encrypted
+  envelope; `packages/orkestrai-relay/` is an opaque WebSocket
+  transport that cannot decrypt workspace content.
 - `electron/` owns the desktop lifecycle, native notifications, and updates.
 - `docs/` contains build and release documentation.
 

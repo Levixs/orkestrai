@@ -358,6 +358,12 @@ export const DOCS_PT: DocsCatalog = {
       tags: ['Portal Design Mode', 'feedback visual', 'inspeção segura'],
     },
     {
+      id: 'remote-collaboration',
+      title: 'Compartilhar um workspace sem compartilhar sua máquina',
+      body: 'Habilite o compartilhamento experimental, inicie uma sessão criptografada de ponta a ponta e envie o link único ou QR code a uma pessoa confiável. Confira a impressão digital do dispositivo e escolha Leitor, Colaborador, Operador ou Administrador. O companion remoto recebe apenas uma projeção sanitizada do estado do time, tarefas e revisões; conforme a função, ele pode atualizar tarefas, decidir revisões ou enviar mensagens ao líder. Saída de terminal, arquivos, notas, portais, credenciais, tokens, URLs privadas e caminhos locais permanecem no host. Revogue um dispositivo ou encerre a sessão a qualquer momento e consulte comandos aceitos e rejeitados na auditoria.',
+      tags: ['Compartilhamento criptografado', 'aprovação de dispositivo', 'acesso por função'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adaptar a aparência ao seu trabalho',
       body: 'Escolha um dos três temas escuros ou o tema claro de alto contraste em Configurações → Aparência. Duplique o mais próximo da sua preferência, ajuste os tokens de cor com prévia imediata e exporte o JSON para usar o mesmo tema em outra instalação.',
@@ -368,6 +374,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: '13 ago 2026 · Em desenvolvimento',
       items: [
+        'O compartilhamento experimental de workspace agora cria uma sessão host criptografada de ponta a ponta com convites únicos por link e QR code, aprovação explícita pela impressão digital do dispositivo, funções Leitor/Colaborador/Operador/Administrador, revogação imediata, auditoria de comandos e um companion remoto limitado para estado do time, tarefas, revisões e mensagens ao líder. O relay opaco nunca recebe conteúdo em texto aberto, enquanto saída de PTY, arquivos, notas, portais, credenciais, URLs privadas e caminhos locais ficam excluídos.',
         'Rotinas evoluíram para Automações com gatilhos manual, agenda, tarefa, mensagem, commit Git, pull request do GitHub, webhook, mudança de arquivo e limite de uso; ações de prompt, tarefa e notificação; receitas prontas; jobs idempotentes em fila; histórico recuperável; e credenciais do GitHub cifradas pelo app instalado.',
         'O modo focado evoluiu para Workbench, com itens abertos persistentes, abas verticais por padrão e abas horizontais opcionais em Configurações.',
         'Agora é possível organizar até oito artefatos ao vivo em divisões redimensionáveis para a direita ou para baixo, alternar o painel ativo e restaurar o layout por workspace sem duplicar sessões.',

@@ -27,6 +27,13 @@ contextBridge.exposeInMainWorld('orkestraiDesktop', {
   /** Executa uma acao validada da barra customizada do Windows. */
   runMenuCommand: (action) => ipcRenderer.invoke('orkestrai:menu-command', action),
   setTitlebarTheme: (theme) => ipcRenderer.invoke('orkestrai:titlebar-theme', theme),
+  /** Consome uma vez um convite E2EE recebido via orkestrai:// sem persisti-lo. */
+  consumeCollaborationInvite: () => ipcRenderer.invoke('orkestrai:collaboration-invite-consume'),
+  onCollaborationInvite: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('orkestrai:collaboration-invite', listener);
+    return () => ipcRenderer.removeListener('orkestrai:collaboration-invite', listener);
+  },
   /** Ações do menu nativo são executadas pelo renderer para reutilizar os fluxos do canvas. */
   onMenuAction: (callback) => {
     const listener = (_event, action) => callback(action);

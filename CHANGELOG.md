@@ -9,20 +9,22 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
-- Adicionou o spike de segurança da colaboração remota experimental: protocolo
-  versionado com chaves direcionais HKDF/AES-GCM, proteção contra replay e
-  adulteração, deep link com segredo no fragmento e um relay WebSocket opaco
-  com limites de conexão, frame e banda, sem qualquer acesso ao PTY local.
-- Evoluiu as Rotinas legadas para Automações rastreáveis, com gatilhos manuais,
-  agendados, por tarefa, mensagem, commit Git, pull request do GitHub, webhook,
-  alteração de arquivo e uso de provider; ações para instruir agente, criar
-  tarefa ou notificar o desktop; receitas para desenvolvimento, design,
-  marketing, pesquisa e operações; jobs Svelar idempotentes; tentativas
-  limitadas; e histórico detalhado de execução.
-- Adicionou Automações ao Canvas, Workbench, busca universal, documentação e
-  onboarding. As credenciais do GitHub são criptografadas com o `safeStorage`
-  do Electron, solicitadas pelo processo servidor via IPC e nunca persistidas
-  no SQLite.
+- Added experimental end-to-end encrypted workspace sharing with one-time link
+  and QR invites, explicit device fingerprint approval, Viewer, Collaborator,
+  Operator, and Administrator roles, immediate revocation, command audit, and a
+  bounded remote companion for team state, tasks, reviews, and leader messages.
+  A versioned HKDF/AES-GCM protocol protects against replay and tampering; the
+  opaque rate-limited WebSocket relay cannot decrypt content. PTY output, files,
+  notes, portals, credentials, tokens, private URLs, and local paths remain on
+  the host.
+- Evolved legacy Routines into traceable Automations with manual, schedule,
+  task, message, Git commit, GitHub pull request, webhook, file-change, and
+  provider-usage triggers; agent prompt, task creation, and desktop notification
+  actions; development, design, marketing, research, and operations recipes;
+  idempotent Svelar jobs; bounded retries; and detailed execution history.
+- Added Automations to Canvas, Workbench, universal search, documentation, and
+  onboarding. GitHub credentials are encrypted with Electron `safeStorage`,
+  requested from the server process over IPC, and never persisted in SQLite.
 - Evolved the focused workspace view into Workbench with persistent open items,
   vertical tabs by default, optional horizontal tabs, and up to eight recursive
   right/down resizable panes for live canvas artifacts.

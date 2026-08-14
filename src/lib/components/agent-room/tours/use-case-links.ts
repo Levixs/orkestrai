@@ -36,6 +36,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'universal-workspace-search': 'universal-workspace-search',
   'review-delivery': 'review-delivery',
   'portal-design-feedback': 'portal-design-feedback',
+  'remote-collaboration': 'remote-workspace-collaboration',
   'custom-app-theme': 'custom-app-theme',
 };
 

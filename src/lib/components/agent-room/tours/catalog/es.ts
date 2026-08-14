@@ -1072,6 +1072,40 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'remote-workspace-collaboration',
+    icon: 'RadioTower',
+    title: 'Compartir un workspace de forma segura',
+    tagline: 'Invita otro dispositivo sin exponer terminales, archivos ni secretos.',
+    steps: [
+      {
+        id: 'open-sharing',
+        title: 'Abre el uso compartido',
+        body: 'Abre Compartir workspace desde Canvas o Workbench. Esta funcionalidad experimental está desactivada por defecto y debe habilitarse explícitamente en el host.',
+        action: { kind: 'openSharing' },
+      },
+      {
+        id: 'create-invite',
+        title: 'Elige el nivel de acceso',
+        body: 'Selecciona Lector, Colaborador, Operador o Administrador, inicia la sesión cifrada y envía el enlace de invitación único o código QR por un canal confiable.',
+      },
+      {
+        id: 'approve-device',
+        title: 'Aprueba el dispositivo correcto',
+        body: 'Compara la huella digital del dispositivo antes de aprobarlo. Puedes cambiar su rol, revocarlo de inmediato y revisar cada comando aceptado o rechazado en la auditoría.',
+      },
+      {
+        id: 'work-remotely',
+        title: 'Usa el companion limitado',
+        body: 'El invitado ve un resumen sanitizado, el estado del equipo, tareas y revisiones. Su rol puede permitir cambios en tareas, decisiones de revisión o mensajes al líder; la salida PTY, archivos, notas, portales, credenciales y rutas locales nunca entran en la proyección compartida.',
+      },
+      {
+        id: 'stop-sharing',
+        title: 'Detén la sesión',
+        body: 'Detén el uso compartido cuando termine la colaboración. Orkestrai cierra la sesión del relay, revoca el acceso activo y exige una nueva invitación para volver a conectar otro dispositivo.',
+      },
+    ],
+  },
+  {
     id: 'custom-app-theme',
     icon: 'Palette',
     title: 'Personalizar la apariencia',

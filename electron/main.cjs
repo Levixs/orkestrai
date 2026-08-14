@@ -28,6 +28,58 @@ let serverPort = null;
 let tray = null;
 let pendingNotifications = 0;
 let menuLocale = 'en';
+let pendingCollaborationInvite = null;
+
+function parseCollaborationInvite(candidate) {
+  if (typeof candidate !== 'string' || candidate.length > 1000) return null;
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'orkestrai:' || url.hostname !== 'join' || url.username || url.password || url.port || url.search) return null;
+    if (!/^\/[a-zA-Z0-9_-]{8,128}$/.test(url.pathname) || !/^#[a-zA-Z0-9_-]{43}$/.test(url.hash)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function findCollaborationInvite(argv) {
+  for (const argument of argv ?? []) {
+    const invite = parseCollaborationInvite(argument);
+    if (invite) return invite;
+  }
+  return null;
+}
+
+async function receiveCollaborationInvite(candidate) {
+  const invite = parseCollaborationInvite(candidate);
+  if (!invite) return false;
+  pendingCollaborationInvite = invite;
+  if (!app.isReady()) return true;
+  if (!mainWindow) await createWindow();
+  if (!mainWindow) return false;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  const remoteUrl = `http://127.0.0.1:${serverPort}/remote`;
+  if (!mainWindow.webContents.getURL().startsWith(remoteUrl)) {
+    await mainWindow.loadURL(remoteUrl);
+  }
+  mainWindow.webContents.send('orkestrai:collaboration-invite');
+  return true;
+}
+
+function registerCollaborationProtocol() {
+  if (process.defaultApp && process.argv[1]) {
+    app.setAsDefaultProtocolClient('orkestrai', process.execPath, [path.resolve(process.argv[1])]);
+  } else {
+    app.setAsDefaultProtocolClient('orkestrai');
+  }
+}
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  void receiveCollaborationInvite(url);
+});
 
 function secureSecretsPath() {
   return path.join(app.getPath('userData'), 'secure', 'automation-secrets.json');
@@ -604,6 +656,12 @@ ipcMain.handle('orkestrai:open-path', async (_event, candidate) => {
   return shell.openPath(candidate);
 });
 
+ipcMain.handle('orkestrai:collaboration-invite-consume', () => {
+  const invite = pendingCollaborationInvite;
+  pendingCollaborationInvite = null;
+  return invite;
+});
+
 ipcMain.handle('orkestrai:menu-locale', (_event, locale) => {
   menuLocale = normalizeMenuLocale(locale);
   buildApplicationMenu();
@@ -718,7 +776,12 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
+    const invite = findCollaborationInvite(argv);
+    if (invite) {
+      void receiveCollaborationInvite(invite);
+      return;
+    }
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
@@ -728,6 +791,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    registerCollaborationProtocol();
     menuLocale = normalizeMenuLocale(app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : app.getLocale().toLowerCase().startsWith('es') ? 'es' : 'en');
     // Ícone do dock em dev (empacotado vem do electron-builder).
     if (process.platform === 'darwin' && !app.isPackaged) {
@@ -743,6 +807,8 @@ if (!gotLock) {
     buildApplicationMenu();
     createTray();
     await createWindow();
+    const initialInvite = findCollaborationInvite(process.argv);
+    if (initialInvite) await receiveCollaborationInvite(initialInvite);
     setupAutoUpdater();
   }).catch((error) => {
     console.error('Falha ao iniciar o Orkestrai:', error);

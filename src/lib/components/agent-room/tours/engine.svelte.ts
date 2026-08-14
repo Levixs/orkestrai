@@ -286,6 +286,12 @@ async function runAction(action: TourAction): Promise<void> {
         }));
         break;
       }
+      case 'openSharing': {
+        window.dispatchEvent(new CustomEvent('orkestrai:open-sharing', {
+          detail: { workspaceId },
+        }));
+        break;
+      }
       case 'openPage': {
         // Placeholder {workspace} resolve para o workspace do tour.
         await goto(action.path.replaceAll('{workspace}', String(workspaceId)));

@@ -354,6 +354,12 @@ export const DOCS_ES: DocsCatalog = {
       tags: ['Portal Design Mode', 'feedback visual', 'inspección segura'],
     },
     {
+      id: 'remote-collaboration',
+      title: 'Compartir un workspace sin compartir tu equipo',
+      body: 'Habilita el uso compartido experimental, inicia una sesión cifrada de extremo a extremo y envía el enlace único o código QR a una persona de confianza. Comprueba la huella digital del dispositivo y elige Lector, Colaborador, Operador o Administrador. El companion remoto recibe solo una proyección sanitizada del estado del equipo, tareas y revisiones; según su rol, puede actualizar tareas, decidir revisiones o enviar mensajes al líder. La salida de terminal, archivos, notas, portales, credenciales, tokens, URLs privadas y rutas locales permanecen en el host. Revoca un dispositivo o detén la sesión en cualquier momento y consulta los comandos aceptados y rechazados en la auditoría.',
+      tags: ['Uso compartido cifrado', 'aprobación de dispositivo', 'acceso por rol'],
+    },
+    {
       id: 'custom-app-theme',
       title: 'Adaptar la apariencia a tu trabajo',
       body: 'Elige uno de los tres temas oscuros o el tema claro de alto contraste en Configuración → Apariencia. Duplica el más cercano a tu preferencia, ajusta los tokens de color con vista previa inmediata y exporta el JSON para usar el mismo tema en otra instalación.',
@@ -364,6 +370,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: '13 ago 2026 · En desarrollo',
       items: [
+        'El uso compartido experimental de workspace ahora crea una sesión host cifrada de extremo a extremo con invitaciones únicas por enlace y código QR, aprobación explícita mediante la huella digital del dispositivo, roles Lector/Colaborador/Operador/Administrador, revocación inmediata, auditoría de comandos y un companion remoto limitado para estado del equipo, tareas, revisiones y mensajes al líder. El relay opaco nunca recibe contenido en texto abierto, mientras que la salida PTY, archivos, notas, portales, credenciales, URLs privadas y rutas locales quedan excluidos.',
         'Las Rutinas evolucionaron a Automatizaciones con disparadores manual, agenda, tarea, mensaje, commit Git, pull request de GitHub, webhook, cambio de archivo y límite de uso; acciones de prompt, tarea y notificación; recetas; jobs idempotentes en cola; historial recuperable; y credenciales de GitHub cifradas por la app instalada.',
         'El modo enfocado evolucionó a Workbench con elementos abiertos persistentes, pestañas verticales por defecto y pestañas horizontales opcionales en Configuración.',
         'Ahora se pueden organizar hasta ocho artefactos en vivo en divisiones redimensionables hacia la derecha o abajo, cambiar el panel activo y restaurar el layout por workspace sin duplicar sesiones.',
