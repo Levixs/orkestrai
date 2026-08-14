@@ -156,10 +156,11 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
-- Bound remote chat replies to the exact injected prompt and repaired stale
-  provider conversation IDs before publishing a reply, preventing output from
-  another Codex session from appearing in the browser. Structured transcript
-  completion now also returns without waiting for the terminal redraw timeout.
+- Bound remote chat replies to the exact injected prompt for every registered
+  provider and repaired stale conversation IDs before publishing a reply,
+  preventing output from another CLI session from appearing in the browser.
+  Structured transcript completion now also returns without waiting for the
+  terminal redraw timeout.
 - Made the encrypted remote terminal fit phone, tablet, and desktop viewports,
   recalculate PTY columns on visual viewport changes, and close the agent chat
   dialog before opening the full-screen terminal.

@@ -8,6 +8,7 @@ import type { AgentActivityState, CanvasNode, Workspace } from '../../domain/typ
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pty/PtySessionManager.ts';
+import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.js';
 import { findReplyToPrompt, type MatchedTranscriptReply } from '../../infrastructure/transcript/AgentTranscript.js';
 import { floorService } from './FloorService.js';
 import { getAgentAdapter, hasAgentAdapter, listAgentAdapters } from '../adapters/registry.js';
@@ -288,6 +289,7 @@ export class BridgeService {
       const structuredReply = submitted.then(() => this.waitForTranscriptReply(
         workspaceId,
         target.nodeId,
+        target.sessionId!,
         input.message,
         requestStartedAt,
         input.timeoutMs ?? 180_000,
@@ -328,6 +330,7 @@ export class BridgeService {
     transcriptMatch ??= await this.transcriptReply(
       workspaceId,
       target.nodeId,
+      target.sessionId,
       input.message,
       requestStartedAt,
     ).catch(() => null);
@@ -343,6 +346,7 @@ export class BridgeService {
           transcriptMatch = await this.transcriptReply(
             workspaceId,
             target.nodeId,
+            target.sessionId,
             input.message,
             requestStartedAt,
           ).catch(() => null);
@@ -450,6 +454,7 @@ export class BridgeService {
   private async waitForTranscriptReply(
     workspaceId: string,
     nodeId: string,
+    ptySessionId: string,
     prompt: string,
     since: number,
     timeoutMs: number,
@@ -457,7 +462,7 @@ export class BridgeService {
   ): Promise<MatchedTranscriptReply | null> {
     const deadline = Date.now() + timeoutMs;
     while (!signal.aborted && Date.now() < deadline) {
-      const match = await this.transcriptReply(workspaceId, nodeId, prompt, since).catch(() => null);
+      const match = await this.transcriptReply(workspaceId, nodeId, ptySessionId, prompt, since).catch(() => null);
       if (match) return match;
       await new Promise((resolve) => setTimeout(resolve, 750));
     }
@@ -468,19 +473,21 @@ export class BridgeService {
   private async transcriptReply(
     workspaceId: string,
     nodeId: string,
+    ptySessionId: string,
     prompt: string,
     since: number,
   ): Promise<MatchedTranscriptReply | null> {
     const node = await workspaceRepository.getNode(nodeId);
     const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
-    if (!node || !payload.provider || !payload.agentSessionId) return null;
+    const preferredSessionId = agentSessionTracker.agentSessionIdForPty(ptySessionId) ?? payload.agentSessionId;
+    if (!node || !payload.provider || !preferredSessionId) return null;
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     let cwd = workspace?.workingDir ?? '.';
     if (node.floorId) {
       const floor = await floorService.get(node.floorId).catch(() => null);
       if (floor?.path) cwd = floor.path;
     }
-    const match = await findReplyToPrompt(payload.provider, cwd, payload.agentSessionId, prompt, since);
+    const match = await findReplyToPrompt(payload.provider, cwd, preferredSessionId, prompt, since);
     if (!match || match.sessionId === payload.agentSessionId) return match;
     await workspaceRepository.updateNode(node.id, {
       payload: { ...payload, agentSessionId: match.sessionId } as never,

@@ -75,6 +75,7 @@ export class AgentSessionService {
       env: { ...(payload.env ?? {}), ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
     });
     const activeAgentSessionId = payload.agentSessionId ?? freshAgentSessionId;
+    if (activeAgentSessionId) agentSessionTracker.bind(session.id, activeAgentSessionId);
     await workspaceRepository.updateNode(target.id, {
       payload: {
         ...payload,

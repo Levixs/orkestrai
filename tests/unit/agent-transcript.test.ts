@@ -7,6 +7,7 @@ import {
   parseGenericTranscriptReply,
   parseKimiTranscriptReply,
   parseStructuredMessagesReply,
+  parseTranscriptReplyForPrompt,
 } from '$lib/modules/agent-room/infrastructure/transcript/AgentTranscript.js';
 
 describe('parseClaudeTranscriptReply', () => {
@@ -128,5 +129,57 @@ describe('transcritos estruturados dos providers adicionais', () => {
       ],
     });
     expect(parseDevinTranscriptReply(transcript)).toBe('Primeira parte.\n\nSegunda parte.');
+  });
+
+  it('exige a pergunta exata em todos os formatos declarados pelos adapters', () => {
+    const cases = [
+      {
+        storage: 'claude-project-jsonl',
+        transcript: [
+          { type: 'user', message: { content: 'pergunta atual' } },
+          { type: 'assistant', message: { content: [{ type: 'text', text: 'Claude respondeu.' }] } },
+        ].map(JSON.stringify).join('\n'),
+      },
+      {
+        storage: 'codex-rollout-jsonl',
+        transcript: [
+          { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'pergunta atual' }] } },
+          { type: 'response_item', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Codex respondeu.' }] } },
+        ].map(JSON.stringify).join('\n'),
+      },
+      {
+        storage: 'kimi-session-dir',
+        transcript: [
+          { type: 'turn.prompt', input: [{ type: 'text', text: 'pergunta atual' }] },
+          { type: 'context.append_loop_event', event: { type: 'content.part', part: { type: 'text', text: 'Kimi respondeu.' } } },
+        ].map(JSON.stringify).join('\n'),
+      },
+      ...['opencode-session-json', 'cursor-transcript-jsonl', 'antigravity-workspace-cache'].map((storage) => ({
+        storage,
+        transcript: [
+          { role: 'user', content: 'pergunta atual' },
+          { role: 'assistant', content: 'Provider respondeu.' },
+        ].map(JSON.stringify).join('\n'),
+      })),
+      {
+        storage: 'cline-session-manifest',
+        transcript: JSON.stringify([
+          { role: 'user', content: 'pergunta atual' },
+          { role: 'assistant', content: 'Cline respondeu.' },
+        ]),
+      },
+      {
+        storage: 'devin-session-db',
+        transcript: JSON.stringify({ steps: [
+          { source: 'user', message: 'pergunta atual' },
+          { source: 'agent', message: 'Devin respondeu.' },
+        ] }),
+      },
+    ];
+
+    for (const testCase of cases) {
+      expect(parseTranscriptReplyForPrompt(testCase.storage, testCase.transcript, 'pergunta anterior')).toBeNull();
+      expect(parseTranscriptReplyForPrompt(testCase.storage, testCase.transcript, '  pergunta   atual ')).toMatch(/respondeu\.$/);
+    }
   });
 });

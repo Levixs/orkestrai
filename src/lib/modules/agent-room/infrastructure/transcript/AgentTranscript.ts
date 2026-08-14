@@ -1,8 +1,10 @@
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { getAgentAdapter, hasAgentAdapter } from '../../application/adapters/registry.js';
+import { agentSessionTracker } from '../pty/AgentSessionTracker.js';
 
 /**
  * Le a ULTIMA resposta do agente direto do transcrito da CLI (JSONL em disco)
@@ -27,6 +29,28 @@ export type MatchedTranscriptReply = {
   sessionId: string;
   text: string;
 };
+
+type ReadonlySqliteDatabase = {
+  prepare(sql: string): { all(...params: unknown[]): unknown[] };
+  close(): void;
+};
+
+const require = createRequire(import.meta.url);
+
+function openReadonlySqlite(path: string): ReadonlySqliteDatabase {
+  try {
+    const BetterSqlite = require('better-sqlite3') as new (
+      filename: string,
+      options: { readonly: boolean; fileMustExist: boolean }
+    ) => ReadonlySqliteDatabase;
+    return new BetterSqlite(path, { readonly: true, fileMustExist: true });
+  } catch {
+    const { DatabaseSync } = require('node:sqlite') as {
+      DatabaseSync: new (filename: string, options: { readOnly: boolean }) => ReadonlySqliteDatabase;
+    };
+    return new DatabaseSync(path, { readOnly: true });
+  }
+}
 
 function readTail(path: string): string | null {
   try {
@@ -300,7 +324,7 @@ function parserForStorage(storage: string | undefined): ((jsonl: string) => { pr
   if (storage === 'claude-project-jsonl') return (jsonl) => ({ prompt: claudePrompt(jsonl), reply: parseClaudeTranscriptReply(jsonl) });
   if (storage === 'codex-rollout-jsonl') return (jsonl) => ({ prompt: codexPrompt(jsonl), reply: parseCodexTranscriptReply(jsonl) });
   if (storage === 'kimi-session-dir') return (jsonl) => ({ prompt: kimiPrompt(jsonl), reply: parseKimiTranscriptReply(jsonl) });
-  if (['cursor-transcript-jsonl', 'antigravity-workspace-cache'].includes(storage ?? '')) {
+  if (['opencode-session-json', 'cursor-transcript-jsonl', 'antigravity-workspace-cache'].includes(storage ?? '')) {
     return (jsonl) => ({ prompt: genericPrompt(jsonl), reply: parseGenericTranscriptReply(jsonl) });
   }
   if (storage === 'cline-session-manifest') return clineTurn;
@@ -309,9 +333,15 @@ function parserForStorage(storage: string | undefined): ((jsonl: string) => { pr
 }
 
 export function parseCodexTranscriptReplyForPrompt(jsonl: string, expectedPrompt: string): string | null {
-  const prompt = codexPrompt(jsonl);
-  if (!prompt || normalizedPrompt(prompt) !== normalizedPrompt(expectedPrompt)) return null;
-  return parseCodexTranscriptReply(jsonl);
+  return parseTranscriptReplyForPrompt('codex-rollout-jsonl', jsonl, expectedPrompt);
+}
+
+export function parseTranscriptReplyForPrompt(storage: string, transcript: string, expectedPrompt: string): string | null {
+  const parser = parserForStorage(storage);
+  if (!parser) return null;
+  const turn = parser(transcript);
+  if (!turn.prompt || normalizedPrompt(turn.prompt) !== normalizedPrompt(expectedPrompt)) return null;
+  return turn.reply?.trim() || null;
 }
 
 /**
@@ -455,6 +485,156 @@ function devinTranscriptPath(sessionId: string): string | null {
   return candidates.find((path) => Boolean(path) && existsSync(path)) ?? null;
 }
 
+type StoredTranscriptTurn = {
+  prompt: string | null;
+  reply: string | null;
+  activity: number;
+};
+
+function openCodeDataRoots(): string[] {
+  return [
+    process.env.XDG_DATA_HOME ? join(process.env.XDG_DATA_HOME, 'opencode') : '',
+    join(homedir(), '.local', 'share', 'opencode'),
+    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'opencode') : '',
+    process.env.APPDATA ? join(process.env.APPDATA, 'opencode') : '',
+  ].filter((path, index, paths) => Boolean(path) && paths.indexOf(path) === index);
+}
+
+function storedJson(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object') return value as Record<string, unknown>;
+  if (typeof value !== 'string') return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+/** OpenCode 1.x persists sessions, messages and parts in opencode.db. */
+function openCodeSqliteTurn(sessionId: string): StoredTranscriptTurn | null {
+  for (const root of openCodeDataRoots()) {
+    const path = join(root, 'opencode.db');
+    if (!existsSync(path)) continue;
+    let database: ReadonlySqliteDatabase | null = null;
+    try {
+      database = openReadonlySqlite(path);
+      const rows = database.prepare(
+        `WITH recent AS (
+           SELECT id, time_created, time_updated, data
+             FROM message
+            WHERE session_id = ?
+            ORDER BY time_created DESC, id DESC
+            LIMIT 60
+         )
+         SELECT recent.id AS message_id,
+                recent.time_created AS message_created,
+                recent.time_updated AS message_updated,
+                recent.data AS message_data,
+                part.time_created AS part_created,
+                part.time_updated AS part_updated,
+                part.data AS part_data
+           FROM recent
+           LEFT JOIN part ON part.message_id = recent.id
+          ORDER BY recent.time_created ASC, recent.id ASC, part.time_created ASC, part.id ASC`
+      ).all(sessionId) as Array<Record<string, unknown>>;
+      if (!rows.length) continue;
+
+      const messages = new Map<string, { role: string; content: string[] }>();
+      let activity = 0;
+      for (const row of rows) {
+        const id = typeof row.message_id === 'string' ? row.message_id : '';
+        if (!id) continue;
+        const message = storedJson(row.message_data);
+        const role = typeof message.role === 'string' ? message.role : '';
+        const entry = messages.get(id) ?? { role, content: [] };
+        if (!entry.role) entry.role = role;
+        const part = storedJson(row.part_data);
+        if (part.type === 'text' && typeof part.text === 'string' && part.text.trim()) {
+          entry.content.push(part.text.trim());
+        }
+        messages.set(id, entry);
+        activity = Math.max(
+          activity,
+          Number(row.message_updated ?? 0),
+          Number(row.message_created ?? 0),
+          Number(row.part_updated ?? 0),
+          Number(row.part_created ?? 0),
+        );
+      }
+      const structured = [...messages.values()].map((message) => ({
+        role: message.role,
+        content: message.content.map((text) => ({ type: 'text', text })),
+      }));
+      return {
+        prompt: structuredPrompt(structured),
+        reply: parseStructuredMessagesReply(structured),
+        activity,
+      };
+    } catch {
+      // Banco em migracao, ocupado ou de uma versao com outro schema.
+    } finally {
+      database?.close();
+    }
+  }
+  return null;
+}
+
+/** OpenCode anterior ao SQLite: storage/message + storage/part em JSON. */
+function openCodeLegacyTurn(sessionId: string): StoredTranscriptTurn | null {
+  for (const root of openCodeDataRoots()) {
+    const messagesDir = join(root, 'storage', 'message', sessionId);
+    if (!existsSync(messagesDir)) continue;
+    let messageFiles: Array<{ path: string; mtime: number }>;
+    try {
+      messageFiles = readdirSync(messagesDir)
+        .filter((name) => name.endsWith('.json'))
+        .map((name) => ({ path: join(messagesDir, name), mtime: statSync(join(messagesDir, name)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime)
+        .slice(0, 60)
+        .sort((a, b) => a.mtime - b.mtime);
+    } catch {
+      continue;
+    }
+
+    const structured: Array<{ role: string; content: Array<{ type: string; text: string }> }> = [];
+    let activity = 0;
+    for (const file of messageFiles) {
+      const message = storedJson(readFileSync(file.path, 'utf8'));
+      const id = typeof message.id === 'string' ? message.id : basename(file.path, '.json');
+      const role = typeof message.role === 'string' ? message.role : '';
+      const content: Array<{ type: string; text: string }> = [];
+      const partsDir = join(root, 'storage', 'part', id);
+      if (existsSync(partsDir)) {
+        try {
+          for (const name of readdirSync(partsDir).filter((entry) => entry.endsWith('.json')).sort()) {
+            const path = join(partsDir, name);
+            const part = storedJson(readFileSync(path, 'utf8'));
+            if (part.type === 'text' && typeof part.text === 'string' && part.text.trim()) {
+              content.push({ type: 'text', text: part.text.trim() });
+            }
+            activity = Math.max(activity, statSync(path).mtimeMs);
+          }
+        } catch {
+          // Uma parte pode ser rotacionada enquanto a resposta e gravada.
+        }
+      }
+      structured.push({ role, content });
+      activity = Math.max(activity, file.mtime);
+    }
+    return {
+      prompt: structuredPrompt(structured),
+      reply: parseStructuredMessagesReply(structured),
+      activity,
+    };
+  }
+  return null;
+}
+
+function openCodeTurn(sessionId: string): StoredTranscriptTurn | null {
+  return openCodeSqliteTurn(sessionId) ?? openCodeLegacyTurn(sessionId);
+}
+
 function preferredTranscriptPath(storage: string | undefined, cwd: string, sessionId: string): string | null {
   if (storage === 'claude-project-jsonl') {
     const path = claudeTranscriptPath(cwd, sessionId);
@@ -524,6 +704,18 @@ function candidateTranscriptPaths(storage: string | undefined, cwd: string, sinc
   return [];
 }
 
+function candidateSessionIds(storage: string | undefined, cwd: string, preferredSessionId: string): string[] {
+  const ids: string[] = [];
+  const exclude = new Set<string>([preferredSessionId]);
+  for (let index = 0; index < 12; index += 1) {
+    const id = agentSessionTracker.findLatestAgentSessionId(storage, cwd, exclude);
+    if (!id) break;
+    ids.push(id);
+    exclude.add(id);
+  }
+  return ids;
+}
+
 function codexTranscriptCwd(path: string): string | null {
   let fd: number | null = null;
   try {
@@ -554,16 +746,10 @@ function sessionIdForPath(storage: string | undefined, path: string): string | n
 }
 
 function replyAtPath(storage: string | undefined, path: string, expectedPrompt: string): string | null {
-  const parser = parserForStorage(storage);
-  const jsonl = parser
-    ? ['cline-session-manifest', 'devin-session-db'].includes(storage ?? '')
-      ? readFileSync(path, 'utf8')
-      : readTail(path)
-    : null;
-  if (!parser || !jsonl) return null;
-  const turn = parser(jsonl);
-  if (!turn.prompt || normalizedPrompt(turn.prompt) !== normalizedPrompt(expectedPrompt)) return null;
-  return turn.reply?.trim() || null;
+  const transcript = ['cline-session-manifest', 'devin-session-db'].includes(storage ?? '')
+    ? readFileSync(path, 'utf8')
+    : readTail(path);
+  return transcript && storage ? parseTranscriptReplyForPrompt(storage, transcript, expectedPrompt) : null;
 }
 
 /**
@@ -580,6 +766,21 @@ export async function findReplyToPrompt(
 ): Promise<MatchedTranscriptReply | null> {
   try {
     const storage = hasAgentAdapter(provider) ? getAgentAdapter(provider).sessionStorage : undefined;
+    if (storage === 'opencode-session-json') {
+      for (const sessionId of [preferredSessionId, ...candidateSessionIds(storage, cwd, preferredSessionId)]) {
+        const turn = openCodeTurn(sessionId);
+        if (
+          turn
+          && turn.activity >= since - 2_000
+          && turn.prompt
+          && normalizedPrompt(turn.prompt) === normalizedPrompt(expectedPrompt)
+          && turn.reply?.trim()
+        ) {
+          return { sessionId, text: turn.reply.trim() };
+        }
+      }
+      return null;
+    }
     const preferredPath = preferredTranscriptPath(storage, cwd, preferredSessionId);
     if (preferredPath && statSync(preferredPath).mtimeMs >= since - 2_000) {
       const text = replyAtPath(storage, preferredPath, expectedPrompt);
@@ -590,6 +791,12 @@ export async function findReplyToPrompt(
       const text = replyAtPath(storage, path, expectedPrompt);
       const sessionId = text ? sessionIdForPath(storage, path) : null;
       if (text && sessionId) return { sessionId, text };
+    }
+    for (const sessionId of candidateSessionIds(storage, cwd, preferredSessionId)) {
+      const path = preferredTranscriptPath(storage, cwd, sessionId);
+      if (!path || path === preferredPath || statSync(path).mtimeMs < since - 2_000) continue;
+      const text = replyAtPath(storage, path, expectedPrompt);
+      if (text) return { sessionId, text };
     }
     return null;
   } catch {
@@ -621,6 +828,9 @@ export async function lastReplyText(provider: string, cwd: string, sessionId: st
       if (!path) return null;
       const jsonl = readTail(path);
       return jsonl ? parseKimiTranscriptReply(jsonl) : null;
+    }
+    if (storage === 'opencode-session-json') {
+      return openCodeTurn(sessionId)?.reply ?? null;
     }
     if (storage === 'cursor-transcript-jsonl') {
       const path = cursorTranscriptPath(cwd, sessionId);

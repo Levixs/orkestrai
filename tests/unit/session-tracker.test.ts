@@ -33,6 +33,14 @@ function touch(path: string, when: Date) {
 }
 
 describe('AgentSessionTracker', () => {
+  it('mantem o session id real vinculado ao PTY ativo', () => {
+    const { tracker } = isolatedTracker();
+    tracker.bind('pty-1', 'provider-session-1');
+    expect(tracker.agentSessionIdForPty('pty-1')).toBe('provider-session-1');
+    tracker.forget('pty-1');
+    expect(tracker.agentSessionIdForPty('pty-1')).toBeNull();
+  });
+
   it('encontra sessao do claude pelo jsonl mais novo apos o spawn', () => {
     const since = Date.now() - 60_000;
     const cwd = join(tmpdir(), 'meu-projeto');
@@ -91,6 +99,9 @@ describe('AgentSessionTracker', () => {
     // Sem exclusao: a mais recente. Excluindo-a: a segunda mais recente.
     expect(tracker.findLatestUnclaimedSessionId(claudeAdapter.sessionStorage, cwd)).toBe('nova');
     expect(tracker.findLatestUnclaimedSessionId(claudeAdapter.sessionStorage, cwd, new Set(['nova']))).toBe('media');
+    tracker.claim('nova');
+    expect(tracker.findLatestUnclaimedSessionId(claudeAdapter.sessionStorage, cwd)).toBe('media');
+    expect(tracker.findLatestAgentSessionId(claudeAdapter.sessionStorage, cwd)).toBe('nova');
   });
 
   it('ignora transcripts de subagentes do claude', () => {
@@ -178,6 +189,32 @@ describe('AgentSessionTracker', () => {
 
     expect(tracker.findAgentSessionId(kimiAdapter.sessionStorage, cwd, since)).toBe('session_target');
     expect(tracker.findAgentSessionId(kimiAdapter.sessionStorage, otherCwd, since)).toBe('session_other');
+  });
+
+  it('vincula sessoes atuais do OpenCode pelo SQLite e diretorio exato', () => {
+    const since = Date.now() - 60_000;
+    const cwd = join(tmpdir(), `opencode-workspace-${Date.now()}`);
+    const otherCwd = join(tmpdir(), `opencode-other-${Date.now()}`);
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(otherCwd, { recursive: true });
+    const { home, tracker } = isolatedTracker();
+    const databaseDir = join(home, '.local', 'share', 'opencode');
+    mkdirSync(databaseDir, { recursive: true });
+    const database = new DatabaseSync(join(databaseDir, 'opencode.db'));
+    database.exec('CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL)');
+    database.exec('CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL, data TEXT NOT NULL)');
+    const insertSession = database.prepare('INSERT INTO session (id, directory, time_created, time_updated) VALUES (?, ?, ?, ?)');
+    const insertMessage = database.prepare('INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)');
+    const now = Date.now();
+    insertSession.run('ses_other', otherCwd, now - 3_000, now - 1_000);
+    insertSession.run('ses_target', cwd, now - 2_000, now);
+    insertMessage.run('msg_other', 'ses_other', now - 1_000, now - 1_000, JSON.stringify({ role: 'user' }));
+    insertMessage.run('msg_target', 'ses_target', now, now, JSON.stringify({ role: 'user' }));
+    database.close();
+
+    expect(tracker.findAgentSessionId(openCodeAdapter.sessionStorage, cwd, since)).toBe('ses_target');
+    expect(tracker.findAgentSessionId(openCodeAdapter.sessionStorage, otherCwd, since)).toBe('ses_other');
+    expect(tracker.findAgentSessionId(openCodeAdapter.sessionStorage, cwd, since, new Set(['ses_target']))).toBeNull();
   });
 
   it('valida um id exato do Claude apenas quando o transcript e retomavel', () => {

@@ -165,6 +165,7 @@ export function handlePtyConnection(socket: WebSocket): void {
           const provider = typeof message.provider === 'string' && message.provider.trim() ? message.provider : null;
           if (provider) {
             const reportAgentSession = (agentSessionId: string) => {
+              agentSessionTracker.bind(session.id, agentSessionId);
               // Broadcast global: o socket criador pode já ter sido fechado
               // (o no remonta em modo attach ao receber o sessionId).
               wsGlobal.__orkestraiBroadcast?.({
@@ -225,7 +226,7 @@ export function handlePtyConnection(socket: WebSocket): void {
         }
         case 'kill': {
           const killed = ptySessionManager.kill(message.sessionId);
-          agentSessionTracker.unwatch(message.sessionId);
+          agentSessionTracker.forget(message.sessionId);
           detachers.get(message.sessionId)?.();
           detachers.delete(message.sessionId);
           send({ type: 'killed', sessionId: message.sessionId, killed });

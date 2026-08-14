@@ -46,6 +46,7 @@ export type AgentSessionStorage =
  */
 export class AgentSessionTracker {
   private watchers = new Map<string, ReturnType<typeof setInterval>>();
+  private sessionsByPty = new Map<string, string>();
   /** Ids ja atribuidos a algum terminal — dois agentes no mesmo diretorio
       nao podem receber o mesmo session-id. */
   private claimed = new Set<string>();
@@ -60,6 +61,20 @@ export class AgentSessionTracker {
     this.claimed.add(agentSessionId);
   }
 
+  bind(ptySessionId: string, agentSessionId: string): void {
+    this.sessionsByPty.set(ptySessionId, agentSessionId);
+    this.claim(agentSessionId);
+  }
+
+  agentSessionIdForPty(ptySessionId: string): string | null {
+    return this.sessionsByPty.get(ptySessionId) ?? null;
+  }
+
+  forget(ptySessionId: string): void {
+    this.unwatch(ptySessionId);
+    this.sessionsByPty.delete(ptySessionId);
+  }
+
   /** Busca o session-id mais ANTIGO nao reivindicado criado apos `since`
       (o primeiro arquivo que aparece depois do meu spawn tende a ser o meu). */
   findAgentSessionId(storage: string | undefined, cwd: string, since: number, exclude?: Set<string>): string | null {
@@ -71,6 +86,13 @@ export class AgentSessionTracker {
   findLatestUnclaimedSessionId(storage: string | undefined, cwd: string, exclude?: Set<string>): string | null {
     const excludeIds = new Set<string>([...this.claimed, ...(exclude ?? [])]);
     return this.findByStrategy(storage, cwd, 0, excludeIds, 'newest');
+  }
+
+  /** Sessao mais recente do workspace sem considerar reivindicacoes de outros
+      terminais. Usada apenas para reparar metadata persistida; o chamador ainda
+      precisa confirmar o turno exato antes de aceitar a sessao. */
+  findLatestAgentSessionId(storage: string | undefined, cwd: string, exclude = new Set<string>()): string | null {
+    return this.findByStrategy(storage, cwd, 0, exclude, 'newest');
   }
 
   /**
@@ -142,7 +164,7 @@ export class AgentSessionTracker {
       const found = this.findAgentSessionId(storage, cwd, startedAt);
       if (found) {
         this.unwatch(ptySessionId);
-        this.claim(found);
+        this.bind(ptySessionId, found);
         onFound(found);
         return;
       }
@@ -173,7 +195,7 @@ export class AgentSessionTracker {
     const inspect = () => {
       if (this.isAgentSessionResumable(storage, cwd, agentSessionId)) {
         this.unwatch(ptySessionId);
-        this.claim(agentSessionId);
+        this.bind(ptySessionId, agentSessionId);
         onFound(agentSessionId);
         return;
       }
@@ -301,25 +323,70 @@ export class AgentSessionTracker {
     return pick.call(this, candidate, since, (name: string) => name.startsWith('session_') && !exclude.has(name));
   }
 
-  // ~/.local/share/opencode/project/<slug>/storage/session/info/<id>.json (aprox.)
+  // OpenCode atual: ~/.local/share/opencode/opencode.db. Versoes anteriores
+  // persistiam JSON em storage/session/<project-id>/<session-id>.json.
   private findOpenCodeSession(cwd: string, since: number, exclude: Set<string>, strategy: 'oldest' | 'newest'): string | null {
-    const root = join(this.homeDir, '.local', 'share', 'opencode');
-    if (!existsSync(root)) return null;
+    const roots = [
+      process.env.XDG_DATA_HOME ? join(process.env.XDG_DATA_HOME, 'opencode') : '',
+      join(this.homeDir, '.local', 'share', 'opencode'),
+      process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'opencode') : '',
+      process.env.APPDATA ? join(process.env.APPDATA, 'opencode') : '',
+    ].filter((path, index, paths) => Boolean(path) && paths.indexOf(path) === index);
+    const targetCwd = this.realCwd(cwd);
+    const fallbackCwd = resolve(cwd);
+    const direction = strategy === 'oldest' ? 'ASC' : 'DESC';
+
+    for (const root of roots) {
+      const databasePath = join(root, 'opencode.db');
+      if (!existsSync(databasePath)) continue;
+      let database: ReadonlySqliteDatabase | null = null;
+      try {
+        database = openReadonlySqlite(databasePath);
+        const rows = database.prepare(
+          `SELECT s.id,
+                  MAX(COALESCE(m.time_updated, m.time_created, s.time_updated, s.time_created, 0)) AS activity
+             FROM session s
+             LEFT JOIN message m ON m.session_id = s.id
+            WHERE s.directory IN (?, ?)
+            GROUP BY s.id
+           HAVING activity >= ?
+            ORDER BY activity ${direction}, s.id ${direction}`
+        ).all(targetCwd, fallbackCwd, since) as Array<{ id?: unknown }>;
+        const found = rows.find((row) => typeof row.id === 'string' && row.id.trim() && !exclude.has(row.id));
+        if (found && typeof found.id === 'string') return found.id;
+      } catch {
+        // Banco em migracao, ocupado ou de uma versao com outro schema.
+      } finally {
+        database?.close();
+      }
+    }
+
     const idOf = (name: string) =>
       name.match(/(ses_[A-Za-z0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/)?.[1] ?? null;
     const pick = strategy === 'oldest' ? this.oldestFileRecursive : this.newestFileRecursive;
-    const found = pick.call(
-      this,
-      root,
-      since,
-      (name: string) => {
-        if (!name.endsWith('.json') || !name.includes('ses')) return false;
-        const id = idOf(name);
-        return id !== null && !exclude.has(id);
-      },
-      6
-    );
-    return found ? idOf(found) : null;
+    for (const root of roots) {
+      if (!existsSync(root)) continue;
+      const found = pick.call(
+        this,
+        root,
+        since,
+        (name: string, path: string) => {
+          if (!name.endsWith('.json') || !name.includes('ses')) return false;
+          const id = idOf(name);
+          if (!id || exclude.has(id)) return false;
+          try {
+            const payload = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+            const directory = typeof payload.directory === 'string' ? payload.directory : null;
+            return directory !== null && this.realCwd(directory) === targetCwd;
+          } catch {
+            return false;
+          }
+        },
+        6
+      );
+      if (found) return idOf(found);
+    }
+    return null;
   }
 
   // ~/.cursor/projects/<workspace-slug>/agent-transcripts/<session-id>/<session-id>.jsonl
@@ -534,4 +601,8 @@ export class AgentSessionTracker {
   }
 }
 
-export const agentSessionTracker = new AgentSessionTracker();
+const trackerGlobal = globalThis as typeof globalThis & {
+  __orkestraiAgentSessionTracker?: AgentSessionTracker;
+};
+
+export const agentSessionTracker = trackerGlobal.__orkestraiAgentSessionTracker ??= new AgentSessionTracker();
