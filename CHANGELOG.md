@@ -9,6 +9,10 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Adicionou o spike de segurança da colaboração remota experimental: protocolo
+  versionado com chaves direcionais HKDF/AES-GCM, proteção contra replay e
+  adulteração, deep link com segredo no fragmento e um relay WebSocket opaco
+  com limites de conexão, frame e banda, sem qualquer acesso ao PTY local.
 - Evoluiu as Rotinas legadas para Automações rastreáveis, com gatilhos manuais,
   agendados, por tarefa, mensagem, commit Git, pull request do GitHub, webhook,
   alteração de arquivo e uso de provider; ações para instruir agente, criar

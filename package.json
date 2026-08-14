@@ -29,6 +29,7 @@
     "seed": "npx svelar seed:run",
     "dev:worker": "node scripts/svelar-dev-runtime.mjs queue:work --queue=default",
     "dev:scheduler": "node scripts/svelar-dev-runtime.mjs schedule:run",
+    "relay:dev": "node packages/orkestrai-relay/src/server.mjs",
     "test": "svelte-kit sync && vitest run",
     "test:watch": "svelte-kit sync && vitest",
     "test:e2e": "playwright test",
