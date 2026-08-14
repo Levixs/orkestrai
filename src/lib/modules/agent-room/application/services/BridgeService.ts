@@ -206,7 +206,15 @@ export class BridgeService {
 
   async ask(
     workspaceId: string,
-    input: { to: string; message: string; from?: string | null; timeoutMs?: number; signal?: AbortSignal }
+    input: {
+      to: string;
+      message: string;
+      from?: string | null;
+      timeoutMs?: number;
+      signal?: AbortSignal;
+      messageId?: string;
+      metadata?: Record<string, unknown>;
+    }
   ): Promise<{ to: string; reply: string; delivered: boolean; replyConfirmed: boolean; timedOut: boolean; messageId: string; deliveryState: 'replied' | 'failed' }> {
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.to);
@@ -216,7 +224,8 @@ export class BridgeService {
 
     const origin = input.from ? this.findAgent(agents, input.from) : null;
     if (origin) await this.ensureEdge(workspaceId, origin.nodeId, target.nodeId);
-    const messageId = uuidv7();
+    const messageId = input.messageId ?? uuidv7();
+    const metadata = input.metadata ?? {};
     await controlCenterService.recordDelivery({
       messageId,
       workspaceId,
@@ -224,6 +233,7 @@ export class BridgeService {
       toNodeId: target.nodeId,
       state: 'queued',
       content: input.message,
+      metadata,
     });
     await controlCenterService.recordDelivery({
       messageId,
@@ -232,6 +242,7 @@ export class BridgeService {
       toNodeId: target.nodeId,
       state: 'sent',
       content: input.message,
+      metadata,
     });
 
     // Baseline ANTES de mandar: a resposta só vale quando o transcrito muda
@@ -257,13 +268,14 @@ export class BridgeService {
             toNodeId: target.nodeId,
             state: 'delivered',
             content: input.message,
+            metadata,
           });
           await controlCenterService.recordActivity({
             workspaceId,
             nodeId: target.nodeId,
             state: 'working',
             action: 'system:message_received',
-            metadata: { fromTitle: origin?.title ?? null },
+            metadata: { ...metadata, fromTitle: origin?.title ?? null },
           });
         },
       );
@@ -276,6 +288,7 @@ export class BridgeService {
         state: 'failed',
         content: input.message,
         error: error instanceof Error ? error.message : String(error),
+        metadata,
       });
       throw error;
     } finally {
@@ -319,6 +332,7 @@ export class BridgeService {
         state: 'failed',
         content: input.message,
         error: error instanceof Error ? error.message : String(error),
+        metadata,
       });
       throw error;
     }
@@ -332,6 +346,7 @@ export class BridgeService {
         toNodeId: target.nodeId,
         state: 'acknowledged',
         content: input.message,
+        metadata,
       });
     }
     if (replyConfirmed) {
@@ -343,13 +358,14 @@ export class BridgeService {
         state: 'replied',
         content: input.message,
         reply: replyText,
+        metadata,
       });
       await controlCenterService.recordActivity({
         workspaceId,
         nodeId: target.nodeId,
         state: 'idle',
         action: 'system:message_replied',
-        metadata: { toTitle: origin?.title ?? null },
+        metadata: { ...metadata, toTitle: origin?.title ?? null },
       });
     } else {
       await controlCenterService.recordDelivery({
@@ -360,6 +376,7 @@ export class BridgeService {
         state: 'failed',
         content: input.message,
         error: reply.timedOut ? 'Reply timed out' : 'Reply could not be confirmed',
+        metadata,
       });
     }
 

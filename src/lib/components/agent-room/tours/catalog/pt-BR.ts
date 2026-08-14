@@ -1079,7 +1079,7 @@ export const TOURS_PT: Tour[] = [
     id: 'remote-workspace-collaboration',
     icon: 'RadioTower',
     title: 'Compartilhar um workspace com segurança',
-    tagline: 'Convide outro dispositivo sem expor terminais, arquivos ou segredos.',
+    tagline: 'Aprove as capacidades remotas exatas para cada dispositivo confiável.',
     steps: [
       {
         id: 'open-sharing',
@@ -1098,9 +1098,14 @@ export const TOURS_PT: Tour[] = [
         body: 'Compare a impressão digital do dispositivo antes de aprová-lo. Você pode trocar sua função, revogá-lo imediatamente e consultar cada comando aceito ou rejeitado na auditoria.',
       },
       {
+        id: 'choose-agent-access',
+        title: 'Separe conversa do acesso ao terminal',
+        body: 'Operadores podem usar a conversa segura com o agente. Administradores também podem iniciar ou restaurar um agente. Habilite o terminal bruto separadamente para um dispositivo Administrador confiável somente quando necessário; ele vem desligado, limita-se a um terminal, controla tráfego, usa criptografia e gera auditoria.',
+      },
+      {
         id: 'work-remotely',
         title: 'Use ou instale o Remote',
-        body: 'Depois que o convidado solicita acesso, o host abre Compartilhar workspace → Acessos, compara a impressão digital e aprova o dispositivo. No app, navegador ou PWA instalável, o convidado acompanha a visão sanitizada, estado do time, tarefas, revisões, atividade e uso dos providers. A função pode permitir mudanças em tarefas, decisões de revisão ou mensagens ao líder; saída de PTY, arquivos, notas, portais, credenciais e caminhos locais nunca entram na projeção compartilhada.',
+        body: 'Depois que o convidado solicita acesso, o host abre Compartilhar workspace → Acessos, compara a impressão digital e aprova o dispositivo. No navegador ou PWA instalável, ele acompanha a visão sanitizada e usa somente os comandos concedidos. Arquivos, notas, portais, dispositivos mobile, credenciais, caminhos locais e edição do Canvas continuam indisponíveis; a saída bruta só aparece enquanto sua permissão separada estiver habilitada.',
       },
       {
         id: 'stop-sharing',

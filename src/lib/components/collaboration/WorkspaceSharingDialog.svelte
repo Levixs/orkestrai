@@ -66,6 +66,7 @@
   let confirmStop = $state(false);
   let pendingRevoke = $state<CollaborationDeviceData | null>(null);
   let roleDrafts = $state<Record<string, CollaborationRole>>({});
+  let terminalDrafts = $state<Record<string, boolean>>({});
 
   const schema = createCollaborationShareSchema as unknown as Parameters<
     typeof zod
@@ -148,6 +149,12 @@
         (status.devices ?? []).map((device) => [
           device.id,
           roleDrafts[device.id] ?? device.role,
+        ]),
+      );
+      terminalDrafts = Object.fromEntries(
+        (status.devices ?? []).map((device) => [
+          device.id,
+          terminalDrafts[device.id] ?? device.scopes.includes("terminal.control"),
         ]),
       );
     } catch (error) {
@@ -262,6 +269,9 @@
           body: JSON.stringify({
             approved,
             role: roleDrafts[device.id] ?? device.role,
+            terminalAccess:
+              terminalDrafts[device.id] ??
+              device.scopes.includes("terminal.control"),
           }),
         },
       );
@@ -383,6 +393,10 @@
         m["collaboration.event_command_accepted"],
       "collaboration.event_command_rejected":
         m["collaboration.event_command_rejected"],
+      "collaboration.event_terminal_opened":
+        m["collaboration.event_terminal_opened"],
+      "collaboration.event_terminal_closed":
+        m["collaboration.event_terminal_closed"],
     };
     return labels[key]?.() ?? event;
   }
@@ -401,7 +415,7 @@
 
 <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
   <Dialog.Content
-    class="grid max-h-[min(90dvh,820px)] max-w-[calc(100%-1.5rem)]! grid-rows-[auto_minmax(0,1fr)] gap-0! overflow-hidden rounded-lg p-0! sm:max-w-3xl!"
+    class="grid h-[min(90dvh,720px)] max-h-[720px] max-w-[calc(100%-1.5rem)]! grid-rows-[auto_minmax(0,1fr)] gap-0! overflow-hidden rounded-lg p-0! sm:max-w-3xl!"
   >
     <Dialog.Header class="border-b border-border/60 px-5 py-4 pr-12">
       <div class="flex items-start gap-3">
@@ -429,9 +443,9 @@
       </div>
     </Dialog.Header>
 
-    <div class="min-h-0 overflow-y-auto overscroll-contain">
+    <div class="min-h-0 overflow-hidden">
       {#if loading}
-        <div class="grid min-h-80 place-items-center">
+        <div class="grid h-full min-h-0 place-items-center">
           <LoaderCircle
             class="animate-spin text-[var(--app-accent)]"
             size={22}
@@ -439,7 +453,7 @@
         </div>
       {:else if !status?.enabled}
         <div
-          class="mx-auto flex min-h-[430px] max-w-xl flex-col justify-center px-6 py-10 text-center"
+          class="mx-auto flex h-full min-h-0 max-w-xl flex-col justify-center overflow-y-auto px-6 py-10 text-center"
         >
           <span
             class="mx-auto grid size-12 place-items-center rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-raised)] text-[var(--app-accent)]"
@@ -469,7 +483,7 @@
         <form
           method="POST"
           use:enhance
-          class="mx-auto max-w-2xl space-y-5 px-6 py-6"
+          class="mx-auto h-full max-w-2xl space-y-5 overflow-y-auto px-6 py-6"
         >
           <div
             class="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-raised)] p-4"
@@ -561,14 +575,14 @@
           </div>
         </form>
       {:else}
-        <Tabs.Root bind:value={activeTab} class="min-h-0 gap-0">
+        <Tabs.Root bind:value={activeTab} class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-0">
           <Tabs.List
             class="mx-5 mt-4 grid grid-cols-3 bg-[var(--app-surface-raised)]"
           >
-            <Tabs.Trigger value="invite"
+            <Tabs.Trigger value="invite" class="transition-[background-color,color,box-shadow] data-[state=active]:bg-[var(--app-accent)]! data-[state=active]:text-[var(--app-accent-contrast)]! data-[state=active]:shadow-sm"
               >{m["collaboration.tab_invite"]()}</Tabs.Trigger
             >
-            <Tabs.Trigger value="access" class="gap-1.5"
+            <Tabs.Trigger value="access" class="gap-1.5 transition-[background-color,color,box-shadow] data-[state=active]:bg-[var(--app-accent)]! data-[state=active]:text-[var(--app-accent-contrast)]! data-[state=active]:shadow-sm"
               >{m[
                 "collaboration.tab_access"
               ]()}{#if pendingDevices.length}<Badge
@@ -576,12 +590,12 @@
                   >{pendingDevices.length}</Badge
                 >{/if}</Tabs.Trigger
             >
-            <Tabs.Trigger value="activity"
+            <Tabs.Trigger value="activity" class="transition-[background-color,color,box-shadow] data-[state=active]:bg-[var(--app-accent)]! data-[state=active]:text-[var(--app-accent-contrast)]! data-[state=active]:shadow-sm"
               >{m["collaboration.tab_activity"]()}</Tabs.Trigger
             >
           </Tabs.List>
 
-          <Tabs.Content value="invite" class="m-0 p-5">
+          <Tabs.Content value="invite" class="m-0 min-h-0 overflow-y-auto overscroll-contain p-5">
             <div class="grid gap-5 md:grid-cols-[minmax(0,1fr)_224px]">
               <div>
                 <div class="flex items-center gap-2">
@@ -665,7 +679,7 @@
             </div>
           </Tabs.Content>
 
-          <Tabs.Content value="access" class="m-0 space-y-5 p-5">
+          <Tabs.Content value="access" class="m-0 min-h-0 space-y-5 overflow-y-auto overscroll-contain p-5">
             <section>
               <h2
                 class="text-xs font-semibold uppercase text-[var(--app-text-muted)]"
@@ -693,10 +707,15 @@
                       type="single"
                       value={roleDrafts[device.id]}
                       onValueChange={(value: string) =>
-                        (roleDrafts = {
-                          ...roleDrafts,
-                          [device.id]: value as CollaborationRole,
-                        })}
+                        {
+                          roleDrafts = {
+                            ...roleDrafts,
+                            [device.id]: value as CollaborationRole,
+                          };
+                          if (value !== "administrator") {
+                            terminalDrafts = { ...terminalDrafts, [device.id]: false };
+                          }
+                        }}
                     >
                       <Select.Trigger size="sm"
                         ><span
@@ -712,6 +731,19 @@
                           >{/each}</Select.Content
                       >
                     </Select.Root>
+                    <label
+                      class="flex min-w-40 items-center gap-2 text-[10px] text-[var(--app-text-muted)]"
+                      title={m["collaboration.terminal_access_help"]()}
+                    >
+                      <Switch
+                        checked={terminalDrafts[device.id] ?? false}
+                        disabled={busy || roleDrafts[device.id] !== "administrator"}
+                        onCheckedChange={(checked: boolean) =>
+                          (terminalDrafts = { ...terminalDrafts, [device.id]: checked })}
+                        aria-label={m["collaboration.terminal_access"]()}
+                      />
+                      <span>{m["collaboration.terminal_access"]()}</span>
+                    </label>
                     <Button
                       size="sm"
                       disabled={busy}
@@ -760,10 +792,15 @@
                       type="single"
                       value={roleDrafts[device.id]}
                       onValueChange={(value: string) =>
-                        (roleDrafts = {
-                          ...roleDrafts,
-                          [device.id]: value as CollaborationRole,
-                        })}
+                        {
+                          roleDrafts = {
+                            ...roleDrafts,
+                            [device.id]: value as CollaborationRole,
+                          };
+                          if (value !== "administrator") {
+                            terminalDrafts = { ...terminalDrafts, [device.id]: false };
+                          }
+                        }}
                       ><Select.Trigger size="sm"
                         ><span
                           >{roleLabel(
@@ -775,8 +812,22 @@
                             value={role}
                             >{roleLabel(role as CollaborationRole)}</Select.Item
                           >{/each}</Select.Content
-                      ></Select.Root
-                    >{#if roleDrafts[device.id] !== device.role}<Button
+                      ></Select.Root>
+                    <label
+                      class="flex min-w-40 items-center gap-2 text-[10px] text-[var(--app-text-muted)]"
+                      title={m["collaboration.terminal_access_help"]()}
+                    >
+                      <Switch
+                        checked={terminalDrafts[device.id] ?? false}
+                        disabled={busy || roleDrafts[device.id] !== "administrator"}
+                        onCheckedChange={(checked: boolean) =>
+                          (terminalDrafts = { ...terminalDrafts, [device.id]: checked })}
+                        aria-label={m["collaboration.terminal_access"]()}
+                      />
+                      <span>{m["collaboration.terminal_access"]()}</span>
+                    </label>
+                    {#if roleDrafts[device.id] !== device.role ||
+                    (terminalDrafts[device.id] ?? false) !== device.scopes.includes("terminal.control")}<Button
                         variant="outline"
                         size="sm"
                         disabled={busy}
@@ -798,7 +849,7 @@
             </section>
           </Tabs.Content>
 
-          <Tabs.Content value="activity" class="m-0 p-5">
+          <Tabs.Content value="activity" class="m-0 min-h-0 overflow-y-auto overscroll-contain p-5">
             <div
               class="divide-y divide-[var(--app-border)] rounded-lg border border-[var(--app-border)]"
             >

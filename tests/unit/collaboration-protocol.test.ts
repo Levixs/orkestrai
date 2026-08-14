@@ -90,6 +90,20 @@ describe('collaboration protocol', () => {
     expect(host.decrypt(guest.encrypt({ type: 'pong', sentAt: 42 }, 'host_device_01'))).toEqual({ type: 'pong', sentAt: 42 });
   });
 
+  it('encrypts remote terminal control and output frames', () => {
+    const { host, guest } = channelPair();
+    const open = guest.encrypt({
+      type: 'terminal.open', nodeId: 'agent_node_01', cols: 120, rows: 36,
+    }, 'host_device_01');
+    expect(host.decrypt(open)).toEqual({
+      type: 'terminal.open', nodeId: 'agent_node_01', cols: 120, rows: 36,
+    });
+    const output = host.encrypt({
+      type: 'terminal.output', nodeId: 'agent_node_01', data: '\u001b[32mready\u001b[0m',
+    }, 'guest_device_01');
+    expect(guest.decrypt(output)).toMatchObject({ type: 'terminal.output', data: '\u001b[32mready\u001b[0m' });
+  });
+
   it('rejects replayed and out-of-order envelopes', () => {
     const { host, guest } = channelPair();
     const first = host.encrypt({ type: 'ping', sentAt: 1 }, 'guest_device_01');

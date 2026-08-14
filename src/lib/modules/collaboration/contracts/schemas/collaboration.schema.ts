@@ -21,6 +21,7 @@ export const collaborationJoinRequestSchema = z.object({
 export const approveCollaborationDeviceSchema = z.object({
   approved: z.boolean(),
   role: collaborationRoleSchema.default('viewer'),
+  terminalAccess: z.boolean().default(false),
 }).strict();
 
 const taskCreateCommandSchema = z.object({
@@ -52,11 +53,24 @@ const leaderMessageCommandSchema = z.object({
   message: z.string().trim().min(1).max(10_000),
 }).strict();
 
+const agentMessageCommandSchema = z.object({
+  type: z.literal('agent.message'),
+  agentNodeId: z.string().uuid(),
+  message: z.string().trim().min(1).max(10_000),
+}).strict();
+
+const agentInvokeCommandSchema = z.object({
+  type: z.literal('agent.invoke'),
+  agentNodeId: z.string().uuid(),
+}).strict();
+
 export const collaborationCommandSchema = z.discriminatedUnion('type', [
   taskCreateCommandSchema,
   taskUpdateCommandSchema,
   reviewDecisionCommandSchema,
   leaderMessageCommandSchema,
+  agentMessageCommandSchema,
+  agentInvokeCommandSchema,
 ]);
 
 export const executeCollaborationCommandSchema = z.object({

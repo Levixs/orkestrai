@@ -16,8 +16,10 @@ import { collaborationShareService } from '$lib/modules/collaboration/applicatio
 import { CreateCollaborationShareRequest } from '$lib/modules/collaboration/interface/http/requests/CreateCollaborationShareRequest.js';
 import { ApproveCollaborationDeviceRequest } from '$lib/modules/collaboration/interface/http/requests/ApproveCollaborationDeviceRequest.js';
 import { ExecuteCollaborationCommandDto } from '$lib/modules/collaboration/application/dto/CollaborationDto.js';
+import { controlCenterService } from '$lib/modules/agent-room/application/services/ControlCenterService.js';
+import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.js';
 
-async function setup(role: 'viewer' | 'operator' = 'operator') {
+async function setup(role: 'viewer' | 'operator' | 'administrator' = 'operator') {
   const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-collaboration-'));
   const workspace = await workspaceRepository.createWorkspace({
     name: 'Shared workspace',
@@ -64,7 +66,7 @@ async function setup(role: 'viewer' | 'operator' = 'operator') {
     role,
   });
   const approved = await collaborationRepository.approveDevice(device.id, role, collaborationPolicy.scopesForRole(role));
-  return { workspace, share, device: approved };
+  return { workspace, share, device: approved, agent };
 }
 
 describe('collaboration host core', () => {
@@ -84,6 +86,53 @@ describe('collaboration host core', () => {
     expect(serialized).toContain('[redacted-path]');
     expect(serialized).toContain('[redacted-secret]');
     expect(serialized).toContain('[redacted-private-url]');
+  });
+
+  it('projects only collaboration-originated conversations for the active share', async () => {
+    const { share, workspace, agent } = await setup();
+    await controlCenterService.recordDelivery({
+      messageId: uuidv7(), workspaceId: workspace.id, toNodeId: agent.id,
+      state: 'replied', content: 'Remote question', reply: 'Remote answer',
+      metadata: { remoteCollaboration: true, remoteShareId: share.id, remoteDeviceId: 'remote_device_01' },
+    });
+    await controlCenterService.recordDelivery({
+      messageId: uuidv7(), workspaceId: workspace.id, toNodeId: agent.id,
+      state: 'replied', content: 'Internal secret', reply: 'Internal answer',
+    });
+    const snapshot = await sharedWorkspaceQuery.snapshot(share.id);
+    expect(snapshot.conversations).toHaveLength(1);
+    expect(snapshot.conversations[0]).toMatchObject({ message: 'Remote question', reply: 'Remote answer' });
+    expect(JSON.stringify(snapshot.conversations)).not.toContain('Internal secret');
+  });
+
+  it('keeps raw terminal access off by default and only grants an explicit administrator opt-in', () => {
+    expect(collaborationPolicy.scopesForRole('administrator')).not.toContain('terminal.control');
+    expect(collaborationPolicy.scopesForApproval('operator', true)).not.toContain('terminal.control');
+    expect(collaborationPolicy.scopesForApproval('administrator', true)).toContain('terminal.control');
+  });
+
+  it('starts a disconnected agent through an authorized remote command', async () => {
+    const { share, workspace, device } = await setup('administrator');
+    const shell = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Remote shell',
+      payload: { command: '/bin/sh', args: [] },
+    });
+    try {
+      const result = await sharedWorkspaceCommandBus.execute(share.id, device.id, new ExecuteCollaborationCommandDto(
+        `command_${uuidv7().replaceAll('-', '_')}`,
+        0,
+        { type: 'agent.invoke', agentNodeId: shell.id },
+      ));
+      expect(result).toMatchObject({ accepted: true, errorCode: null });
+      const fresh = await workspaceRepository.getNode(shell.id);
+      const sessionId = (fresh?.payload as { sessionId?: string }).sessionId;
+      expect(sessionId).toBeTruthy();
+      expect(ptySessionManager.get(sessionId!)?.exited).toBe(false);
+    } finally {
+      ptySessionManager.killAll();
+    }
   });
 
   it('enforces scope, revision, and command idempotency before mutating tasks', async () => {
@@ -182,6 +231,6 @@ describe('collaboration host core', () => {
         body: JSON.stringify({ approved: true, role: 'operator' }),
       }),
     } as never);
-    expect(approval).toEqual({ approved: true, role: 'operator' });
+    expect(approval).toEqual({ approved: true, role: 'operator', terminalAccess: false });
   });
 });

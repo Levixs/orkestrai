@@ -20,6 +20,14 @@ import { sharedWorkspaceCommandBus } from './SharedWorkspaceCommandBus.js';
 import { collaborationRuntime } from './CollaborationRuntime.js';
 import { withCollaborationShareLock } from './CollaborationShareLock.js';
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
+import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
+import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.js';
+
+type HostTerminalAttachment = {
+  nodeId: string;
+  sessionId: string;
+  detach: () => void;
+};
 
 type HostPeer = {
   peerId: string;
@@ -28,6 +36,9 @@ type HostPeer = {
   pairingSecret: string;
   pairingChannel: SecureCollaborationChannel;
   sessionChannel: SecureCollaborationChannel | null;
+  terminal: HostTerminalAttachment | null;
+  inputWindowStartedAt: number;
+  inputBytesInWindow: number;
 };
 
 type HostSession = {
@@ -112,6 +123,7 @@ export class CollaborationSessionManager {
     if (host.reconnectTimer) clearTimeout(host.reconnectTimer);
     if (host.projectionTimer) clearInterval(host.projectionTimer);
     for (const peer of host.peers.values()) {
+      this.detachTerminal(peer);
       try {
         this.send(host.socket, peer.pairingChannel.encrypt({ type: 'join.rejected', reason }, peer.peerId));
       } catch {
@@ -130,6 +142,7 @@ export class CollaborationSessionManager {
     if (!host || !runtime || !device?.approvedAt || device.revokedAt) return;
     const peer = [...host.peers.values()].find((candidate) => candidate.deviceRecordId === deviceRecordId);
     if (!peer) return;
+    if (!device.scopes.includes('terminal.control')) this.detachTerminal(peer);
     const sessionId = `session_${uuidv7().replaceAll('-', '_')}`;
     this.send(host.socket, peer.pairingChannel.encrypt({
       type: 'join.approved',
@@ -161,6 +174,7 @@ export class CollaborationSessionManager {
     const host = managerState.hosts.get(shareId);
     const peer = host ? [...host.peers.values()].find((candidate) => candidate.deviceRecordId === deviceRecordId) : null;
     if (host && peer) {
+      this.detachTerminal(peer);
       this.send(host.socket, peer.pairingChannel.encrypt({ type: 'join.rejected', reason: reason === 'revoked' ? 'revoked' : 'denied' }, peer.peerId));
       peer.sessionChannel = null;
       host.peers.delete(peer.peerId);
@@ -244,11 +258,14 @@ export class CollaborationSessionManager {
     const socket = new WebSocket(this.relayConnectionUrl(host.relayUrl, host.shareId, runtime.hostDeviceId, 'host'), COLLABORATION_PROTOCOL, { perMessageDeflate: false });
     host.socket = socket;
     socket.on('open', () => { host.transportState = 'connected'; });
-    socket.on('message', (data) => void this.handleHostMessage(host, websocketDataText(data)).catch(() => undefined));
+    socket.on('message', (data) => void this.handleHostMessage(host, websocketDataText(data)).catch((error) => {
+      console.error('[orkestrai:collaboration] Host frame failed:', error);
+    }));
     socket.on('close', () => {
       host.socket = null;
       host.transportState = host.stopped ? 'offline' : 'reconnecting';
       for (const peer of host.peers.values()) peer.sessionChannel = null;
+      for (const peer of host.peers.values()) this.detachTerminal(peer);
       if (!host.stopped) host.reconnectTimer = setTimeout(() => this.connectHost(host), 2_000);
     });
     socket.on('error', () => undefined);
@@ -269,6 +286,9 @@ export class CollaborationSessionManager {
           material: derivePairingMaterial({ pairingSecret: runtime.pairingSecret, shareId: host.shareId }),
         }),
         sessionChannel: null,
+        terminal: null,
+        inputWindowStartedAt: Date.now(),
+        inputBytesInWindow: 0,
       };
       host.peers.set(peer.peerId, peer);
     }
@@ -311,6 +331,22 @@ export class CollaborationSessionManager {
     }
     if (message.type === 'snapshot.request' && peer.sessionChannel) {
       await this.sendSnapshot(host, peer);
+      return;
+    }
+    if (message.type === 'terminal.open' && peer.sessionChannel && peer.deviceRecordId) {
+      await this.openTerminal(host, peer, message.nodeId, message.cols, message.rows);
+      return;
+    }
+    if (message.type === 'terminal.input' && peer.sessionChannel && peer.deviceRecordId) {
+      await this.writeTerminal(host, peer, message.nodeId, message.data);
+      return;
+    }
+    if (message.type === 'terminal.resize' && peer.sessionChannel && peer.deviceRecordId) {
+      await this.resizeTerminal(host, peer, message.nodeId, message.cols, message.rows);
+      return;
+    }
+    if (message.type === 'terminal.close' && peer.sessionChannel && peer.deviceRecordId) {
+      await this.closeTerminal(host, peer, message.nodeId);
       return;
     }
     if (message.type === 'command' && peer.sessionChannel && peer.deviceRecordId) {
@@ -411,6 +447,148 @@ export class CollaborationSessionManager {
     const snapshot = await sharedWorkspaceQuery.snapshot(host.shareId);
     this.send(host.socket, peer.sessionChannel.encrypt({ type: 'snapshot', revision: snapshot.revision, workspace: snapshot }, peer.peerId));
     host.lastProjectionHash = this.projectionHash(snapshot);
+  }
+
+  private async openTerminal(
+    host: HostSession,
+    peer: HostPeer,
+    nodeId: string,
+    cols: number,
+    rows: number,
+  ): Promise<void> {
+    const device = await collaborationRepository.findDevice(peer.deviceRecordId);
+    if (!device?.approvedAt || device.revokedAt || !device.scopes.includes('terminal.control')) {
+      this.sendTerminalError(host, peer, 'TERMINAL_ACCESS_DENIED', nodeId);
+      return;
+    }
+    const node = await workspaceRepository.getNode(nodeId);
+    if (!node || node.workspaceId !== host.workspaceId || node.type !== 'terminal') {
+      this.sendTerminalError(host, peer, 'TERMINAL_NOT_FOUND', nodeId);
+      return;
+    }
+    const sessionId = (node.payload as { sessionId?: string }).sessionId;
+    const session = sessionId ? ptySessionManager.get(sessionId) : null;
+    if (!session || session.exited) {
+      this.sendTerminalError(host, peer, 'TERMINAL_SESSION_OFFLINE', nodeId);
+      return;
+    }
+
+    this.detachTerminal(peer);
+    ptySessionManager.resize(session.id, cols, rows);
+    const attached = ptySessionManager.attach(
+      session.id,
+      (data) => {
+        if (peer.terminal?.sessionId !== session.id || !peer.sessionChannel) return;
+        for (const chunk of this.terminalChunks(data)) {
+          try {
+            this.send(host.socket, peer.sessionChannel.encrypt({ type: 'terminal.output', nodeId, data: chunk }, peer.peerId));
+          } catch {
+            this.detachTerminal(peer);
+            break;
+          }
+        }
+      },
+      (exitCode) => {
+        if (peer.terminal?.sessionId !== session.id || !peer.sessionChannel) return;
+        try {
+          this.send(host.socket, peer.sessionChannel.encrypt({ type: 'terminal.exit', nodeId, exitCode }, peer.peerId));
+        } finally {
+          this.detachTerminal(peer);
+        }
+      },
+    );
+    peer.terminal = { nodeId, sessionId: session.id, detach: attached.detach };
+    this.send(host.socket, peer.sessionChannel.encrypt({
+      type: 'terminal.opened',
+      nodeId,
+      cols,
+      rows,
+      scrollback: attached.scrollback.slice(-24_576),
+    }, peer.peerId));
+    await collaborationRepository.appendAudit({
+      workspaceId: host.workspaceId,
+      shareId: host.shareId,
+      actorDeviceId: device.deviceId,
+      eventType: 'terminal.opened',
+      metadata: { nodeId },
+    });
+  }
+
+  private async writeTerminal(host: HostSession, peer: HostPeer, nodeId: string, data: string): Promise<void> {
+    const attachment = peer.terminal;
+    if (!attachment || attachment.nodeId !== nodeId) {
+      this.sendTerminalError(host, peer, 'TERMINAL_NOT_OPEN', nodeId);
+      return;
+    }
+    const bytes = Buffer.byteLength(data);
+    const now = Date.now();
+    if (now - peer.inputWindowStartedAt >= 1_000) {
+      peer.inputWindowStartedAt = now;
+      peer.inputBytesInWindow = 0;
+    }
+    peer.inputBytesInWindow += bytes;
+    if (bytes > 8_192 || peer.inputBytesInWindow > 32_768) {
+      this.sendTerminalError(host, peer, 'TERMINAL_INPUT_RATE_LIMITED', nodeId);
+      return;
+    }
+    try {
+      ptySessionManager.writeHumanInput(attachment.sessionId, data);
+    } catch {
+      this.detachTerminal(peer);
+      this.sendTerminalError(host, peer, 'TERMINAL_SESSION_OFFLINE', nodeId);
+    }
+  }
+
+  private async resizeTerminal(
+    host: HostSession,
+    peer: HostPeer,
+    nodeId: string,
+    cols: number,
+    rows: number,
+  ): Promise<void> {
+    const attachment = peer.terminal;
+    if (!attachment || attachment.nodeId !== nodeId) {
+      this.sendTerminalError(host, peer, 'TERMINAL_NOT_OPEN', nodeId);
+      return;
+    }
+    ptySessionManager.resize(attachment.sessionId, cols, rows);
+  }
+
+  private async closeTerminal(host: HostSession, peer: HostPeer, nodeId: string): Promise<void> {
+    if (!peer.terminal || peer.terminal.nodeId !== nodeId) return;
+    const device = await collaborationRepository.findDevice(peer.deviceRecordId);
+    this.detachTerminal(peer);
+    if (device) {
+      await collaborationRepository.appendAudit({
+        workspaceId: host.workspaceId,
+        shareId: host.shareId,
+        actorDeviceId: device.deviceId,
+        eventType: 'terminal.closed',
+        metadata: { nodeId },
+      });
+    }
+  }
+
+  private detachTerminal(peer: HostPeer): void {
+    peer.terminal?.detach();
+    peer.terminal = null;
+    peer.inputWindowStartedAt = Date.now();
+    peer.inputBytesInWindow = 0;
+  }
+
+  private sendTerminalError(host: HostSession, peer: HostPeer, code: string, nodeId?: string): void {
+    if (!peer.sessionChannel) return;
+    this.send(host.socket, peer.sessionChannel.encrypt({
+      type: 'terminal.error',
+      ...(nodeId ? { nodeId } : {}),
+      code,
+    }, peer.peerId));
+  }
+
+  private terminalChunks(data: string): string[] {
+    const chunks: string[] = [];
+    for (let offset = 0; offset < data.length; offset += 8_192) chunks.push(data.slice(offset, offset + 8_192));
+    return chunks;
   }
 
   private async publishChangedSnapshot(host: HostSession): Promise<void> {

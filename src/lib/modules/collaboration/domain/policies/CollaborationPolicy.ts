@@ -5,11 +5,12 @@ const ROLE_SCOPES: Record<CollaborationRole, readonly CollaborationScope[]> = {
   collaborator: ['workspace.view', 'activity.view', 'tasks.view', 'tasks.write', 'approvals.view'],
   operator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
-    'approvals.view', 'approvals.decide', 'leader.message',
+    'approvals.view', 'approvals.decide', 'leader.message', 'agents.message',
   ],
   administrator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
-    'approvals.view', 'approvals.decide', 'leader.message', 'peers.manage',
+    'approvals.view', 'approvals.decide', 'leader.message', 'agents.message',
+    'agents.invoke', 'peers.manage',
   ],
 };
 
@@ -18,6 +19,8 @@ const COMMAND_SCOPE = {
   'task.update': 'tasks.write',
   'review.decide': 'approvals.decide',
   'leader.message': 'leader.message',
+  'agent.message': 'agents.message',
+  'agent.invoke': 'agents.invoke',
 } as const satisfies Record<string, CollaborationScope>;
 
 export class CollaborationPolicy {
@@ -31,6 +34,12 @@ export class CollaborationPolicy {
 
   commandScope(type: keyof typeof COMMAND_SCOPE): CollaborationScope {
     return COMMAND_SCOPE[type];
+  }
+
+  scopesForApproval(role: CollaborationRole, terminalAccess: boolean): CollaborationScope[] {
+    const scopes = this.scopesForRole(role);
+    if (terminalAccess && role === 'administrator') scopes.push('terminal.control');
+    return scopes;
   }
 }
 

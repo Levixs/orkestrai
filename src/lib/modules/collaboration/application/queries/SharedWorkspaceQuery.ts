@@ -33,6 +33,12 @@ export function fitSharedWorkspaceSnapshot(snapshot: SharedWorkspaceDto): Shared
         description: task.description?.slice(0, descriptionLimit) ?? null,
       })),
       agents: snapshot.agents.slice(0, agentLimit),
+      conversations: snapshot.conversations.slice(0, 80).map((conversation) => ({
+        ...conversation,
+        message: conversation.message.slice(0, descriptionLimit),
+        reply: conversation.reply?.slice(0, descriptionLimit) ?? null,
+        error: conversation.error?.slice(0, 240) ?? null,
+      })),
       floors: snapshot.floors.slice(0, 50),
       roles: snapshot.roles.slice(0, 100),
       reviews: snapshot.reviews.slice(0, 100).map((review) => ({ ...review, summary: review.summary?.slice(0, descriptionLimit) ?? null })),
@@ -100,7 +106,7 @@ export class SharedWorkspaceQuery {
       workspaceService.listEdges(share.workspaceId),
       boardColumnService.list(share.workspaceId),
       taskBoardService.list(share.workspaceId),
-      controlCenterService.snapshot(share.workspaceId, false),
+      controlCenterService.snapshot(share.workspaceId, true),
       floorService.list(share.workspaceId),
       reviewCenterService.snapshot(share.workspaceId).catch(() => ({ reviews: [] } as unknown as Awaited<ReturnType<typeof reviewCenterService.snapshot>>)),
     ]);
@@ -149,6 +155,19 @@ export class SharedWorkspaceQuery {
           status: sanitizeSharedText(agent.currentTask.status),
         } : null,
       })),
+      conversations: control.communications
+        .filter((thread) => thread.events.some((event) => event.metadata.remoteShareId === share.id))
+        .map((thread) => ({
+          messageId: thread.messageId,
+          agentNodeId: thread.toNodeId,
+          agentTitle: sanitizeSharedText(thread.toTitle),
+          state: thread.state,
+          message: sanitizeSharedText(thread.content),
+          reply: thread.reply ? sanitizeSharedText(thread.reply) : null,
+          error: thread.error ? sanitizeSharedText(thread.error) : null,
+          createdAt: thread.createdAt,
+          updatedAt: thread.updatedAt,
+        })),
       floors: floors.map((floor) => {
         const floorAgentIds = new Set(rawNodes.filter((node) => node.floorId === floor.id && node.type === 'terminal').map((node) => node.id));
         return {

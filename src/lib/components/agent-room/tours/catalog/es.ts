@@ -1075,7 +1075,7 @@ export const TOURS_ES: Tour[] = [
     id: 'remote-workspace-collaboration',
     icon: 'RadioTower',
     title: 'Compartir un workspace de forma segura',
-    tagline: 'Invita otro dispositivo sin exponer terminales, archivos ni secretos.',
+    tagline: 'Aprueba las capacidades remotas exactas para cada dispositivo confiable.',
     steps: [
       {
         id: 'open-sharing',
@@ -1094,9 +1094,14 @@ export const TOURS_ES: Tour[] = [
         body: 'Compara la huella digital del dispositivo antes de aprobarlo. Puedes cambiar su rol, revocarlo de inmediato y revisar cada comando aceptado o rechazado en la auditoría.',
       },
       {
+        id: 'choose-agent-access',
+        title: 'Separa la conversación del acceso al terminal',
+        body: 'Los Operadores pueden usar la conversación segura con el agente. Los Administradores también pueden iniciar o restaurar un agente. Habilita el terminal sin filtrar por separado para un dispositivo Administrador confiable solo cuando sea necesario; viene desactivado, se limita a un terminal, controla el tráfico, usa cifrado y genera auditoría.',
+      },
+      {
         id: 'work-remotely',
         title: 'Usa o instala Remote',
-        body: 'Después de que el invitado solicite acceso, el host abre Compartir workspace → Accesos, compara la huella y aprueba el dispositivo. En la app, navegador o PWA instalable, el invitado sigue el resumen sanitizado, estado del equipo, tareas, revisiones, actividad y uso de proveedores. El rol puede permitir cambios en tareas, decisiones de revisión o mensajes al líder; la salida PTY, archivos, notas, portales, credenciales y rutas locales nunca entran en la proyección compartida.',
+        body: 'Después de que el invitado solicite acceso, el host abre Compartir workspace → Accesos, compara la huella y aprueba el dispositivo. En el navegador o PWA instalable, sigue el resumen sanitizado y usa solo los comandos concedidos. Archivos, notas, Portales, dispositivos móviles, credenciales, rutas locales y edición del Canvas siguen sin estar disponibles; la salida sin filtrar solo aparece mientras su permiso separado está habilitado.',
       },
       {
         id: 'stop-sharing',

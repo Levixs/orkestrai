@@ -2,6 +2,8 @@ import { bridgeService } from '$lib/modules/agent-room/application/services/Brid
 import { reviewCenterService } from '$lib/modules/agent-room/application/services/ReviewCenterService.js';
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import { DecideAgentReviewDto } from '$lib/modules/agent-room/application/dto/AgentReviewDto.js';
+import { agentSessionService } from '$lib/modules/agent-room/application/services/AgentSessionService.js';
+import { uuidv7 } from '@beeblock/svelar/support';
 import type { ExecuteCollaborationCommandDto } from '../dto/CollaborationDto.js';
 import type { CollaborationCommand, CollaborationCommandResult } from '../../domain/types.js';
 import { collaborationPolicy } from '../../domain/policies/CollaborationPolicy.js';
@@ -63,7 +65,7 @@ export class SharedWorkspaceCommandBus {
     if (dto.revision !== share.revision) return reject('REVISION_CONFLICT', { currentRevision: share.revision });
 
     try {
-      const result = await this.perform(share.workspaceId, dto.command);
+      const result = await this.perform(share.workspaceId, share.id, device.deviceId, dto.command);
       const revision = await collaborationRepository.incrementRevision(share.id);
       const safeResult = sanitizeAuditMetadata(result) as Record<string, unknown>;
       const row = await collaborationRepository.finishCommand(dto.commandId, {
@@ -80,7 +82,12 @@ export class SharedWorkspaceCommandBus {
     }
   }
 
-  private async perform(workspaceId: string, command: CollaborationCommand): Promise<Record<string, unknown>> {
+  private async perform(
+    workspaceId: string,
+    shareId: string,
+    deviceId: string,
+    command: CollaborationCommand,
+  ): Promise<Record<string, unknown>> {
     if (command.type === 'task.create') {
       const task = await taskBoardService.create(workspaceId, {
         title: command.title,
@@ -107,6 +114,27 @@ export class SharedWorkspaceCommandBus {
         new DecideAgentReviewDto(command.status, command.note ?? null),
       );
       return { reviewId: decision.review.id, status: decision.review.status, feedbackDelivered: decision.feedback?.delivered ?? null };
+    }
+    if (command.type === 'agent.invoke') {
+      const session = await agentSessionService.ensure(workspaceId, command.agentNodeId);
+      return { agentNodeId: command.agentNodeId, sessionId: session.sessionId, state: session.state };
+    }
+    if (command.type === 'agent.message') {
+      const target = (await bridgeService.listAgents(workspaceId)).find((agent) => agent.nodeId === command.agentNodeId);
+      if (!target) throw new Error('AGENT_NOT_FOUND');
+      if (!target.sessionAlive) throw new Error('AGENT_SESSION_OFFLINE');
+      const messageId = uuidv7();
+      void bridgeService.ask(workspaceId, {
+        to: target.nodeId,
+        message: command.message,
+        messageId,
+        metadata: {
+          remoteCollaboration: true,
+          remoteShareId: shareId,
+          remoteDeviceId: deviceId,
+        },
+      }).catch(() => undefined);
+      return { messageId, agentNodeId: target.nodeId, agentTitle: target.title };
     }
     const leader = (await bridgeService.listAgents(workspaceId)).find((agent) => agent.maestro);
     if (!leader) throw new Error('Workspace leader is unavailable.');

@@ -53,9 +53,12 @@ Download the latest installers from
   non-extractable in the browser and the invitation secret is removed from the
   URL before connecting. Installed-app invites open Orkestrai automatically;
   guests can also paste one through **Workspace → Join remote workspace**.
-  Terminals, files, notes, portals, credentials, private
-  URLs, and local paths stay on the host. Access is revocable and every command
-  is audited.
+  Operators can hold a traceable structured conversation with an agent;
+  Administrators can start or restore it. Raw terminal control is a separate
+  Administrator-only switch for each approved device, disabled by default,
+  rate-limited, limited to one terminal, and audited. Files, notes, portals,
+  credentials, private URLs, and local paths stay on the host. Access is
+  revocable and every command is audited.
 - **Traceable automations:** trigger work manually, on a schedule, from task or
   message events, Git commits, GitHub pull requests, webhooks, file changes, or
   provider usage thresholds. Actions can prompt an agent, create a Kanban task,

@@ -136,7 +136,11 @@ export class CollaborationShareService {
       await collaborationSessionManager.rejectPeer(shareId, device.id, 'denied');
       return { ...device, revokedAt: new Date().toISOString() };
     }
-    const approved = await collaborationRepository.approveDevice(device.id, dto.role, collaborationPolicy.scopesForRole(dto.role));
+    const approved = await collaborationRepository.approveDevice(
+      device.id,
+      dto.role,
+      collaborationPolicy.scopesForApproval(dto.role, dto.terminalAccess),
+    );
     await collaborationRepository.appendAudit({
       workspaceId, shareId, actorDeviceId: device.deviceId, eventType: 'device.approved',
       metadata: { role: approved.role, scopes: approved.scopes, fingerprint: approved.fingerprint },

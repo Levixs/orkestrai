@@ -1075,7 +1075,7 @@ export const TOURS_EN: Tour[] = [
     id: 'remote-workspace-collaboration',
     icon: 'RadioTower',
     title: 'Share a workspace securely',
-    tagline: 'Invite another device without exposing terminals, files, or secrets.',
+    tagline: 'Approve the exact remote capabilities for each trusted device.',
     steps: [
       {
         id: 'open-sharing',
@@ -1094,9 +1094,14 @@ export const TOURS_EN: Tour[] = [
         body: 'Compare the device fingerprint before approving it. You can change its role, revoke it immediately, and inspect every accepted or rejected command in the audit trail.',
       },
       {
+        id: 'choose-agent-access',
+        title: 'Separate conversation from terminal access',
+        body: 'Operators can use the safe agent conversation. Administrators can also start or restore an agent. Enable raw terminal access separately for one trusted Administrator device only when needed; it is off by default, limited to one terminal, rate-limited, encrypted, and audited.',
+      },
+      {
         id: 'work-remotely',
         title: 'Use or install Remote',
-        body: 'After the guest requests access, the host opens Share workspace → Access, compares the fingerprint, and approves the device. In the app, browser, or installable PWA, the guest follows the sanitized overview, team state, tasks, reviews, activity, and provider usage. The role may allow task changes, review decisions, or leader messages; PTY output, files, notes, portals, credentials, and local paths never enter the shared projection.',
+        body: 'After the guest requests access, the host opens Share workspace → Access, compares the fingerprint, and approves the device. In the browser or installable PWA, the guest follows the sanitized overview and can use only the granted commands. Files, notes, portals, mobile devices, credentials, local paths, and Canvas editing remain unavailable; raw terminal output appears only while its separate permission is enabled.',
       },
       {
         id: 'stop-sharing',

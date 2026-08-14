@@ -8,6 +8,9 @@ export type CollaborationScope =
   | 'approvals.view'
   | 'approvals.decide'
   | 'leader.message'
+  | 'agents.message'
+  | 'agents.invoke'
+  | 'terminal.control'
   | 'peers.manage';
 
 export type CollaborationShareStatus = 'active' | 'stopped' | 'expired';
@@ -82,6 +85,17 @@ export type SharedWorkspaceDto = {
     id: string; title: string; provider: string | null; role: string | null;
     state: string; stateSince: string; currentTask: { id: string; title: string; status: string } | null;
   }>;
+  conversations: Array<{
+    messageId: string;
+    agentNodeId: string;
+    agentTitle: string;
+    state: 'queued' | 'sent' | 'delivered' | 'acknowledged' | 'replied' | 'failed';
+    message: string;
+    reply: string | null;
+    error: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   floors: Array<{ id: string; name: string; status: string; activeTasks: number; activeAgents: number }>;
   roles: Array<{ name: string; agentCount: number }>;
   reviews: Array<{
@@ -111,7 +125,9 @@ export type CollaborationCommand =
   | { type: 'task.create'; title: string; description?: string | null; status?: string; assigneeNodeId?: string | null }
   | { type: 'task.update'; taskId: string; title?: string; description?: string | null; status?: string; assigneeNodeId?: string | null }
   | { type: 'review.decide'; reviewId: string; status: 'approved' | 'changes_requested' | 'rejected'; note?: string | null }
-  | { type: 'leader.message'; message: string };
+  | { type: 'leader.message'; message: string }
+  | { type: 'agent.message'; agentNodeId: string; message: string }
+  | { type: 'agent.invoke'; agentNodeId: string };
 
 export type CollaborationCommandResult = {
   commandId: string;

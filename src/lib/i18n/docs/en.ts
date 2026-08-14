@@ -356,8 +356,8 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'remote-collaboration',
       title: 'Share a workspace without sharing your machine',
-      body: 'Enable experimental workspace sharing, start an end-to-end encrypted session, and choose a Browser/mobile or Orkestrai app invite. The web link opens the installable Remote PWA. The app invite opens the installed Orkestrai app automatically; the guest can also use Workspace → Join remote workspace and paste the invite. Both remove the secret from the URL before connecting and store a non-extractable pairing key only on that device. Approve the exact device fingerprint and choose Viewer, Collaborator, Operator, or Administrator. The companion follows team state, tasks, reviews, activity, and provider usage; depending on its role, it can update tasks, decide reviews, or message the leader. Terminal output, files, notes, portals, credentials, tokens, private URLs, and local paths remain on the host. Revoke a device or stop the session at any time, and inspect accepted and rejected commands in the audit trail.',
-      tags: ['Encrypted Remote PWA', 'device approval', 'role-based access'],
+      body: 'Enable experimental workspace sharing, start an end-to-end encrypted session, and choose a Browser/mobile or Orkestrai app invite. The web link opens the installable Remote PWA. The app invite opens the installed Orkestrai app automatically; the guest can also use Workspace → Join remote workspace and paste the invite. Both remove the secret from the URL before connecting and store a non-extractable pairing key only on that device. Approve the exact device fingerprint and choose Viewer, Collaborator, Operator, or Administrator. An Operator can hold a sanitized, traceable conversation with an agent; an Administrator can also start or restore an offline agent. Raw terminal control is a separate Administrator-only switch on that device, disabled by default, limited to one terminal, rate-limited, encrypted, and audited. It never grants file browsing, Portal or mobile-device viewing, or Canvas editing. Revoke a device or stop the session at any time, and inspect accepted and rejected commands in the audit trail.',
+      tags: ['Encrypted Remote PWA', 'secure agent conversation', 'opt-in terminal'],
     },
     {
       id: 'custom-app-theme',
@@ -370,6 +370,8 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 14, 2026 · In development',
       items: [
+        'Remote collaboration now supports traceable agent conversations, Administrator-only start or restore, and a separately approved raw terminal that is disabled by default, rate-limited, limited to one session, encrypted, and audited. The sharing dialog keeps stable dimensions and clearly marks Invitation, Access, and Audit as active.',
+        'Browser and mobile invitations now reach the host approval queue after the production relay was recreated with the official Remote PWA origin enabled.',
         'The Canvas tool strip now prioritizes compact icons with tooltips; the How to use header stays available while scrolling; the changelog separates collapsible releases and numbered changes; sharing form fields align correctly; and Canvas plus the native Workspace menu now expose an explicit entry point for joining a remote workspace.',
         'The app interface was rebuilt on semantic theme tokens: the default dark palette now pairs graphite surfaces with the brand gold, the light theme has strong contrast, and Canvas, Workbench, Settings, documentation, Provider Center, panels, dialogs, menus, fields, and voice-orb docking now share one responsive hierarchy.',
         'Workspace folders protected by macOS now have localized privacy descriptions. Canvas and Workbench replace raw EPERM/EACCES errors with recovery that reauthorizes the exact folder and retries the workspace without restarting the app.',

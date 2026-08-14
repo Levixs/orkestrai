@@ -18,9 +18,12 @@ pt-BR, English, and Spanish translations.
   non-extractable WebCrypto key and removes the invitation secret from the URL
   before connecting.
   A versioned HKDF/AES-GCM protocol protects against replay and tampering; the
-  opaque rate-limited WebSocket relay cannot decrypt content. PTY output, files,
-  notes, portals, credentials, tokens, private URLs, and local paths remain on
-  the host.
+  opaque rate-limited WebSocket relay cannot decrypt content. Operators can
+  hold traceable, structured conversations with an agent, and Administrators
+  can start or restore one. Raw terminal control is a separate per-device
+  Administrator permission that is disabled by default, rate-limited, audited,
+  and limited to one terminal at a time. Files, notes, portals, credentials,
+  tokens, private URLs, and local paths remain on the host.
 - Evolved legacy Routines into traceable Automations with manual, schedule,
   task, message, Git commit, GitHub pull request, webhook, file-change, and
   provider-usage triggers; agent prompt, task creation, and desktop notification
@@ -96,6 +99,9 @@ pt-BR, English, and Spanish translations.
 
 ### Changed
 
+- Stabilized the workspace-sharing dialog dimensions across Invitation, Access,
+  and Audit, added an unmistakable active-tab treatment, and kept each tab's
+  content independently scrollable.
 - Made the Canvas tool strip icon-first with accessible tooltips, kept the
   documentation header available while scrolling, reorganized changelog
   releases into collapsible numbered changes, aligned sharing form controls,
@@ -115,6 +121,9 @@ pt-BR, English, and Spanish translations.
   accepts the installed app's dynamic loopback origins and the official website
   and Remote PWA origins, while rejecting unrelated browser origins. The web
   companion reconnects with bounded exponential backoff when its host is away.
+- Recreated the production relay with the official Remote PWA origin enabled,
+  fixing browser and mobile invitations that remained stuck reconnecting before
+  their device-approval request reached the host.
 - Restarting an Android stream now reopens its stable AVD definition instead
   of trying to boot the expired temporary `emulator-*` serial.
 - Mobile Device streams now fit the complete device screen inside both the

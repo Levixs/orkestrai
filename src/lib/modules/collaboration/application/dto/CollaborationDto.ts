@@ -18,9 +18,13 @@ export class CreateCollaborationShareDto {
 }
 
 export class ApproveCollaborationDeviceDto {
-  constructor(readonly approved: boolean, readonly role: ApproveCollaborationDeviceInput['role']) {}
+  constructor(
+    readonly approved: boolean,
+    readonly role: ApproveCollaborationDeviceInput['role'],
+    readonly terminalAccess: boolean,
+  ) {}
   static from(input: ApproveCollaborationDeviceInput): ApproveCollaborationDeviceDto {
-    return new ApproveCollaborationDeviceDto(input.approved, input.role);
+    return new ApproveCollaborationDeviceDto(input.approved, input.role, input.terminalAccess);
   }
 }
 

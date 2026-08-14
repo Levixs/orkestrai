@@ -1,10 +1,6 @@
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
-import { randomUUID } from 'node:crypto';
-import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.js';
-import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.js';
 import { bridgeService } from './BridgeService.js';
-import { floorService } from './FloorService.js';
-import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
+import { agentSessionService } from './AgentSessionService.js';
 
 export type FlowStep = {
   kind: 'agent' | 'approval';
@@ -128,64 +124,6 @@ export class FlowService {
     return this.running.has(nodeId);
   }
 
-  /**
-   * Garante uma sessao PTY viva para o agente alvo ANTES do ask: se o
-   * terminal nunca foi aberto (ou a sessao morreu), spawna no servidor com o
-   * comando/args do no e grava o sessionId no payload — o fluxo "simplesmente
-   * funciona" sem o usuario precisar abrir cada terminal antes. O terminal no
-   * canvas anexa na sessao existente quando monta.
-   */
-  private async ensureAgentSession(workspaceId: string, title: string): Promise<void> {
-    const nodes = await workspaceRepository.listNodes(workspaceId, undefined, true);
-    const target = nodes.find((node) => node.type === 'terminal' && (node.title ?? '').trim() === title.trim());
-    if (!target) throw new Error(`Agente "${title}" nao encontrado no canvas.`);
-    const payload = (target.payload ?? {}) as { sessionId?: string; agentSessionId?: string; provider?: string; command?: string; args?: string[]; env?: Record<string, string> };
-    const existing = payload.sessionId ? ptySessionManager.get(payload.sessionId) : null;
-    if (existing && !existing.exited) return;
-    if (!payload.command) throw new Error(`O agente "${title}" nao tem comando configurado — recrie o terminal dele.`);
-    const workspace = await workspaceRepository.getWorkspace(workspaceId);
-    let cwd = workspace?.workingDir ?? '.';
-    if (target.floorId) {
-      const floor = await floorService.get(target.floorId);
-      if (floor?.path) cwd = floor.path;
-    }
-    const trackingStartedAt = Date.now();
-    const adapter = payload.provider && hasAgentAdapter(payload.provider) ? getAgentAdapter(payload.provider) : null;
-    const freshAgentSessionId = !payload.agentSessionId && adapter?.freshSessionArgs ? randomUUID() : null;
-    const conversationArgs = payload.agentSessionId
-      ? (adapter?.resumeArgs(payload.agentSessionId) ?? [])
-      : freshAgentSessionId
-        ? adapter!.freshSessionArgs!(freshAgentSessionId)
-        : [];
-    if (freshAgentSessionId) agentSessionTracker.claim(freshAgentSessionId);
-    const session = ptySessionManager.create({
-      command: payload.command,
-      args: [...(payload.args ?? []), ...conversationArgs],
-      cwd,
-      label: title,
-      workspace: workspace?.name ?? null,
-      provider: (payload as { provider?: string }).provider ?? null,
-      env: { ...(payload.env ?? {}), ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
-    });
-    const activeAgentSessionId = payload.agentSessionId ?? freshAgentSessionId;
-    await workspaceRepository.updateNode(target.id, {
-      payload: { ...payload, sessionId: session.id, ...(activeAgentSessionId ? { agentSessionId: activeAgentSessionId } : {}) } as never,
-    });
-    // Spawn server-side nao passa pelo pty-ws: registra o rastreio do
-    // session-id da CLI aqui, senao o transcrito nunca e achado (ask caia no
-    // fallback de tela crua).
-    const provider = payload.provider;
-    if (provider && adapter && !activeAgentSessionId) {
-      agentSessionTracker.watch(session.id, getAgentAdapter(provider).sessionStorage, cwd, trackingStartedAt, (agentSessionId) => {
-        void workspaceRepository
-          .updateNode(target.id, { payload: { ...payload, sessionId: session.id, agentSessionId } as never })
-          .then(() => notifyWorkspaceChanged(workspaceId))
-          .catch(() => {});
-      });
-    }
-    notifyWorkspaceChanged(workspaceId);
-  }
-
   private async execute(workspaceId: string, nodeId: string, input: string, handle: RunHandle): Promise<{ ok: boolean; output: string }> {
     const startedAt = new Date().toISOString();
     const node = await workspaceRepository.getNode(nodeId);
@@ -227,7 +165,7 @@ export class FlowService {
           }
 
           const message = (step.prompt?.trim() || '{{input}}').replaceAll('{{input}}', currentInput);
-          await this.ensureAgentSession(workspaceId, step.target!);
+          await agentSessionService.ensureByTitle(workspaceId, step.target!);
           const result = await bridgeService.ask(workspaceId, {
             to: step.target!,
             message,
