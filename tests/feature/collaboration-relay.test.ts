@@ -67,4 +67,30 @@ describe('opaque collaboration relay', () => {
       socket.once('error', reject);
     })).rejects.toThrow(/403/);
   });
+
+  it('accepts the installed app loopback origin and configured web origins', async () => {
+    relay = createRelayServer({ allowedOrigins: 'https://orkestrai.app' });
+    const address = await relay.listen(0, '127.0.0.1');
+    if (!address || typeof address === 'string') throw new Error('Relay address was not assigned.');
+    const base = `ws://127.0.0.1:${address.port}/v1/connect?share=share_relay_test&peer=`;
+
+    const desktop = new WebSocket(`${base}host_device_01&role=host`, COLLABORATION_PROTOCOL, {
+      origin: 'http://127.0.0.1:49152',
+    });
+    await new Promise<void>((resolve, reject) => {
+      desktop.once('open', resolve);
+      desktop.once('error', reject);
+    });
+    desktop.close();
+
+    await new Promise<void>((resolve) => desktop.once('close', () => resolve()));
+    const web = new WebSocket(`${base}host_device_02&role=host`, COLLABORATION_PROTOCOL, {
+      origin: 'https://orkestrai.app',
+    });
+    await new Promise<void>((resolve, reject) => {
+      web.once('open', resolve);
+      web.once('error', reject);
+    });
+    web.close();
+  });
 });

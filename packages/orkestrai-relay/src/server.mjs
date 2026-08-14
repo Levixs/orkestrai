@@ -32,6 +32,20 @@ function parseAllowedOrigins(raw) {
   return new Set(String(raw ?? '').split(',').map((value) => value.trim()).filter(Boolean));
 }
 
+/** @param {string | undefined} origin @param {Set<string>} allowedOrigins */
+function isOriginAllowed(origin, allowedOrigins) {
+  if (!origin) return true;
+  if (allowedOrigins.has('*') || allowedOrigins.has(origin)) return true;
+
+  try {
+    const url = new URL(origin);
+    return (url.protocol === 'http:' || url.protocol === 'https:')
+      && (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]');
+  } catch {
+    return false;
+  }
+}
+
 /** @param {RelayOptions} [options] */
 export function createRelayServer(options = {}) {
   /** @type {Map<string, RelayRoom>} */
@@ -87,7 +101,7 @@ export function createRelayServer(options = {}) {
     const url = new URL(request.url ?? '/', 'http://relay.local');
     if (url.pathname !== '/v1/connect') return rejectUpgrade(socket, '404 Not Found', 'Not found.');
     const origin = request.headers.origin;
-    if (origin && !allowedOrigins.has(origin)) return rejectUpgrade(socket, '403 Forbidden', 'Origin is not allowed.');
+    if (!isOriginAllowed(origin, allowedOrigins)) return rejectUpgrade(socket, '403 Forbidden', 'Origin is not allowed.');
     const ip = request.socket.remoteAddress ?? 'unknown';
     if (!consumeAttempt(attempts, ip)) {
       metrics.rateLimited += 1;

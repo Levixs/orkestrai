@@ -194,7 +194,8 @@ Orkestrai utiliza Svelte 5, SvelteKit, Electron, Svelar, SQLite, `node-pty` e
 - `packages/orkestrai-cli/` fornece a CLI e a ponte MCP usadas pelos agentes.
 - `packages/orkestrai-collaboration-protocol/` define o envelope criptografado
   versionado; `packages/orkestrai-relay/` é um transporte
-  WebSocket opaco que não consegue descriptografar o conteúdo do workspace.
+  WebSocket opaco que não consegue descriptografar o conteúdo do workspace. O
+  serviço de produção está em `wss://relay.orkestrai.app/v1/connect`.
 - `electron/` controla o ciclo de vida desktop, notificações nativas e updates.
 - `docs/` contém a documentação de build e releases.
 

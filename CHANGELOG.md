@@ -92,6 +92,10 @@ pt-BR, English, and Spanish translations.
 
 ### Changed
 
+- Workspace sharing now defaults to the production
+  `wss://relay.orkestrai.app/v1/connect` endpoint. The containerized relay
+  accepts the installed app's dynamic loopback origins and configured official
+  web origins, while rejecting unrelated browser origins.
 - Restarting an Android stream now reopens its stable AVD definition instead
   of trying to boot the expired temporary `emulator-*` serial.
 - Mobile Device streams now fit the complete device screen inside both the

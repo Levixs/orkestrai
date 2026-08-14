@@ -78,7 +78,7 @@
   let loading = $state(true);
   let busy = $state(false);
   let inviteUri = $state("");
-  let relayUrl = $state("wss://relay.orkestrai.com/v1/connect");
+  let relayUrl = $state("wss://relay.orkestrai.app/v1/connect");
   let displayName = $state("");
   let activeTab = $state("overview");
   let taskDialogOpen = $state(false);

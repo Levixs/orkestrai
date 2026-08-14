@@ -372,8 +372,9 @@ export const DOCS_PT: DocsCatalog = {
   ],
   changelog: [
     {
-      date: '13 ago 2026 · Em desenvolvimento',
+      date: '14 ago 2026 · Em desenvolvimento',
       items: [
+        'O compartilhamento de workspace agora usa por padrão o endpoint de produção relay.orkestrai.app. O relay aceita a origem local dinâmica do app instalado e as origens web oficiais configuradas, enquanto rejeita sites não relacionados.',
         'O compartilhamento experimental de workspace agora cria uma sessão host criptografada de ponta a ponta com convites únicos por link e QR code, aprovação explícita pela impressão digital do dispositivo, funções Leitor/Colaborador/Operador/Administrador, revogação imediata, auditoria de comandos e um companion remoto limitado para estado do time, tarefas, revisões e mensagens ao líder. O relay opaco nunca recebe conteúdo em texto aberto, enquanto saída de PTY, arquivos, notas, portais, credenciais, URLs privadas e caminhos locais ficam excluídos.',
         'Rotinas evoluíram para Automações com gatilhos manual, agenda, tarefa, mensagem, commit Git, pull request do GitHub, webhook, mudança de arquivo e limite de uso; ações de prompt, tarefa e notificação; receitas prontas; jobs idempotentes em fila; histórico recuperável; e credenciais do GitHub cifradas pelo app instalado.',
         'O modo focado evoluiu para Workbench, com itens abertos persistentes, abas verticais por padrão e abas horizontais opcionais em Configurações.',

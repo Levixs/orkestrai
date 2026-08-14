@@ -196,7 +196,8 @@ Orkestrai is built with Svelte 5, SvelteKit, Electron, Svelar, SQLite,
 - `packages/orkestrai-cli/` provides the agent-facing CLI and MCP bridge.
 - `packages/orkestrai-collaboration-protocol/` defines the versioned encrypted
   envelope; `packages/orkestrai-relay/` is an opaque WebSocket
-  transport that cannot decrypt workspace content.
+  transport that cannot decrypt workspace content. The production service is
+  available at `wss://relay.orkestrai.app/v1/connect`.
 - `electron/` owns the desktop lifecycle, native notifications, and updates.
 - `docs/` contains build and release documentation.
 

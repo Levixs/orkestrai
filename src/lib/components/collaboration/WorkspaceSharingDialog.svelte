@@ -72,7 +72,7 @@
         defaultRole: "viewer" as CollaborationRole,
         expiresInMinutes: 15,
         maxPeers: 5,
-        relayUrl: "wss://relay.orkestrai.com/v1/connect",
+        relayUrl: "wss://relay.orkestrai.app/v1/connect",
       },
       zod(schema),
     ),
