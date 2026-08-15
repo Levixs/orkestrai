@@ -107,6 +107,21 @@ const form = superForm(defaults(zod(schema)), {
 
   const { form: formData, enhance, errors } = form;
 
+  function wslHostPath(distribution: string, linuxPath: string): string {
+    const tail = linuxPath.replace(/^\/+/, '').split('/').filter(Boolean).join('\\');
+    return `\\\\wsl.localhost\\${distribution}${tail ? `\\${tail}` : ''}`;
+  }
+
+  // Em WSL o diretório host é derivado do caminho Linux, mantendo os dois
+  // sempre em sincronia (o backend recusa um host que não corresponda).
+  $effect(() => {
+    if (runtimeKind !== 'wsl') return;
+    const linux = wslWorkingDir.trim();
+    if (wslDistribution && linux.startsWith('/')) {
+      $formData.workingDir = wslHostPath(wslDistribution, linux);
+    }
+  });
+
   async function loadWslAvailability(path = '') {
     try {
       const response = await fetch(`/api/agent-room/runtimes/wsl${path ? `?path=${encodeURIComponent(path)}` : ''}`);
@@ -201,8 +216,8 @@ const form = superForm(defaults(zod(schema)), {
           {#snippet children({ props })}
             <Form.Label>{m['dlg.working_dir']()}</Form.Label>
             <div class="flex gap-2">
-              <Input {...props} bind:value={$formData.workingDir} placeholder={m['ph.ws_dir']()} class="flex-1" />
-              {#if desktop}
+              <Input {...props} bind:value={$formData.workingDir} placeholder={m['ph.ws_dir']()} class="flex-1" readonly={runtimeKind === 'wsl'} />
+              {#if desktop && runtimeKind !== 'wsl'}
                 <Tooltip.Root>
                   <Tooltip.Trigger>
                     {#snippet child({ props })}

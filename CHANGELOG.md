@@ -17,6 +17,14 @@ pt-BR, English, and Spanish translations.
   effective runtime. Changing an override restarts only that terminal, and
   invalid paths or missing distributions fail clearly without a silent fallback.
 
+### Fixed
+
+- Derived the Windows host folder of a WSL workspace from its Linux project
+  path so creating or editing one no longer required a second matching path and
+  no longer failed with a spurious "Linux path does not match the workspace
+  folder" error. The working directory field is now filled and locked
+  automatically whenever the WSL runtime is selected.
+
 ## 0.11.0 - 2026-08-15
 
 ### Added

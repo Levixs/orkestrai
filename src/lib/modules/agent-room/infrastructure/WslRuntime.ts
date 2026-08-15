@@ -142,10 +142,14 @@ export async function resolveWorkspaceRuntime(input: {
 
   const rawHostPath = input.workingDir.trim();
   const mappedHostPath = await linuxPathToWindows(distribution, linuxWorkingDir);
-  if (!rawHostPath.startsWith('/') && canonicalHostPath(rawHostPath) !== canonicalHostPath(mappedHostPath)) {
+  // O diretório host é sempre derivado do caminho Linux. Só validamos quando o
+  // chamador envia um caminho Windows explícito (não vazio e não-Linux), que
+  // precisa apontar para a mesma pasta; um host vazio nós derivamos.
+  const hasExplicitHostPath = rawHostPath.length > 0 && !rawHostPath.startsWith('/');
+  if (hasExplicitHostPath && canonicalHostPath(rawHostPath) !== canonicalHostPath(mappedHostPath)) {
     throw new Error(`O caminho Linux não corresponde à pasta do workspace: ${mappedHostPath}`);
   }
-  const workingDir = rawHostPath.startsWith('/') ? mappedHostPath : rawHostPath;
+  const workingDir = hasExplicitHostPath ? rawHostPath : mappedHostPath;
   return {
     workingDir,
     runtime: { kind: 'wsl', distribution, linuxWorkingDir },
