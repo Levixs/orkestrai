@@ -23,7 +23,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, extname, join, resolve, sep } from 'node:path';
-import { buildWslLaunch, currentWorkspaceExecutionRuntime, wslHostPath } from './WslRuntime.js';
+import { buildWslLaunch, currentWorkspaceExecutionRuntime, wslHostPath } from './WslRuntime.ts';
 
 export const IS_WIN = process.platform === 'win32';
 
