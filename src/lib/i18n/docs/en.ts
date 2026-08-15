@@ -368,9 +368,9 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
-      date: 'Aug 14, 2026 · In development',
+      date: 'Aug 15, 2026 · 0.11.0',
       items: [
-        'Remote collaboration now supports traceable leader and agent conversations bound to the exact question and provider session across every registered provider. The overview preserves the leader history and waits for the real end of a turn across intermediate messages and tool use. Host-side local STT works in leader, agent, and terminal input; terminal dictation only inserts text. Start or restore remains Administrator-only, and the separately approved raw terminal stays off by default, phone-responsive, rate-limited, limited to one session, encrypted, and audited. Opening the terminal closes the conversation before taking over the screen.',
+        'Orkestrai 0.11.0 adds traceable remote leader and agent conversations bound to the exact question and provider session across every registered provider. The overview preserves the leader history and waits for the real end of a turn across intermediate messages and tool use. Host-side local STT works in leader, agent, and terminal input; terminal dictation only inserts text. Start or restore remains Administrator-only, and the separately approved raw terminal stays off by default, phone-responsive, rate-limited, limited to one session, encrypted, and audited. Opening the terminal closes the conversation before taking over the screen.',
         'Browser and mobile invitations now reach the host approval queue after the production relay was recreated with the official Remote PWA origin enabled.',
         'The Canvas tool strip now prioritizes compact icons with tooltips; the How to use header stays available while scrolling; the changelog separates collapsible releases and numbered changes; sharing form fields align correctly; and Canvas plus the native Workspace menu now expose an explicit entry point for joining a remote workspace.',
         'The app interface was rebuilt on semantic theme tokens: the default dark palette now pairs graphite surfaces with the brand gold, the light theme has strong contrast, and Canvas, Workbench, Settings, documentation, Provider Center, panels, dialogs, menus, fields, and voice-orb docking now share one responsive hierarchy.',
