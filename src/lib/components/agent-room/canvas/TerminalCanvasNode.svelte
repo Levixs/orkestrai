@@ -12,7 +12,7 @@
   import { speakText } from '../voice-speech.js';
   import { terminalThemeLabel } from '../terminal-theme-label.js';
   import { normalizeTerminalTheme, TERMINAL_THEMES, TERMINAL_THEME_ORDER, type TerminalThemeName } from '../terminal-themes.js';
-  import type { AgentProviderInfo, TerminalNodePayload, WorkspaceAttachment } from '$lib/modules/agent-room/domain/types.js';
+  import type { AgentProviderInfo, TerminalNodePayload, WorkspaceAttachment, WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
   import {
     attachmentPromptReference,
@@ -27,6 +27,8 @@
   export type TerminalNodeData = {
     title: string;
     workingDir: string;
+    workspaceRoot: string;
+    executionRuntime: WorkspaceExecutionRuntime;
     workspaceId: string;
     payload: TerminalNodePayload;
     /** Avalia os args de resume do provider NA HORA do respawn. */
@@ -345,6 +347,8 @@
         args: [...(data.payload.args ?? []), ...exactArgs],
         cwd: data.workingDir,
         env: agentEnv,
+        runtime: data.executionRuntime,
+        workspaceRoot: data.workspaceRoot,
       };
     }
     const genericArgs = data.resumeArgsFor?.() ?? null;
@@ -359,6 +363,8 @@
         : undefined,
       cwd: data.workingDir,
       env: agentEnv,
+      runtime: data.executionRuntime,
+      workspaceRoot: data.workspaceRoot,
     };
   });
 
@@ -370,13 +376,15 @@
    */
   const createRequest = $derived.by(() => {
     const payload = data.payload as TerminalNodePayload & { provider?: string; agentSessionId?: string };
-    if (forceRespawn || (payload.provider && payload.agentSessionId)) return respawnRequest;
+    if (forceRespawn || (payload.provider && (payload.agentSessionId || payload.resumeRecovery))) return respawnRequest;
     return {
       command: payload.command ?? '',
       args: [...(payload.args ?? []), ...(payload.initialRoleArgs ?? [])],
       freshSessionArgs: data.freshSessionArgsFor?.() ?? undefined,
       cwd: data.workingDir,
       env: agentEnv,
+      runtime: data.executionRuntime,
+      workspaceRoot: data.workspaceRoot,
     };
   });
 </script>

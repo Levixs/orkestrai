@@ -24,11 +24,12 @@ import { randomUUID } from 'node:crypto';
 import type { WebSocket } from 'ws';
 import { ptySessionManager } from './PtySessionManager.ts';
 import { agentSessionTracker } from './AgentSessionTracker.ts';
+import type { WorkspaceExecutionRuntime } from '../../domain/types.ts';
 
 export const PTY_WS_PATH = '/ws/agent-room/pty';
 
 type ClientMessage =
-  | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string; workspaceId?: string; nodeId?: string }
+  | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string; workspaceId?: string; nodeId?: string; runtime?: WorkspaceExecutionRuntime; workspaceRoot?: string }
   | { type: 'attach'; sessionId: string; cols?: number; rows?: number }
   | { type: 'input'; sessionId: string; data: string }
   | { type: 'resize'; sessionId: string; cols: number; rows: number }
@@ -140,6 +141,8 @@ export function handlePtyConnection(socket: WebSocket): void {
             workspaceId: typeof message.workspaceId === 'string' ? message.workspaceId : null,
             nodeId: typeof message.nodeId === 'string' ? message.nodeId : null,
             provider: typeof message.provider === 'string' ? message.provider : null,
+            runtime: message.runtime,
+            workspaceRoot: typeof message.workspaceRoot === 'string' ? message.workspaceRoot : undefined,
           });
           const scrollback = attachSession(session.id);
           send({ type: 'created', session, scrollback });
@@ -177,7 +180,11 @@ export function handlePtyConnection(socket: WebSocket): void {
               });
               send({ type: 'agentSession', sessionId: session.id, agentSessionId, provider });
             };
-            if (freshSessionId) {
+            if (message.runtime?.kind === 'wsl' && freshSessionId) {
+              // The CLI runs in the selected distro, so Windows-side storage
+              // watchers cannot inspect its home. Reserved IDs remain exact.
+              reportAgentSession(freshSessionId);
+            } else if (freshSessionId) {
               const watchingExpected = agentSessionTracker.watchExpected(
                 session.id,
                 message.sessionStorage,
@@ -188,7 +195,7 @@ export function handlePtyConnection(socket: WebSocket): void {
               // So Claude reserva um id antes de criar a conversa. Providers
               // sem validacao exata mantem o contrato anterior.
               if (!watchingExpected) reportAgentSession(freshSessionId);
-            } else {
+            } else if (message.runtime?.kind !== 'wsl') {
               agentSessionTracker.watch(session.id, message.sessionStorage, session.cwd, trackingStartedAt, reportAgentSession);
             }
           }

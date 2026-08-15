@@ -41,6 +41,9 @@ function mapWorkspace(model: AgentWorkspace): Workspace {
     id: model.getAttribute('id'),
     name: model.getAttribute('name'),
     workingDir: model.getAttribute('working_dir'),
+    runtimeKind: model.getAttribute('runtime_kind') === 'wsl' ? 'wsl' : 'native',
+    wslDistribution: model.getAttribute('wsl_distribution'),
+    wslWorkingDir: model.getAttribute('wsl_working_dir'),
     icon: model.getAttribute('icon'),
     instructions: model.getAttribute('instructions'),
     syncAgentInstructionFiles: Boolean(model.getAttribute('sync_agent_instruction_files')),
@@ -108,6 +111,9 @@ export class WorkspaceRepository {
   async createWorkspace(input: {
     name: string;
     workingDir: string;
+    runtimeKind?: 'native' | 'wsl';
+    wslDistribution?: string | null;
+    wslWorkingDir?: string | null;
     icon?: string | null;
     instructions?: string | null;
     syncAgentInstructionFiles?: boolean;
@@ -122,6 +128,9 @@ export class WorkspaceRepository {
       id: uuidv7(),
       name,
       working_dir: workingDir,
+      runtime_kind: input.runtimeKind ?? 'native',
+      wsl_distribution: input.wslDistribution ?? null,
+      wsl_working_dir: input.wslWorkingDir ?? null,
       icon: input.icon ?? null,
       instructions: input.instructions ?? null,
       sync_agent_instruction_files: input.syncAgentInstructionFiles ?? false,
@@ -132,7 +141,7 @@ export class WorkspaceRepository {
 
   async updateWorkspace(
     id: string,
-    input: Partial<Pick<Workspace, 'name' | 'workingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles' | 'hooks'>>
+    input: Partial<Pick<Workspace, 'name' | 'workingDir' | 'runtimeKind' | 'wslDistribution' | 'wslWorkingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles' | 'hooks'>>
   ): Promise<Workspace | null> {
     const existing = await this.getWorkspace(id);
     if (!existing) return null;
@@ -142,6 +151,9 @@ export class WorkspaceRepository {
     await model.update({
       name: input.name?.trim() || existing.name,
       working_dir: input.workingDir?.trim() || existing.workingDir,
+      runtime_kind: input.runtimeKind ?? existing.runtimeKind,
+      wsl_distribution: input.wslDistribution === undefined ? existing.wslDistribution : input.wslDistribution,
+      wsl_working_dir: input.wslWorkingDir === undefined ? existing.wslWorkingDir : input.wslWorkingDir,
       icon: input.icon === undefined ? existing.icon : input.icon,
       instructions: input.instructions === undefined ? existing.instructions : input.instructions,
       sync_agent_instruction_files: input.syncAgentInstructionFiles ?? existing.syncAgentInstructionFiles,

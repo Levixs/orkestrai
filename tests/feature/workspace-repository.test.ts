@@ -13,6 +13,9 @@ describe('WorkspaceRepository', () => {
     });
     expect(workspace.name).toBe('Orkestrai');
     expect(workspace.syncAgentInstructionFiles).toBe(false);
+    expect(workspace.runtimeKind).toBe('native');
+    expect(workspace.wslDistribution).toBeNull();
+    expect(workspace.wslWorkingDir).toBeNull();
 
     const node = await workspaceRepository.createNode({
       workspaceId: workspace.id,

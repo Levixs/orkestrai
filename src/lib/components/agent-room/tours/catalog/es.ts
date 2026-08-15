@@ -1138,4 +1138,27 @@ export const TOURS_ES: Tour[] = [
       },
     ],
   },
+  {
+    id: 'windows-wsl-agents',
+    icon: 'Laptop',
+    title: 'Ejecutar agentes dentro de WSL',
+    tagline: 'Vincula cada workspace con la distribución que contiene sus herramientas.',
+    steps: [
+      {
+        id: 'choose-runtime',
+        title: 'Elige el entorno',
+        body: 'En Windows, abre Nuevo workspace o Editar workspace y selecciona WSL en Entorno de ejecución.',
+      },
+      {
+        id: 'choose-distribution',
+        title: 'Selecciona la distribución exacta',
+        body: 'Elige la instalación que contiene las CLIs necesarias. Ubuntu-22.04 y Ubuntu-24.04 son entornos independientes y nunca se sustituyen automáticamente.',
+      },
+      {
+        id: 'set-linux-path',
+        title: 'Confirma la ruta Linux',
+        body: 'Indica una ruta absoluta como /home/user/proyecto. Al guardar, los terminales reinician en esa distribución y la Central de Providers verifica las CLIs en el mismo entorno.',
+      },
+    ],
+  },
 ];

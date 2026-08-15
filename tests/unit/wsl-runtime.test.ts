@@ -1,0 +1,88 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildWslLaunch,
+  inferWslRuntimeFromPath,
+  parseWslDistributionList,
+  wslHostPath,
+} from '$lib/modules/agent-room/infrastructure/WslRuntime.js';
+
+describe('WSL workspace runtime', () => {
+  it('parses the UTF-16-shaped distro list without merging environments', () => {
+    const encoded = `\uFEFF${['Ubuntu-24.04', 'Debian']
+      .map((name) => [...name].map((character) => `${character}\0`).join(''))
+      .join('\r\0\n\0')}\r\0\n\0`;
+    expect(parseWslDistributionList(encoded)).toEqual([
+      { name: 'Ubuntu-24.04' },
+      { name: 'Debian' },
+    ]);
+  });
+
+  it('infers both supported WSL UNC forms and preserves the exact distro', () => {
+    expect(inferWslRuntimeFromPath('\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\app')).toEqual({
+      distribution: 'Ubuntu-24.04',
+      linuxWorkingDir: '/home/raoni/app',
+    });
+    expect(inferWslRuntimeFromPath('\\\\wsl$\\Ubuntu-22.04\\srv\\site')).toEqual({
+      distribution: 'Ubuntu-22.04',
+      linuxWorkingDir: '/srv/site',
+    });
+    expect(wslHostPath('Debian', '/home/dev/app')).toBe('\\\\wsl.localhost\\Debian\\home\\dev\\app');
+  });
+
+  it('builds one exact distro launch and forwards only bridge context through WSLENV', () => {
+    const launch = buildWslLaunch({
+      runtime: { kind: 'wsl', distribution: 'Ubuntu-24.04', linuxWorkingDir: '/home/raoni/app' },
+      command: 'kimi',
+      args: ['--continue'],
+      hostCwd: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\app',
+      workspaceRoot: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\app',
+      hostEnv: {
+        PATH: 'C:\\Windows',
+        ORKESTRAI_API_URL: 'http://127.0.0.1:4321',
+        ORKESTRAI_CLI_JS: 'C:\\Orkestrai\\orkestrai.js',
+      },
+    });
+
+    expect(launch.command).toBe('wsl.exe');
+    expect(launch.args).toEqual([
+      '--distribution',
+      'Ubuntu-24.04',
+      '--cd',
+      '/home/raoni/app',
+      '--exec',
+      '/bin/bash',
+      '-lic',
+      'export PATH="$ORKESTRAI_WORKSPACE_BIN:$PATH"; exec "$@"',
+      'orkestrai-runtime',
+      'kimi',
+      '--continue',
+    ]);
+    expect(launch.env.ORKESTRAI_CLI).toBe('/home/raoni/app/.orkestrai/bin/orkestrai');
+    expect(launch.env.WSLENV).toContain('ORKESTRAI_NODE_ID');
+    expect(launch.env.WSLENV.split(':')).not.toContain('PATH');
+  });
+
+  it('maps a native shell placeholder to bash inside WSL', () => {
+    const launch = buildWslLaunch({
+      runtime: { kind: 'wsl', distribution: 'Debian', linuxWorkingDir: '/srv/app' },
+      command: 'wsl.exe',
+      args: [],
+      hostCwd: '\\\\wsl$\\Debian\\srv\\app',
+      hostEnv: {},
+    });
+    expect(launch.args.at(-1)).toBe('/bin/bash');
+  });
+
+  it('translates workspace file arguments for Linux CLIs', () => {
+    const launch = buildWslLaunch({
+      runtime: { kind: 'wsl', distribution: 'Ubuntu-24.04', linuxWorkingDir: '/home/raoni/project' },
+      command: 'kimi',
+      args: ['--agent-file', '\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\project\\.orkestrai\\roles\\qa\\AGENTS.md'],
+      hostCwd: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\project',
+      workspaceRoot: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\project',
+      hostEnv: {},
+    });
+
+    expect(launch.args.at(-1)).toBe('/home/raoni/project/.orkestrai/roles/qa/AGENTS.md');
+  });
+});

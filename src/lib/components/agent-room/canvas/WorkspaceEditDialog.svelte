@@ -10,6 +10,7 @@
   import { Textarea } from '$lib/components/ui/textarea';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Button } from '$lib/components/ui/button';
+  import * as Select from '$lib/components/ui/select';
   import { FolderOpen, Plug, Trash2 } from '@lucide/svelte';
   import { onMount } from 'svelte';
   import { isLegacyEmojiIcon, WORKSPACE_ICONS } from '../workspace-icons.js';
@@ -24,8 +25,19 @@
       icon: string | null;
       instructions: string | null;
       syncAgentInstructionFiles: boolean;
+      runtimeKind: 'native' | 'wsl';
+      wslDistribution: string | null;
+      wslWorkingDir: string | null;
     }) => Promise<void>;
     onClose: () => void;
+  };
+
+  type EditWorkspaceFormData = {
+    name: string;
+    workingDir: string;
+    icon: string | null;
+    instructions: string | null;
+    syncAgentInstructionFiles: boolean;
   };
 
   let { workspace, onSave, onClose }: Props = $props();
@@ -33,6 +45,15 @@
   let submitError = $state('');
   let presetState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
   let presetMessage = $state('');
+  let runtimeKind = $state<'native' | 'wsl'>(workspace.runtimeKind);
+  let wslDistribution = $state(workspace.wslDistribution ?? '');
+  let wslWorkingDir = $state(workspace.wslWorkingDir ?? '');
+  let wsl = $state<{ supported: boolean; distributions: Array<{ name: string }>; inferred: { distribution: string; linuxWorkingDir: string } | null; error: string | null }>({
+    supported: false,
+    distributions: [],
+    inferred: null,
+    error: null,
+  });
 
   // -- Servidores MCP do workspace (.mcp.json) ---------------------------------
   type McpServer = { name: string; command: string; args: string[]; builtin: boolean };
@@ -140,12 +161,16 @@
         if (!f.valid) return;
         submitError = '';
         try {
+          const data = f.data as unknown as EditWorkspaceFormData;
           await onSave({
-            name: f.data.name,
-            workingDir: f.data.workingDir,
-            icon: f.data.icon?.trim() || null,
-            instructions: f.data.instructions?.trim() || null,
-            syncAgentInstructionFiles: f.data.syncAgentInstructionFiles,
+            name: data.name,
+            workingDir: data.workingDir,
+            icon: data.icon?.trim() || null,
+            instructions: data.instructions?.trim() || null,
+            syncAgentInstructionFiles: data.syncAgentInstructionFiles,
+            runtimeKind,
+            wslDistribution: wslDistribution.trim() || null,
+            wslWorkingDir: wslWorkingDir.trim() || null,
           });
           onClose();
         } catch (error) {
@@ -157,12 +182,37 @@
 
   const { form: formData, enhance } = form;
 
-  onMount(loadMcps);
+  onMount(() => {
+    void loadMcps();
+    void loadWslAvailability(workspace.workingDir);
+  });
+
+  async function loadWslAvailability(path = '') {
+    try {
+      const response = await fetch(`/api/agent-room/runtimes/wsl${path ? `?path=${encodeURIComponent(path)}` : ''}`);
+      wsl = (await response.json()).data ?? wsl;
+      if (wsl.inferred) {
+        runtimeKind = 'wsl';
+        wslDistribution ||= wsl.inferred.distribution;
+        wslWorkingDir ||= wsl.inferred.linuxWorkingDir;
+      }
+    } catch {
+      wsl = { supported: false, distributions: [], inferred: null, error: null };
+    }
+  }
 
   async function pickDirectory() {
     if (!desktop) return;
     const dir = await desktop.pickDirectory();
-    if (dir) $formData.workingDir = dir;
+    if (dir) {
+      $formData.workingDir = dir;
+      await loadWslAvailability(dir);
+      if (wsl.inferred) {
+        runtimeKind = 'wsl';
+        wslDistribution = wsl.inferred.distribution;
+        wslWorkingDir = wsl.inferred.linuxWorkingDir;
+      }
+    }
   }
 </script>
 
@@ -211,6 +261,49 @@
           </Form.Field>
         </div>
 
+        {#if wsl.supported}
+          <section class="grid gap-4 rounded-md border border-border/70 bg-muted/20 p-3 sm:grid-cols-2">
+            <div class="space-y-2">
+              <span class="text-sm font-medium leading-none">{m['dlg.runtime_label']()}</span>
+              <Select.Root type="single" value={runtimeKind} onValueChange={(value: string) => (runtimeKind = value === 'wsl' ? 'wsl' : 'native')}>
+                <Select.Trigger class="w-full">
+                  {runtimeKind === 'wsl' ? m['dlg.runtime_wsl']() : m['dlg.runtime_native']()}
+                </Select.Trigger>
+                <Select.Content>
+                  <Select.Item value="native">{m['dlg.runtime_native']()}</Select.Item>
+                  <Select.Item value="wsl">{m['dlg.runtime_wsl']()}</Select.Item>
+                </Select.Content>
+              </Select.Root>
+              <p class="text-xs text-muted-foreground">{m['dlg.runtime_change_hint']()}</p>
+            </div>
+
+            {#if runtimeKind === 'wsl'}
+              <div class="space-y-2">
+                <span class="text-sm font-medium leading-none">{m['dlg.wsl_distribution']()}</span>
+                <Select.Root type="single" value={wslDistribution} onValueChange={(value: string) => (wslDistribution = value)}>
+                  <Select.Trigger class="w-full">
+                    {wslDistribution || m['dlg.wsl_distribution_placeholder']()}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each wsl.distributions as distribution (distribution.name)}
+                      <Select.Item value={distribution.name}>{distribution.name}</Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+              </div>
+
+              <div class="space-y-2 sm:col-span-2">
+                <label class="text-sm font-medium leading-none" for="wsl-working-dir">{m['dlg.wsl_working_dir']()}</label>
+                <Input id="wsl-working-dir" bind:value={wslWorkingDir} placeholder="/home/user/project" autocomplete="off" />
+                <p class="text-xs text-muted-foreground">{m['dlg.wsl_working_dir_hint']()}</p>
+              </div>
+              {#if !wsl.distributions.length}
+                <p class="text-xs text-destructive sm:col-span-2" role="alert">{wsl.error || m['dlg.wsl_unavailable']()}</p>
+              {/if}
+            {/if}
+          </section>
+        {/if}
+
         <div class="space-y-2">
           <span class="text-sm font-medium leading-none">{m['dlg.ws_icon']()}</span>
           <div class="grid grid-cols-[repeat(auto-fit,minmax(34px,1fr))] gap-1.5" role="radiogroup" aria-label={m['dlg.ws_icon']()}>
@@ -230,7 +323,7 @@
               </button>
             {/each}
           </div>
-          {#if isLegacyEmojiIcon($formData.icon)}
+          {#if isLegacyEmojiIcon(typeof $formData.icon === 'string' ? $formData.icon : null)}
             <p class="m-0 text-[11px] text-[var(--app-text-muted)]">{m['dlg.icon_legacy_hint']({ icon: $formData.icon ?? '' })}</p>
           {/if}
         </div>

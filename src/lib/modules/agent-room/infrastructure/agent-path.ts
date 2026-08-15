@@ -23,6 +23,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, extname, join, resolve, sep } from 'node:path';
+import { buildWslLaunch, currentWorkspaceExecutionRuntime, wslHostPath } from './WslRuntime.js';
 
 export const IS_WIN = process.platform === 'win32';
 
@@ -177,6 +178,17 @@ export function cliInvocation(
   args: string[]
 ): { command: string; args: string[]; env: Record<string, string> } {
   const env = agentEnv();
+  const runtime = currentWorkspaceExecutionRuntime();
+  if (runtime.kind === 'wsl') {
+    const target = buildWslLaunch({
+      runtime,
+      command,
+      args,
+      hostCwd: wslHostPath(runtime.distribution, runtime.linuxWorkingDir),
+      hostEnv: env,
+    });
+    return { command: target.command, args: target.args, env: target.env };
+  }
   const target = resolveCommand(command, args, env);
   return { command: target.command, args: target.args, env };
 }

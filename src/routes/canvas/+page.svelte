@@ -634,7 +634,7 @@
       await tick();
       // Indicador de workspaces ativos (sessoes PTY vivas em background).
       await refreshActivity();
-      void api<{ providers: AgentProviderInfo[] }>('/api/agent-room/status')
+      void api<{ providers: AgentProviderInfo[] }>(`/api/agent-room/status${activeWorkspace ? `?workspaceId=${encodeURIComponent(activeWorkspace.id)}` : ''}`)
         .then((status) => {
           providers = status.providers ?? [];
           writeProviderCache(providers);
@@ -707,6 +707,10 @@
         providersReady,
         providers,
         workingDir: floorPath(node.floorId) ?? activeWorkspace?.workingDir ?? '.',
+        workspaceRoot: activeWorkspace?.workingDir ?? '.',
+        executionRuntime: activeWorkspace?.runtimeKind === 'wsl' && activeWorkspace.wslDistribution && activeWorkspace.wslWorkingDir
+          ? { kind: 'wsl', distribution: activeWorkspace.wslDistribution, linuxWorkingDir: activeWorkspace.wslWorkingDir }
+          : { kind: 'native' },
         payload: node.payload,
         // Closures: avaliadas na hora do respawn (providers ja carregados) —
         // avaliar aqui congelaria undefined no restart (providers ainda vazios).
@@ -864,14 +868,17 @@
       edges = cached.edges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
     }
     try {
-      const [workspace, canvasNodes, canvasEdges, floorList] = await Promise.all([
+      const [workspace, canvasNodes, canvasEdges, floorList, providerStatus] = await Promise.all([
         api<Workspace>(`/api/agent-room/workspaces/${id}`),
         api<CanvasNode[]>(`/api/agent-room/workspaces/${id}/nodes`),
         api<CanvasEdge[]>(`/api/agent-room/workspaces/${id}/edges`),
         api<Floor[]>(`/api/agent-room/workspaces/${id}/floors`),
+        api<{ providers: AgentProviderInfo[] }>(`/api/agent-room/status?workspaceId=${encodeURIComponent(id)}`),
       ]);
       if (requestId !== selectionRequestId) return;
       activeWorkspace = workspace;
+      providers = providerStatus.providers ?? [];
+      writeProviderCache(providers);
       localStorage.setItem('orkestrai.activeWorkspaceId', workspace.id);
       if (changingWorkspace) {
         leaderDictationState = 'idle';
@@ -1023,6 +1030,9 @@
     icon: string | null;
     instructions: string | null;
     syncAgentInstructionFiles: boolean;
+    runtimeKind: 'native' | 'wsl';
+    wslDistribution: string | null;
+    wslWorkingDir: string | null;
   }) {
     if (!editingWorkspace) return;
     const updated = await api<Workspace>(`/api/agent-room/workspaces/${editingWorkspace.id}`, {

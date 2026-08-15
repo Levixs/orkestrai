@@ -178,6 +178,10 @@
         providersReady,
         providers,
         workingDir: floorPath(node.floorId) ?? workspace.workingDir,
+        workspaceRoot: workspace.workingDir,
+        executionRuntime: workspace.runtimeKind === 'wsl' && workspace.wslDistribution && workspace.wslWorkingDir
+          ? { kind: 'wsl', distribution: workspace.wslDistribution, linuxWorkingDir: workspace.wslWorkingDir }
+          : { kind: 'native' },
         payload: node.payload,
         resumeArgsFor: () => provider?.tui?.resumeArgs ?? null,
         exactResumeArgsFor: (agentSessionId: string) => provider?.tui?.exactResumeArgs?.map(

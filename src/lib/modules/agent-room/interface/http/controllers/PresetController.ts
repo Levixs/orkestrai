@@ -14,6 +14,9 @@ const applyPresetSchema = z.object({
   workspaceId: z.string().trim().optional(),
   name: z.string().trim().optional(),
   workingDir: z.string().trim().optional(),
+  runtimeKind: z.enum(['native', 'wsl']).optional(),
+  wslDistribution: z.string().trim().nullish(),
+  wslWorkingDir: z.string().trim().nullish(),
   locale: z.enum(['pt-BR', 'en', 'es']).optional(),
 });
 
@@ -68,7 +71,14 @@ export class PresetController extends Controller {
         throw new Error('Informe workspaceId (aplicar aqui) ou name+workingDir (novo workspace).');
       }
       return this.json({
-        data: await presetService.apply(event.params.id, { name: input.name, workingDir: input.workingDir, locale: input.locale }),
+        data: await presetService.apply(event.params.id, {
+          name: input.name,
+          workingDir: input.workingDir,
+          runtimeKind: input.runtimeKind,
+          wslDistribution: input.wslDistribution,
+          wslWorkingDir: input.wslWorkingDir,
+          locale: input.locale,
+        }),
       });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao aplicar preset.');

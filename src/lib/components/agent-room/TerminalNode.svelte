@@ -27,6 +27,7 @@
     type LeaderDictationStatus,
   } from './leader-dictation.js';
   import * as m from '$lib/paraglide/messages.js';
+  import type { WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
 
   export type CreatePtyRequest = {
     command: string;
@@ -34,6 +35,8 @@
     freshSessionArgs?: string[];
     cwd: string;
     env?: Record<string, string>;
+    runtime?: WorkspaceExecutionRuntime;
+    workspaceRoot?: string;
   };
 
   type Props = {

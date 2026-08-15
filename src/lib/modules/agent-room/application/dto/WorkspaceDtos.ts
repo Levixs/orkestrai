@@ -33,22 +33,36 @@ export class CreateWorkspaceDto {
     public readonly workingDir: string,
     public readonly icon: string | null,
     public readonly instructions: string | null,
+    public readonly runtimeKind: 'native' | 'wsl' = 'native',
+    public readonly wslDistribution: string | null = null,
+    public readonly wslWorkingDir: string | null = null,
     public readonly syncAgentInstructionFiles = false,
     public readonly hooks: WorkspaceHooks = {}
   ) {}
 
   static from(input: CreateWorkspaceInput): CreateWorkspaceDto {
-    return new CreateWorkspaceDto(input.name, input.workingDir, input.icon ?? null, input.instructions ?? null);
+    return new CreateWorkspaceDto(
+      input.name,
+      input.workingDir,
+      input.icon ?? null,
+      input.instructions ?? null,
+      input.runtimeKind,
+      input.wslDistribution ?? null,
+      input.wslWorkingDir ?? null
+    );
   }
 }
 
 export class UpdateWorkspaceDto {
-  constructor(public readonly changes: Partial<Pick<Workspace, 'name' | 'workingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles'>>) {}
+  constructor(public readonly changes: Partial<Pick<Workspace, 'name' | 'workingDir' | 'runtimeKind' | 'wslDistribution' | 'wslWorkingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles'>>) {}
 
   static from(input: UpdateWorkspaceInput): UpdateWorkspaceDto {
     return new UpdateWorkspaceDto({
       name: input.name,
       workingDir: input.workingDir,
+      runtimeKind: input.runtimeKind,
+      wslDistribution: input.wslDistribution,
+      wslWorkingDir: input.wslWorkingDir,
       icon: input.icon,
       instructions: input.instructions,
       syncAgentInstructionFiles: input.syncAgentInstructionFiles,

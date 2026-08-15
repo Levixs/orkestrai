@@ -274,6 +274,19 @@
     return payload.data as T;
   }
 
+  async function refreshProviders(workspaceId: string): Promise<void> {
+    try {
+      const status = await api<{ providers: AgentProviderInfo[] }>(
+        `/api/agent-room/status?workspaceId=${encodeURIComponent(workspaceId)}`
+      );
+      if (selectedWorkspaceId !== workspaceId) return;
+      providers = status.providers ?? [];
+      writeProviderCache(providers);
+    } catch {
+      // Keep the last known provider list while the selected runtime is unavailable.
+    }
+  }
+
   function applyWorkspaceData(
     workspaceId: string,
     nodes: CanvasNode[],
@@ -304,11 +317,16 @@
     const cached = readWorkspaceViewCache(workspaceId);
     if (cached) applyWorkspaceData(workspaceId, cached.nodes, cached.edges, cached.floors);
     const request = (async () => {
-      const [nodes, edges, floors] = await Promise.all([
+      const [nodes, edges, floors, providerStatus] = await Promise.all([
         api<CanvasNode[]>(`/api/agent-room/workspaces/${workspaceId}/nodes`),
         api<CanvasEdge[]>(`/api/agent-room/workspaces/${workspaceId}/edges`),
         api<Floor[]>(`/api/agent-room/workspaces/${workspaceId}/floors`).catch(() => []),
+        api<{ providers: AgentProviderInfo[] }>(`/api/agent-room/status?workspaceId=${encodeURIComponent(workspaceId)}`),
       ]);
+      if (selectedWorkspaceId === workspaceId) {
+        providers = providerStatus.providers ?? [];
+        writeProviderCache(providers);
+      }
       applyWorkspaceData(workspaceId, nodes, edges, floors);
       const workspace = workspaces.find((item) => item.id === workspaceId);
       if (workspace) {
@@ -401,6 +419,7 @@
       leaderDictationNodeId = null;
     }
     selectedWorkspaceId = workspaceId;
+    if (!sameWorkspace) void refreshProviders(workspaceId);
     const layout = ensureWorkbenchLayout(workspaceId, nodeId);
     applyWorkbenchLayout(workspaceId, openWorkbenchNode(layout, nodeId, {
       toSide: Boolean(splitDirection) && sameWorkspace,
@@ -850,7 +869,7 @@
         loading = false;
         await tick();
         connectEvents();
-        void api<{ providers: AgentProviderInfo[] }>('/api/agent-room/status')
+        void api<{ providers: AgentProviderInfo[] }>(`/api/agent-room/status?workspaceId=${encodeURIComponent(initialWorkspace.id)}`)
           .then((status) => {
             if (destroyed) return;
             providers = status.providers ?? [];

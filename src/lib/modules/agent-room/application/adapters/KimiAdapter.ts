@@ -1,5 +1,7 @@
+import { execFile } from 'node:child_process';
 import type { AgentModelOption, AgentRunRequest, ModelEffort } from '../../domain/types.js';
-import { probeCliVersion } from '../../infrastructure/agent-path.js';
+import { cliInvocation, probeCliVersion } from '../../infrastructure/agent-path.js';
+import { currentWorkspaceExecutionRuntime } from '../../infrastructure/WslRuntime.js';
 import type { AgentAdapter, AgentCommandSpec, AgentDetection, ParsedAgentOutput } from './types.js';
 
 const KIMI_FALLBACK_OPTIONS: AgentModelOption[] = [
@@ -7,6 +9,27 @@ const KIMI_FALLBACK_OPTIONS: AgentModelOption[] = [
   { provider: 'kimi', value: 'kimi-code/kimi-for-coding', label: 'Kimi for Coding (kimi-code/kimi-for-coding)' },
   { provider: 'kimi', value: 'kimi-code/kimi-for-coding-highspeed', label: 'Kimi for Coding Highspeed (kimi-code/kimi-for-coding-highspeed)' },
 ];
+
+async function readKimiConfig(): Promise<string | null> {
+  if (currentWorkspaceExecutionRuntime().kind === 'wsl') {
+    const invocation = cliInvocation('/bin/sh', ['-lc', 'cat "$HOME/.kimi-code/config.toml"']);
+    return new Promise((resolve) => {
+      execFile(
+        invocation.command,
+        invocation.args,
+        { timeout: 8_000, encoding: 'utf8', env: invocation.env, windowsHide: true },
+        (error, stdout) => resolve(error ? null : String(stdout ?? '')),
+      );
+    });
+  }
+
+  const [{ readFileSync, existsSync }, { homedir }] = await Promise.all([
+    import('node:fs'),
+    import('node:os'),
+  ]);
+  const configPath = `${homedir()}/.kimi-code/config.toml`;
+  return existsSync(configPath) ? readFileSync(configPath, 'utf8') : null;
+}
 
 /**
  * Extrai textos de mensagens assistant do stream-json do kimi.
@@ -134,11 +157,8 @@ export const kimiAdapter: AgentAdapter = {
    */
   async listModels(): Promise<AgentModelOption[]> {
     try {
-      const { readFileSync, existsSync } = await import('node:fs');
-      const { homedir } = await import('node:os');
-      const configPath = `${homedir()}/.kimi-code/config.toml`;
-      if (!existsSync(configPath)) return KIMI_FALLBACK_OPTIONS;
-      const toml = readFileSync(configPath, 'utf8');
+      const toml = await readKimiConfig();
+      if (!toml) return KIMI_FALLBACK_OPTIONS;
 
       const options: AgentModelOption[] = [];
       // Corpo da secao vai ate a proxima LINHA que abre outra secao TOML.

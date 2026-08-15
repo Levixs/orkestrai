@@ -38,6 +38,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'portal-design-feedback': 'portal-design-feedback',
   'remote-collaboration': 'remote-workspace-collaboration',
   'custom-app-theme': 'custom-app-theme',
+  'windows-wsl-agents': 'windows-wsl-agents',
 };
 
 export function tourIdForUseCase(useCaseId: string): string | null {

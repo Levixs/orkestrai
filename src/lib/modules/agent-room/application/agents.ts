@@ -1,10 +1,11 @@
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type { AgentRunRequest, AgentRunResult } from '../domain/types.js';
+import type { AgentRunRequest, AgentRunResult, WorkspaceExecutionRuntime } from '../domain/types.js';
 import { assertWritableProjectPath, resolveSafeProjectPath } from '../infrastructure/workspace.js';
 import { agentEnv, resolveCommand, IS_WIN } from '../infrastructure/agent-path.js';
 import { getAgentAdapter } from './adapters/registry.js';
+import { buildWslLaunch, currentWorkspaceExecutionRuntime, withWorkspaceExecutionRuntime } from '../infrastructure/WslRuntime.js';
 
 type CommandResult = {
   stdout: string;
@@ -29,6 +30,7 @@ export type AgentCommandProgressEvent = {
 export type AgentRunOptions = {
   signal?: AbortSignal;
   onProgress?: (event: AgentCommandProgressEvent) => void;
+  runtime?: WorkspaceExecutionRuntime;
 };
 
 const DEFAULT_AGENT_TIMEOUT_MS = 10 * 60 * 1000;
@@ -72,11 +74,14 @@ function runCommand(
   return new Promise((resolve) => {
     const timeoutMs = agentTimeoutMs();
     const env = options.env ? { ...agentEnv(), ...options.env } : agentEnv();
-    const target = resolveCommand(command, args, env);
+    const runtime = currentWorkspaceExecutionRuntime();
+    const target = runtime.kind === 'wsl'
+      ? buildWslLaunch({ runtime, command, args, hostCwd: cwd, hostEnv: env })
+      : { ...resolveCommand(command, args, env), cwd, env };
     const child = spawn(target.command, target.args, {
-      cwd,
+      cwd: target.cwd,
       shell: false,
-      env,
+      env: target.env,
       stdio: ['pipe', 'pipe', 'pipe'],
       // Unix: grupo de processo (kill por -pid). Windows nao tem grupos assim e
       // detached abriria um console; escondemos e caimos no child.kill.
@@ -160,7 +165,7 @@ function runCommand(
 
 export async function runAgent(request: AgentRunRequest, options: AgentRunOptions = {}): Promise<AgentRunResult> {
   const cwd = resolveWorkingDirectory(request);
-  return executeAgent(request, cwd, options);
+  return withWorkspaceExecutionRuntime(options.runtime ?? { kind: 'native' }, () => executeAgent(request, cwd, options));
 }
 
 /**
@@ -179,7 +184,7 @@ export async function runAgentInWorkspace(
   if (nested.startsWith('..') || isAbsolute(nested)) {
     throw new Error('The council execution directory must stay inside the workspace.');
   }
-  return executeAgent(request, cwd, options);
+  return withWorkspaceExecutionRuntime(options.runtime ?? { kind: 'native' }, () => executeAgent(request, cwd, options));
 }
 
 async function executeAgent(request: AgentRunRequest, cwd: string, options: AgentRunOptions): Promise<AgentRunResult> {

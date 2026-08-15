@@ -201,6 +201,10 @@ export type AgentModelOption = {
 
 export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'automation' | 'device';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
+export type WorkspaceRuntimeKind = 'native' | 'wsl';
+export type WorkspaceExecutionRuntime =
+  | { kind: 'native' }
+  | { kind: 'wsl'; distribution: string; linuxWorkingDir: string };
 
 export type AgentActivityState =
   | 'starting'
@@ -303,6 +307,9 @@ export type Workspace = {
   id: string;
   name: string;
   workingDir: string;
+  runtimeKind: WorkspaceRuntimeKind;
+  wslDistribution: string | null;
+  wslWorkingDir: string | null;
   icon: string | null;
   instructions: string | null;
   /** Mantem CLAUDE.md e AGENTS.md sincronizados no working_dir. */

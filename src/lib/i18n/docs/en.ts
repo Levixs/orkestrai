@@ -16,6 +16,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `A workspace = a team on a project: working directory, icon and canvas layout saved. Create it with the + button in the sidebar. Several workspaces run at the same time — agents stay alive in the background when you switch. Instructions in AGENTS.md/CLAUDE.md are injected into the agents (edit with the pencil next to the name). The ⏻ button (Unload) shuts down the live terminals of the active workspace — frees memory/CPU without deleting anything: the layout stays saved and each agent resumes the conversation when the terminal reopens. On macOS, projects in Downloads, Documents, or Desktop require system consent; if access expires, Canvas and Workbench show Authorize folder so you can select the same directory again and continue without restarting the app.`,
     },
     {
+      id: 'wsl-runtime',
+      title: 'Windows workspaces with WSL',
+      body: `On Windows, each workspace can run agents in Windows or in one specific WSL distribution. When creating or editing it, choose WSL, select the exact installed Ubuntu, Ubuntu-22.04, Ubuntu-24.04, or other distribution, and provide the Linux project path. Orkestrai keeps a Windows-accessible path for Canvas, files, and persistence, while shells, Claude, Codex, Kimi, and every other provider start inside the selected distribution. Detection, models, generic conversation resume, and the orkestrai bridge follow the same environment. Changing runtimes unloads old PTYs before restarting; there is no silent fallback to another distribution or to Windows.`,
+    },
+    {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
       body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider switching, roles, a visual choice of 10 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
@@ -365,8 +370,20 @@ export const DOCS_EN: DocsCatalog = {
       body: 'Choose one of three dark themes or the high-contrast light theme under Settings → Appearance. Duplicate the closest option, adjust semantic color tokens with an immediate preview, and export the JSON to use the same theme in another installation.',
       tags: ['Themes', 'semantic tokens', 'import/export'],
     },
+    {
+      id: 'windows-wsl-agents',
+      title: 'Use tools installed only inside WSL',
+      body: 'Create or edit the workspace on Windows, choose WSL, and select the exact distribution where Kimi, Claude, Codex, or another CLI is installed. Provide the Linux project path. Every terminal and provider in that workspace then starts in that environment while Canvas, files, tasks, and notes remain integrated with the app. Different workspaces can use different distributions at the same time.',
+      tags: ['Windows + WSL', 'multiple distributions', 'local providers'],
+    },
   ],
   changelog: [
+    {
+      date: 'Next release',
+      items: [
+        'Windows workspaces can now use either the native runtime or one explicit WSL distribution. Orkestrai lists installed distributions, validates the Linux path, runs shells and every provider in the selected environment, checks CLIs per workspace, resumes conversations through the provider, and provisions the bridge inside WSL without silently falling back to Windows or another distribution.',
+      ],
+    },
     {
       date: 'Aug 15, 2026 · 0.11.0',
       items: [

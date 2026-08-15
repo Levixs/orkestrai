@@ -5,6 +5,9 @@ export const createWorkspaceSchema = z.object({
   workingDir: z.string().trim().min(1, 'Informe o diretorio de trabalho.'),
   icon: z.string().trim().nullish(),
   instructions: z.string().nullish(),
+  runtimeKind: z.enum(['native', 'wsl']).default('native'),
+  wslDistribution: z.string().trim().nullish(),
+  wslWorkingDir: z.string().trim().nullish(),
 });
 
 export const updateWorkspaceSchema = z.object({
@@ -13,6 +16,9 @@ export const updateWorkspaceSchema = z.object({
   icon: z.string().trim().nullish(),
   instructions: z.string().nullish(),
   syncAgentInstructionFiles: z.boolean().optional(),
+  runtimeKind: z.enum(['native', 'wsl']).optional(),
+  wslDistribution: z.string().trim().nullish(),
+  wslWorkingDir: z.string().trim().nullish(),
 });
 
 export const canvasNodeTypeSchema = z.enum(['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'loop', 'group', 'shape', 'tasks', 'flow', 'image', 'usage', 'device']);

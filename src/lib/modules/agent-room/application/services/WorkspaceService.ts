@@ -8,16 +8,21 @@ import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts
 import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.ts';
 import { bridgeService } from './BridgeService.js';
 import { roleService } from './RoleService.js';
+import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
 import type {
   CreateCanvasEdgeDto,
   ChangeTerminalProviderDto,
   CreateCanvasNodeDto,
-  CreateWorkspaceDto,
   UpdateCanvasEdgeDto,
   UpdateCanvasNodeDto,
   UpdateWorkspaceDto,
 } from '../dto/WorkspaceDtos.js';
 import { getAgentAdapter, materializeInteractiveAgentCommand } from '../adapters/registry.js';
+import {
+  resolveWorkspaceRuntime,
+  withWorkspaceExecutionRuntime,
+  workspaceExecutionRuntime,
+} from '../../infrastructure/WslRuntime.js';
 
 type WorkspaceProvisionState = {
   checked: Set<string>;
@@ -96,20 +101,31 @@ export class WorkspaceService {
   }
 
   private async provisionWorkspace(workspace: Workspace) {
+    if (workspace.runtimeKind === 'wsl') {
+      await resolveWorkspaceRuntime({
+        runtimeKind: 'wsl',
+        workingDir: workspace.workingDir,
+        wslDistribution: workspace.wslDistribution,
+        wslWorkingDir: workspace.wslWorkingDir,
+      });
+    }
     // Downloads/Documents/Desktop podem exigir consentimento TCC no macOS.
     // Uma unica checagem assincrona deixa threads livres enquanto o dialogo do
     // sistema aguarda o usuario; chamadas concorrentes esgotavam o pool fs.
     await access(workspace.workingDir, fsConstants.R_OK | fsConstants.W_OK);
     const skillPath = resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md');
-    const [skillCurrent, hasConfig, agentsMdCurrent] = await Promise.all([
+    const [skillCurrent, hasConfig, agentsMdCurrent, hasWslLauncher] = await Promise.all([
       readFile(skillPath, 'utf8').then((content) => content === bridgeService.bridgeSkillContent()).catch(() => false),
       access(resolve(workspace.workingDir, '.orkestrai', 'workspace.json')).then(() => true).catch(() => false),
       readFile(resolve(workspace.workingDir, 'AGENTS.md'), 'utf8').catch(() => ''),
+      workspace.runtimeKind === 'wsl'
+        ? access(resolve(workspace.workingDir, '.orkestrai', 'bin', 'orkestrai')).then(() => true).catch(() => false)
+        : Promise.resolve(true),
     ]);
     // Bloco AGENTS.md (codex/kimi/opencode) entrou depois — workspaces antigos
     // so ganham os arquivos novos se o reparo verificar o marcador tambem.
     const hasAgentsMd = agentsMdCurrent.includes('<!-- orkestrai:begin -->');
-    if (skillCurrent && hasConfig && hasAgentsMd) {
+    if (skillCurrent && hasConfig && hasAgentsMd && hasWslLauncher) {
       this.provisionChecked.add(workspace.id);
       return;
     }
@@ -120,12 +136,21 @@ export class WorkspaceService {
   }
 
   async create(dto: CreateWorkspaceDto) {
-    const workingDir = this.assertWorkingDir(dto.workingDir);
+    const resolvedRuntime = await resolveWorkspaceRuntime({
+      runtimeKind: dto.runtimeKind,
+      workingDir: dto.workingDir,
+      wslDistribution: dto.wslDistribution,
+      wslWorkingDir: dto.wslWorkingDir,
+    });
+    const workingDir = this.assertWorkingDir(resolvedRuntime.workingDir);
     const workspace = await workspaceRepository.createWorkspace({
       name: dto.name,
       workingDir,
       icon: dto.icon,
       instructions: dto.instructions,
+      runtimeKind: resolvedRuntime.runtime.kind,
+      wslDistribution: resolvedRuntime.runtime.kind === 'wsl' ? resolvedRuntime.runtime.distribution : null,
+      wslWorkingDir: resolvedRuntime.runtime.kind === 'wsl' ? resolvedRuntime.runtime.linuxWorkingDir : null,
       syncAgentInstructionFiles: dto.syncAgentInstructionFiles,
       hooks: dto.hooks,
     });
@@ -139,11 +164,36 @@ export class WorkspaceService {
   }
 
   async update(id: string, dto: UpdateWorkspaceDto) {
-    await this.get(id);
-    if (dto.changes.workingDir) this.assertWorkingDir(dto.changes.workingDir);
-    const workspace = await workspaceRepository.updateWorkspace(id, dto.changes);
+    // Read directly so a user can repair a WSL workspace whose old distro or
+    // path is no longer available. get() intentionally validates/provisions it.
+    const existing = await workspaceRepository.getWorkspace(id);
+    if (!existing) throw new Error('Workspace nao encontrado.');
+    const resolvedRuntime = await resolveWorkspaceRuntime({
+      runtimeKind: dto.changes.runtimeKind ?? existing.runtimeKind,
+      workingDir: dto.changes.workingDir ?? existing.workingDir,
+      wslDistribution: dto.changes.wslDistribution === undefined ? existing.wslDistribution : dto.changes.wslDistribution,
+      wslWorkingDir: dto.changes.wslWorkingDir === undefined ? existing.wslWorkingDir : dto.changes.wslWorkingDir,
+    });
+    const workingDir = this.assertWorkingDir(resolvedRuntime.workingDir);
+    const runtimeChanged =
+      existing.runtimeKind !== resolvedRuntime.runtime.kind ||
+      existing.workingDir !== workingDir ||
+      (resolvedRuntime.runtime.kind === 'wsl' && (
+        existing.wslDistribution !== resolvedRuntime.runtime.distribution ||
+        existing.wslWorkingDir !== resolvedRuntime.runtime.linuxWorkingDir
+      ));
+    if (runtimeChanged) await this.unloadWorkspaceSessions(id);
+    const workspace = await workspaceRepository.updateWorkspace(id, {
+      ...dto.changes,
+      workingDir,
+      runtimeKind: resolvedRuntime.runtime.kind,
+      wslDistribution: resolvedRuntime.runtime.kind === 'wsl' ? resolvedRuntime.runtime.distribution : null,
+      wslWorkingDir: resolvedRuntime.runtime.kind === 'wsl' ? resolvedRuntime.runtime.linuxWorkingDir : null,
+    });
     if (!workspace) throw new Error('Workspace nao encontrado.');
+    if (runtimeChanged) this.provisionChecked.delete(id);
     this.writeInstructionFiles(workspace);
+    await this.ensureProvisioned(workspace);
     return workspace;
   }
 
@@ -166,11 +216,14 @@ export class WorkspaceService {
       const storedPty = storedSessionId ? ptySessionManager.get(storedSessionId) : null;
       if (storedSessionId && (!storedPty || storedPty.exited)) {
         delete payload.sessionId;
+        if (workspace.runtimeKind === 'wsl' && typeof payload.provider === 'string') {
+          payload.resumeRecovery = true;
+        }
         changed = true;
       }
       const agentSessionId = typeof payload.agentSessionId === 'string' ? payload.agentSessionId : null;
       const provider = typeof payload.provider === 'string' ? payload.provider : null;
-      if (agentSessionId && provider && (!storedPty || storedPty.exited)) {
+      if (workspace.runtimeKind !== 'wsl' && agentSessionId && provider && (!storedPty || storedPty.exited)) {
         let resumable: boolean | null = null;
         try {
           resumable = agentSessionTracker.isAgentSessionResumable(
@@ -247,7 +300,8 @@ export class WorkspaceService {
       throw new Error('Terminal não encontrado neste workspace.');
     }
     const adapter = getAgentAdapter(dto.provider);
-    const detection = await adapter.detect();
+    const workspace = await this.get(dto.workspaceId);
+    const detection = await withWorkspaceExecutionRuntime(workspaceExecutionRuntime(workspace), () => adapter.detect());
     if (!detection.installed) throw new Error(`${adapter.displayName} não está disponível neste dispositivo.`);
 
     const current = { ...((node.payload ?? {}) as Record<string, unknown>) };
@@ -355,6 +409,9 @@ export class WorkspaceService {
       workspace: {
         name: workspace.name,
         workingDir: workspace.workingDir,
+        runtimeKind: workspace.runtimeKind,
+        wslDistribution: workspace.wslDistribution,
+        wslWorkingDir: workspace.wslWorkingDir,
         icon: workspace.icon,
         instructions: workspace.instructions,
         syncAgentInstructionFiles: workspace.syncAgentInstructionFiles,
@@ -382,7 +439,7 @@ export class WorkspaceService {
   async importWorkspace(data: unknown, workingDirOverride?: string) {
     const parsed = data as {
       format?: string;
-      workspace?: { name: string; workingDir: string; icon?: string | null; instructions?: string | null; syncAgentInstructionFiles?: boolean; hooks?: object };
+      workspace?: { name: string; workingDir: string; runtimeKind?: 'native' | 'wsl'; wslDistribution?: string | null; wslWorkingDir?: string | null; icon?: string | null; instructions?: string | null; syncAgentInstructionFiles?: boolean; hooks?: object };
       nodes?: Array<{ type: string; title?: string | null; x?: number; y?: number; width?: number; height?: number; zIndex?: number; payload?: object }>;
       edges?: Array<{ sourceIndex: number; targetIndex: number; style?: 'cord' | 'circuit' }>;
     };
@@ -391,12 +448,15 @@ export class WorkspaceService {
     }
     const info = parsed.workspace;
     const workingDir = workingDirOverride ?? info.workingDir;
-    const workspace = await workspaceRepository.createWorkspace({
-      name: `${info.name} (importado)`,
+    const workspace = await this.create(new CreateWorkspaceDto(
+      `${info.name} (importado)`,
       workingDir,
-      icon: info.icon ?? null,
-      instructions: info.instructions ?? null,
-    });
+      info.icon ?? null,
+      info.instructions ?? null,
+      info.runtimeKind ?? 'native',
+      info.wslDistribution ?? null,
+      info.wslWorkingDir ?? null,
+    ));
     if (info.syncAgentInstructionFiles || info.hooks) {
       await workspaceRepository.updateWorkspace(workspace.id, {
         syncAgentInstructionFiles: info.syncAgentInstructionFiles,
@@ -443,6 +503,10 @@ export class WorkspaceService {
    */
   async unloadWorkspace(id: string) {
     await this.get(id);
+    return this.unloadWorkspaceSessions(id);
+  }
+
+  private async unloadWorkspaceSessions(id: string) {
     const nodes = await workspaceRepository.listNodes(id);
     let killed = 0;
     for (const node of nodes) {

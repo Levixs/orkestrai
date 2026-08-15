@@ -254,7 +254,14 @@ export class PresetService {
    */
   async apply(
     presetId: string,
-    target: ({ workspaceId: string } | { name: string; workingDir: string; icon?: string | null }) & { locale?: PresetLocale }
+    target: ({ workspaceId: string } | {
+      name: string;
+      workingDir: string;
+      icon?: string | null;
+      runtimeKind?: 'native' | 'wsl';
+      wslDistribution?: string | null;
+      wslWorkingDir?: string | null;
+    }) & { locale?: PresetLocale }
   ): Promise<{ workspaceId: string; nodes: number; edges: number; roles: number; routines: number; tasks: number; columns: number; mcps: number; skills: number }> {
     const preset = await this.data(presetId, target.locale ?? 'pt-BR');
     let workspaceId: string;
@@ -276,6 +283,9 @@ export class PresetService {
         target.workingDir,
         target.icon ?? preset.workspace.icon ?? null,
         preset.workspace.instructions ?? null,
+        target.runtimeKind ?? 'native',
+        target.wslDistribution ?? null,
+        target.wslWorkingDir ?? null,
         preset.workspace.syncAgentInstructionFiles ?? false,
         (preset.workspace.hooks ?? {}) as never
       ));

@@ -17,6 +17,12 @@
   import { getCsrfToken } from '@beeblock/svelar/http';
 
   type PresetSummary = { id: string; name: string; icon: string | null; description: string | null; agents: number };
+  type WslAvailability = {
+    supported: boolean;
+    distributions: Array<{ name: string }>;
+    inferred: { distribution: string; linuxWorkingDir: string } | null;
+    error: string | null;
+  };
 
   type Props = {
     open: boolean;
@@ -30,6 +36,10 @@
   let submitError = $state('');
   let presets = $state<PresetSummary[]>([]);
   let presetId = $state('');
+  let runtimeKind = $state<'native' | 'wsl'>('native');
+  let wslDistribution = $state('');
+  let wslWorkingDir = $state('');
+  let wsl = $state<WslAvailability>({ supported: false, distributions: [], inferred: null, error: null });
 
   function csrfHeaders(extra: Record<string, string> = {}): HeadersInit {
     const token = getCsrfToken();
@@ -43,6 +53,7 @@
     } catch {
       presets = [];
     }
+    await loadWslAvailability();
   });
 
   $effect(() => {
@@ -68,7 +79,7 @@ const form = superForm(defaults(zod(schema)), {
           const applyResponse = await fetch(`/api/agent-room/presets/${presetId}/apply`, {
             method: 'POST',
             headers: csrfHeaders({ 'content-type': 'application/json' }),
-            body: JSON.stringify({ ...f.data, locale: localeState.current }),
+            body: JSON.stringify({ ...f.data, runtimeKind, wslDistribution: wslDistribution || null, wslWorkingDir: wslWorkingDir || null, locale: localeState.current }),
           });
           const applyPayload = await applyResponse.json();
           if (!applyResponse.ok || applyPayload.error) throw new Error(applyPayload.error || m['dlg.preset_apply_error']());
@@ -80,7 +91,7 @@ const form = superForm(defaults(zod(schema)), {
           const response = await fetch('/api/agent-room/workspaces', {
             method: 'POST',
             headers: csrfHeaders({ 'content-type': 'application/json' }),
-            body: JSON.stringify(f.data),
+            body: JSON.stringify({ ...f.data, runtimeKind, wslDistribution: wslDistribution || null, wslWorkingDir: wslWorkingDir || null }),
           });
           const payload = await response.json();
           if (!response.ok || payload.error) throw new Error(payload.error || m['dlg.ws_create_error']());
@@ -96,15 +107,32 @@ const form = superForm(defaults(zod(schema)), {
 
   const { form: formData, enhance, errors } = form;
 
+  async function loadWslAvailability(path = '') {
+    try {
+      const response = await fetch(`/api/agent-room/runtimes/wsl${path ? `?path=${encodeURIComponent(path)}` : ''}`);
+      wsl = (await response.json()).data ?? wsl;
+      if (wsl.inferred) {
+        runtimeKind = 'wsl';
+        wslDistribution = wsl.inferred.distribution;
+        wslWorkingDir = wsl.inferred.linuxWorkingDir;
+      }
+    } catch {
+      wsl = { supported: false, distributions: [], inferred: null, error: null };
+    }
+  }
+
   async function pickDirectory() {
     if (!desktop) return;
     const dir = await desktop.pickDirectory();
-    if (dir) $formData.workingDir = dir;
+    if (dir) {
+      $formData.workingDir = dir;
+      await loadWslAvailability(dir);
+    }
   }
 </script>
 
 <Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-  <Dialog.Content class="sm:max-w-md">
+  <Dialog.Content class="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
     <Dialog.Header>
       <Dialog.Title>{m['dlg.new_ws_title']()}</Dialog.Title>
       <Dialog.Description>{m['dlg.new_ws_desc']()}</Dialog.Description>
@@ -120,6 +148,53 @@ const form = superForm(defaults(zod(schema)), {
         </Form.Control>
         <Form.FieldErrors />
       </Form.Field>
+
+      {#if wsl.supported}
+        <div class="grid gap-4 rounded-md border border-border/70 bg-muted/20 p-3 sm:grid-cols-2">
+          <div class="space-y-2">
+            <span class="text-sm font-medium leading-none">{m['dlg.runtime_label']()}</span>
+            <Select.Root
+              type="single"
+              value={runtimeKind}
+              onValueChange={(value: string) => (runtimeKind = value === 'wsl' ? 'wsl' : 'native')}
+            >
+              <Select.Trigger class="w-full">
+                {runtimeKind === 'wsl' ? m['dlg.runtime_wsl']() : m['dlg.runtime_native']()}
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value="native">{m['dlg.runtime_native']()}</Select.Item>
+                <Select.Item value="wsl">{m['dlg.runtime_wsl']()}</Select.Item>
+              </Select.Content>
+            </Select.Root>
+            <p class="text-xs text-muted-foreground">{m['dlg.runtime_hint']()}</p>
+          </div>
+
+          {#if runtimeKind === 'wsl'}
+            <div class="space-y-2">
+              <span class="text-sm font-medium leading-none">{m['dlg.wsl_distribution']()}</span>
+              <Select.Root type="single" value={wslDistribution} onValueChange={(value: string) => (wslDistribution = value)}>
+                <Select.Trigger class="w-full">
+                  {wslDistribution || m['dlg.wsl_distribution_placeholder']()}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each wsl.distributions as distribution (distribution.name)}
+                    <Select.Item value={distribution.name}>{distribution.name}</Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+            </div>
+
+            <div class="space-y-2 sm:col-span-2">
+              <label class="text-sm font-medium leading-none" for="new-wsl-working-dir">{m['dlg.wsl_working_dir']()}</label>
+              <Input id="new-wsl-working-dir" bind:value={wslWorkingDir} placeholder="/home/user/project" autocomplete="off" />
+              <p class="text-xs text-muted-foreground">{m['dlg.wsl_working_dir_hint']()}</p>
+            </div>
+            {#if !wsl.distributions.length}
+              <p class="text-xs text-destructive sm:col-span-2" role="alert">{wsl.error || m['dlg.wsl_unavailable']()}</p>
+            {/if}
+          {/if}
+        </div>
+      {/if}
 
       <Form.Field {form} name="workingDir">
         <Form.Control>

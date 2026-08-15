@@ -19,6 +19,12 @@ export const GET: RequestHandler = async ({ url }) => {
   // Ids ja atribuidos a outros nos do workspace nao podem ser reusados.
   const exclude = new Set<string>();
   if (workspaceId) {
+    const workspace = await workspaceRepository.getWorkspace(workspaceId);
+    if (workspace?.runtimeKind === 'wsl') {
+      // Session metadata lives in the distro's home. Resume through the
+      // provider's generic WSL command instead of inspecting Windows storage.
+      return json({ data: { agentSessionId: null } });
+    }
     const nodes = await workspaceRepository.listNodes(workspaceId);
     for (const node of nodes) {
       const payload = (node.payload ?? {}) as { agentSessionId?: string };

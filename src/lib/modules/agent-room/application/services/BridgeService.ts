@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Event } from '@beeblock/svelar/events';
 import { uuidv7 } from '@beeblock/svelar/support';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import type { AgentActivityState, CanvasNode, Workspace } from '../../domain/types.js';
@@ -984,6 +984,20 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         await mkdir(dir, { recursive: true });
         await writeFile(resolve(dir, 'SKILL.md'), skill);
       }
+      if (workspace.runtimeKind === 'wsl' && workspace.wslWorkingDir) {
+        const launcherDir = resolve(workspace.workingDir, '.orkestrai', 'bin');
+        const launcherPath = resolve(launcherDir, 'orkestrai');
+        await mkdir(launcherDir, { recursive: true });
+        await writeFile(launcherPath, [
+          '#!/bin/sh',
+          'set -eu',
+          'runtime="$(wslpath -u "$ORKESTRAI_RUNTIME_WIN")"',
+          'export ELECTRON_RUN_AS_NODE=1',
+          'exec "$runtime" "$ORKESTRAI_CLI_JS_WIN" "$@"',
+          '',
+        ].join('\n'));
+        await chmod(launcherPath, 0o755).catch(() => undefined);
+      }
       // Cada CLI descobre MCP em um caminho proprio. Todos recebem o mesmo
       // launch absoluto (inclusive no Windows) e o merge preserva servidores.
       for (const relativePath of [
@@ -993,11 +1007,11 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         '.devin/mcp_config.json',
         '.agents/mcp_config.json',
       ]) {
-        await this.provisionStandardMcp(resolve(workspace.workingDir, relativePath));
+        await this.provisionStandardMcp(resolve(workspace.workingDir, relativePath), workspace);
       }
       await this.provisionAgentsMd(workspace.workingDir);
-      await this.provisionCodexMcp();
-      await this.provisionOpenCodeMcp(workspace.workingDir);
+      await this.provisionCodexMcp(workspace);
+      await this.provisionOpenCodeMcp(workspace);
       // Em repos git, exclui os arquivos da ponte do status (info/exclude
       // local) — senao o checkout fica "sujo" e o land de andares falha.
       const gitDir = resolve(workspace.workingDir, '.git');
@@ -1069,34 +1083,41 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
   }
 
   /** Codex le MCP de ~/.codex/config.toml ([mcp_servers.*]) — não le .mcp.json. */
-  private async provisionCodexMcp(): Promise<void> {
+  private async provisionCodexMcp(workspace: Workspace): Promise<void> {
     if (process.env.VITEST) return;
-    const dir = resolve(homedir(), '.codex');
-    if (!(await this.pathExists(dir))) return; // codex não instalado — não polui o HOME
+    const isWsl = workspace.runtimeKind === 'wsl' && Boolean(workspace.wslWorkingDir);
+    const dir = isWsl ? resolve(workspace.workingDir, '.codex') : resolve(homedir(), '.codex');
+    if (!isWsl && !(await this.pathExists(dir))) return; // codex não instalado — não polui o HOME
+    await mkdir(dir, { recursive: true });
     const path = resolve(dir, 'config.toml');
     const current = await this.readText(path);
-    const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
-    const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
+    const cliEntry = isWsl
+      ? `${workspace.wslWorkingDir}/.orkestrai/bin/orkestrai`
+      : process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const runtime = isWsl ? '/bin/sh' : process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
     const next = upsertCodexMcpConfig(current, {
       command: runtime,
       args: [cliEntry, 'mcp'],
       electronRuntime:
-        process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron),
+        !isWsl && (process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron)),
     });
     if (next !== current) await writeFile(path, next);
   }
 
   /** Formato MCP padrao usado por Claude/Kimi, Cursor, Cline, Devin e Antigravity. */
-  private async provisionStandardMcp(path: string): Promise<void> {
+  private async provisionStandardMcp(path: string, workspace: Workspace): Promise<void> {
     let config: { mcpServers?: Record<string, unknown> } & Record<string, unknown> = {};
     try {
       config = JSON.parse(await readFile(path, 'utf8'));
     } catch {
       // Ausente ou invalido: cria o documento minimo.
     }
-    const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
-    const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
-    const electronRuntime = process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron);
+    const isWsl = workspace.runtimeKind === 'wsl' && Boolean(workspace.wslWorkingDir);
+    const cliEntry = isWsl
+      ? `${workspace.wslWorkingDir}/.orkestrai/bin/orkestrai`
+      : process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const runtime = isWsl ? '/bin/sh' : process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
+    const electronRuntime = !isWsl && (process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron));
     const desired = {
       command: runtime,
       args: [cliEntry, 'mcp'],
@@ -1109,8 +1130,8 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
   }
 
   /** OpenCode le MCP do opencode.json do projeto (secao "mcp", type local). */
-  private async provisionOpenCodeMcp(workingDir: string): Promise<void> {
-    const path = resolve(workingDir, 'opencode.json');
+  private async provisionOpenCodeMcp(workspace: Workspace): Promise<void> {
+    const path = resolve(workspace.workingDir, 'opencode.json');
     let config: { mcp?: Record<string, unknown> } & Record<string, unknown> = {};
     try {
       config = JSON.parse(await readFile(path, 'utf8'));
@@ -1120,9 +1141,12 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     // Pina o runtime + .js absoluto (nunca o nome nu "orkestrai"): no Windows o
     // nome nu podia resolver para orkestrai.js e o executor abri-lo pela
     // associacao (.js -> Windows Script Host), quebrando o handshake MCP.
-    const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
-    const runtime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
-    const electronRuntime = process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron);
+    const isWsl = workspace.runtimeKind === 'wsl' && Boolean(workspace.wslWorkingDir);
+    const cliEntry = isWsl
+      ? `${workspace.wslWorkingDir}/.orkestrai/bin/orkestrai`
+      : process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
+    const runtime = isWsl ? '/bin/sh' : process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
+    const electronRuntime = !isWsl && (process.env.ORKESTRAI_CLI_RUNTIME_IS_ELECTRON === '1' || Boolean(process.versions.electron));
     const desired = {
       type: 'local',
       command: [runtime, cliEntry, 'mcp'],

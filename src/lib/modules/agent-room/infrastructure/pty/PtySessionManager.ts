@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { IPty } from 'node-pty';
+import type { WorkspaceExecutionRuntime } from '../../domain/types.ts';
 import { agentEnv, resolveCommand } from '../agent-path.ts';
+import { buildWslLaunch } from '../WslRuntime.ts';
 
 // PATH aumentado e resolucao de comando (registro/PATHEXT/.cmd) foram movidos
 // para ../agent-path.ts, compartilhado com o Modo Maestro (application/agents.ts)
@@ -77,6 +79,9 @@ export type CreatePtySessionInput = {
   workspaceId?: string | null;
   nodeId?: string | null;
   provider?: string | null;
+  runtime?: WorkspaceExecutionRuntime;
+  /** Host path corresponding to runtime.linuxWorkingDir. */
+  workspaceRoot?: string;
 };
 
 const SCROLLBACK_LIMIT = 256 * 1024; // 256 KB por sessão
@@ -118,13 +123,22 @@ export class PtySessionManager {
     const rows = input.rows ?? 30;
 
     const env = { ...agentEnv(), ...input.env } as Record<string, string>;
-    const target = resolveCommand(input.command, input.args ?? [], env);
+    const target = input.runtime?.kind === 'wsl'
+      ? buildWslLaunch({
+          runtime: input.runtime,
+          command: input.command,
+          args: input.args ?? [],
+          hostCwd: input.cwd,
+          workspaceRoot: input.workspaceRoot,
+          hostEnv: env,
+        })
+      : { ...resolveCommand(input.command, input.args ?? [], env), cwd: input.cwd, env };
     const ptyProcess = this.spawnPty(target.command, target.args, {
       name: 'xterm-256color',
       cols,
       rows,
-      cwd: input.cwd,
-      env,
+      cwd: target.cwd,
+      env: target.env,
     });
 
     const session: PtySession = {

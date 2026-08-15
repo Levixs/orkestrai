@@ -5,6 +5,17 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Added
+
+- Added an explicit per-workspace Windows execution runtime. A workspace can
+  stay native or target one exact installed WSL distribution and Linux project
+  path; shells, provider detection, models, PTY sessions, generic conversation
+  resume, presets, and the Orkestrai bridge all use that same environment.
+  Changing runtimes unloads stale PTYs, and missing distributions fail clearly
+  instead of silently falling back to Windows or another WSL installation.
+
 ## 0.11.0 - 2026-08-15
 
 ### Added

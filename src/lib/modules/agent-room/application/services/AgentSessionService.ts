@@ -4,10 +4,12 @@ import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracke
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.js';
 import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
 import { floorService } from './FloorService.js';
+import { workspaceExecutionRuntime } from '../../infrastructure/WslRuntime.js';
 
 type AgentNodePayload = {
   sessionId?: string;
   agentSessionId?: string;
+  resumeRecovery?: boolean;
   provider?: string;
   command?: string;
   args?: string[];
@@ -54,10 +56,19 @@ export class AgentSessionService {
     }
 
     const adapter = payload.provider && hasAgentAdapter(payload.provider) ? getAgentAdapter(payload.provider) : null;
+    const runtime = workspace ? workspaceExecutionRuntime(workspace) : { kind: 'native' as const };
     const trackingStartedAt = Date.now();
-    const freshAgentSessionId = !payload.agentSessionId && adapter?.freshSessionArgs ? randomUUID() : null;
+    const genericWslResumeArgs = runtime.kind === 'wsl'
+      && !payload.agentSessionId
+      && Boolean(payload.resumeRecovery || payload.sessionId)
+      ? (adapter?.resumeArgs() ?? [])
+      : [];
+    const genericWslResume = genericWslResumeArgs.length > 0;
+    const freshAgentSessionId = !genericWslResume && !payload.agentSessionId && adapter?.freshSessionArgs ? randomUUID() : null;
     const conversationArgs = payload.agentSessionId
       ? (adapter?.resumeArgs(payload.agentSessionId) ?? [])
+      : genericWslResume
+        ? genericWslResumeArgs
       : freshAgentSessionId
         ? adapter!.freshSessionArgs!(freshAgentSessionId)
         : [];
@@ -73,6 +84,8 @@ export class AgentSessionService {
       nodeId: target.id,
       provider: payload.provider ?? null,
       env: { ...(payload.env ?? {}), ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
+      runtime,
+      workspaceRoot: workspace?.workingDir,
     });
     const activeAgentSessionId = payload.agentSessionId ?? freshAgentSessionId;
     if (activeAgentSessionId) agentSessionTracker.bind(session.id, activeAgentSessionId);
@@ -80,11 +93,12 @@ export class AgentSessionService {
       payload: {
         ...payload,
         sessionId: session.id,
+        resumeRecovery: false,
         ...(activeAgentSessionId ? { agentSessionId: activeAgentSessionId } : {}),
       } as never,
     });
 
-    if (payload.provider && adapter && !activeAgentSessionId) {
+    if (workspace?.runtimeKind !== 'wsl' && payload.provider && adapter && !activeAgentSessionId) {
       agentSessionTracker.watch(session.id, adapter.sessionStorage, cwd, trackingStartedAt, (agentSessionId) => {
         void workspaceRepository.getNode(target.id).then((fresh) => {
           if (!fresh) return;
@@ -98,7 +112,7 @@ export class AgentSessionService {
     return {
       nodeId: target.id,
       sessionId: session.id,
-      state: payload.agentSessionId ? 'resumed' : 'started',
+      state: payload.agentSessionId || genericWslResume ? 'resumed' : 'started',
     };
   }
 }

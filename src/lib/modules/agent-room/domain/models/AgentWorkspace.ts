@@ -5,7 +5,19 @@ export class AgentWorkspace extends Model {
   static primaryKey = 'id';
   static incrementing = false;
   static timestamps = true;
-  static fillable = ['id', 'name', 'working_dir', 'icon', 'instructions', 'sync_agent_instruction_files', 'bridge_token', 'hooks_json'];
+  static fillable = [
+    'id',
+    'name',
+    'working_dir',
+    'runtime_kind',
+    'wsl_distribution',
+    'wsl_working_dir',
+    'icon',
+    'instructions',
+    'sync_agent_instruction_files',
+    'bridge_token',
+    'hooks_json',
+  ];
 
   static casts = {
     sync_agent_instruction_files: 'boolean' as const,
@@ -16,6 +28,9 @@ export class AgentWorkspace extends Model {
   declare id: string;
   declare name: string;
   declare working_dir: string;
+  declare runtime_kind: string;
+  declare wsl_distribution: string | null;
+  declare wsl_working_dir: string | null;
   declare icon: string | null;
   declare instructions: string | null;
   declare sync_agent_instruction_files: boolean;

@@ -5,6 +5,9 @@ import { bridgeService } from '$lib/modules/agent-room/application/services/Brid
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
 import { controlCenterService } from '$lib/modules/agent-room/application/services/ControlCenterService.js';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 async function createWorkspaceWithTerminal() {
   const workspace = await workspaceRepository.createWorkspace({ name: 'bridge', workingDir: '/tmp' });
@@ -33,6 +36,31 @@ describe('BridgeService', () => {
     expect(resolved.id).toBe(workspace.id);
 
     await expect(bridgeService.resolveWorkspaceByToken('token-errado')).rejects.toThrow('inválido');
+  });
+
+  it('provisiona launcher e MCP usando caminhos Linux em workspaces WSL', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'orkestrai-wsl-'));
+    try {
+      const workspace = await workspaceRepository.createWorkspace({
+        name: 'wsl',
+        workingDir: dir,
+        runtimeKind: 'wsl',
+        wslDistribution: 'Ubuntu-24.04',
+        wslWorkingDir: '/home/dev/project',
+      });
+      const token = await bridgeService.getOrCreateToken(workspace.id);
+      await bridgeService.provisionSkill(workspace, token);
+
+      const launcher = await readFile(join(dir, '.orkestrai', 'bin', 'orkestrai'), 'utf8');
+      const mcp = JSON.parse(await readFile(join(dir, '.mcp.json'), 'utf8'));
+      expect(launcher).toContain('wslpath -u "$ORKESTRAI_RUNTIME_WIN"');
+      expect(mcp.mcpServers.orkestrai).toEqual({
+        command: '/bin/sh',
+        args: ['/home/dev/project/.orkestrai/bin/orkestrai', 'mcp'],
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('lista agentes do workspace com estado da sessao', async () => {
