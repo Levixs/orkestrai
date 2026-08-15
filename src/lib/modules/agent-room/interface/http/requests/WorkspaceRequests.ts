@@ -4,6 +4,7 @@ import {
   createCanvasNodeSchema,
   createWorkspaceSchema,
   changeTerminalProviderSchema,
+  changeTerminalRuntimeSchema,
   updateCanvasEdgeSchema,
   updateCanvasNodeSchema,
   updateWorkspaceSchema,
@@ -11,6 +12,7 @@ import {
   type CreateCanvasNodeInput,
   type CreateWorkspaceInput,
   type ChangeTerminalProviderInput,
+  type ChangeTerminalRuntimeInput,
   type UpdateCanvasEdgeInput,
   type UpdateCanvasNodeInput,
   type UpdateWorkspaceInput,
@@ -27,6 +29,20 @@ export class ChangeTerminalProviderRequest extends FormRequest {
 
   passedValidation(data: unknown): ChangeTerminalProviderInput {
     return changeTerminalProviderSchema.parse(data);
+  }
+}
+
+export class ChangeTerminalRuntimeRequest extends FormRequest {
+  rules() {
+    return changeTerminalRuntimeSchema;
+  }
+
+  authorize(): boolean {
+    return true;
+  }
+
+  passedValidation(data: unknown): ChangeTerminalRuntimeInput {
+    return changeTerminalRuntimeSchema.parse(data);
   }
 }
 

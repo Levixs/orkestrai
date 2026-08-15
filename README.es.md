@@ -106,6 +106,11 @@ Descarga los instaladores más recientes desde
   móviles, pisos, roles y notificaciones de escritorio.
 - **Workspaces paralelos:** los agentes continúan trabajando cuando cambias de
   workspace, con indicadores de actividad y notificaciones nativas.
+- **Runtimes Windows y WSL combinados:** define el entorno predeterminado del
+  workspace y deja que cada terminal lo herede, use Windows nativo o apunte a
+  una distribución WSL y ruta Linux exactas. Detección de providers, sesiones,
+  reanudación, Council, agentes reclutados y puente siguen a cada terminal, para
+  combinar herramientas de Windows, Ubuntu o Debian en un mismo equipo.
 - **Pisos Git:** aísla el trabajo en worktrees, inspecciona conflictos e integra
   cambios terminados desde el lienzo.
 - **Voz local:** dicta en cualquier campo de texto o usa el atajo del workspace sin

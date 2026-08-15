@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowLeftRight, BadgeCheck, Ellipsis, Paperclip, RotateCcw, Scale, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { ArrowLeftRight, BadgeCheck, Ellipsis, MonitorCog, Paperclip, RotateCcw, Scale, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
@@ -21,6 +21,7 @@
     uploadWorkspaceAttachment,
   } from '../workspace-attachments.js';
   import CouncilDialog from '../CouncilDialog.svelte';
+  import TerminalRuntimeDialog from './TerminalRuntimeDialog.svelte';
 
   export type MentionTarget = { id: string; title: string; type: string };
 
@@ -29,6 +30,7 @@
     workingDir: string;
     workspaceRoot: string;
     executionRuntime: WorkspaceExecutionRuntime;
+    workspaceRuntime: WorkspaceExecutionRuntime;
     workspaceId: string;
     payload: TerminalNodePayload;
     /** Avalia os args de resume do provider NA HORA do respawn. */
@@ -43,6 +45,7 @@
     providersReady?: Promise<void>;
     providers?: AgentProviderInfo[];
     onProviderChange?: (id: string, provider: string) => Promise<void>;
+    onRuntimeChange?: (id: string, selection: { mode: 'default' | 'native' | 'wsl'; wslDistribution: string | null; wslWorkingDir: string | null }) => Promise<void>;
     onRoleChange?: (id: string, role: string | null) => void;
     onDelete: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
@@ -67,6 +70,26 @@
       expirado antes da primeira mensagem — Claude grava o jsonl so na 1a msg). */
   let respawnAgentSessionId = $state<string | null>(null);
   let councilOpen = $state(false);
+  let runtimeOpen = $state(false);
+  let runtimeProviders = $state<AgentProviderInfo[]>([]);
+  let providerRequest = 0;
+  const isWindows = typeof navigator !== 'undefined' && navigator.platform.startsWith('Win');
+
+  $effect(() => {
+    const runtimeKey = data.executionRuntime.kind === 'wsl'
+      ? `wsl:${data.executionRuntime.distribution}:${data.executionRuntime.linuxWorkingDir}`
+      : 'native';
+    void runtimeKey;
+    runtimeProviders = data.providers ?? [];
+    if (!(data.payload as TerminalNodePayload).executionRuntime) return;
+    const request = ++providerRequest;
+    void fetch(`/api/agent-room/status?workspaceId=${encodeURIComponent(data.workspaceId)}&nodeId=${encodeURIComponent(id)}`)
+      .then((response) => response.json())
+      .then((result) => {
+        if (request === providerRequest && Array.isArray(result.data?.providers)) runtimeProviders = result.data.providers;
+      })
+      .catch(() => undefined);
+  });
 
   async function resolveRespawn() {
     const payload = data.payload as TerminalNodePayload & { provider?: string };
@@ -76,7 +99,7 @@
     if (!respawnAgentSessionId && payload.provider && !payload.agentSessionId) {
       try {
         const response = await fetch(
-          `/api/agent-room/sessions/latest?provider=${encodeURIComponent(payload.provider)}&cwd=${encodeURIComponent(data.workingDir)}&workspaceId=${encodeURIComponent(data.workspaceId)}`
+          `/api/agent-room/sessions/latest?provider=${encodeURIComponent(payload.provider)}&cwd=${encodeURIComponent(data.workingDir)}&workspaceId=${encodeURIComponent(data.workspaceId)}&nodeId=${encodeURIComponent(id)}`
         );
         const result = await response.json();
         respawnAgentSessionId = result.data?.agentSessionId ?? null;
@@ -113,6 +136,13 @@
   /** Role exibida no header: curta (o nome completo fica no dropdown/aria). */
   const roleLabel = $derived(currentRole && currentRole.length > 24 ? `${currentRole.slice(0, 23).trimEnd()}…` : currentRole);
   const currentProvider = $derived((data.payload as TerminalNodePayload).provider ?? null);
+  const availableProviders = $derived(runtimeProviders.length ? runtimeProviders : (data.providers ?? []));
+  const runtimeOverride = $derived((data.payload as TerminalNodePayload).executionRuntime ?? null);
+  const runtimeTitle = $derived(
+    data.executionRuntime.kind === 'wsl'
+      ? `WSL · ${data.executionRuntime.distribution}`
+      : m['dlg.runtime_native'](),
+  );
   const currentTheme = $derived(normalizeTerminalTheme((data.payload as TerminalNodePayload).theme));
   let switchingProvider = $state(false);
   let providerError = $state('');
@@ -131,6 +161,12 @@
     } finally {
       switchingProvider = false;
     }
+  }
+
+  async function changeRuntime(selection: { mode: 'default' | 'native' | 'wsl'; wslDistribution: string | null; wslWorkingDir: string | null }) {
+    forceRespawn = false;
+    respawnAgentSessionId = null;
+    await data.onRuntimeChange?.(id, selection);
   }
 
   async function loadRoles() {
@@ -406,6 +442,12 @@
   {#snippet icon()}<SquareTerminal size={13} />{/snippet}
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
+    {#if runtimeOverride}
+      <span class="terminal-status-chip" role="status" title={runtimeTitle} aria-label={runtimeTitle}>
+        <MonitorCog size={12} />
+        <span>{data.executionRuntime.kind === 'wsl' ? 'WSL' : 'WIN'}</span>
+      </span>
+    {/if}
     {#if currentRole}
       <span class="terminal-status-chip" role="status" title={m['term.role_label']({ role: currentRole })} aria-label={m['term.role_label']({ role: currentRole })}>
         <BadgeCheck size={12} />
@@ -436,7 +478,7 @@
             {m['term.provider_switch']()}
           </DropdownMenu.SubTrigger>
           <DropdownMenu.SubContent sideOffset={6} class="w-52">
-            {#each data.providers ?? [] as provider (provider.id)}
+            {#each availableProviders as provider (provider.id)}
               <DropdownMenu.Item
                 disabled={!provider.installed || provider.id === currentProvider}
                 onclick={() => changeProvider(provider.id)}
@@ -448,6 +490,12 @@
             {/each}
           </DropdownMenu.SubContent>
         </DropdownMenu.Sub>
+        {#if isWindows}
+          <DropdownMenu.Item onclick={() => (runtimeOpen = true)}>
+            <MonitorCog size={14} />
+            {m['term.runtime_action']()}
+          </DropdownMenu.Item>
+        {/if}
         <DropdownMenu.Sub>
           <DropdownMenu.SubTrigger>
             <BadgeCheck size={14} />
@@ -587,6 +635,14 @@
   {/if}
   <VoiceConfirmDialog bind:open={voiceConfirmOpen} onConfirm={() => (voiceOn = true)} onCancel={() => {}} />
   <CouncilDialog bind:open={councilOpen} workspaceId={data.workspaceId} source={{ leaderNodeId: id }} />
+  <TerminalRuntimeDialog
+    open={runtimeOpen}
+    workspaceRoot={data.workspaceRoot}
+    workspaceRuntime={data.workspaceRuntime}
+    override={runtimeOverride}
+    onSave={changeRuntime}
+    onClose={() => (runtimeOpen = false)}
+  />
 
   <div
     class="composer nodrag"

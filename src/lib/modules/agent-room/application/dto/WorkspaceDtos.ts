@@ -10,6 +10,7 @@ import type {
   CreateCanvasNodeInput,
   CreateWorkspaceInput,
   ChangeTerminalProviderInput,
+  ChangeTerminalRuntimeInput,
   UpdateCanvasEdgeInput,
   UpdateCanvasNodeInput,
   UpdateWorkspaceInput,
@@ -24,6 +25,26 @@ export class ChangeTerminalProviderDto {
 
   static from(workspaceId: string, nodeId: string, input: ChangeTerminalProviderInput): ChangeTerminalProviderDto {
     return new ChangeTerminalProviderDto(workspaceId, nodeId, input.provider);
+  }
+}
+
+export class ChangeTerminalRuntimeDto {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly nodeId: string,
+    public readonly mode: 'default' | 'native' | 'wsl',
+    public readonly wslDistribution: string | null,
+    public readonly wslWorkingDir: string | null,
+  ) {}
+
+  static from(workspaceId: string, nodeId: string, input: ChangeTerminalRuntimeInput): ChangeTerminalRuntimeDto {
+    return new ChangeTerminalRuntimeDto(
+      workspaceId,
+      nodeId,
+      input.mode,
+      input.wslDistribution ?? null,
+      input.wslWorkingDir ?? null,
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { agentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.ts';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { getAgentAdapter, hasAgentAdapter } from '$lib/modules/agent-room/application/adapters/registry.js';
+import { terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/infrastructure/WslRuntime.js';
 
 /**
  * Session-id mais recente de um provider num diretorio que NENHUM outro
@@ -14,13 +15,20 @@ export const GET: RequestHandler = async ({ url }) => {
   const provider = url.searchParams.get('provider') ?? '';
   const cwd = url.searchParams.get('cwd') ?? '';
   const workspaceId = url.searchParams.get('workspaceId') ?? '';
+  const nodeId = url.searchParams.get('nodeId') ?? '';
   if (!provider || !cwd) return json({ error: 'Informe provider e cwd.' }, { status: 422 });
 
   // Ids ja atribuidos a outros nos do workspace nao podem ser reusados.
   const exclude = new Set<string>();
   if (workspaceId) {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
-    if (workspace?.runtimeKind === 'wsl') {
+    const node = nodeId ? await workspaceRepository.getNode(nodeId) : null;
+    const runtime = workspace && node?.workspaceId === workspace.id && node.type === 'terminal'
+      ? terminalExecutionRuntime(workspace, node.payload as never)
+      : workspace
+        ? workspaceExecutionRuntime(workspace)
+        : { kind: 'native' as const };
+    if (runtime.kind === 'wsl') {
       // Session metadata lives in the distro's home. Resume through the
       // provider's generic WSL command instead of inspecting Windows storage.
       return json({ data: { agentSessionId: null } });

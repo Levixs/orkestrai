@@ -1,7 +1,8 @@
 import { constants as fsConstants, existsSync, statSync, writeFileSync } from 'node:fs';
 import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import type { Workspace } from '../../domain/types.js';
+import type { CanvasNodePayload, Workspace } from '../../domain/types.js';
+import { executionRuntimeKey } from '../../domain/runtime.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
@@ -12,6 +13,7 @@ import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
 import type {
   CreateCanvasEdgeDto,
   ChangeTerminalProviderDto,
+  ChangeTerminalRuntimeDto,
   CreateCanvasNodeDto,
   UpdateCanvasEdgeDto,
   UpdateCanvasNodeDto,
@@ -19,7 +21,9 @@ import type {
 } from '../dto/WorkspaceDtos.js';
 import { getAgentAdapter, materializeInteractiveAgentCommand } from '../adapters/registry.js';
 import {
+  resolveTerminalRuntimeOverride,
   resolveWorkspaceRuntime,
+  terminalExecutionRuntime,
   withWorkspaceExecutionRuntime,
   workspaceExecutionRuntime,
 } from '../../infrastructure/WslRuntime.js';
@@ -114,12 +118,17 @@ export class WorkspaceService {
     // sistema aguarda o usuario; chamadas concorrentes esgotavam o pool fs.
     await access(workspace.workingDir, fsConstants.R_OK | fsConstants.W_OK);
     const skillPath = resolve(workspace.workingDir, '.claude', 'skills', 'orkestrai', 'SKILL.md');
+    const bridgeRuntime = await this.preferredBridgeRuntime(workspace);
+    const cliRuntime = process.env.ORKESTRAI_CLI_RUNTIME ?? process.execPath;
+    const cliEntry = process.env.ORKESTRAI_CLI_JS ?? resolve(process.cwd(), 'packages', 'orkestrai-cli', 'bin', 'orkestrai.js');
     const [skillCurrent, hasConfig, agentsMdCurrent, hasWslLauncher] = await Promise.all([
       readFile(skillPath, 'utf8').then((content) => content === bridgeService.bridgeSkillContent()).catch(() => false),
       access(resolve(workspace.workingDir, '.orkestrai', 'workspace.json')).then(() => true).catch(() => false),
       readFile(resolve(workspace.workingDir, 'AGENTS.md'), 'utf8').catch(() => ''),
-      workspace.runtimeKind === 'wsl'
-        ? access(resolve(workspace.workingDir, '.orkestrai', 'bin', 'orkestrai')).then(() => true).catch(() => false)
+      bridgeRuntime?.kind === 'wsl'
+        ? readFile(resolve(workspace.workingDir, '.orkestrai', 'bin', 'orkestrai'), 'utf8')
+            .then((content) => content.includes(cliRuntime) && content.includes(cliEntry))
+            .catch(() => false)
         : Promise.resolve(true),
     ]);
     // Bloco AGENTS.md (codex/kimi/opencode) entrou depois — workspaces antigos
@@ -131,7 +140,7 @@ export class WorkspaceService {
     }
     const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
     if (!token) return;
-    await bridgeService.provisionSkill(workspace, token);
+    await bridgeService.provisionSkill(workspace, token, bridgeRuntime ?? undefined);
     this.provisionChecked.add(workspace.id);
   }
 
@@ -159,7 +168,7 @@ export class WorkspaceService {
     // qualquer agente criado depois nasce sabendo usar a CLI orkestrai,
     // sem o usuario precisar conectar nada antes (fluxo zero-config).
     const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
-    if (token) await bridgeService.provisionSkill(workspace, token);
+    if (token) await bridgeService.provisionSkill(workspace, token, workspaceExecutionRuntime(workspace));
     return workspace;
   }
 
@@ -193,7 +202,8 @@ export class WorkspaceService {
     if (!workspace) throw new Error('Workspace nao encontrado.');
     if (runtimeChanged) this.provisionChecked.delete(id);
     this.writeInstructionFiles(workspace);
-    await this.ensureProvisioned(workspace);
+    if (runtimeChanged) await this.reprovisionBridge(workspace);
+    else await this.ensureProvisioned(workspace);
     return workspace;
   }
 
@@ -211,19 +221,20 @@ export class WorkspaceService {
     return Promise.all(nodes.map(async (node) => {
       if (node.type !== 'terminal') return node;
       let payload = { ...((node.payload ?? {}) as Record<string, unknown>) };
+      const executionRuntime = terminalExecutionRuntime(workspace, payload as never);
       let changed = false;
       const storedSessionId = typeof payload.sessionId === 'string' ? payload.sessionId : null;
       const storedPty = storedSessionId ? ptySessionManager.get(storedSessionId) : null;
       if (storedSessionId && (!storedPty || storedPty.exited)) {
         delete payload.sessionId;
-        if (workspace.runtimeKind === 'wsl' && typeof payload.provider === 'string') {
+        if (executionRuntime.kind === 'wsl' && typeof payload.provider === 'string') {
           payload.resumeRecovery = true;
         }
         changed = true;
       }
       const agentSessionId = typeof payload.agentSessionId === 'string' ? payload.agentSessionId : null;
       const provider = typeof payload.provider === 'string' ? payload.provider : null;
-      if (workspace.runtimeKind !== 'wsl' && agentSessionId && provider && (!storedPty || storedPty.exited)) {
+      if (executionRuntime.kind !== 'wsl' && agentSessionId && provider && (!storedPty || storedPty.exited)) {
         let resumable: boolean | null = null;
         try {
           resumable = agentSessionTracker.isAgentSessionResumable(
@@ -253,11 +264,14 @@ export class WorkspaceService {
   }
 
   async createNode(dto: CreateCanvasNodeDto) {
-    await this.get(dto.workspaceId);
+    const workspace = await this.get(dto.workspaceId);
     if (dto.type === 'device') {
       const existing = (await workspaceRepository.listNodes(dto.workspaceId)).find((node) => node.type === 'device');
       if (existing) return existing;
     }
+    const payload = dto.type === 'terminal'
+      ? await this.normalizeTerminalPayloadRuntime(workspace, dto.payload)
+      : dto.payload;
     const node = await workspaceRepository.createNode({
       workspaceId: dto.workspaceId,
       type: dto.type,
@@ -267,14 +281,32 @@ export class WorkspaceService {
       width: dto.width,
       height: dto.height,
       zIndex: dto.zIndex,
-      payload: dto.payload,
+      payload,
     });
+    if (node.type === 'terminal' && terminalExecutionRuntime(workspace, node.payload as never).kind === 'wsl') {
+      await this.reprovisionBridge(workspace);
+    }
     this.notifyStructureChanged(dto.workspaceId);
     return node;
   }
 
   async updateNode(dto: UpdateCanvasNodeDto) {
-    const node = await workspaceRepository.updateNode(dto.nodeId, dto.changes);
+    const existing = await workspaceRepository.getNode(dto.nodeId);
+    if (!existing) throw new Error('No nao encontrado.');
+    let changes = dto.changes;
+    if (existing.type === 'terminal' && changes.payload) {
+      const payload = { ...(changes.payload as Record<string, unknown>) };
+      const currentRuntime = (existing.payload as { executionRuntime?: unknown } | null)?.executionRuntime;
+      // Runtime changes must pass through changeTerminalRuntime so the PTY,
+      // provider availability, resume metadata, and bridge stay consistent.
+      if (currentRuntime == null) delete payload.executionRuntime;
+      else payload.executionRuntime = currentRuntime;
+      changes = {
+        ...changes,
+        payload: payload as CanvasNodePayload,
+      };
+    }
+    const node = await workspaceRepository.updateNode(dto.nodeId, changes);
     if (!node) throw new Error('No nao encontrado.');
     return node;
   }
@@ -301,7 +333,10 @@ export class WorkspaceService {
     }
     const adapter = getAgentAdapter(dto.provider);
     const workspace = await this.get(dto.workspaceId);
-    const detection = await withWorkspaceExecutionRuntime(workspaceExecutionRuntime(workspace), () => adapter.detect());
+    const detection = await withWorkspaceExecutionRuntime(
+      terminalExecutionRuntime(workspace, node.payload as never),
+      () => adapter.detect(),
+    );
     if (!detection.installed) throw new Error(`${adapter.displayName} não está disponível neste dispositivo.`);
 
     const current = { ...((node.payload ?? {}) as Record<string, unknown>) };
@@ -327,6 +362,48 @@ export class WorkspaceService {
     return updated;
   }
 
+  async changeTerminalRuntime(dto: ChangeTerminalRuntimeDto) {
+    const [workspace, node] = await Promise.all([
+      this.get(dto.workspaceId),
+      workspaceRepository.getNode(dto.nodeId),
+    ]);
+    if (!node || node.workspaceId !== dto.workspaceId || node.type !== 'terminal') {
+      throw new Error('Terminal não encontrado neste workspace.');
+    }
+    const executionRuntime = await resolveTerminalRuntimeOverride({
+      mode: dto.mode,
+      workingDir: workspace.workingDir,
+      wslDistribution: dto.wslDistribution,
+      wslWorkingDir: dto.wslWorkingDir,
+    });
+    const payload = { ...((node.payload ?? {}) as Record<string, unknown>) };
+    const currentRuntime = terminalExecutionRuntime(workspace, node.payload as never);
+    const nextRuntime = executionRuntime ?? workspaceExecutionRuntime(workspace);
+    const provider = typeof payload.provider === 'string' ? payload.provider : null;
+    if (provider) {
+      const adapter = getAgentAdapter(provider);
+      const detection = await withWorkspaceExecutionRuntime(nextRuntime, () => adapter.detect());
+      if (!detection.installed) {
+        throw new Error(`${adapter.displayName} não está disponível no ambiente selecionado.`);
+      }
+    }
+    if (executionRuntimeKey(currentRuntime) !== executionRuntimeKey(nextRuntime)) {
+      const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId : null;
+      if (sessionId) ptySessionManager.kill(sessionId);
+      delete payload.sessionId;
+      delete payload.agentSessionId;
+      payload.resumeRecovery = false;
+    }
+    if (executionRuntime) payload.executionRuntime = executionRuntime;
+    else delete payload.executionRuntime;
+
+    const updated = await workspaceRepository.updateNode(node.id, { payload: payload as never });
+    if (!updated) throw new Error('Terminal não encontrado neste workspace.');
+    await this.reprovisionBridge(workspace);
+    this.notifyStructureChanged(dto.workspaceId);
+    return updated;
+  }
+
   async deleteNode(workspaceId: string, nodeId: string) {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId) throw new Error('No nao encontrado.');
@@ -345,6 +422,10 @@ export class WorkspaceService {
       }).__orkestraiStopWorkspaceDevice?.(workspaceId).catch(() => undefined);
     }
     await workspaceRepository.deleteNode(nodeId);
+    if (node.type === 'terminal') {
+      const workspace = await workspaceRepository.getWorkspace(workspaceId);
+      if (workspace) await this.reprovisionBridge(workspace);
+    }
     this.notifyStructureChanged(workspaceId);
     return { deleted: true };
   }
@@ -374,7 +455,7 @@ export class WorkspaceService {
     // Conexao com terminal => provisiona a skill da ponte nos agentes.
     if (source.type === 'terminal' || target.type === 'terminal') {
       const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
-      if (token) await bridgeService.provisionSkill(workspace, token);
+      if (token) await bridgeService.provisionSkill(workspace, token, (await this.preferredBridgeRuntime(workspace)) ?? undefined);
     }
 
     this.notifyStructureChanged(dto.workspaceId);
@@ -522,6 +603,56 @@ export class WorkspaceService {
   }
 
   // -- Internos ----------------------------------------------------------------
+
+  private async preferredBridgeRuntime(workspace: Workspace) {
+    const workspaceRuntime = workspaceExecutionRuntime(workspace);
+    if (workspaceRuntime.kind === 'wsl') return workspaceRuntime;
+    const nodes = await workspaceRepository.listNodes(workspace.id);
+    for (const node of nodes) {
+      if (node.type !== 'terminal') continue;
+      const runtime = terminalExecutionRuntime(workspace, node.payload as never);
+      if (runtime.kind === 'wsl') return runtime;
+    }
+    return undefined;
+  }
+
+  private async reprovisionBridge(workspace: Workspace): Promise<void> {
+    const token = await bridgeService.getOrCreateToken(workspace.id).catch(() => null);
+    if (!token) return;
+    await bridgeService.provisionSkill(
+      workspace,
+      token,
+      (await this.preferredBridgeRuntime(workspace)) ?? { kind: 'native' },
+    );
+    this.provisionChecked.add(workspace.id);
+  }
+
+  private async normalizeTerminalPayloadRuntime(
+    workspace: Workspace,
+    input: CanvasNodePayload | undefined,
+  ): Promise<CanvasNodePayload | undefined> {
+    if (!input || !Object.prototype.hasOwnProperty.call(input, 'executionRuntime')) return input;
+    const payload = { ...(input as Record<string, unknown>) };
+    const requested = payload.executionRuntime;
+    if (requested == null) {
+      delete payload.executionRuntime;
+      return payload;
+    }
+    if (typeof requested !== 'object' || !('kind' in requested)) {
+      throw new Error('Ambiente de execução inválido para o terminal.');
+    }
+    const runtime = requested as { kind?: string; distribution?: string; linuxWorkingDir?: string };
+    if (runtime.kind !== 'native' && runtime.kind !== 'wsl') {
+      throw new Error('Ambiente de execução inválido para o terminal.');
+    }
+    payload.executionRuntime = await resolveTerminalRuntimeOverride({
+      mode: runtime.kind,
+      workingDir: workspace.workingDir,
+      wslDistribution: runtime.distribution,
+      wslWorkingDir: runtime.linuxWorkingDir,
+    });
+    return payload;
+  }
 
   private assertWorkingDir(dir: string): string {
     const resolved = resolve(dir.trim());

@@ -18,7 +18,7 @@ import { AgentCouncil } from '../../domain/models/AgentCouncil.js';
 import { AgentCouncilPerspective } from '../../domain/models/AgentCouncilPerspective.js';
 import { hasAgentAdapter } from '../adapters/registry.js';
 import { runAgentInWorkspace } from '../agents.js';
-import { workspaceExecutionRuntime } from '../../infrastructure/WslRuntime.js';
+import { terminalExecutionRuntime } from '../../infrastructure/WslRuntime.js';
 import { councilRepository } from '../../infrastructure/repositories/CouncilRepository.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { CouncilResource } from '../../interface/http/resources/CouncilResource.js';
@@ -204,7 +204,7 @@ export class CouncilService {
         workingDirectory: runPath,
         mode: council.getAttribute('mode') === 'implementation' ? 'implement' : 'plan',
         allowWrites: council.getAttribute('mode') === 'implementation',
-      }, workspace.workingDir, { runtime: workspaceExecutionRuntime(workspace) });
+      }, workspace.workingDir, { runtime: terminalExecutionRuntime(workspace, node.payload as never) });
       rawOutput = result.rawOutput ?? result.content;
       if (result.error) throw new Error(result.error);
       const output = parseCouncilPerspectiveOutput(result.content);
@@ -302,7 +302,7 @@ export class CouncilService {
       workingDirectory: synthesisPath,
       mode: 'plan',
       allowWrites: false,
-    }, workspace.workingDir, { runtime: workspaceExecutionRuntime(workspace) });
+    }, workspace.workingDir, { runtime: terminalExecutionRuntime(workspace, leader.payload as never) });
     if (result.error) throw new Error(result.error);
     const parsed = councilLeaderRecommendationSchema.parse(jsonCandidate(result.content));
     if (parsed.perspectiveId && !items.some((item) => item.id === parsed.perspectiveId)) {

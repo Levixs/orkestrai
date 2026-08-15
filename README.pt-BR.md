@@ -103,6 +103,11 @@ Baixe os instaladores mais recentes em
   dispositivos móveis, andares, roles e notificações desktop.
 - **Workspaces paralelos:** os agentes continuam trabalhando quando você muda de
   workspace, com indicadores de atividade e notificações nativas.
+- **Runtimes Windows e WSL mistos:** defina o ambiente padrão do workspace e
+  deixe cada terminal herdá-lo, usar o Windows nativo ou apontar para uma
+  distribuição WSL e caminho Linux exatos. Detecção de providers, sessões,
+  retomada, Council, agentes recrutados e ponte seguem cada terminal, permitindo
+  combinar no mesmo time ferramentas instaladas no Windows, Ubuntu ou Debian.
 - **Andares Git:** isole o trabalho em worktrees, inspecione conflitos e integre
   alterações concluídas pelo canvas.
 - **Voz local:** dite em qualquer campo de texto ou use o atalho do workspace sem

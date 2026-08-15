@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { useSvelarTest } from '@beeblock/svelar/testing';
 import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
@@ -144,5 +147,81 @@ describe('WorkspaceService.reloadNode', () => {
     expect(payload).toMatchObject({ role: 'Arquiteto', maestro: true, floorId: 'floor-1', theme: 'emerald' });
     expect(changed).toMatchObject({ title: 'Arquiteto', x: 345, y: 678 });
     expect(ptySessionManager.get(session.id)?.exited).not.toBe(false);
+  });
+
+  it('altera o runtime de um unico terminal e preserva a sessao quando o ambiente efetivo nao muda', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'orkestrai-runtime-'));
+    try {
+      const workspace = await workspaceRepository.createWorkspace({ name: 'runtime misto', workingDir: dir });
+      const session = ptySessionManager.create({ command: '/bin/cat', cwd: dir });
+      const node = await workspaceRepository.createNode({
+        workspaceId: workspace.id,
+        type: 'terminal',
+        title: 'Nativo',
+        payload: {
+          command: '/bin/cat',
+          sessionId: session.id,
+          agentSessionId: 'native-conversation',
+          executionRuntime: { kind: 'native' },
+        },
+      });
+
+      const changed = await workspaceService.changeTerminalRuntime({
+        workspaceId: workspace.id,
+        nodeId: node.id,
+        mode: 'default',
+        wslDistribution: null,
+        wslWorkingDir: null,
+      });
+      const payload = changed!.payload as Record<string, unknown>;
+      expect(payload.executionRuntime).toBeUndefined();
+      expect(payload.sessionId).toBe(session.id);
+      expect(payload.agentSessionId).toBe('native-conversation');
+      expect(ptySessionManager.get(session.id)?.exited).toBe(false);
+      ptySessionManager.kill(session.id);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('encerra somente o PTY afetado ao trocar de WSL para Windows nativo', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'orkestrai-runtime-'));
+    try {
+      const workspace = await workspaceRepository.createWorkspace({ name: 'runtime wsl', workingDir: dir });
+      const session = ptySessionManager.create({ command: '/bin/cat', cwd: dir });
+      const untouchedSession = ptySessionManager.create({ command: '/bin/cat', cwd: dir });
+      const node = await workspaceRepository.createNode({
+        workspaceId: workspace.id,
+        type: 'terminal',
+        title: 'Misto',
+        payload: {
+          command: '/bin/cat',
+          sessionId: session.id,
+          agentSessionId: 'wsl-conversation',
+          executionRuntime: {
+            kind: 'wsl',
+            distribution: 'Ubuntu-24.04',
+            linuxWorkingDir: '/home/dev/project',
+          },
+        },
+      });
+
+      const changed = await workspaceService.changeTerminalRuntime({
+        workspaceId: workspace.id,
+        nodeId: node.id,
+        mode: 'native',
+        wslDistribution: null,
+        wslWorkingDir: null,
+      });
+      const payload = changed!.payload as Record<string, unknown>;
+      expect(payload.executionRuntime).toEqual({ kind: 'native' });
+      expect(payload.sessionId).toBeUndefined();
+      expect(payload.agentSessionId).toBeUndefined();
+      expect(ptySessionManager.get(session.id)?.exited).not.toBe(false);
+      expect(ptySessionManager.get(untouchedSession.id)?.exited).toBe(false);
+      ptySessionManager.kill(untouchedSession.id);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

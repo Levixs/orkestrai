@@ -2,7 +2,9 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { win32, posix, resolve } from 'node:path';
-import type { Workspace, WorkspaceExecutionRuntime } from '../domain/types.js';
+import type { WorkspaceExecutionRuntime } from '../domain/types.js';
+
+export { terminalExecutionRuntime, workspaceExecutionRuntime } from '../domain/runtime.ts';
 
 const execFileAsync = promisify(execFile);
 const runtimeContext = new AsyncLocalStorage<WorkspaceExecutionRuntime>();
@@ -32,18 +34,6 @@ export function inferWslRuntimeFromPath(path: string): { distribution: string; l
 export function wslHostPath(distribution: string, linuxPath: string): string {
   const tail = linuxPath.replace(/^\/+/, '').split('/').filter(Boolean).join('\\');
   return `\\\\wsl.localhost\\${distribution}${tail ? `\\${tail}` : ''}`;
-}
-
-export function workspaceExecutionRuntime(workspace: Pick<Workspace, 'runtimeKind' | 'wslDistribution' | 'wslWorkingDir'>): WorkspaceExecutionRuntime {
-  if (workspace.runtimeKind !== 'wsl') return { kind: 'native' };
-  if (!workspace.wslDistribution || !workspace.wslWorkingDir) {
-    throw new Error('O runtime WSL do workspace está incompleto.');
-  }
-  return {
-    kind: 'wsl',
-    distribution: workspace.wslDistribution,
-    linuxWorkingDir: workspace.wslWorkingDir,
-  };
 }
 
 export function currentWorkspaceExecutionRuntime(): WorkspaceExecutionRuntime {
@@ -80,10 +70,43 @@ async function windowsPathToWsl(distribution: string, hostPath: string): Promise
   return stdout.trim();
 }
 
+async function linuxPathToWindows(distribution: string, linuxPath: string): Promise<string> {
+  const { stdout } = await execFileAsync(
+    'wsl.exe',
+    ['--distribution', distribution, '--exec', 'wslpath', '-w', linuxPath],
+    { encoding: 'utf8', windowsHide: true, timeout: 10_000 },
+  );
+  return stdout.trim();
+}
+
+function canonicalHostPath(path: string): string {
+  return win32.normalize(path.trim())
+    .replace(/^\\\\wsl\$\\/i, '\\\\wsl.localhost\\')
+    .replace(/[\\/]+$/, '')
+    .toLowerCase();
+}
+
 export type ResolvedWorkspaceRuntime = {
   workingDir: string;
   runtime: WorkspaceExecutionRuntime;
 };
+
+export async function resolveTerminalRuntimeOverride(input: {
+  mode: 'default' | 'native' | 'wsl';
+  workingDir: string;
+  wslDistribution?: string | null;
+  wslWorkingDir?: string | null;
+}): Promise<WorkspaceExecutionRuntime | null> {
+  if (input.mode === 'default') return null;
+  if (input.mode === 'native') return { kind: 'native' };
+  const resolved = await resolveWorkspaceRuntime({
+    runtimeKind: 'wsl',
+    workingDir: input.workingDir,
+    wslDistribution: input.wslDistribution,
+    wslWorkingDir: input.wslWorkingDir,
+  });
+  return resolved.runtime;
+}
 
 export async function resolveWorkspaceRuntime(input: {
   runtimeKind?: 'native' | 'wsl';
@@ -118,7 +141,11 @@ export async function resolveWorkspaceRuntime(input: {
   });
 
   const rawHostPath = input.workingDir.trim();
-  const workingDir = rawHostPath.startsWith('/') ? wslHostPath(distribution, linuxWorkingDir) : rawHostPath;
+  const mappedHostPath = await linuxPathToWindows(distribution, linuxWorkingDir);
+  if (!rawHostPath.startsWith('/') && canonicalHostPath(rawHostPath) !== canonicalHostPath(mappedHostPath)) {
+    throw new Error(`O caminho Linux não corresponde à pasta do workspace: ${mappedHostPath}`);
+  }
+  const workingDir = rawHostPath.startsWith('/') ? mappedHostPath : rawHostPath;
   return {
     workingDir,
     runtime: { kind: 'wsl', distribution, linuxWorkingDir },

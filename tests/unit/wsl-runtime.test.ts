@@ -5,8 +5,48 @@ import {
   parseWslDistributionList,
   wslHostPath,
 } from '$lib/modules/agent-room/infrastructure/WslRuntime.js';
+import {
+  terminalExecutionRuntime,
+  workspaceExecutionRuntime,
+} from '$lib/modules/agent-room/domain/runtime.js';
 
 describe('WSL workspace runtime', () => {
+  it('uses the workspace runtime by default and permits native or WSL terminal overrides', () => {
+    const wslWorkspace = {
+      runtimeKind: 'wsl' as const,
+      wslDistribution: 'Ubuntu-24.04',
+      wslWorkingDir: '/home/dev/project',
+    };
+    expect(workspaceExecutionRuntime(wslWorkspace)).toEqual({
+      kind: 'wsl',
+      distribution: 'Ubuntu-24.04',
+      linuxWorkingDir: '/home/dev/project',
+    });
+    expect(terminalExecutionRuntime(wslWorkspace, {})).toEqual({
+      kind: 'wsl',
+      distribution: 'Ubuntu-24.04',
+      linuxWorkingDir: '/home/dev/project',
+    });
+    expect(terminalExecutionRuntime(wslWorkspace, { executionRuntime: { kind: 'native' } })).toEqual({ kind: 'native' });
+
+    const nativeWorkspace = {
+      runtimeKind: 'native' as const,
+      wslDistribution: null,
+      wslWorkingDir: null,
+    };
+    expect(terminalExecutionRuntime(nativeWorkspace, {
+      executionRuntime: {
+        kind: 'wsl',
+        distribution: 'Debian',
+        linuxWorkingDir: '/srv/project',
+      },
+    })).toEqual({
+      kind: 'wsl',
+      distribution: 'Debian',
+      linuxWorkingDir: '/srv/project',
+    });
+  });
+
   it('parses the UTF-16-shaped distro list without merging environments', () => {
     const encoded = `\uFEFF${['Ubuntu-24.04', 'Debian']
       .map((name) => [...name].map((character) => `${character}\0`).join(''))

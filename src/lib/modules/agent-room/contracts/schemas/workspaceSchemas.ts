@@ -49,6 +49,12 @@ export const changeTerminalProviderSchema = z.object({
   provider: z.string().trim().min(1, 'Informe o provider.'),
 });
 
+export const changeTerminalRuntimeSchema = z.object({
+  mode: z.enum(['default', 'native', 'wsl']),
+  wslDistribution: z.string().trim().nullish(),
+  wslWorkingDir: z.string().trim().nullish(),
+});
+
 export const canvasEdgeStyleSchema = z.enum(['cord', 'circuit']);
 
 export const createCanvasEdgeSchema = z.object({
@@ -66,5 +72,6 @@ export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
 export type CreateCanvasNodeInput = z.infer<typeof createCanvasNodeSchema>;
 export type UpdateCanvasNodeInput = z.infer<typeof updateCanvasNodeSchema>;
 export type ChangeTerminalProviderInput = z.infer<typeof changeTerminalProviderSchema>;
+export type ChangeTerminalRuntimeInput = z.infer<typeof changeTerminalRuntimeSchema>;
 export type CreateCanvasEdgeInput = z.infer<typeof createCanvasEdgeSchema>;
 export type UpdateCanvasEdgeInput = z.infer<typeof updateCanvasEdgeSchema>;

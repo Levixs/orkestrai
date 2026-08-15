@@ -53,10 +53,18 @@ describe('BridgeService', () => {
 
       const launcher = await readFile(join(dir, '.orkestrai', 'bin', 'orkestrai'), 'utf8');
       const mcp = JSON.parse(await readFile(join(dir, '.mcp.json'), 'utf8'));
-      expect(launcher).toContain('wslpath -u "$ORKESTRAI_RUNTIME_WIN"');
+      expect(launcher).toContain('runtime="$(wslpath -u');
+      expect(launcher).toContain('exec "$runtime"');
       expect(mcp.mcpServers.orkestrai).toEqual({
-        command: '/bin/sh',
-        args: ['/home/dev/project/.orkestrai/bin/orkestrai', 'mcp'],
+        command: 'wsl.exe',
+        args: [
+          '--distribution',
+          'Ubuntu-24.04',
+          '--exec',
+          '/bin/sh',
+          '/home/dev/project/.orkestrai/bin/orkestrai',
+          'mcp',
+        ],
       });
     } finally {
       await rm(dir, { recursive: true, force: true });

@@ -157,6 +157,7 @@
       "src/lib/modules/agent-room/infrastructure/voice/**",
       "src/lib/modules/agent-room/infrastructure/agent-path.ts",
       "src/lib/modules/agent-room/infrastructure/WslRuntime.ts",
+      "src/lib/modules/agent-room/domain/runtime.ts",
       "packages/orkestrai-cli/**",
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",

@@ -10,7 +10,8 @@
   import { Label } from '$lib/components/ui/label';
   import ModelCombobox from './ModelCombobox.svelte';
   import { createAgentNodeSchema } from '$lib/modules/agent-room/contracts/schemas/schemas.js';
-  import type { AgentProviderInfo } from '$lib/modules/agent-room/domain/types.js';
+  import type { AgentProviderInfo, Workspace, WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
+  import { workspaceExecutionRuntime } from '$lib/modules/agent-room/domain/runtime.js';
   import * as m from '$lib/paraglide/messages.js';
 
   export type AgentCreation = {
@@ -18,19 +19,34 @@
     model: string | null;
     effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra' | null;
     leader: boolean;
+    executionRuntime: WorkspaceExecutionRuntime | null;
   };
 
   type Props = {
     open: boolean;
     /** Provider do agente (null = shell puro). */
     provider: AgentProviderInfo | null;
+    workspace: Workspace | null;
     /** Pre-marca "Lider" (primeiro agente do workspace — fluxo zero-config). */
     defaultLeader?: boolean;
     onConfirm: (creation: AgentCreation) => void;
     onCancel: () => void;
   };
 
-  let { open, provider, defaultLeader = false, onConfirm, onCancel }: Props = $props();
+  let { open, provider, workspace, defaultLeader = false, onConfirm, onCancel }: Props = $props();
+  let runtimeMode = $state<'default' | 'native' | 'wsl'>('default');
+  let wslDistribution = $state('');
+  let wslWorkingDir = $state('');
+  let runtimeProvider = $state<AgentProviderInfo | null>(null);
+  let runtimeChecking = $state(false);
+  let wsl = $state<{ supported: boolean; distributions: Array<{ name: string }>; inferred: { distribution: string; linuxWorkingDir: string } | null; error: string | null }>({
+    supported: false,
+    distributions: [],
+    inferred: null,
+    error: null,
+  });
+  const defaultRuntime = $derived(workspace ? workspaceExecutionRuntime(workspace) : { kind: 'native' as const });
+  const defaultRuntimeLabel = $derived(defaultRuntime.kind === 'wsl' ? `WSL · ${defaultRuntime.distribution}` : m['dlg.runtime_native']());
 
   const EFFORT_LABELS: Record<string, string> = $derived({
     low: m['dlg.effort_low'](),
@@ -41,14 +57,15 @@
     ultra: m['dlg.effort_ultra'](),
   });
 
-  const modelOptions = $derived(provider?.models ?? []);
+  const selectedProvider = $derived(runtimeProvider ?? provider);
+  const modelOptions = $derived(selectedProvider?.models ?? []);
 
   // Esforcos do modelo selecionado (quando informado); sem selecao, usa a
   // capacidade declarada pelo adapter. Providers sem effort ficam ocultos.
   const effortOptions = $derived.by(() => {
-    if (!provider) return [];
+    if (!selectedProvider) return [];
     const selected = modelOptions.find((option) => option.value === ($formData?.model ?? ''));
-    const efforts = selected?.efforts?.length ? selected.efforts : (provider.efforts ?? []);
+    const efforts = selected?.efforts?.length ? selected.efforts : (selectedProvider.efforts ?? []);
     return efforts.map((value) => ({ value, label: EFFORT_LABELS[value] ?? value }));
   });
   const supportsEffort = $derived(effortOptions.length > 0);
@@ -65,6 +82,11 @@
         model: f.data.model || null,
         effort: (f.data.effort as AgentCreation['effort']) ?? null,
         leader: Boolean(f.data.leader),
+        executionRuntime: runtimeMode === 'default'
+          ? null
+          : runtimeMode === 'native'
+            ? { kind: 'native' }
+            : { kind: 'wsl', distribution: wslDistribution, linuxWorkingDir: wslWorkingDir.trim() },
       });
     },
   });
@@ -81,9 +103,65 @@
         effort: null,
         leader: provider ? defaultLeader : false,
       });
+      runtimeMode = 'default';
+      runtimeProvider = provider;
+      wslDistribution = defaultRuntime.kind === 'wsl' ? defaultRuntime.distribution : '';
+      wslWorkingDir = defaultRuntime.kind === 'wsl' ? defaultRuntime.linuxWorkingDir : '';
+      if (workspace) void loadWslAvailability(workspace.workingDir);
     }
     lastOpen = open;
   });
+
+  $effect(() => {
+    if (!open || !workspace || !provider) return;
+    const mode = runtimeMode;
+    const distribution = wslDistribution;
+    const path = wslWorkingDir;
+    if (mode === 'wsl' && !distribution) {
+      runtimeChecking = false;
+      return;
+    }
+    runtimeChecking = true;
+    const timer = setTimeout(() => void refreshRuntimeProvider(mode, distribution, path), 250);
+    return () => clearTimeout(timer);
+  });
+
+  async function refreshRuntimeProvider(mode: 'default' | 'native' | 'wsl', distribution: string, path: string) {
+    if (!workspace || !provider || (mode === 'wsl' && !distribution)) return;
+    runtimeChecking = true;
+    try {
+      const params = new URLSearchParams({ workspaceId: workspace.id, runtimeMode: mode });
+      if (mode === 'wsl') {
+        params.set('wslDistribution', distribution);
+        if (path.trim()) params.set('wslWorkingDir', path.trim());
+      }
+      const response = await fetch(`/api/agent-room/status?${params}`);
+      const result = await response.json();
+      if (!response.ok || result.error) throw new Error(result.error || 'Provider check failed.');
+      const detected: AgentProviderInfo = (result.data?.providers ?? [])
+        .find((item: AgentProviderInfo) => item.id === provider?.id) ?? provider;
+      runtimeProvider = detected;
+      if ($formData!.model && !detected.models?.some((model) => model.value === $formData!.model)) {
+        $formData!.model = '';
+        $formData!.effort = null;
+      }
+    } catch {
+      runtimeProvider = { ...provider, installed: false };
+    } finally {
+      runtimeChecking = false;
+    }
+  }
+
+  async function loadWslAvailability(path: string) {
+    try {
+      const response = await fetch(`/api/agent-room/runtimes/wsl?path=${encodeURIComponent(path)}`);
+      wsl = (await response.json()).data ?? wsl;
+      if (!wslDistribution && wsl.inferred) wslDistribution = wsl.inferred.distribution;
+      if (!wslWorkingDir && wsl.inferred) wslWorkingDir = wsl.inferred.linuxWorkingDir;
+    } catch {
+      wsl = { supported: false, distributions: [], inferred: null, error: null };
+    }
+  }
 </script>
 
 <Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
@@ -166,9 +244,62 @@
           </Form.Field>
         {/if}
 
+        {#if workspace && wsl.supported}
+          <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-3">
+            <label class="text-sm font-medium" for="new-agent-runtime">{m['dlg.runtime_label']()}</label>
+            <Select.Root type="single" value={runtimeMode} onValueChange={(value: string) => (runtimeMode = value as typeof runtimeMode)}>
+              <Select.Trigger id="new-agent-runtime" class="w-full">
+                {runtimeMode === 'default'
+                  ? m['term.runtime_default_option']({ runtime: defaultRuntimeLabel })
+                  : runtimeMode === 'wsl'
+                    ? m['dlg.runtime_wsl']()
+                    : m['dlg.runtime_native']()}
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value="default">{m['term.runtime_default_option']({ runtime: defaultRuntimeLabel })}</Select.Item>
+                <Select.Item value="native">{m['dlg.runtime_native']()}</Select.Item>
+                <Select.Item value="wsl">{m['dlg.runtime_wsl']()}</Select.Item>
+              </Select.Content>
+            </Select.Root>
+
+            {#if runtimeMode === 'wsl'}
+              <label class="text-sm font-medium" for="new-agent-wsl-distribution">{m['dlg.wsl_distribution']()}</label>
+              <Select.Root type="single" value={wslDistribution} onValueChange={(value: string) => (wslDistribution = value)}>
+                <Select.Trigger id="new-agent-wsl-distribution" class="w-full">
+                  {wslDistribution || m['dlg.wsl_distribution_placeholder']()}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each wsl.distributions as distribution (distribution.name)}
+                    <Select.Item value={distribution.name}>{distribution.name}</Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+              {#if !wsl.distributions.length}
+                <p class="text-xs text-destructive" role="alert">{wsl.error || m['dlg.wsl_unavailable']()}</p>
+              {/if}
+              <label class="text-sm font-medium" for="new-agent-wsl-path">{m['dlg.wsl_working_dir']()}</label>
+              <Input id="new-agent-wsl-path" bind:value={wslWorkingDir} placeholder="/home/user/project" autocomplete="off" />
+              <p class="text-xs text-muted-foreground">{m['term.runtime_path_hint']()}</p>
+            {/if}
+          </div>
+        {/if}
+
+        {#if provider}
+          <p class:text-destructive={!selectedProvider?.installed} class="text-xs text-muted-foreground" role="status">
+            {runtimeChecking
+              ? m['term.runtime_checking_provider']({ provider: provider.displayName })
+              : selectedProvider?.installed
+                ? m['term.runtime_provider_ready']({ provider: provider.displayName })
+                : m['term.runtime_provider_missing']({ provider: provider.displayName })}
+          </p>
+        {/if}
+
         <Dialog.Footer>
           <Button type="button" variant="outline" onclick={onCancel}>{m['dlg.cancel']()}</Button>
-          <Button type="submit">{m['dlg.create_agent']()}</Button>
+          <Button
+            type="submit"
+            disabled={(runtimeMode === 'wsl' && !wslDistribution) || Boolean(provider && (runtimeChecking || !selectedProvider?.installed))}
+          >{m['dlg.create_agent']()}</Button>
         </Dialog.Footer>
       </form>
   </Dialog.Content>

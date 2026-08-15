@@ -6,6 +6,7 @@ import { roleService } from '$lib/modules/agent-room/application/services/RoleSe
 import {
   CreateCanvasEdgeDto,
   ChangeTerminalProviderDto,
+  ChangeTerminalRuntimeDto,
   CreateCanvasNodeDto,
   CreateWorkspaceDto,
   UpdateCanvasEdgeDto,
@@ -15,6 +16,7 @@ import {
 import {
   CreateCanvasEdgeRequest,
   ChangeTerminalProviderRequest,
+  ChangeTerminalRuntimeRequest,
   CreateCanvasNodeRequest,
   CreateWorkspaceRequest,
   UpdateCanvasEdgeRequest,
@@ -148,6 +150,19 @@ export class WorkspaceController extends Controller {
       });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao trocar provider do terminal.');
+    }
+  }
+
+  async changeTerminalRuntime(event: any) {
+    try {
+      const input = await ChangeTerminalRuntimeRequest.validate(event);
+      return this.json({
+        data: await workspaceService.changeTerminalRuntime(
+          ChangeTerminalRuntimeDto.from(event.params.id, event.params.nodeId, input),
+        ),
+      });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao trocar o ambiente do terminal.');
     }
   }
 

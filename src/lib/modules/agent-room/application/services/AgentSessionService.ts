@@ -4,7 +4,8 @@ import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracke
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.js';
 import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
 import { floorService } from './FloorService.js';
-import { workspaceExecutionRuntime } from '../../infrastructure/WslRuntime.js';
+import { terminalExecutionRuntime } from '../../infrastructure/WslRuntime.js';
+import type { WorkspaceExecutionRuntime } from '../../domain/types.js';
 
 type AgentNodePayload = {
   sessionId?: string;
@@ -14,6 +15,7 @@ type AgentNodePayload = {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  executionRuntime?: WorkspaceExecutionRuntime | null;
 };
 
 export type EnsuredAgentSession = {
@@ -56,7 +58,7 @@ export class AgentSessionService {
     }
 
     const adapter = payload.provider && hasAgentAdapter(payload.provider) ? getAgentAdapter(payload.provider) : null;
-    const runtime = workspace ? workspaceExecutionRuntime(workspace) : { kind: 'native' as const };
+    const runtime = workspace ? terminalExecutionRuntime(workspace, payload) : { kind: 'native' as const };
     const trackingStartedAt = Date.now();
     const genericWslResumeArgs = runtime.kind === 'wsl'
       && !payload.agentSessionId

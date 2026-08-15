@@ -9,12 +9,13 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
-- Added an explicit per-workspace Windows execution runtime. A workspace can
-  stay native or target one exact installed WSL distribution and Linux project
-  path; shells, provider detection, models, PTY sessions, generic conversation
-  resume, presets, and the Orkestrai bridge all use that same environment.
-  Changing runtimes unloads stale PTYs, and missing distributions fail clearly
-  instead of silently falling back to Windows or another WSL installation.
+- Added mixed Windows and WSL execution inside the same workspace. The
+  workspace runtime remains the default, while every terminal can inherit it,
+  force native Windows, or target an exact installed WSL distribution and Linux
+  project path. Provider detection and models, PTY sessions, generic resume,
+  Council runs, recruited agents, and the Orkestrai bridge follow the terminal's
+  effective runtime. Changing an override restarts only that terminal, and
+  invalid paths or missing distributions fail clearly without a silent fallback.
 
 ## 0.11.0 - 2026-08-15
 

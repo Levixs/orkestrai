@@ -24,6 +24,7 @@
     TerminalNodePayload,
     Workspace,
   } from '$lib/modules/agent-room/domain/types.js';
+  import { terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/domain/runtime.js';
   import * as m from '$lib/paraglide/messages.js';
 
   let {
@@ -133,6 +134,18 @@
     toast.success(m['term.provider_switched']({ provider: providerFor(updated)?.displayName ?? provider }));
   }
 
+  async function changeRuntime(
+    targetId: string,
+    selection: { mode: 'default' | 'native' | 'wsl'; wslDistribution: string | null; wslWorkingDir: string | null },
+  ) {
+    const updated = await api<CanvasNode>(`/api/agent-room/workspaces/${workspace.id}/nodes/${targetId}/runtime`, {
+      method: 'PUT',
+      body: JSON.stringify(selection),
+    });
+    onNodeUpdated(updated);
+    toast.success(m['term.runtime_changed']());
+  }
+
   function connectionsFor(nodeId: string) {
     return edges
       .filter((edge) => edge.sourceNodeId === nodeId || edge.targetNodeId === nodeId)
@@ -159,6 +172,7 @@
     if (!hostWidth || !hostHeight) return [];
     const payload = node.payload as TerminalNodePayload;
     const provider = providerFor(node);
+    const workspaceRuntime = workspaceExecutionRuntime(workspace);
     const width = Math.max(360, hostWidth - 32);
     const height = Math.max(220, hostHeight - 32);
     return [{
@@ -179,9 +193,8 @@
         providers,
         workingDir: floorPath(node.floorId) ?? workspace.workingDir,
         workspaceRoot: workspace.workingDir,
-        executionRuntime: workspace.runtimeKind === 'wsl' && workspace.wslDistribution && workspace.wslWorkingDir
-          ? { kind: 'wsl', distribution: workspace.wslDistribution, linuxWorkingDir: workspace.wslWorkingDir }
-          : { kind: 'native' },
+        executionRuntime: terminalExecutionRuntime(workspace, payload),
+        workspaceRuntime,
         payload: node.payload,
         resumeArgsFor: () => provider?.tui?.resumeArgs ?? null,
         exactResumeArgsFor: (agentSessionId: string) => provider?.tui?.exactResumeArgs?.map(
@@ -203,6 +216,7 @@
           }).catch(() => {});
         },
         onProviderChange: changeProvider,
+        onRuntimeChange: changeRuntime,
         onToggleMaestro: (id: string) => patchPayload(id, { maestro: !payload.maestro }),
         onThemeChange: (id: string, theme: TerminalThemeName) => patchPayload(id, { theme }),
         onContentChange: (id: string, content: string) => patchPayload(id, { content }),

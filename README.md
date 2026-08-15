@@ -117,11 +117,11 @@ Download the latest installers from
   roles, and desktop notifications.
 - **Parallel workspaces:** agents continue running when you switch to another
   workspace, with activity indicators and native notifications.
-- **Per-workspace WSL on Windows:** keep a workspace native or bind it to one
-  exact installed WSL distribution and Linux project path. Shells, provider
-  discovery, sessions, resume, and the agent bridge stay in that environment,
-  so tools installed only in Ubuntu remain available without changing other
-  workspaces.
+- **Mixed Windows and WSL runtimes:** choose a default runtime per workspace,
+  then let each terminal inherit it, use native Windows, or target an exact WSL
+  distribution and Linux project path. Provider discovery, sessions, resume,
+  Council, recruited agents, and the bridge follow each terminal, so one team
+  can combine tools installed across Windows, Ubuntu, Debian, or other distros.
 - **Git floors:** isolate work in Git worktrees, inspect conflicts, and land
   completed changes from the canvas.
 - **Local voice:** dictate into any text field or use the no-focus workspace

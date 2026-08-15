@@ -93,6 +93,7 @@
     TerminalNodePayload,
     Workspace,
   } from '$lib/modules/agent-room/domain/types.js';
+  import { terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/domain/runtime.js';
 
   const nodeTypes = {
     terminal: TerminalCanvasNode,
@@ -128,6 +129,7 @@
   );
   let activeWorkspace = $state<Workspace | null>(null);
   let providers = $state<AgentProviderInfo[]>([]);
+  const canChooseAlternateRuntime = typeof navigator !== 'undefined' && navigator.platform.startsWith('Win');
   let nodes = $state<Node[]>([]);
   let edges = $state<Edge[]>([]);
   let errorMessage = $state('');
@@ -691,6 +693,10 @@
   });
 
   function toFlowNode(node: CanvasNode): Node {
+    const workspaceRuntime = activeWorkspace ? workspaceExecutionRuntime(activeWorkspace) : { kind: 'native' as const };
+    const executionRuntime = activeWorkspace && node.type === 'terminal'
+      ? terminalExecutionRuntime(activeWorkspace, node.payload as TerminalNodePayload)
+      : workspaceRuntime;
     return {
       id: node.id,
       type: node.type,
@@ -708,9 +714,8 @@
         providers,
         workingDir: floorPath(node.floorId) ?? activeWorkspace?.workingDir ?? '.',
         workspaceRoot: activeWorkspace?.workingDir ?? '.',
-        executionRuntime: activeWorkspace?.runtimeKind === 'wsl' && activeWorkspace.wslDistribution && activeWorkspace.wslWorkingDir
-          ? { kind: 'wsl', distribution: activeWorkspace.wslDistribution, linuxWorkingDir: activeWorkspace.wslWorkingDir }
-          : { kind: 'native' },
+        executionRuntime,
+        workspaceRuntime,
         payload: node.payload,
         // Closures: avaliadas na hora do respawn (providers ja carregados) —
         // avaliar aqui congelaria undefined no restart (providers ainda vazios).
@@ -732,6 +737,7 @@
           }).catch(() => {});
         },
         onProviderChange: changeNodeProvider,
+        onRuntimeChange: changeNodeRuntime,
         onToggleMaestro: (id: string) => {
           const current = (nodes.find((node) => node.id === id)?.data?.payload ?? {}) as Record<string, unknown>;
           updateNodePayload(id, { maestro: !current.maestro });
@@ -805,6 +811,19 @@
       ? { ...node, data: { ...node.data, payload: updated.payload } }
       : node);
     toast.success(m['term.provider_switched']({ provider: providerForNode(updated)?.displayName ?? provider }));
+  }
+
+  async function changeNodeRuntime(
+    id: string,
+    selection: { mode: 'default' | 'native' | 'wsl'; wslDistribution: string | null; wslWorkingDir: string | null },
+  ) {
+    if (!activeWorkspace) return;
+    const updated = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes/${id}/runtime`, {
+      method: 'PUT',
+      body: JSON.stringify(selection),
+    });
+    nodes = nodes.map((node) => node.id === id ? toFlowNode(updated) : node);
+    toast.success(m['term.runtime_changed']());
   }
 
   function connectionsFor(nodeId: string) {
@@ -1078,7 +1097,7 @@
   async function addTerminal(
     provider?: AgentProviderInfo,
     rect?: { x: number; y: number; width: number; height: number },
-    creation?: { title: string; model: string | null; effort: string | null; leader: boolean }
+    creation?: { title: string; model: string | null; effort: string | null; leader: boolean; executionRuntime: import('$lib/modules/agent-room/domain/types.js').WorkspaceExecutionRuntime | null }
   ) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1101,6 +1120,7 @@
     } else {
       payload = { command: navigator.platform.startsWith('Win') ? 'powershell.exe' : '/bin/zsh', args: [] };
     }
+    if (creation?.executionRuntime) payload.executionRuntime = creation.executionRuntime;
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
       body: JSON.stringify({
@@ -1429,7 +1449,7 @@
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
     { id: 'council', label: m['council.open'](), hint: m['canvas.hint_action'](), run: () => (councilOpen = true) },
     ...providers
-      .filter((provider) => provider.installed && provider.tui)
+      .filter((provider) => (provider.installed || canChooseAlternateRuntime) && provider.tui)
       .map((provider) => ({
         id: `agent-${provider.id}`,
         label: m['canvas.palette_new_agent']({ name: provider.displayName }),
@@ -1866,6 +1886,7 @@
               {providers}
               {pinnedProviderIds}
               activeProviderId={drawTool === 'terminal' ? (drawProvider?.id ?? null) : null}
+              allowUnavailableSelection={canChooseAlternateRuntime}
               onSelect={(provider) => toggleDrawTool('terminal', provider)}
               onTogglePin={togglePinnedProvider}
               onOpenProviderCenter={() => void goto('/providers')}
@@ -1988,6 +2009,7 @@
     <AgentCreateDialog
       open={pendingAgentCreation !== null}
       provider={pendingAgentCreation?.provider ?? null}
+      workspace={activeWorkspace}
       defaultLeader={!nodes.some((node) => node.type === 'terminal' && (node.data?.payload as { maestro?: boolean } | undefined)?.maestro)}
       onConfirm={async (creation) => {
         const pending = pendingAgentCreation;

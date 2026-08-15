@@ -330,6 +330,8 @@ export type TerminalNodePayload = {
   args?: string[];
   env?: Record<string, string>;
   provider?: AgentProviderId;
+  /** Ausente = herda o ambiente padrão do workspace. */
+  executionRuntime?: WorkspaceExecutionRuntime | null;
   role?: string | null;
   /** Args nativos da role, usados somente ao criar uma conversa nova. */
   initialRoleArgs?: string[];

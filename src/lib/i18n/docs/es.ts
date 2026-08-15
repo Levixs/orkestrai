@@ -18,7 +18,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'wsl-runtime',
       title: 'Workspaces de Windows con WSL',
-      body: `En Windows, cada workspace puede ejecutar agentes en Windows o en una distribución WSL específica. Al crearlo o editarlo, elige WSL, selecciona exactamente Ubuntu, Ubuntu-22.04, Ubuntu-24.04 u otra distribución instalada e indica la ruta Linux del proyecto. Orkestrai conserva una ruta accesible desde Windows para Canvas, archivos y persistencia, pero inicia shells, Claude, Codex, Kimi y los demás providers dentro de la distribución elegida. La detección, los modelos, la reanudación genérica de conversaciones y el puente orkestrai siguen el mismo entorno. Cambiar el runtime descarga los PTY anteriores antes de reiniciar; nunca hay fallback silencioso a otra distribución o a Windows.`,
+      body: `En Windows, el entorno seleccionado al crear o editar un workspace es el predeterminado del equipo. Cada terminal puede heredarlo o usar Entorno de ejecución en el diálogo de creación y en su menú compacto para forzar Windows nativo o una distribución WSL específica. Selecciona exactamente Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian u otra instalación e indica la ruta Linux de la misma carpeta del proyecto. Un único workspace puede combinar agentes Windows y WSL, incluso distribuciones diferentes. Un indicador WIN o WSL identifica la excepción. Detección y modelos del provider, PTY, reanudación genérica, Council, agentes reclutados y el puente orkestrai siguen el runtime efectivo de cada terminal. Cambiarlo reinicia solo esa terminal; las rutas inválidas, distribuciones ausentes o CLIs no instaladas fallan claramente sin fallback silencioso.`,
     },
     {
       id: 'agentes',
@@ -373,7 +373,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'windows-wsl-agents',
       title: 'Usar herramientas instaladas solo dentro de WSL',
-      body: 'Crea o edita el workspace en Windows, elige WSL y selecciona la distribución exacta donde está instalado Kimi, Claude, Codex u otra CLI. Indica la ruta Linux del proyecto. Todos los terminales y providers de ese workspace se inician en ese entorno, mientras Canvas, archivos, tareas y notas siguen integrados con la app. Distintos workspaces pueden usar distribuciones diferentes al mismo tiempo.',
+      body: 'Elige el runtime más usado al crear o editar el workspace en Windows. Para combinar entornos, abre el menú compacto de cada terminal, selecciona Entorno de ejecución y elige Predeterminado del workspace, Windows nativo o la distribución WSL exacta donde está instalado Kimi, Claude, Codex u otra CLI. Indica la ruta Linux correspondiente a la misma carpeta del proyecto. El indicador WIN/WSL confirma la excepción y solo se reinicia esa terminal. Canvas, archivos, tareas y notas siguen compartidos mientras cada agente usa sus propias herramientas.',
       tags: ['Windows + WSL', 'múltiples distribuciones', 'providers locales'],
     },
   ],
@@ -381,7 +381,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: 'Próxima versión',
       items: [
-        'Los workspaces de Windows ahora pueden usar el runtime nativo o una distribución WSL explícita. Orkestrai lista las distribuciones instaladas, valida la ruta Linux, ejecuta shells y todos los providers en el entorno elegido, verifica las CLIs por workspace, reanuda conversaciones mediante el provider y configura el puente dentro de WSL sin fallback silencioso a Windows u otra distribución.',
+        'Los workspaces de Windows ahora combinan ejecución nativa y múltiples distribuciones WSL en un mismo equipo. El workspace define el valor predeterminado, cada terminal puede heredarlo o sobrescribirlo, y detección/modelos del provider, PTY, reanudación, Council, reclutamiento y puente siguen el runtime efectivo. El cambio reinicia solo la terminal afectada y valida distribución, ruta y CLI sin fallback silencioso.',
       ],
     },
     {

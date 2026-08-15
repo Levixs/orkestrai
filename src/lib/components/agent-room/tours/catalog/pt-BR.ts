@@ -1145,23 +1145,23 @@ export const TOURS_PT: Tour[] = [
   {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
-    title: 'Executar agentes no WSL',
-    tagline: 'Vincule cada workspace à distribuição que contém suas ferramentas.',
+    title: 'Combinar agentes Windows e WSL',
+    tagline: 'Escolha o ambiente certo para cada terminal do mesmo time.',
     steps: [
       {
         id: 'choose-runtime',
-        title: 'Escolha o ambiente',
-        body: 'No Windows, abra Novo workspace ou Editar workspace e selecione WSL em Ambiente de execução.',
+        title: 'Defina o padrão do workspace',
+        body: 'No Windows, abra Novo workspace ou Editar workspace e escolha o ambiente que a maior parte do time vai herdar.',
       },
       {
         id: 'choose-distribution',
-        title: 'Selecione a distribuição exata',
-        body: 'Escolha a instalação que contém as CLIs necessárias. Ubuntu-22.04 e Ubuntu-24.04 são ambientes independentes e não são trocados automaticamente.',
+        title: 'Ajuste somente as exceções',
+        body: 'Ao criar o agente ou pelo menu compacto do terminal, abra Ambiente de execução e escolha Padrão do workspace, Windows nativo ou WSL. O badge WIN/WSL deixa a sobrescrita visível.',
       },
       {
         id: 'set-linux-path',
-        title: 'Confirme o caminho Linux',
-        body: 'Informe um caminho absoluto como /home/user/projeto. Ao salvar, os terminais reiniciam nessa distribuição e a Central de Providers verifica as CLIs no mesmo ambiente.',
+        title: 'Selecione distribuição e caminho',
+        body: 'Escolha a instalação que contém a CLI e confirme a pasta Linux correspondente ao projeto. Ubuntu-22.04, Ubuntu-24.04 e Debian permanecem independentes; ao salvar, somente aquele terminal reinicia no ambiente escolhido.',
       },
     ],
   },

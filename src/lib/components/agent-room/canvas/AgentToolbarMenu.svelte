@@ -12,6 +12,7 @@
     providers: AgentProviderInfo[];
     pinnedProviderIds: string[];
     activeProviderId: string | null;
+    allowUnavailableSelection?: boolean;
     onSelect: (provider: AgentProviderInfo) => void;
     onTogglePin: (providerId: string, pinned: boolean) => void;
     onOpenProviderCenter: () => void;
@@ -21,6 +22,7 @@
     providers,
     pinnedProviderIds,
     activeProviderId,
+    allowUnavailableSelection = false,
     onSelect,
     onTogglePin,
     onOpenProviderCenter,
@@ -33,7 +35,7 @@
   const pinnedProviders = $derived(
     pinnedProviderIds
       .map((id) => providers.find((provider) => provider.id === id))
-      .filter((provider): provider is AgentProviderInfo => Boolean(provider?.installed))
+      .filter((provider): provider is AgentProviderInfo => Boolean(provider && (provider.installed || allowUnavailableSelection)))
   );
 
   const PROVIDER_ICONS: Record<string, string> = {
@@ -72,7 +74,7 @@
       <DropdownMenu.Item
         class="agent-menu-item"
         textValue={provider.displayName}
-        onclick={() => provider.installed ? onSelect(provider) : onOpenProviderCenter()}
+        onclick={() => provider.installed || allowUnavailableSelection ? onSelect(provider) : onOpenProviderCenter()}
       >
         <span class="provider-menu-icon" aria-hidden="true">
           {#if PROVIDER_ICONS[provider.id]}
@@ -83,7 +85,7 @@
         </span>
         <span class="provider-menu-copy">
           <strong>{provider.displayName}</strong>
-          <small>{provider.installed ? m['providers.detected']() : m['providers.not_detected']()}</small>
+          <small>{provider.installed ? m['providers.detected']() : allowUnavailableSelection ? m['providers.not_in_default_runtime']() : m['providers.not_detected']()}</small>
         </span>
         {#if !provider.installed}<Settings2 size={14} class="provider-setup-icon" aria-hidden="true" />{/if}
       </DropdownMenu.Item>

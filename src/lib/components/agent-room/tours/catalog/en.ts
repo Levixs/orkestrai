@@ -1141,23 +1141,23 @@ export const TOURS_EN: Tour[] = [
   {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
-    title: 'Run agents inside WSL',
-    tagline: 'Bind each workspace to the distribution that contains its tools.',
+    title: 'Combine Windows and WSL agents',
+    tagline: 'Choose the right environment for each terminal in one team.',
     steps: [
       {
         id: 'choose-runtime',
-        title: 'Choose the environment',
-        body: 'On Windows, open New workspace or Edit workspace and select WSL under Execution environment.',
+        title: 'Set the workspace default',
+        body: 'On Windows, open New workspace or Edit workspace and choose the environment that most of the team should inherit.',
       },
       {
         id: 'choose-distribution',
-        title: 'Select the exact distribution',
-        body: 'Choose the installation that contains the required CLIs. Ubuntu-22.04 and Ubuntu-24.04 are independent environments and are never swapped automatically.',
+        title: 'Adjust only the exceptions',
+        body: 'While creating an agent or from the terminal compact menu, open Execution environment and choose Workspace default, native Windows, or WSL. A WIN/WSL badge keeps the override visible.',
       },
       {
         id: 'set-linux-path',
-        title: 'Confirm the Linux path',
-        body: 'Provide an absolute path such as /home/user/project. Saving restarts terminals in that distribution and Provider Center checks CLIs in the same environment.',
+        title: 'Select distribution and path',
+        body: 'Choose the installation that contains the CLI and confirm the matching Linux project folder. Ubuntu-22.04, Ubuntu-24.04, and Debian remain independent; saving restarts only that terminal in the selected environment.',
       },
     ],
   },
