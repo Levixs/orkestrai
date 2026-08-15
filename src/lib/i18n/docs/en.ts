@@ -379,9 +379,11 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
-      date: 'Next release',
+      date: 'Aug 15, 2026 · 0.12.0',
       items: [
-        'Windows workspaces can now combine native execution and multiple WSL distributions in one team. The workspace defines the default, each terminal can inherit or override it, and provider detection/models, PTY, resume, Council, recruitment, and the bridge follow the effective runtime. A change restarts only the affected terminal and validates the distribution, path, and CLI without silent fallback.',
+        'Orkestrai 0.12.0 lets one team combine native Windows and multiple WSL distributions. The workspace defines the default runtime, each terminal can inherit it or select its own environment, and provider detection/models, PTY, resume, Council, recruitment, and the bridge follow the effective runtime. A change restarts only the affected terminal and validates the distribution, path, and CLI without silent fallback.',
+        'The packaged server now includes the required WSL runtime modules, allowing the installed desktop app to create, restore, and run WSL-backed workspaces.',
+        'When creating or editing a WSL workspace, Orkestrai now derives and locks the Windows-visible folder from the Linux path automatically, without requiring a second equivalent path or rejecting the configuration by mistake.',
       ],
     },
     {
