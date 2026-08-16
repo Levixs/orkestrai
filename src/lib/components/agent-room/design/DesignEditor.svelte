@@ -19,12 +19,14 @@
     Blend,
     ChevronDown,
     Circle,
+    ClipboardCopy,
     Combine,
     CornerDownRight,
     Download,
     Eye,
     EyeOff,
     Frame,
+    Group,
     ImagePlus,
     Lock,
     MoveDiagonal2,
@@ -32,6 +34,7 @@
     Maximize2,
     MousePointer2,
     PenTool,
+    Palette,
     Plus,
     Redo2,
     RectangleHorizontal,
@@ -41,6 +44,7 @@
     Trash2,
     Type,
     Undo2,
+    Ungroup,
     Unlink2,
     Unlock,
     ZoomIn,
@@ -78,7 +82,9 @@
     splitDesignPathSegment,
     type DesignBooleanOperation,
   } from '$lib/modules/agent-room/domain/design-geometry.js';
+  import { importSvgToDesign, SvgImportError } from '$lib/modules/agent-room/domain/design-svg-import.js';
   import * as m from '$lib/paraglide/messages.js';
+  import DesignColorTools from './DesignColorTools.svelte';
   import DesignPaintEditor from './DesignPaintEditor.svelte';
   import DesignRenderer from './DesignRenderer.svelte';
   import DesignToolbarButton from './DesignToolbarButton.svelte';
@@ -136,6 +142,7 @@
   let snapLinesX = $state<number[]>([]);
   let snapLinesY = $state<number[]>([]);
   let exporting = $state(false);
+  let colorMenuOpen = $state(false);
   let thumbnailRevision = $state(-1);
   let thumbnailTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -303,19 +310,19 @@
     }
   }
 
-  function elementDefaults(kind: Exclude<Tool, 'select'> | 'image', x: number, y: number): DesignElement {
+  function elementDefaults(kind: Exclude<Tool, 'select'> | 'image' | 'group', x: number, y: number): DesignElement {
     const count = document?.elements.filter((element) => element.type === kind).length ?? 0;
     return designElementSchema.parse({
       id: uuidv7(),
       pageId: page!.id,
       parentId: null,
       type: kind,
-      name: `${kind === 'image' ? m['design.image']() : toolLabel(kind)} ${count + 1}`,
+      name: `${kind === 'image' ? m['design.image']() : kind === 'group' ? m['design.group']() : toolLabel(kind)} ${count + 1}`,
       x,
       y,
       width: kind === 'frame' ? 390 : kind === 'text' ? 240 : kind === 'image' ? 320 : 180,
       height: kind === 'frame' ? 844 : kind === 'text' ? 48 : kind === 'image' ? 240 : 120,
-      fill: kind === 'frame' ? '#ffffff' : kind === 'text' ? '#191919' : kind === 'path' || kind === 'image' ? 'transparent' : '#7c5cff',
+      fill: kind === 'frame' ? '#ffffff' : kind === 'text' ? '#191919' : kind === 'path' || kind === 'image' || kind === 'group' ? 'transparent' : '#7c5cff',
       stroke: kind === 'frame' ? '#d4d4d0' : kind === 'path' ? '#7c5cff' : 'transparent',
       strokeWidth: kind === 'frame' || kind === 'path' ? 1 : 0,
       cornerRadius: kind === 'ellipse' || kind === 'path' ? 0 : 8,
@@ -603,7 +610,8 @@
     }
     if (tool === 'select') {
       const target = (event.target as SVGElement).closest<SVGGElement>('[data-design-element]');
-      const element = target ? pageElements.find((item) => item.id === target.dataset.designElement) : null;
+      const hit = target ? pageElements.find((item) => item.id === target.dataset.designElement) : null;
+      const element = hit ? selectableElement(hit, event.altKey) : null;
       if (!element) {
         startSelectionMarquee(event, vectorEditing ? 'points' : 'layers');
         return;
@@ -613,6 +621,17 @@
       return;
     }
     startCreate(event, tool, event.currentTarget as SVGSVGElement);
+  }
+
+  function selectableElement(element: DesignElement, deep: boolean): DesignElement {
+    if (deep) return element;
+    let current = element;
+    while (current.parentId) {
+      const parent = pageElements.find((candidate) => candidate.id === current.parentId);
+      if (!parent || parent.type !== 'group') break;
+      current = parent;
+    }
+    return current;
   }
 
   function startSelectionMarquee(event: PointerEvent, kind: 'layers' | 'points') {
@@ -703,7 +722,10 @@
 
   function startDrag(event: PointerEvent, ids: string[]) {
     if (!document || tool !== 'select') return;
-    const moving = document.elements.filter((element) => ids.includes(element.id) && !element.locked);
+    const movingIds = descendantIds(ids);
+    const moving = document.elements
+      .filter((element) => movingIds.has(element.id) && !element.locked)
+      .sort((left, right) => Number(!ids.includes(left.id)) - Number(!ids.includes(right.id)));
     if (!moving.length) return;
     event.preventDefault();
     const start = new Map(moving.map((element) => [element.id, { x: element.x, y: element.y }]));
@@ -745,6 +767,25 @@
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up, { once: true });
+  }
+
+  function scaledGroupChildChanges(child: DesignElement, original: DesignElement, next: DesignElement): Partial<DesignElement> {
+    const scaleX = next.width / original.width;
+    const scaleY = next.height / original.height;
+    const changes: Partial<DesignElement> = {
+      x: next.x + (child.x - original.x) * scaleX,
+      y: next.y + (child.y - original.y) * scaleY,
+      width: Math.max(1, child.width * scaleX),
+      height: Math.max(1, child.height * scaleY),
+    };
+    if (child.type === 'path') {
+      const scaled = scaleDesignPathSubpaths(pathSubpaths(child), scaleX, scaleY);
+      if (child.pathSubpaths.length) changes.pathSubpaths = scaled;
+      else changes.pathPoints = scaled[0] ?? [];
+    }
+    if (child.type === 'text') changes.fontSize = Math.max(4, child.fontSize * Math.min(scaleX, scaleY));
+    changes.strokeWidth = child.strokeWidth * Math.min(scaleX, scaleY);
+    return changes;
   }
 
   function resizedElement(original: DesignElement, handle: ResizeHandle, point: { x: number; y: number }, shiftKey: boolean, altKey: boolean): DesignElement {
@@ -852,8 +893,10 @@
     event.stopPropagation();
     const original = pathSnapshot(selected);
     const childSnapshots = selected.type === 'frame'
-      ? pageElements.filter((element) => element.parentId === selected.id).map((element) => ({ ...element }))
-      : [];
+      ? pageElements.filter((element) => element.parentId === selected.id).map(pathSnapshot)
+      : selected.type === 'group'
+        ? pageElements.filter((element) => element.id !== selected.id && descendantIds([selected.id]).has(element.id)).map(pathSnapshot)
+        : [];
     const pointerId = event.pointerId;
     let next = original;
     let changed = false;
@@ -861,7 +904,9 @@
       if (moveEvent.pointerId !== pointerId || !document) return;
       next = resizedElement(original, handle, unrotatePoint(pagePoint(moveEvent), original), moveEvent.shiftKey, moveEvent.altKey);
       changed = next.x !== original.x || next.y !== original.y || next.width !== original.width || next.height !== original.height;
-      const childChanges = new Map(childSnapshots.map((child) => [child.id, constrainedChildChanges(child, original, next)]));
+      const childChanges = new Map(childSnapshots.map((child) => [child.id, selected.type === 'group'
+        ? scaledGroupChildChanges(child, original, next)
+        : constrainedChildChanges(child, original, next)]));
       document = {
         ...document,
         elements: document.elements.map((element) => {
@@ -891,7 +936,9 @@
         ...(original.pathSubpaths.length ? { pathSubpaths: original.pathSubpaths } : original.type === 'path' ? { pathPoints: original.pathPoints } : {}),
       } }];
       for (const child of childSnapshots) {
-        const childChanges = constrainedChildChanges(child, original, next);
+        const childChanges = selected.type === 'group'
+          ? scaledGroupChildChanges(child, original, next)
+          : constrainedChildChanges(child, original, next);
         operations.push({ kind: 'update', elementId: child.id, changes: childChanges });
         inverse.push({ kind: 'update', elementId: child.id, changes: Object.fromEntries(Object.keys(childChanges).map((key) => [key, child[key as keyof DesignElement]])) as Partial<DesignElement> });
       }
@@ -917,10 +964,15 @@
     const inverseChanges = Object.fromEntries(Object.keys(resolvedChanges).map((key) => [key, selected[key as keyof DesignElement]])) as Partial<DesignElement>;
     const operations: DesignOperation[] = [{ kind: 'update', elementId: selected.id, changes: resolvedChanges }];
     const inverse: DesignOperation[] = [{ kind: 'update', elementId: selected.id, changes: inverseChanges }];
-    if (selected.type === 'frame' && ['x', 'y', 'width', 'height'].some((key) => key in resolvedChanges)) {
+    if ((selected.type === 'frame' || selected.type === 'group') && ['x', 'y', 'width', 'height'].some((key) => key in resolvedChanges)) {
       const nextFrame = { ...selected, ...resolvedChanges };
-      for (const child of pageElements.filter((element) => element.parentId === selected.id)) {
-        const childChanges = constrainedChildChanges(child, selected, nextFrame);
+      const children = selected.type === 'group'
+        ? pageElements.filter((element) => element.id !== selected.id && descendantIds([selected.id]).has(element.id))
+        : pageElements.filter((element) => element.parentId === selected.id);
+      for (const child of children) {
+        const childChanges = selected.type === 'group'
+          ? scaledGroupChildChanges(child, selected, nextFrame)
+          : constrainedChildChanges(child, selected, nextFrame);
         operations.push({ kind: 'update', elementId: child.id, changes: childChanges });
         inverse.push({
           kind: 'update',
@@ -973,6 +1025,80 @@
       parentId = pageElements.find((item) => item.id === parentId)?.parentId ?? null;
     }
     return false;
+  }
+
+  function descendantIds(ids: Iterable<string>): Set<string> {
+    const descendants = new Set(ids);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const element of pageElements) {
+        if (element.parentId && descendants.has(element.parentId) && !descendants.has(element.id)) {
+          descendants.add(element.id);
+          changed = true;
+        }
+      }
+    }
+    return descendants;
+  }
+
+  function layerDepth(element: DesignElement): number {
+    let depth = 0;
+    let parentId = element.parentId;
+    while (parentId && depth < 32) {
+      depth += 1;
+      parentId = pageElements.find((candidate) => candidate.id === parentId)?.parentId ?? null;
+    }
+    return depth;
+  }
+
+  async function groupSelection() {
+    if (!page) return;
+    const selectedSet = new Set(selectedIds);
+    const targets = selectedElements.filter((element) => !element.locked && !ancestorSelected(element, selectedSet));
+    if (targets.length < 2) return;
+    const left = Math.min(...targets.map((element) => element.x));
+    const top = Math.min(...targets.map((element) => element.y));
+    const right = Math.max(...targets.map((element) => element.x + element.width));
+    const bottom = Math.max(...targets.map((element) => element.y + element.height));
+    const commonParent = targets.every((element) => element.parentId === targets[0].parentId) ? targets[0].parentId : null;
+    const group = {
+      ...elementDefaults('group', left, top),
+      parentId: commonParent,
+      x: left,
+      y: top,
+      width: Math.max(1, right - left),
+      height: Math.max(1, bottom - top),
+      order: Math.min(...targets.map((element) => element.order)),
+    };
+    const operations: DesignOperation[] = [
+      { kind: 'create', element: group },
+      ...targets.map((element, index) => ({ kind: 'reparent' as const, elementId: element.id, parentId: group.id, order: index })),
+    ];
+    const inverse: DesignOperation[] = [
+      ...targets.map((element) => ({ kind: 'reparent' as const, elementId: element.id, parentId: element.parentId, order: element.order })),
+      { kind: 'delete', elementId: group.id },
+    ];
+    if (await apply(operations, m['design.operation_group']({ count: String(targets.length) }), { inverse })) selectedIds = [group.id];
+  }
+
+  async function ungroupSelection() {
+    const groups = selectedElements.filter((element) => element.type === 'group' && !element.locked);
+    if (!groups.length) return;
+    const operations: DesignOperation[] = [];
+    const inverse: DesignOperation[] = [];
+    const nextSelection: string[] = [];
+    for (const group of groups) {
+      const children = pageElements.filter((element) => element.parentId === group.id).sort((left, right) => left.order - right.order);
+      for (const child of children) {
+        operations.push({ kind: 'reparent', elementId: child.id, parentId: group.parentId, order: group.order + child.order });
+        nextSelection.push(child.id);
+      }
+      operations.push({ kind: 'delete', elementId: group.id });
+      inverse.unshift({ kind: 'create', element: group });
+      inverse.push(...children.map((child) => ({ kind: 'reparent' as const, elementId: child.id, parentId: group.id, order: child.order })));
+    }
+    if (await apply(operations, m['design.operation_ungroup']({ count: String(groups.length) }), { inverse })) selectedIds = nextSelection;
   }
 
   async function reorder(direction: -1 | 1) {
@@ -1035,6 +1161,95 @@
       inverse.push({ kind: 'update', elementId: element.id, changes: Object.fromEntries(Object.keys(elementChanges).map((key) => [key, element[key as keyof DesignElement]])) as Partial<DesignElement> });
     }
     await apply(operations, m['design.operation_align']({ count: String(elements.length) }), { inverse });
+  }
+
+  type PaintRole = 'fill' | 'stroke';
+
+  function paintCollection(element: DesignElement, role: PaintRole): DesignPaint[] {
+    return role === 'fill' ? element.fills : element.strokes;
+  }
+
+  function legacyPaint(element: DesignElement, role: PaintRole): string {
+    return role === 'fill' ? element.fill : element.stroke;
+  }
+
+  function normalizedHex(color: string): string {
+    return color.trim().toLowerCase();
+  }
+
+  function paintContainsColor(paint: DesignPaint, color: string): boolean {
+    const target = normalizedHex(color);
+    if (paint.type === 'solid') return normalizedHex(paint.color) === target;
+    return paint.stops.some((stop) => normalizedHex(stop.color) === target);
+  }
+
+  function elementContainsColor(element: DesignElement, role: PaintRole, color: string): boolean {
+    const paints = paintCollection(element, role);
+    if (paints.some((paint) => paintContainsColor(paint, color))) return true;
+    return !paints.length && legacyPaint(element, role) !== 'transparent' && normalizedHex(legacyPaint(element, role)) === normalizedHex(color);
+  }
+
+  function primaryColor(element: DesignElement | null | undefined, role: PaintRole): string | null {
+    if (!element) return null;
+    for (const paint of paintCollection(element, role)) {
+      if (paint.type === 'solid') return paint.color;
+      if (paint.stops.length) return paint.stops[0].color;
+    }
+    const fallback = legacyPaint(element, role);
+    return fallback === 'transparent' ? null : fallback;
+  }
+
+  function matchingColorLayers(role: PaintRole, color: string | null): Array<{ id: string; name: string }> {
+    if (!color) return [];
+    return pageElements.filter((element) => element.visible && elementContainsColor(element, role, color)).map(({ id, name }) => ({ id, name }));
+  }
+
+  function replacedPaint(paint: DesignPaint, from: string, to: string): DesignPaint {
+    if (paint.type === 'solid') return normalizedHex(paint.color) === normalizedHex(from) ? { ...paint, color: to } : paint;
+    return { ...paint, stops: paint.stops.map((stop) => normalizedHex(stop.color) === normalizedHex(from) ? { ...stop, color: to } : stop) };
+  }
+
+  async function applyColorToSelection(role: PaintRole, color: string) {
+    const targets = selectedElements.filter((element) => !element.locked && element.type !== 'group' && (role !== 'fill' || element.type !== 'image'));
+    if (!targets.length) return;
+    const operations: DesignOperation[] = [];
+    const inverse: DesignOperation[] = [];
+    for (const element of targets) {
+      const changes: Partial<DesignElement> = role === 'fill'
+        ? { fills: [{ type: 'solid', color, opacity: 1, visible: true }], fill: 'transparent' }
+        : { strokes: [{ type: 'solid', color, opacity: 1, visible: true }], stroke: 'transparent', strokeWidth: element.strokeWidth || 1 };
+      operations.push({ kind: 'update', elementId: element.id, changes });
+      inverse.push({ kind: 'update', elementId: element.id, changes: role === 'fill'
+        ? { fills: element.fills, fill: element.fill }
+        : { strokes: element.strokes, stroke: element.stroke, strokeWidth: element.strokeWidth } });
+    }
+    await apply(operations, m['design.operation_apply_color']({ count: String(targets.length) }), { inverse });
+  }
+
+  async function replaceMatchingColor(role: PaintRole, from: string, to: string) {
+    const targets = pageElements.filter((element) => !element.locked && elementContainsColor(element, role, from));
+    if (!targets.length) return;
+    const operations: DesignOperation[] = [];
+    const inverse: DesignOperation[] = [];
+    for (const element of targets) {
+      const currentPaints = paintCollection(element, role);
+      const nextPaints = currentPaints.map((paint) => replacedPaint(paint, from, to));
+      const currentLegacy = legacyPaint(element, role);
+      const nextLegacy = !currentPaints.length && normalizedHex(currentLegacy) === normalizedHex(from) ? to : currentLegacy;
+      const changes: Partial<DesignElement> = role === 'fill' ? { fills: nextPaints, fill: nextLegacy } : { strokes: nextPaints, stroke: nextLegacy };
+      operations.push({ kind: 'update', elementId: element.id, changes });
+      inverse.push({ kind: 'update', elementId: element.id, changes: role === 'fill'
+        ? { fills: element.fills, fill: element.fill }
+        : { strokes: element.strokes, stroke: element.stroke } });
+    }
+    await apply(operations, m['design.operation_replace_color']({ count: String(targets.length) }), { inverse });
+  }
+
+  function selectMatchingColor(role: PaintRole, color: string) {
+    selectedIds = pageElements.filter((element) => element.visible && elementContainsColor(element, role, color)).map((element) => element.id);
+    vectorEditId = null;
+    pathPointSelections = [];
+    colorMenuOpen = false;
   }
 
   async function combineSelection(operation: DesignBooleanOperation) {
@@ -1570,6 +1785,36 @@
     for (const file of files) await importAsset(file);
   }
 
+  async function importSvgText(svg: string, name: string) {
+    if (!document || !page || saving) return;
+    try {
+      const result = importSvgToDesign(svg, {
+        name: name.replace(/\.svg$/i, '') || m['design.svg_layer'](),
+        centerX: page.width / 2,
+        centerY: page.height / 2,
+        maxWidth: page.width * 0.8,
+        maxHeight: page.height * 0.8,
+        createElement: (type, x, y) => elementDefaults(type, x, y),
+      });
+      const root = result.elements[0];
+      if (await apply(result.elements.map((element) => ({ kind: 'create' as const, element })), m['design.operation_import']({ name }), {
+        inverse: [{ kind: 'delete', elementId: root.id }],
+      })) {
+        selectedIds = [root.id];
+        if (result.warnings.length) toast.warning(m['design.svg_import_warning']({ count: String(result.warnings.length) }));
+        else toast.success(m['design.svg_imported']({ count: String(result.elements.length) }));
+      }
+    } catch (error) {
+      if (error instanceof SvgImportError) {
+        toast.error(error.code === 'invalid' ? m['design.svg_invalid']() : m['design.svg_empty']());
+      } else {
+        toast.error(m['design.asset_error']());
+      }
+    } finally {
+      if (assetInput) assetInput.value = '';
+    }
+  }
+
   async function imageDimensions(file: File): Promise<{ width: number | null; height: number | null }> {
     try {
       const bitmap = await createImageBitmap(file);
@@ -1595,7 +1840,11 @@
   }
 
   async function importAsset(file: File) {
-    if (!document || saving || !file.type.startsWith('image/')) return;
+    if (!document || saving || (!file.type.startsWith('image/') && !file.name.toLowerCase().endsWith('.svg'))) return;
+    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+      await importSvgText(await file.text(), file.name);
+      return;
+    }
     saving = true;
     try {
       const dimensions = await imageDimensions(file);
@@ -1650,33 +1899,71 @@
 
   function handleDrop(event: DragEvent) {
     event.preventDefault();
-    const files = Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith('image/'));
-    if (files.length) void importFiles(files);
+    const files = Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.svg'));
+    if (files.length) {
+      void importFiles(files);
+      return;
+    }
+    const svg = event.dataTransfer?.getData('image/svg+xml') || event.dataTransfer?.getData('text/plain');
+    if (svg?.trim().startsWith('<svg')) void importSvgText(svg, m['design.pasted_svg']());
   }
 
   function handlePaste(event: ClipboardEvent) {
     if (!editorRoot?.contains(globalThis.document?.activeElement ?? null)) return;
+    if ((globalThis.document?.activeElement as HTMLElement | null)?.closest('input,textarea,[contenteditable="true"]')) return;
     const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
-    if (!files.length) return;
+    if (files.length) {
+      event.preventDefault();
+      void importFiles(files);
+      return;
+    }
+    const direct = event.clipboardData?.getData('image/svg+xml') || '';
+    const html = event.clipboardData?.getData('text/html') || '';
+    const plain = event.clipboardData?.getData('text/plain') || '';
+    const source = direct.trim().startsWith('<svg')
+      ? direct
+      : html.match(/<svg\b[\s\S]*?<\/svg>/i)?.[0] ?? (plain.trim().startsWith('<svg') ? plain : '');
+    if (!source) return;
     event.preventDefault();
-    void importFiles(files);
+    void importSvgText(source, m['design.pasted_svg']());
   }
 
   function exportName(): string {
     return (document?.name || 'design').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'design';
   }
 
-  async function serializedSvg(): Promise<string> {
+  function serializationBounds(ids: string[] | null): { x: number; y: number; width: number; height: number; ids: Set<string> | null } {
+    if (!page || !ids?.length) return { x: 0, y: 0, width: page?.width ?? 1, height: page?.height ?? 1, ids: null };
+    const included = descendantIds(ids);
+    const elements = pageElements.filter((element) => included.has(element.id) && element.visible && !element.isMask);
+    if (!elements.length) return { x: 0, y: 0, width: page.width, height: page.height, ids: null };
+    const padding = Math.max(2, ...elements.map((element) => element.strokeWidth / 2));
+    const left = Math.min(...elements.map((element) => element.x)) - padding;
+    const top = Math.min(...elements.map((element) => element.y)) - padding;
+    const right = Math.max(...elements.map((element) => element.x + element.width)) + padding;
+    const bottom = Math.max(...elements.map((element) => element.y + element.height)) + padding;
+    return { x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top), ids: included };
+  }
+
+  async function serializedSvg(ids: string[] | null = null): Promise<string> {
     if (!pageSvg) throw new Error(m['design.export_error']());
     const clone = pageSvg.cloneNode(true) as SVGSVGElement;
+    const bounds = serializationBounds(ids);
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    clone.setAttribute('width', String(page?.width ?? 1));
-    clone.setAttribute('height', String(page?.height ?? 1));
-    clone.querySelectorAll('[data-design-selection],[data-design-guide],[data-design-ruler],[data-design-snap],[data-design-ui]').forEach((element) => element.remove());
-    if (page?.background && page.background !== 'transparent') {
+    clone.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`);
+    clone.setAttribute('width', String(bounds.width));
+    clone.setAttribute('height', String(bounds.height));
+    clone.querySelectorAll('[data-design-selection],[data-design-guide],[data-design-ruler],[data-design-snap],[data-design-ui],[data-design-hit]').forEach((element) => element.remove());
+    if (bounds.ids) {
+      clone.querySelectorAll<SVGGElement>('[data-design-element]').forEach((element) => {
+        if (!bounds.ids?.has(element.dataset.designElement || '')) element.remove();
+      });
+    } else if (page?.background && page.background !== 'transparent') {
       const background = globalThis.document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      background.setAttribute('width', '100%');
-      background.setAttribute('height', '100%');
+      background.setAttribute('x', String(bounds.x));
+      background.setAttribute('y', String(bounds.y));
+      background.setAttribute('width', String(bounds.width));
+      background.setAttribute('height', String(bounds.height));
       background.setAttribute('fill', page.background);
       clone.insertBefore(background, clone.firstChild);
     }
@@ -1705,8 +1992,9 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  async function rasterBlob(format: 'png' | 'jpeg' | 'webp', maxDimension = Number.POSITIVE_INFINITY): Promise<Blob> {
-    const svg = await serializedSvg();
+  async function rasterBlob(format: 'png' | 'jpeg' | 'webp', maxDimension = Number.POSITIVE_INFINITY, ids: string[] | null = null): Promise<Blob> {
+    const bounds = serializationBounds(ids);
+    const svg = await serializedSvg(ids);
     const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
     try {
       const image = new Image();
@@ -1716,9 +2004,9 @@
         image.src = svgUrl;
       });
       const canvas = globalThis.document.createElement('canvas');
-      const scale = Math.min(1, maxDimension / Math.max(page!.width, page!.height));
-      canvas.width = Math.max(1, Math.round(page!.width * scale));
-      canvas.height = Math.max(1, Math.round(page!.height * scale));
+      const scale = Math.min(1, maxDimension / Math.max(bounds.width, bounds.height));
+      canvas.width = Math.max(1, Math.round(bounds.width * scale));
+      canvas.height = Math.max(1, Math.round(bounds.height * scale));
       const context = canvas.getContext('2d');
       if (!context) throw new Error(m['design.export_error']());
       if (format === 'jpeg') {
@@ -1729,6 +2017,31 @@
       return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error(m['design.export_error']())), `image/${format}`, 0.92));
     } finally {
       URL.revokeObjectURL(svgUrl);
+    }
+  }
+
+  async function copyDesign(format: 'svg' | 'png') {
+    if (!selectedIds.length || exporting) return;
+    exporting = true;
+    try {
+      if (format === 'svg') {
+        const svg = await serializedSvg(selectedIds);
+        try {
+          await navigator.clipboard.write([new ClipboardItem({
+            'image/svg+xml': new Blob([svg], { type: 'image/svg+xml' }),
+            'text/plain': new Blob([svg], { type: 'text/plain' }),
+          })]);
+        } catch {
+          await navigator.clipboard.writeText(svg);
+        }
+      } else {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': await rasterBlob('png', Number.POSITIVE_INFINITY, selectedIds) })]);
+      }
+      toast.success(format === 'svg' ? m['design.copied_svg']() : m['design.copied_png']());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : m['design.export_error']());
+    } finally {
+      exporting = false;
     }
   }
 
@@ -1754,11 +2067,12 @@
     if (!page || exporting) return;
     exporting = true;
     try {
+      const exportIds = selectedIds.length ? selectedIds : null;
       if (format === 'svg') {
-        downloadBlob(new Blob([await serializedSvg()], { type: 'image/svg+xml' }), `${exportName()}.svg`);
+        downloadBlob(new Blob([await serializedSvg(exportIds)], { type: 'image/svg+xml' }), `${exportName()}.svg`);
         return;
       }
-      const blob = await rasterBlob(format === 'pdf' ? 'png' : format);
+      const blob = await rasterBlob(format === 'pdf' ? 'png' : format, Number.POSITIVE_INFINITY, exportIds);
       if (format !== 'pdf') {
         downloadBlob(blob, `${exportName()}.${format === 'jpeg' ? 'jpg' : format}`);
         return;
@@ -1773,7 +2087,7 @@
       const response = await fetch(`/api/agent-room/workspaces/${workspaceId}/designs/${nodeId}/export/pdf`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
-        body: JSON.stringify({ dataUrl, width: page.width, height: page.height, name: exportName() }),
+        body: JSON.stringify({ dataUrl, width: Math.round(serializationBounds(exportIds).width), height: Math.round(serializationBounds(exportIds).height), name: exportName() }),
       });
       if (!response.ok) throw new Error((await response.json()).error || m['design.export_error']());
       downloadBlob(await response.blob(), `${exportName()}.pdf`);
@@ -1823,7 +2137,8 @@
       await commitPathEdit(original, subpaths);
       return;
     }
-    const targets = selectedElements.filter((element) => !element.locked);
+    const targetIds = descendantIds(selectedIds);
+    const targets = pageElements.filter((element) => targetIds.has(element.id) && !element.locked);
     if (!targets.length) return;
     await apply(targets.map((element) => ({ kind: 'update', elementId: element.id, changes: { x: element.x + dx, y: element.y + dy } })), m['design.operation_move']({ name: targets.length === 1 ? targets[0].name : String(targets.length) }), {
       inverse: targets.map((element) => ({ kind: 'update', elementId: element.id, changes: { x: element.x, y: element.y } })),
@@ -1849,6 +2164,18 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       pathPointSelections = pathSubpaths(selected).flatMap((points, subpathIndex) => points.map((_, pointIndex) => ({ elementId: selected.id, subpathIndex, pointIndex })));
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      selectedIds = pageElements.filter((element) => element.visible && !element.parentId).map((element) => element.id);
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'g') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void (event.shiftKey ? ungroupSelection() : groupSelection());
       return;
     }
     if (event.key === 'Enter' && tool === 'path' && penPoints.length >= 2) {
@@ -1974,11 +2301,27 @@
           <item.icon size={16} />
         </DesignToolbarButton>
       {/each}
-      <DesignToolbarButton label={m['design.import_asset']()} onclick={() => assetInput?.click()}><ImagePlus size={16} /></DesignToolbarButton>
+      <DesignToolbarButton label={m['design.import_artwork']()} onclick={() => assetInput?.click()}><ImagePlus size={16} /></DesignToolbarButton>
       <input bind:this={assetInput} class="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple onchange={(event: Event) => void importFiles(Array.from((event.currentTarget as HTMLInputElement).files ?? []))} />
       <span class="mx-1 h-5 w-px bg-[var(--app-border)]"></span>
       <DesignToolbarButton label={m['design.undo']()} disabled={!undoStack.length || saving} onclick={() => void undo()}><Undo2 size={16} /></DesignToolbarButton>
       <DesignToolbarButton label={m['design.redo']()} disabled={!redoStack.length || saving} onclick={() => void redo()}><Redo2 size={16} /></DesignToolbarButton>
+
+      <DropdownMenu.Root>
+        <Tooltip.Root delayDuration={250}><Tooltip.Trigger>{#snippet child({ props })}<DropdownMenu.Trigger {...props} class="inline-flex h-8 w-10 shrink-0 items-center justify-center gap-0.5 rounded-md text-[var(--app-text-soft)] hover:bg-[var(--app-border)] data-[state=open]:bg-[var(--app-accent-soft)] data-[state=open]:text-[var(--app-text)]" aria-label={m['design.grouping']()}><Group size={15} /><ChevronDown size={10} /></DropdownMenu.Trigger>{/snippet}</Tooltip.Trigger><Tooltip.Content class="z-[120]" side="bottom" sideOffset={6}>{m['design.grouping']()}</Tooltip.Content></Tooltip.Root>
+        <DropdownMenu.Content align="start" class="z-[120] w-56">
+          <DropdownMenu.Item disabled={selectedElements.length < 2} onclick={() => void groupSelection()}><Group size={14} />{m['design.group_selection']()}<DropdownMenu.Shortcut>⌘G</DropdownMenu.Shortcut></DropdownMenu.Item>
+          <DropdownMenu.Item disabled={!selectedElements.some((element) => element.type === 'group')} onclick={() => void ungroupSelection()}><Ungroup size={14} />{m['design.ungroup_selection']()}<DropdownMenu.Shortcut>⇧⌘G</DropdownMenu.Shortcut></DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+
+      <DropdownMenu.Root bind:open={colorMenuOpen}>
+        <Tooltip.Root delayDuration={250}><Tooltip.Trigger>{#snippet child({ props })}<DropdownMenu.Trigger {...props} class="inline-flex h-8 w-10 shrink-0 items-center justify-center gap-0.5 rounded-md text-[var(--app-text-soft)] hover:bg-[var(--app-border)] data-[state=open]:bg-[var(--app-accent-soft)] data-[state=open]:text-[var(--app-text)]" disabled={!selected} aria-label={m['design.color_tools']()}><Palette size={15} /><ChevronDown size={10} /></DropdownMenu.Trigger>{/snippet}</Tooltip.Trigger><Tooltip.Content class="z-[120]" side="bottom" sideOffset={6}>{m['design.color_tools']()}</Tooltip.Content></Tooltip.Root>
+        <DropdownMenu.Content align="start" class="z-[120] w-64">
+          <DropdownMenu.Item disabled={!primaryColor(selected, 'fill')} onclick={() => { const color = primaryColor(selected, 'fill'); if (color) selectMatchingColor('fill', color); }}>{m['design.select_same_fill']()}</DropdownMenu.Item>
+          <DropdownMenu.Item disabled={!primaryColor(selected, 'stroke')} onclick={() => { const color = primaryColor(selected, 'stroke'); if (color) selectMatchingColor('stroke', color); }}>{m['design.select_same_stroke']()}</DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
 
       <DropdownMenu.Root>
         <Tooltip.Root delayDuration={250}><Tooltip.Trigger>{#snippet child({ props })}<DropdownMenu.Trigger {...props} class="inline-flex h-8 w-10 shrink-0 items-center justify-center gap-0.5 rounded-md text-[var(--app-text-soft)] hover:bg-[var(--app-border)] data-[state=open]:bg-[var(--app-accent-soft)] data-[state=open]:text-[var(--app-text)]" aria-label={m['design.alignment']()}><AlignCenter size={15} /><ChevronDown size={10} /></DropdownMenu.Trigger>{/snippet}</Tooltip.Trigger><Tooltip.Content class="z-[120]" side="bottom" sideOffset={6}>{m['design.alignment']()}</Tooltip.Content></Tooltip.Root>
@@ -2026,6 +2369,9 @@
       <DropdownMenu.Root>
         <Tooltip.Root delayDuration={250}><Tooltip.Trigger>{#snippet child({ props })}<DropdownMenu.Trigger {...props} class="inline-flex h-8 w-10 shrink-0 items-center justify-center gap-0.5 rounded-md text-[var(--app-text-soft)] hover:bg-[var(--app-border)] data-[state=open]:bg-[var(--app-accent-soft)] data-[state=open]:text-[var(--app-text)]" disabled={exporting} aria-label={m['design.export']()}><Download size={15} /><ChevronDown size={10} /></DropdownMenu.Trigger>{/snippet}</Tooltip.Trigger><Tooltip.Content class="z-[120]" side="bottom" sideOffset={6}>{m['design.export']()}</Tooltip.Content></Tooltip.Root>
         <DropdownMenu.Content align="end" class="z-[120]">
+          <DropdownMenu.Item disabled={!selectedIds.length} onclick={() => void copyDesign('svg')}><ClipboardCopy size={14} />{m['design.copy_svg']()}</DropdownMenu.Item>
+          <DropdownMenu.Item disabled={!selectedIds.length} onclick={() => void copyDesign('png')}><ClipboardCopy size={14} />{m['design.copy_png']()}</DropdownMenu.Item>
+          <DropdownMenu.Separator />
           <DropdownMenu.Item onclick={() => void exportDesign('svg')}>{m['design.export_svg']()}</DropdownMenu.Item>
           <DropdownMenu.Item onclick={() => void exportDesign('png')}>{m['design.export_png']()}</DropdownMenu.Item>
           <DropdownMenu.Item onclick={() => void exportDesign('jpeg')}>{m['design.export_jpeg']()}</DropdownMenu.Item>
@@ -2041,7 +2387,7 @@
         {#if loading}<p class="p-3 text-xs text-[var(--app-text-muted)]">{m['design.loading']()}</p>{:else}
           <div class="flex flex-col-reverse p-1">
             {#each pageElements as element (element.id)}
-              <div class={`group flex h-8 items-center gap-1 rounded px-1 ${selectedIds.includes(element.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`} style:padding-left={`${4 + (element.parentId ? 12 : 0)}px`}>
+              <div class={`group flex h-8 items-center gap-1 rounded px-1 ${selectedIds.includes(element.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`} style:padding-left={`${4 + layerDepth(element) * 12}px`}>
                 <button class="min-w-0 flex-1 truncate px-1 text-left text-[11px]" onclick={(event) => { vectorEditId = null; pathPointSelections = []; if (event.shiftKey) selectedIds = selectedIds.includes(element.id) ? selectedIds.filter((id) => id !== element.id) : [...selectedIds, element.id]; else selectedIds = [element.id]; }} ondblclick={() => { if (element.type === 'path') enterVectorEdit(element); else if (element.type === 'text') beginTextEditing(element); }}>{element.name}</button>
                 <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.visible ? m['design.hide']() : m['design.show']()} onclick={() => void updateElement(element, { visible: !element.visible })}>{#if element.visible}<Eye size={12} />{:else}<EyeOff size={12} />{/if}</button>
                 <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.locked ? m['design.unlock']() : m['design.lock']()} onclick={() => void updateElement(element, { locked: !element.locked })}>{#if element.locked}<Lock size={12} />{:else}<Unlock size={12} />{/if}</button>
@@ -2085,6 +2431,29 @@
             <DesignToolbarButton label={m['design.path_delete_point']()} disabled={!pathPointSelections.length} onclick={() => void deleteSelectedPathPoint()}><Trash2 size={15} /></DesignToolbarButton>
             <span class="min-w-7 px-1 text-center text-[10px] tabular-nums text-[var(--app-text-muted)]" aria-label={m['design.vector_selection_count']({ count: String(pathPointSelections.length) })}>{pathPointSelections.length}</span>
           </div>
+        {:else if selectedElements.length > 1}
+          <div class="absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-1 shadow-lg">
+            <span class="whitespace-nowrap px-2 text-[10px] font-medium text-[var(--app-text-soft)]">{m['design.layers_count']({ count: String(selectedElements.length) })}</span>
+            <span class="h-5 w-px bg-[var(--app-border)]"></span>
+            <DesignToolbarButton label={m['design.align_left']()} onclick={() => void alignSelection('left')}><AlignHorizontalJustifyStart size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.align_horizontal_center']()} onclick={() => void alignSelection('hcenter')}><AlignHorizontalJustifyCenter size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.align_right']()} onclick={() => void alignSelection('right')}><AlignHorizontalJustifyEnd size={15} /></DesignToolbarButton>
+            <span class="h-5 w-px bg-[var(--app-border)]"></span>
+            <DesignToolbarButton label={m['design.align_top']()} onclick={() => void alignSelection('top')}><AlignVerticalJustifyStart size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.align_vertical_center']()} onclick={() => void alignSelection('vcenter')}><AlignVerticalJustifyCenter size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.align_bottom']()} onclick={() => void alignSelection('bottom')}><AlignVerticalJustifyEnd size={15} /></DesignToolbarButton>
+            <span class="h-5 w-px bg-[var(--app-border)]"></span>
+            <DesignToolbarButton label={m['design.distribute_horizontal']()} disabled={selectedElements.length < 3} onclick={() => void alignSelection('distribute-x')}><AlignHorizontalDistributeCenter size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.distribute_vertical']()} disabled={selectedElements.length < 3} onclick={() => void alignSelection('distribute-y')}><AlignVerticalDistributeCenter size={15} /></DesignToolbarButton>
+            <span class="h-5 w-px bg-[var(--app-border)]"></span>
+            <DesignToolbarButton label={m['design.group_selection']()} onclick={() => void groupSelection()}><Group size={15} /></DesignToolbarButton>
+          </div>
+        {:else if selected?.type === 'group'}
+          <div class="absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-1 shadow-lg">
+            <span class="max-w-48 truncate px-2 text-[10px] font-medium text-[var(--app-text-soft)]">{selected.name}</span>
+            <span class="h-5 w-px bg-[var(--app-border)]"></span>
+            <DesignToolbarButton label={m['design.ungroup_selection']()} onclick={() => void ungroupSelection()}><Ungroup size={15} /></DesignToolbarButton>
+          </div>
         {/if}
         <div class="relative min-h-full min-w-full p-12" style:width={`${Math.max(viewport?.clientWidth ?? 0, page.width * zoom + 96)}px`} style:height={`${Math.max(viewport?.clientHeight ?? 0, page.height * zoom + 96)}px`}>
           <svg
@@ -2101,7 +2470,7 @@
             role="application"
             aria-label={page.name}
           >
-            <DesignRenderer elements={renderedElements} assets={document.assets} {workspaceId} selectedIds={rendererSelectionIds} />
+            <DesignRenderer elements={renderedElements} assets={document.assets} {workspaceId} selectedIds={rendererSelectionIds} showFrameLabels />
             {#if rulersVisible}
               <g data-design-ruler pointer-events="none" opacity="0.65">
                 <rect x="0" y="0" width={page.width} height="18" fill="var(--app-surface)" />
@@ -2253,8 +2622,14 @@
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.position']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">X</span><Input type="number" value={selected.x} onchange={(event: Event) => void updateSelected({ x: number(event) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">Y</span><Input type="number" value={selected.y} onchange={(event: Event) => void updateSelected({ y: number(event) })} /></label><label class="col-span-2 space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.rotation']()}</span><Input type="number" value={selected.rotation} onchange={(event: Event) => void updateSelected({ rotation: number(event) })} /></label></div></section>
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.size']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">W</span><Input type="number" min="1" value={selected.width} onchange={(event: Event) => void updateSelected({ width: Math.max(1, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">H</span><Input type="number" min="1" value={selected.height} onchange={(event: Event) => void updateSelected({ height: Math.max(1, number(event)) })} /></label></div></section>
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.appearance']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.stroke_width']()}</span><Input type="number" min="0" value={selected.strokeWidth} onchange={(event: Event) => void updateSelected({ strokeWidth: Math.max(0, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.radius']()}</span><Input type="number" min="0" value={selected.cornerRadius} onchange={(event: Event) => void updateSelected({ cornerRadius: Math.max(0, number(event)) })} /></label><label class="col-span-2 space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.opacity']()}</span><Input type="number" min="0" max="100" value={Math.round(selected.opacity * 100)} onchange={(event: Event) => void updateSelected({ opacity: Math.max(0, Math.min(1, number(event) / 100)) })} /></label></div><label class="block space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.blend_mode']()}</span><NativeSelect.Root class="w-full" value={selected.blendMode} onchange={(event: Event) => void updateSelected({ blendMode: (event.currentTarget as HTMLSelectElement).value as DesignElement['blendMode'] })}><NativeSelect.Option value="normal">{m['design.blend_normal']()}</NativeSelect.Option><NativeSelect.Option value="multiply">{m['design.blend_multiply']()}</NativeSelect.Option><NativeSelect.Option value="screen">{m['design.blend_screen']()}</NativeSelect.Option><NativeSelect.Option value="overlay">{m['design.blend_overlay']()}</NativeSelect.Option><NativeSelect.Option value="darken">{m['design.blend_darken']()}</NativeSelect.Option><NativeSelect.Option value="lighten">{m['design.blend_lighten']()}</NativeSelect.Option></NativeSelect.Root></label></section>
-          {#if selected.type !== 'image'}<DesignPaintEditor title={m['design.fill']()} paints={selected.fills} fallbackColor={selected.fill} onChange={(fills: DesignPaint[]) => void updateSelected({ fills, fill: fills.length ? 'transparent' : selected.fill })} />{/if}
-          <DesignPaintEditor title={m['design.stroke']()} paints={selected.strokes} fallbackColor={selected.stroke} onChange={(strokes: DesignPaint[]) => void updateSelected({ strokes, stroke: strokes.length ? 'transparent' : selected.stroke, strokeWidth: strokes.length && !selected.strokeWidth ? 1 : selected.strokeWidth })} />
+          {#if selected.type !== 'image' && selected.type !== 'group'}
+            <DesignPaintEditor title={m['design.fill']()} paints={selected.fills} fallbackColor={selected.fill} onChange={(fills: DesignPaint[]) => void updateSelected({ fills, fill: fills.length ? 'transparent' : selected.fill })} />
+            <DesignColorTools role="fill" color={primaryColor(selected, 'fill')} matches={matchingColorLayers('fill', primaryColor(selected, 'fill'))} selectionCount={selectedElements.length} onSelectMatches={() => { const color = primaryColor(selected, 'fill'); if (color) selectMatchingColor('fill', color); }} onSelectLayer={(id) => (selectedIds = [id])} onApplySelection={(color) => void applyColorToSelection('fill', color)} onReplaceMatches={(color) => { const from = primaryColor(selected, 'fill'); if (from) void replaceMatchingColor('fill', from, color); }} />
+          {/if}
+          {#if selected.type !== 'group'}
+            <DesignPaintEditor title={m['design.stroke']()} paints={selected.strokes} fallbackColor={selected.stroke} onChange={(strokes: DesignPaint[]) => void updateSelected({ strokes, stroke: strokes.length ? 'transparent' : selected.stroke, strokeWidth: strokes.length && !selected.strokeWidth ? 1 : selected.strokeWidth })} />
+            <DesignColorTools role="stroke" color={primaryColor(selected, 'stroke')} matches={matchingColorLayers('stroke', primaryColor(selected, 'stroke'))} selectionCount={selectedElements.length} onSelectMatches={() => { const color = primaryColor(selected, 'stroke'); if (color) selectMatchingColor('stroke', color); }} onSelectLayer={(id) => (selectedIds = [id])} onApplySelection={(color) => void applyColorToSelection('stroke', color)} onReplaceMatches={(color) => { const from = primaryColor(selected, 'stroke'); if (from) void replaceMatchingColor('stroke', from, color); }} />
+          {/if}
           <section class="space-y-2"><div class="flex items-center justify-between"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.effects']()}</h3><div class="flex gap-1"><Button variant="ghost" size="sm" class="h-6 px-1.5 text-[9px]" onclick={() => void updateSelected({ effects: [...selected.effects, { type: 'drop-shadow', color: '#00000040', x: 0, y: 4, blur: 12, spread: 0, visible: true }] })}>{m['design.add_shadow']()}</Button><Button variant="ghost" size="sm" class="h-6 px-1.5 text-[9px]" onclick={() => void updateSelected({ effects: [...selected.effects, { type: 'layer-blur', blur: 8, visible: true }] })}>{m['design.add_blur']()}</Button></div></div>{#each selected.effects as effect, index}<div class="grid grid-cols-[1fr_64px_26px] items-center gap-1.5 border border-[var(--app-border)] p-2"><span>{effect.type === 'drop-shadow' || effect.type === 'inner-shadow' ? m['design.shadow']() : m['design.blur']()}</span><Input class="h-7" type="number" min="0" value={effect.blur} onchange={(event: Event) => { const effects = selected.effects.map((item, itemIndex) => itemIndex === index ? { ...item, blur: Math.max(0, number(event)) } as DesignEffect : item); void updateSelected({ effects }); }} /><Button variant="ghost" size="icon-sm" class="size-6" aria-label={m['design.delete']()} onclick={() => void updateSelected({ effects: selected.effects.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={11} /></Button></div>{/each}</section>
           {#if selected.type === 'text'}<section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.content']()}</h3><Textarea value={selected.text} onchange={(event: Event) => void updateSelected({ text: (event.currentTarget as HTMLTextAreaElement).value })} /><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.font_size']()}</span><Input type="number" min="4" value={selected.fontSize} onchange={(event: Event) => void updateSelected({ fontSize: Math.max(4, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.font_weight']()}</span><Input type="number" min="100" max="900" step="100" value={selected.fontWeight} onchange={(event: Event) => void updateSelected({ fontWeight: Math.max(100, Math.min(900, number(event))) })} /></label></div><div class="grid grid-cols-3 gap-1">{#each [{ value: 'left' as const, icon: AlignLeft, label: m['design.align_left']() }, { value: 'center' as const, icon: AlignCenter, label: m['design.align_center']() }, { value: 'right' as const, icon: AlignRight, label: m['design.align_right']() }] as alignment}<Button variant={selected.textAlign === alignment.value ? 'secondary' : 'outline'} size="sm" aria-label={alignment.label} onclick={() => void updateSelected({ textAlign: alignment.value })}><alignment.icon size={14} /></Button>{/each}</div></section>{/if}
           {#if selected.type === 'path'}
@@ -2289,10 +2664,34 @@
           {#if selected.type === 'image'}<section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.image_fit']()}</h3><NativeSelect.Root class="w-full" value={selected.imageFit} onchange={(event: Event) => void updateSelected({ imageFit: (event.currentTarget as HTMLSelectElement).value as DesignElement['imageFit'] })}><NativeSelect.Option value="cover">{m['design.fit_cover']()}</NativeSelect.Option><NativeSelect.Option value="contain">{m['design.fit_contain']()}</NativeSelect.Option><NativeSelect.Option value="fill">{m['design.fit_fill']()}</NativeSelect.Option></NativeSelect.Root></section>{/if}
           {#if selected.type === 'frame'}<section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.auto_layout']()}</h3><NativeSelect.Root class="w-full" value={selected.layoutMode} onchange={(event: Event) => void updateSelected({ layoutMode: (event.currentTarget as HTMLSelectElement).value as DesignElement['layoutMode'] })}><NativeSelect.Option value="none">{m['design.layout_none']()}</NativeSelect.Option><NativeSelect.Option value="horizontal">{m['design.layout_horizontal']()}</NativeSelect.Option><NativeSelect.Option value="vertical">{m['design.layout_vertical']()}</NativeSelect.Option><NativeSelect.Option value="grid">{m['design.layout_grid']()}</NativeSelect.Option></NativeSelect.Root><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.gap']()}</span><Input type="number" min="0" value={selected.layoutGap} onchange={(event: Event) => void updateSelected({ layoutGap: Math.max(0, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.padding']()}</span><Input type="number" min="0" value={selected.layoutPaddingTop} onchange={(event: Event) => { const value = Math.max(0, number(event)); void updateSelected({ layoutPaddingTop: value, layoutPaddingRight: value, layoutPaddingBottom: value, layoutPaddingLeft: value }); }} /></label>{#if selected.layoutMode === 'grid'}<label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.columns']()}</span><Input type="number" min="1" value={selected.layoutGridColumns} onchange={(event: Event) => void updateSelected({ layoutGridColumns: Math.max(1, number(event)) })} /></label>{/if}</div><label class="flex items-center justify-between gap-3"><span>{m['design.wrap']()}</span><Switch size="sm" checked={selected.layoutWrap} onCheckedChange={(checked: boolean) => void updateSelected({ layoutWrap: checked })} /></label><label class="flex items-center justify-between gap-3"><span>{m['design.clip_content']()}</span><Switch size="sm" checked={selected.clipContent} onCheckedChange={(checked: boolean) => void updateSelected({ clipContent: checked })} /></label><Button class="w-full" variant="outline" size="sm" onclick={() => void applyAutoLayout()}><Sparkles size={13} />{m['design.apply_layout']()}</Button></section>{/if}
           {#if selected.parentId}<section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.constraints']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.horizontal']()}</span><NativeSelect.Root value={selected.constraintHorizontal} onchange={(event: Event) => void updateSelected({ constraintHorizontal: (event.currentTarget as HTMLSelectElement).value as DesignElement['constraintHorizontal'] })}><NativeSelect.Option value="left">{m['design.align_left']()}</NativeSelect.Option><NativeSelect.Option value="right">{m['design.align_right']()}</NativeSelect.Option><NativeSelect.Option value="left-right">{m['design.constraint_left_right']()}</NativeSelect.Option><NativeSelect.Option value="center">{m['design.align_center']()}</NativeSelect.Option><NativeSelect.Option value="scale">{m['design.constraint_scale']()}</NativeSelect.Option></NativeSelect.Root></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.vertical']()}</span><NativeSelect.Root value={selected.constraintVertical} onchange={(event: Event) => void updateSelected({ constraintVertical: (event.currentTarget as HTMLSelectElement).value as DesignElement['constraintVertical'] })}><NativeSelect.Option value="top">{m['design.align_top']()}</NativeSelect.Option><NativeSelect.Option value="bottom">{m['design.align_bottom']()}</NativeSelect.Option><NativeSelect.Option value="top-bottom">{m['design.constraint_top_bottom']()}</NativeSelect.Option><NativeSelect.Option value="center">{m['design.align_center']()}</NativeSelect.Option><NativeSelect.Option value="scale">{m['design.constraint_scale']()}</NativeSelect.Option></NativeSelect.Root></label></div></section>{/if}
+          {#if selected.type === 'group'}<Button class="w-full" variant="outline" size="sm" onclick={() => void ungroupSelection()}><Ungroup size={13} />{m['design.ungroup_selection']()}</Button>{/if}
           <div class="flex items-center gap-1 border-t border-[var(--app-border)] pt-3"><Button variant="outline" size="icon-sm" aria-label={m['design.move_down']()} onclick={() => void reorder(-1)}><ArrowDown /></Button><Button variant="outline" size="icon-sm" aria-label={m['design.move_up']()} onclick={() => void reorder(1)}><ArrowUp /></Button><div class="flex-1"></div><Button variant="destructive" size="icon-sm" disabled={selected.locked} aria-label={m['design.delete']()} onclick={() => void removeSelected()}><Trash2 /></Button></div>
         </div>
       {:else if selectedElements.length > 1}
-        <div class="space-y-3 p-3"><p class="text-xs font-medium">{m['design.multiple_selection']({ count: String(selectedElements.length) })}</p><p class="text-[10px] leading-4 text-[var(--app-text-muted)]">{m['design.alignment']()} · {m['design.boolean']()} · {m['design.mask']()}</p><Button variant="destructive" size="sm" class="w-full" onclick={() => void removeSelected()}><Trash2 size={13} />{m['design.delete']()}</Button></div>
+        <div class="space-y-4 p-3">
+          <p class="text-xs font-medium">{m['design.multiple_selection']({ count: String(selectedElements.length) })}</p>
+          <section class="space-y-2">
+            <h3 class="text-[11px] font-semibold text-[var(--app-text-soft)]">{m['design.alignment']()}</h3>
+            <div class="grid grid-cols-4 gap-1">
+              <Button variant="outline" size="icon-sm" title={m['design.align_left']()} aria-label={m['design.align_left']()} onclick={() => void alignSelection('left')}><AlignHorizontalJustifyStart size={14} /></Button>
+              <Button variant="outline" size="icon-sm" title={m['design.align_horizontal_center']()} aria-label={m['design.align_horizontal_center']()} onclick={() => void alignSelection('hcenter')}><AlignHorizontalJustifyCenter size={14} /></Button>
+              <Button variant="outline" size="icon-sm" title={m['design.align_right']()} aria-label={m['design.align_right']()} onclick={() => void alignSelection('right')}><AlignHorizontalJustifyEnd size={14} /></Button>
+              <Button variant="outline" size="icon-sm" title={m['design.distribute_horizontal']()} aria-label={m['design.distribute_horizontal']()} disabled={selectedElements.length < 3} onclick={() => void alignSelection('distribute-x')}><AlignHorizontalDistributeCenter size={14} /></Button>
+              <Button variant="outline" size="icon-sm" title={m['design.align_top']()} aria-label={m['design.align_top']()} onclick={() => void alignSelection('top')}><AlignVerticalJustifyStart size={14} /></Button>
+              <Button variant="outline" size="icon-sm" title={m['design.align_vertical_center']()} aria-label={m['design.align_vertical_center']()} onclick={() => void alignSelection('vcenter')}><AlignVerticalJustifyCenter size={14} /></Button>
+              <Button variant="outline" size="icon-sm" title={m['design.align_bottom']()} aria-label={m['design.align_bottom']()} onclick={() => void alignSelection('bottom')}><AlignVerticalJustifyEnd size={14} /></Button>
+              <Button variant="outline" size="icon-sm" title={m['design.distribute_vertical']()} aria-label={m['design.distribute_vertical']()} disabled={selectedElements.length < 3} onclick={() => void alignSelection('distribute-y')}><AlignVerticalDistributeCenter size={14} /></Button>
+            </div>
+          </section>
+          <section class="space-y-2">
+            <h3 class="text-[11px] font-semibold text-[var(--app-text-soft)]">{m['design.color_tools']()}</h3>
+            <DesignColorTools role="fill" color={primaryColor(selectedElements[0], 'fill')} matches={matchingColorLayers('fill', primaryColor(selectedElements[0], 'fill'))} selectionCount={selectedElements.length} onSelectMatches={() => { const color = primaryColor(selectedElements[0], 'fill'); if (color) selectMatchingColor('fill', color); }} onSelectLayer={(id) => (selectedIds = [id])} onApplySelection={(color) => void applyColorToSelection('fill', color)} onReplaceMatches={(color) => { const from = primaryColor(selectedElements[0], 'fill'); if (from) void replaceMatchingColor('fill', from, color); }} />
+            <DesignColorTools role="stroke" color={primaryColor(selectedElements[0], 'stroke')} matches={matchingColorLayers('stroke', primaryColor(selectedElements[0], 'stroke'))} selectionCount={selectedElements.length} onSelectMatches={() => { const color = primaryColor(selectedElements[0], 'stroke'); if (color) selectMatchingColor('stroke', color); }} onSelectLayer={(id) => (selectedIds = [id])} onApplySelection={(color) => void applyColorToSelection('stroke', color)} onReplaceMatches={(color) => { const from = primaryColor(selectedElements[0], 'stroke'); if (from) void replaceMatchingColor('stroke', from, color); }} />
+          </section>
+          <Button variant="outline" size="sm" class="w-full" onclick={() => void groupSelection()}><Group size={13} />{m['design.group_selection']()}</Button>
+          <p class="text-[10px] leading-4 text-[var(--app-text-muted)]">{m['design.boolean']()} · {m['design.mask']()}</p>
+          <Button variant="destructive" size="sm" class="w-full" onclick={() => void removeSelected()}><Trash2 size={13} />{m['design.delete']()}</Button>
+        </div>
       {:else}
         <div class="space-y-4 p-3"><p class="text-xs leading-5 text-[var(--app-text-muted)]">{m['design.no_selection']()}</p>{#if document?.guides.length}<section class="space-y-2"><h3 class="text-[11px] font-semibold">{m['design.rulers']()}</h3>{#each document.guides as guide}<div class="flex items-center gap-2"><span class="w-4 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">{guide.axis}</span><Input class="h-7 flex-1" type="number" value={guide.position} onchange={(event: Event) => void apply([{ kind: 'update-guide', guideId: guide.id, position: number(event) }], m['design.operation_guide'](), { inverse: [{ kind: 'update-guide', guideId: guide.id, position: guide.position }] })} /><Button variant="ghost" size="icon-sm" class="size-7" aria-label={m['design.remove_guide']()} onclick={() => void removeGuide(guide.id)}><Trash2 size={11} /></Button></div>{/each}</section>{/if}</div>
       {/if}

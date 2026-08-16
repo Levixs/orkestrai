@@ -8,12 +8,14 @@
     workspaceId = null,
     selectedId = null,
     selectedIds = [],
+    showFrameLabels = false,
   }: {
     elements: DesignElement[];
     assets?: DesignAsset[];
     workspaceId?: string | null;
     selectedId?: string | null;
     selectedIds?: string[];
+    showFrameLabels?: boolean;
   } = $props();
 
   const ordered = $derived(elements.filter((element) => element.visible).sort((a, b) => a.order - b.order));
@@ -102,18 +104,32 @@
     filter={element.effects.some((effect) => effect.visible) ? `url(#design-filter-${element.id})` : undefined}
     style={`mix-blend-mode:${element.blendMode}`}
   >
+    {#if element.type === 'path'}
+      <g data-design-hit>
+        <DesignElementShape
+          {element}
+          fill={element.pathClosed && fills(element).length ? 'transparent' : 'none'}
+          stroke="transparent"
+          strokeWidth={Math.max(12, element.strokeWidth)}
+          pointerEvents={element.pathClosed && fills(element).length ? 'all' : 'stroke'}
+        />
+      </g>
+    {:else if element.type === 'group'}
+      <rect data-design-hit x={element.x} y={element.y} width={element.width} height={element.height} fill="transparent" pointer-events="all" />
+    {:else}
+      <g data-design-hit><DesignElementShape {element} fill="transparent" pointerEvents="all" /></g>
+    {/if}
     {#if element.type === 'image'}
       <DesignElementShape {element} fill="transparent" assetUrl={assetUrl(element)} />
-    {:else}
+    {:else if element.type !== 'group'}
       {#each fills(element) as paint, index}
         <DesignElementShape {element} fill={paintValue(element, 'fill', paint, index)} fillOpacity={paint.opacity} />
       {/each}
     {/if}
-    {#each strokes(element) as paint, index}
-      <DesignElementShape {element} fill="none" stroke={paintValue(element, 'stroke', paint, index)} strokeOpacity={paint.opacity} strokeWidth={element.strokeWidth || 1} pointerEvents="none" />
-    {/each}
-    {#if element.type === 'frame'}
-      <text x={element.x} y={element.y - 8} fill="currentColor" font-family="Inter Variable, Inter, sans-serif" font-size="12" font-weight="600" pointer-events="none">{element.name}</text>
+    {#if element.type !== 'group'}
+      {#each strokes(element) as paint, index}
+        <DesignElementShape {element} fill="none" stroke={paintValue(element, 'stroke', paint, index)} strokeOpacity={paint.opacity} strokeWidth={element.strokeWidth || 1} pointerEvents="none" />
+      {/each}
     {/if}
     {#if selectedSet.has(element.id)}
       <rect
@@ -132,3 +148,22 @@
     {/if}
   </g>
 {/each}
+
+{#if showFrameLabels}
+  <g data-design-ui pointer-events="none">
+    {#each ordered.filter((element) => element.type === 'frame') as frame (frame.id)}
+      <text
+        x={frame.x}
+        y={Math.max(13, frame.y - 8)}
+        fill="#2563eb"
+        stroke={frame.y < 22 ? '#ffffff' : 'none'}
+        stroke-width={frame.y < 22 ? 3 : 0}
+        paint-order="stroke"
+        font-family="Inter Variable, Inter, sans-serif"
+        font-size="12"
+        font-weight="600"
+        transform={`rotate(${frame.rotation} ${frame.x + frame.width / 2} ${frame.y + frame.height / 2})`}
+      >{frame.name}</text>
+    {/each}
+  </g>
+{/if}

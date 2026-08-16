@@ -82,7 +82,7 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
         const parent = next.elements.find((element) => element.id === operation.element.parentId);
         if (!parent) throw new Error('Parent design element not found.');
         if (parent.pageId !== operation.element.pageId) throw new Error('Parent design element belongs to another page.');
-        if (parent.type !== 'frame') throw new Error('Only frames can contain design elements.');
+        if (parent.type !== 'frame' && parent.type !== 'group') throw new Error('Only frames and groups can contain design elements.');
       }
       if (operation.element.assetId && !next.assets.some((asset) => asset.id === operation.element.assetId)) {
         throw new Error('Design asset not found.');
@@ -140,7 +140,7 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       if (target.locked) throw new Error('Design element is locked.');
       if (operation.parentId) {
         const parent = next.elements.find((element) => element.id === operation.parentId);
-        if (!parent || parent.type !== 'frame' || parent.pageId !== target.pageId) throw new Error('Invalid design parent.');
+        if (!parent || (parent.type !== 'frame' && parent.type !== 'group') || parent.pageId !== target.pageId) throw new Error('Invalid design parent.');
         let ancestor: DesignElement | undefined = parent;
         while (ancestor) {
           if (ancestor.id === target.id) throw new Error('Design elements cannot contain themselves.');

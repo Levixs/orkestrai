@@ -10,6 +10,7 @@ const FRAME_ID = '00000000-0000-7000-8000-000000000005';
 const TEXT_ID = '00000000-0000-7000-8000-000000000006';
 const ASSET_ID = '00000000-0000-7000-8000-000000000007';
 const GUIDE_ID = '00000000-0000-7000-8000-000000000008';
+const GROUP_ID = '00000000-0000-7000-8000-000000000009';
 const NOW = '2026-08-16T12:00:00.000Z';
 
 function document(): DesignDocument {
@@ -64,6 +65,21 @@ describe('documento de Design', () => {
     });
     const deleted = applyDesignOperations(populated, [{ kind: 'delete', elementId: FRAME_ID }], NOW);
     expect(deleted.elements).toEqual([]);
+  });
+
+  it('mantem grupos como pais tipados e restaura filhos ao desagrupar', () => {
+    const grouped = applyDesignOperations(document(), [
+      designOperationSchema.parse({ kind: 'create', element: { id: GROUP_ID, pageId: PAGE_ID, parentId: null, type: 'group', name: 'Icon', x: 10, y: 20, width: 120, height: 80 } }),
+      designOperationSchema.parse({ kind: 'create', element: { id: TEXT_ID, pageId: PAGE_ID, parentId: GROUP_ID, type: 'path', name: 'Curve', x: 10, y: 20, width: 120, height: 80, pathPoints: [{ x: 0, y: 0 }, { x: 120, y: 80 }] } }),
+    ], NOW);
+
+    expect(grouped.elements.find((element) => element.id === TEXT_ID)?.parentId).toBe(GROUP_ID);
+    const ungrouped = applyDesignOperations(grouped, [
+      { kind: 'reparent', elementId: TEXT_ID, parentId: null, order: 0 },
+      { kind: 'delete', elementId: GROUP_ID },
+    ], NOW);
+    expect(ungrouped.elements).toHaveLength(1);
+    expect(ungrouped.elements[0]).toMatchObject({ id: TEXT_ID, parentId: null, type: 'path' });
   });
 
   it('protege elementos bloqueados contra mutacoes acidentais', () => {

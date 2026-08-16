@@ -84,8 +84,10 @@ Download the latest installers from
   anchor, segment, and Bezier-handle editing; box-select and transform vector
   points, continue open paths, resize layers directly, and edit text in place,
   combine shapes, use masks, gradients, effects, snapping, guides, auto layout,
-  grids, and responsive constraints; import reusable images or SVGs by picker,
-  paste, or drop and export SVG, PNG, JPEG, WebP, or PDF. A designer or leader
+  grids, and responsive constraints; import SVGs as editable hierarchical vector layers,
+  group or ungroup them, find and replace matching colors across the design,
+  and copy or export a selection as SVG or PNG. Raster images remain reusable
+  assets, while full documents export to SVG, PNG, JPEG, WebP, or PDF. A designer or leader
   can edit the exact same revision through typed Orkestrai tools while the UI
   updates live. Documents, assets, thumbnails, and history stay under
   `.orkestrai/designs` in the workspace.

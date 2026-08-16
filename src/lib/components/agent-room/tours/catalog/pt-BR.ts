@@ -438,12 +438,12 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'compose',
         title: 'Componha interfaces vetoriais responsivas',
-        body: 'Selecione pontos vetoriais por caixa e transforme-os juntos, redimensione qualquer camada pelas oito alças e edite texto multilinha diretamente no canvas. Use Shift para alinhar, distribuir, combinar ou mascarar camadas; adicione gradientes, efeitos, guias, snap e auto layout responsivo.',
+        body: 'Selecione pontos vetoriais por caixa e transforme-os juntos, redimensione qualquer camada pelas oito alças e edite texto multilinha diretamente no canvas. Use Shift para alinhar, distribuir, combinar, mascarar ou agrupar camadas; mova e redimensione descendentes do grupo juntos, selecione uma camada interna com Alt e encontre, selecione ou substitua cores iguais de preenchimento e contorno na página.',
       },
       {
         id: 'assets-export',
         title: 'Traga assets e exporte o trabalho aprovado',
-        body: 'Selecione, cole ou arraste imagens e SVGs para a biblioteca reutilizável de assets. Exporte a página completa em SVG, PNG, JPEG, WebP ou PDF; thumbnails vinculados à revisão mantêm prévias grandes rápidas no Canvas.',
+        body: 'Cole, arraste ou escolha um SVG para transformar paths, formas, transforms, estilos e gradientes em camadas nativas editáveis. Imagens raster continuam na biblioteca reutilizável. Copie a seleção como SVG ou PNG ou exporte a seleção ou página inteira em SVG, PNG, JPEG, WebP ou PDF.',
       },
       {
         id: 'designer',

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const designElementTypeSchema = z.enum(['frame', 'rectangle', 'ellipse', 'text', 'path', 'image']);
+export const designElementTypeSchema = z.enum(['frame', 'group', 'rectangle', 'ellipse', 'text', 'path', 'image']);
 const legacyDesignPaintSchema = z.string().trim().regex(/^(transparent|#[0-9a-f]{3,8})$/i).default('transparent');
 const designColorSchema = z.string().trim().regex(/^#[0-9a-f]{3,8}$/i);
 
@@ -182,7 +182,7 @@ export const designOperationSchema = z.discriminatedUnion('kind', [
 
 export const applyDesignOperationsSchema = z.object({
   baseRevision: z.number().int().min(0),
-  operations: z.array(designOperationSchema).min(1).max(200),
+  operations: z.array(designOperationSchema).min(1).max(2_000),
   actor: z.object({
     kind: z.enum(['user', 'agent', 'system']).default('user'),
     id: z.string().trim().max(120).nullable().default(null),

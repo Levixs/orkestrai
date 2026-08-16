@@ -9,6 +9,15 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- SVG files copied, pasted, dropped, or chosen in Design Mode are now parsed
+  into editable native vector layers, including paths, primitive shapes,
+  nested transforms and group hierarchy, inline and class styles, reusable
+  gradients, and `use` references. Designers can group and ungroup layers,
+  move or resize a group with its descendants, select or list every layer that
+  uses a fill or stroke color, apply one color to the current selection, and
+  replace matching solid or gradient-stop colors across the page. A selection
+  can be copied as SVG or PNG and exports crop to the selected artwork when a
+  selection exists.
 - Expanded native Design Mode with Pen paths and editable points, boolean
   operations, masks, multiple solid or gradient fills and strokes, visual
   effects, blend modes, rulers, persistent guides, snapping, alignment and

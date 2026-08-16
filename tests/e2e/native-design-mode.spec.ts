@@ -244,11 +244,111 @@ test.describe('Native Design Mode', () => {
       await page.getByRole('menuitem', { name: 'Export SVG', exact: true }).click();
       const exported = await download;
       expect(exported.suggestedFilename()).toMatch(/\.svg$/);
-      expect(readFileSync((await exported.path())!, 'utf8')).not.toContain('data-design-ui');
+      const exportedSvg = readFileSync((await exported.path())!, 'utf8');
+      expect(exportedSvg).not.toContain('data-design-ui');
+      expect(exportedSvg).not.toContain('data-design-hit');
 
       await expect.poll(async () => (await request.get(
         `/api/agent-room/workspaces/${workspace.id}/designs/${node.id}/thumbnail?revision=${current.revision}`,
       )).status(), { timeout: 10_000 }).toBe(200);
+      expect(pageErrors).toEqual([]);
+    } finally {
+      if (!page.isClosed()) await page.goto('about:blank');
+      await request.put('/api/agent-room/settings', { data: originalSettings });
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('pastes SVG as editable vectors and supports color-wide edits and grouping', async ({ page, request, context }) => {
+    test.setTimeout(90_000);
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-design-svg-e2e-'));
+    const originalSettings = (await (await request.get('/api/agent-room/settings')).json()).data as Record<string, string>;
+    const workspace = (await (await request.post('/api/agent-room/workspaces', {
+      data: { name: `E2E SVG vectors ${Date.now()}`, workingDir: dir },
+    })).json()).data as { id: string };
+    const node = (await (await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: { type: 'design', title: 'SVG vectors', x: 120, y: 120, width: 720, height: 520, payload: {} },
+    })).json()).data as { id: string };
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 140">
+      <defs>
+        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" />
+          <stop offset="100%" stop-color="#6633ff" />
+        </radialGradient>
+      </defs>
+      <style>.brand { fill: #ff0066; stroke: #202020; stroke-width: 2; }</style>
+      <g transform="translate(12 10)">
+        <rect id="logo-card" class="brand" x="0" y="0" width="100" height="80" rx="16" />
+        <path id="logo-curve" class="brand" transform="translate(112 4) rotate(8 50 40)" d="M4 68 C20 4 76 4 96 68 A44 28 0 0 1 4 68 Z" />
+        <circle id="logo-glow" cx="250" cy="40" r="36" fill="url(#glow)" />
+      </g>
+    </svg>`;
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+
+    try {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await request.put('/api/agent-room/settings', { data: { ...originalSettings, uiLanguage: 'en' } });
+      await page.goto(`/canvas?workspace=${workspace.id}&node=${node.id}&design=1`);
+      const editor = page.locator('[data-testid="canvas-design-mode"]');
+      await expect(editor).toBeVisible();
+      await editor.locator('main').click({ position: { x: 20, y: 20 } });
+      const imported = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.evaluate((source) => {
+        const data = new DataTransfer();
+        data.setData('text/plain', source);
+        window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
+      }, svg);
+      await imported;
+
+      let current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as {
+        revision: number;
+        assets: unknown[];
+        elements: Array<{ id: string; parentId: string | null; type: string; name: string; fills: Array<{ type: string; color?: string }>; pathPoints: unknown[] }>;
+      };
+      expect(current.assets).toHaveLength(0);
+      expect(current.elements.map((element) => element.type).sort()).toEqual(['group', 'group', 'path', 'path', 'path']);
+      expect(current.elements.filter((element) => element.type === 'path').every((element) => element.pathPoints.length > 2)).toBe(true);
+      const importedGroups = current.elements.filter((element) => element.type === 'group');
+      expect(importedGroups.find((element) => element.parentId !== null)?.parentId).toBe(importedGroups.find((element) => element.parentId === null)?.id);
+      expect(current.elements.filter((element) => element.type === 'path').every((element) => element.parentId === importedGroups.find((group) => group.parentId !== null)?.id)).toBe(true);
+      expect(current.elements.find((element) => element.name === 'logo-glow')?.fills[0]).toMatchObject({
+        type: 'radial-gradient', centerX: 0.5, centerY: 0.5, radius: 0.5,
+      });
+
+      await editor.getByRole('button', { name: 'logo-card', exact: true }).click();
+      await editor.getByRole('button', { name: 'Color tools', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Select all with the same fill', exact: true }).click();
+      await expect(editor.getByText('2 layers', { exact: true })).toBeVisible();
+
+      const grouped = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await editor.getByRole('button', { name: 'Group selection', exact: true }).first().click();
+      await grouped;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      const nestedGroup = current.elements.find((element) => element.type === 'group' && element.name.startsWith('Group'))!;
+      expect(current.elements.filter((element) => element.parentId === nestedGroup.id)).toHaveLength(2);
+
+      const ungrouped = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await editor.getByRole('button', { name: 'Ungroup selection', exact: true }).first().click();
+      await ungrouped;
+
+      await editor.getByRole('button', { name: 'logo-card', exact: true }).click();
+      await editor.getByRole('button', { name: /#FF0066 in 2 layers/ }).click();
+      await page.getByRole('textbox', { name: 'Replacement color', exact: true }).fill('#00aa88');
+      const recolored = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.getByRole('button', { name: 'Replace all 2', exact: true }).click();
+      await recolored;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      expect(current.elements.filter((element) => ['logo-card', 'logo-curve'].includes(element.name)).every((element) => element.fills.some((paint) => paint.type === 'solid' && paint.color === '#00aa88'))).toBe(true);
+      expect(current.elements.find((element) => element.name === 'logo-glow')?.fills[0]?.type).toBe('radial-gradient');
+
+      await editor.getByRole('button', { name: 'Export', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Copy selection as SVG', exact: true }).click();
+      await expect(page.getByText('Selection copied as SVG.', { exact: true })).toBeVisible();
+      await editor.getByRole('button', { name: 'Export', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Copy selection as PNG', exact: true }).click();
+      await expect(page.getByText('Selection copied as PNG.', { exact: true })).toBeVisible();
       expect(pageErrors).toEqual([]);
     } finally {
       if (!page.isClosed()) await page.goto('about:blank');

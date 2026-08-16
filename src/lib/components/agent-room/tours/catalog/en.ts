@@ -434,12 +434,12 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'compose',
         title: 'Compose responsive vector interfaces',
-        body: 'Box-select vector points and transform them together, resize any layer from eight handles, and edit multiline text directly on the canvas. Shift-select layers to align, distribute, combine, or mask them; add gradients, effects, guides, snapping, and responsive auto layout.',
+        body: 'Box-select vector points and transform them together, resize any layer from eight handles, and edit multiline text directly on the canvas. Shift-select layers to align, distribute, combine, mask, or group them; move and resize group descendants together, Alt-select a nested layer, and find, select, or replace matching fill and stroke colors across the page.',
       },
       {
         id: 'assets-export',
         title: 'Bring assets in and approved work out',
-        body: 'Choose, paste, or drop images and SVGs into the reusable asset library. Export the complete page as SVG, PNG, JPEG, WebP, or PDF; revision-bound thumbnails keep large Canvas previews fast.',
+        body: 'Paste, drop, or choose an SVG to turn its paths, shapes, transforms, styles, and gradients into editable native layers. Raster images stay in the reusable asset library. Copy a selection as SVG or PNG, or export the selection or full page as SVG, PNG, JPEG, WebP, or PDF.',
       },
       {
         id: 'designer',

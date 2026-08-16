@@ -91,6 +91,14 @@ These packages provide the local code editor and PDF preview. Their workers and
 assets are bundled with the desktop app so these surfaces remain available
 offline.
 
+## Design Studio Vector Import
+
+- `svg-pathdata`: Copyright Mikael Engel and contributors, MIT License.
+  Source: <https://github.com/nfroidure/svg-pathdata>
+
+This package converts SVG path commands into Orkestrai's editable native vector
+geometry. Orkestrai does not bundle or execute code from imported SVG files.
+
 ## Apple Simulator Integration
 
 - `serve-sim`: Copyright Evan Bacon and contributors, Apache License 2.0.
