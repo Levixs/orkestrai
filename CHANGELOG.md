@@ -9,6 +9,15 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Expanded native Design Mode with Pen paths and editable points, boolean
+  operations, masks, multiple solid or gradient fills and strokes, visual
+  effects, blend modes, rulers, persistent guides, snapping, alignment and
+  distribution. Frames now support horizontal, vertical, wrapping, and grid
+  auto layout plus responsive child constraints. Images and SVGs can be
+  imported by picker, paste, or drag and drop, reused from the document asset
+  library, and exported with the design to SVG, PNG, JPEG, WebP, or PDF.
+  Revision-bound raster thumbnails keep large Design nodes inexpensive on the
+  Canvas while preserving the live vector renderer as a fallback.
 - Added the first phase of Orkestrai's native Design Mode. A persistent Design
   node now opens the same structured visual document in Canvas and Workbench,
   with frames, rectangles, ellipses, text, layers, property editing, zoom,

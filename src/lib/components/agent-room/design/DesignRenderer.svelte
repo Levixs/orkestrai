@@ -1,68 +1,123 @@
 <script lang="ts">
-  import type { DesignElement } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
+  import type { DesignAsset, DesignElement, DesignPaint } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
+  import DesignElementShape from './DesignElementShape.svelte';
 
   let {
     elements,
+    assets = [],
+    workspaceId = null,
     selectedId = null,
+    selectedIds = [],
   }: {
     elements: DesignElement[];
+    assets?: DesignAsset[];
+    workspaceId?: string | null;
     selectedId?: string | null;
+    selectedIds?: string[];
   } = $props();
 
-  const visibleElements = $derived(elements.filter((element) => element.visible).sort((a, b) => a.order - b.order));
+  const ordered = $derived(elements.filter((element) => element.visible).sort((a, b) => a.order - b.order));
+  const selectedSet = $derived(new Set(selectedIds.length ? selectedIds : selectedId ? [selectedId] : []));
+  const elementMap = $derived(new Map(elements.map((element) => [element.id, element])));
+
+  function fills(element: DesignElement): DesignPaint[] {
+    const paints = element.fills.filter((paint) => paint.visible);
+    if (paints.length) return paints;
+    return element.fill === 'transparent' ? [] : [{ type: 'solid', color: element.fill, opacity: 1, visible: true }];
+  }
+
+  function strokes(element: DesignElement): DesignPaint[] {
+    const paints = element.strokes.filter((paint) => paint.visible);
+    if (paints.length) return paints;
+    return element.stroke === 'transparent' || element.strokeWidth <= 0
+      ? []
+      : [{ type: 'solid', color: element.stroke, opacity: 1, visible: true }];
+  }
+
+  function definitionId(element: DesignElement, role: string, index: number): string {
+    return `design-${role}-${element.id}-${index}`;
+  }
+
+  function paintValue(element: DesignElement, role: string, paint: DesignPaint, index: number): string {
+    return paint.type === 'solid' ? paint.color : `url(#${definitionId(element, role, index)})`;
+  }
+
+  function gradientVector(angle: number): { x1: number; y1: number; x2: number; y2: number } {
+    const radians = angle * Math.PI / 180;
+    const dx = Math.cos(radians) / 2;
+    const dy = Math.sin(radians) / 2;
+    return { x1: 0.5 - dx, y1: 0.5 - dy, x2: 0.5 + dx, y2: 0.5 + dy };
+  }
+
+  function assetUrl(element: DesignElement): string | null {
+    if (!workspaceId || !element.assetId) return null;
+    const asset = assets.find((item) => item.id === element.assetId);
+    return asset ? `/api/agent-room/workspaces/${workspaceId}/fs/raw?path=${encodeURIComponent(asset.path)}` : null;
+  }
+
+  function clippingId(element: DesignElement): string | null {
+    if (element.maskId) return `url(#design-clip-${element.maskId})`;
+    const parent = element.parentId ? elementMap.get(element.parentId) : null;
+    return parent?.clipContent ? `url(#design-clip-${parent.id})` : null;
+  }
 </script>
 
-{#each visibleElements as element (element.id)}
+<defs>
+  {#each ordered as element (element.id)}
+    <clipPath id={`design-clip-${element.id}`} clipPathUnits="userSpaceOnUse">
+      <DesignElementShape {element} fill="white" pointerEvents="none" />
+    </clipPath>
+    {#each [...fills(element), ...strokes(element)] as paint, index (`${element.id}-${index}`)}
+      {#if paint.type === 'linear-gradient'}
+        {@const vector = gradientVector(paint.angle)}
+        <linearGradient id={definitionId(element, index < fills(element).length ? 'fill' : 'stroke', index < fills(element).length ? index : index - fills(element).length)} x1={vector.x1} y1={vector.y1} x2={vector.x2} y2={vector.y2}>
+          {#each paint.stops as stop}<stop offset={stop.offset} stop-color={stop.color} stop-opacity={stop.opacity} />{/each}
+        </linearGradient>
+      {:else if paint.type === 'radial-gradient'}
+        <radialGradient id={definitionId(element, index < fills(element).length ? 'fill' : 'stroke', index < fills(element).length ? index : index - fills(element).length)} cx={paint.centerX} cy={paint.centerY} r={paint.radius}>
+          {#each paint.stops as stop}<stop offset={stop.offset} stop-color={stop.color} stop-opacity={stop.opacity} />{/each}
+        </radialGradient>
+      {/if}
+    {/each}
+    {#if element.effects.some((effect) => effect.visible)}
+      <filter id={`design-filter-${element.id}`} x="-100%" y="-100%" width="300%" height="300%" color-interpolation-filters="sRGB">
+        {#each element.effects.filter((effect) => effect.visible) as effect}
+          {#if effect.type === 'drop-shadow' || effect.type === 'inner-shadow'}
+            <feDropShadow dx={effect.x} dy={effect.y} stdDeviation={effect.blur / 2} flood-color={effect.color} />
+          {:else}
+            <feGaussianBlur stdDeviation={effect.blur / 2} />
+          {/if}
+        {/each}
+      </filter>
+    {/if}
+  {/each}
+</defs>
+
+{#each ordered.filter((element) => !element.isMask) as element (element.id)}
   <g
     data-design-element={element.id}
     opacity={element.opacity}
     transform={`rotate(${element.rotation} ${element.x + element.width / 2} ${element.y + element.height / 2})`}
+    clip-path={clippingId(element)}
+    filter={element.effects.some((effect) => effect.visible) ? `url(#design-filter-${element.id})` : undefined}
+    style={`mix-blend-mode:${element.blendMode}`}
   >
-    {#if element.type === 'ellipse'}
-      <ellipse
-        cx={element.x + element.width / 2}
-        cy={element.y + element.height / 2}
-        rx={element.width / 2}
-        ry={element.height / 2}
-        fill={element.fill}
-        stroke={element.stroke}
-        stroke-width={element.strokeWidth}
-      />
-    {:else if element.type === 'text'}
-      <rect x={element.x} y={element.y} width={element.width} height={element.height} fill="transparent" />
-      <text
-        x={element.textAlign === 'center' ? element.x + element.width / 2 : element.textAlign === 'right' ? element.x + element.width : element.x}
-        y={element.y + element.fontSize}
-        fill={element.fill}
-        font-family="Inter Variable, Inter, sans-serif"
-        font-size={element.fontSize}
-        font-weight={element.fontWeight}
-        text-anchor={element.textAlign === 'center' ? 'middle' : element.textAlign === 'right' ? 'end' : 'start'}
-      >{element.text || element.name}</text>
+    {#if element.type === 'image'}
+      <DesignElementShape {element} fill="transparent" assetUrl={assetUrl(element)} />
     {:else}
-      <rect
-        x={element.x}
-        y={element.y}
-        width={element.width}
-        height={element.height}
-        rx={element.cornerRadius}
-        fill={element.fill}
-        stroke={element.stroke}
-        stroke-width={element.strokeWidth}
-      />
-      {#if element.type === 'frame'}
-        <text
-          x={element.x}
-          y={element.y - 8}
-          fill="currentColor"
-          font-family="Inter Variable, Inter, sans-serif"
-          font-size="12"
-          font-weight="600"
-        >{element.name}</text>
-      {/if}
+      {#each fills(element) as paint, index}
+        <DesignElementShape {element} fill={paintValue(element, 'fill', paint, index)} fillOpacity={paint.opacity} />
+      {/each}
     {/if}
-    {#if selectedId === element.id}
+    {#each strokes(element) as paint, index}
+      <DesignElementShape {element} fill="none" stroke={paintValue(element, 'stroke', paint, index)} strokeOpacity={paint.opacity} strokeWidth={element.strokeWidth || 1} pointerEvents="none" />
+    {/each}
+    {#if element.type === 'frame'}
+      <text x={element.x} y={element.y - 8} fill="currentColor" font-family="Inter Variable, Inter, sans-serif" font-size="12" font-weight="600" pointer-events="none">{element.name}</text>
+    {/if}
+    {#if selectedSet.has(element.id)}
       <rect
+        data-design-selection
         x={element.x - 2}
         y={element.y - 2}
         width={element.width + 4}

@@ -428,8 +428,18 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'open',
         title: 'Abre el Modo Diseño',
-        body: 'Abre el mismo documento en el Modo Diseño a pantalla completa en Canvas. Elige una herramienta y arrastra para crear frames, rectángulos, elipses y texto con el tamaño que necesites; selecciona, mueve, ordena, bloquea, oculta, cambia colores y tamaños, deshaz o rehace cambios.',
+        body: 'Abre el mismo documento en el Modo Diseño a pantalla completa en Canvas. Elige una herramienta y arrastra para crear frames, rectángulos, elipses, texto y paths editables con Pluma en el tamaño que necesites; selecciona, mueve, ordena, bloquea, oculta, redimensiona, deshaz o rehace cambios.',
         action: { kind: 'openDesign', title: 'Diseño de Interfaz' },
+      },
+      {
+        id: 'compose',
+        title: 'Compón interfaces vectoriales responsivas',
+        body: 'Usa Shift para seleccionar capas y alinear, distribuir, combinar o crear máscaras. Agrega gradientes, efectos, guías y ajuste, y configura el frame con auto layout horizontal, vertical, wrap o grid y constraints responsivas en sus hijos.',
+      },
+      {
+        id: 'assets-export',
+        title: 'Importa assets y exporta el trabajo aprobado',
+        body: 'Selecciona, pega o arrastra imágenes y SVGs a la biblioteca reutilizable de assets. Exporta la página completa como SVG, PNG, JPEG, WebP o PDF; las miniaturas vinculadas a la revisión mantienen rápidas las vistas grandes del Canvas.',
       },
       {
         id: 'designer',

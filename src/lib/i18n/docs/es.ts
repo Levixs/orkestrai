@@ -83,7 +83,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'design-mode',
       title: 'Modo Diseño nativo',
-      body: `Agrega Diseño desde la barra del Canvas para crear un documento visual estructurado guardado en .orkestrai/designs dentro del proyecto. Haz doble clic en la vista previa o usa la acción de expandir para abrir el Modo Diseño; el mismo documento también se abre como elemento completo del Workbench. Elige frame, rectángulo, elipse o texto y arrastra en la página para crearlo con el tamaño que necesites; un clic simple usa el tamaño predeterminado. Selecciona, mueve, ordena, bloquea, oculta, renombra, redimensiona, cambia colores, trazo, radio, opacidad y tipografía, o deshaz y rehace operaciones. Delete elimina solo la capa seleccionada y Escape cancela la herramienta activa. Cada mutación registra una revisión y un historial limitado. Conecta el nodo Diseño al líder o especialista para que lea el scene graph actual y lo edite mediante tools MCP tipadas de Orkestrai. Las ediciones humanas y de agentes usan control optimista de revisión, actualizan los editores abiertos en vivo y nunca requieren que un agente reescriba el archivo JSON directamente.`,
+      body: `Agrega Diseño desde la barra del Canvas para crear un documento visual estructurado guardado en .orkestrai/designs dentro del proyecto. Haz doble clic en la vista previa o usa expandir para abrir el Modo Diseño; el mismo documento se abre como elemento completo de Workbench. Dibuja frames, rectángulos, elipses, texto y paths con Pluma en cualquier tamaño. Usa Shift para seleccionar capas, alinear, distribuir, combinar por unión, resta, intersección o exclusión y crear o liberar máscaras. Edita puntos y manejadores de paths; apila rellenos y trazos sólidos o con gradiente lineal/radial; agrega sombras, blur, blend modes, reglas, guías persistentes y ajuste. Los frames admiten auto layout horizontal, vertical, con wrap o grid, padding y gaps, mientras las constraints de los hijos responden al redimensionamiento. Importa PNG, JPEG, WebP, GIF o SVG por selector, portapapeles o arrastrar y soltar, reutiliza el asset y exporta la página como SVG, PNG, JPEG, WebP o PDF. Delete elimina solo las capas seleccionadas, Escape cancela la herramienta y deshacer/rehacer usa operaciones tipadas. Cada mutación registra una revisión e historial limitado; las miniaturas vinculadas a la revisión mantienen ligeras las vistas grandes del Canvas. Conecta el nodo Diseño al líder o especialista para que lea y edite el scene graph exacto mediante tools MCP tipadas de Orkestrai. Las ediciones humanas y de agentes usan control optimista de revisión, actualizan los editores en vivo y nunca requieren reescribir el JSON directamente.`,
     },
     {
       id: 'presets',
@@ -270,8 +270,8 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'design-figma',
       title: 'Diseña una interfaz junto con tu equipo de IA',
-      body: 'Agrega un nodo Diseño nativo y ábrelo en el Modo Diseño del Canvas o en Workbench. Crea manualmente los primeros frames y textos y luego conecta el documento al Diseñador o líder. El agente lee la revisión actual exacta, aplica operaciones tipadas sobre los elementos y verifica el resultado mientras tu editor se actualiza en vivo. El documento y su historial de revisiones quedan en el workspace y siguen disponibles en la búsqueda junto con tareas, notas, archivos, portales y el resto del equipo.',
-      tags: ['Modo Diseño nativo', 'manual + agentes', 'historial de revisiones'],
+      body: 'Agrega un nodo Diseño nativo y ábrelo en el Modo Diseño del Canvas o en Workbench. Crea paths vectoriales, máscaras, gradientes, frames responsivos con auto layout y assets de imagen reutilizables, y luego conecta el documento al Diseñador o líder. El agente lee la revisión actual exacta, aplica las mismas operaciones tipadas de elementos, assets, guías y layout y verifica el resultado mientras tu editor se actualiza en vivo. Exporta la página aprobada en SVG, PNG, JPEG, WebP o PDF. Documento, assets, miniaturas e historial de revisiones quedan en el workspace y siguen disponibles en la búsqueda junto con tareas, notas, archivos, portales y el resto del equipo.',
+      tags: ['Modo Diseño nativo', 'vectores + auto layout', 'manual + agentes'],
     },
     {
       id: 'mcp-tools',
@@ -386,6 +386,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: 'En desarrollo',
       items: [
+        'El Modo Diseño nativo incorpora paths de Pluma editables, operaciones booleanas, máscaras, múltiples pinturas sólidas o con gradiente, efectos y blend modes; ajuste, reglas, guías, alineación y distribución; auto layout responsivo horizontal, vertical, con wrap o grid; assets reutilizables de imagen/SVG importados por selector, pegado o arrastre; exportación SVG, PNG, JPEG, WebP y PDF; y miniaturas raster vinculadas a la revisión para vistas grandes eficientes en Canvas.',
         'Se agregó la primera fase del Modo Diseño nativo: nodos Diseño persistentes compartidos por Canvas y Workbench, scene graph estructurado con frames, rectángulos, elipses y texto, edición manual de propiedades, capas, zoom, deshacer/rehacer, historial de revisiones, actualizaciones en vivo de agentes y operaciones tipadas por CLI/MCP con protección contra conflictos. Las formas ahora se crean arrastrando con vista previa y tamaño libre; Delete queda aislado en el editor y ya no elimina el nodo Diseño del Canvas; la rotación y alineación de texto están disponibles en las propiedades.',
       ],
     },

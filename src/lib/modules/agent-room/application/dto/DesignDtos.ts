@@ -1,4 +1,4 @@
-import type { ApplyDesignOperationsInput, DesignOperation } from '../../contracts/schemas/designSchemas.js';
+import type { ApplyDesignOperationsInput, DesignOperation, ExportDesignPdfInput, ImportDesignAssetInput, UploadDesignThumbnailInput } from '../../contracts/schemas/designSchemas.js';
 
 export class ApplyDesignOperationsDto {
   constructor(
@@ -19,5 +19,53 @@ export class ApplyDesignOperationsDto {
       input.actor,
       input.summary,
     );
+  }
+}
+
+export class ExportDesignPdfDto {
+  constructor(
+    public readonly dataUrl: string,
+    public readonly width: number,
+    public readonly height: number,
+    public readonly name: string,
+  ) {}
+
+  static from(input: ExportDesignPdfInput): ExportDesignPdfDto {
+    return new ExportDesignPdfDto(input.dataUrl, input.width, input.height, input.name);
+  }
+}
+
+export class ImportDesignAssetDto {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly nodeId: string,
+    public readonly file: File,
+    public readonly baseRevision: number,
+    public readonly width: number | null,
+    public readonly height: number | null,
+  ) {}
+
+  static from(workspaceId: string, nodeId: string, input: ImportDesignAssetInput): ImportDesignAssetDto {
+    return new ImportDesignAssetDto(
+      workspaceId,
+      nodeId,
+      input.file,
+      input.baseRevision,
+      input.width,
+      input.height,
+    );
+  }
+}
+
+export class UploadDesignThumbnailDto {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly nodeId: string,
+    public readonly file: File,
+    public readonly revision: number,
+  ) {}
+
+  static from(workspaceId: string, nodeId: string, input: UploadDesignThumbnailInput): UploadDesignThumbnailDto {
+    return new UploadDesignThumbnailDto(workspaceId, nodeId, input.file, input.revision);
   }
 }

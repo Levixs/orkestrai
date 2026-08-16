@@ -432,8 +432,18 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'open',
         title: 'Abra o Modo Design',
-        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Escolha uma ferramenta e arraste para criar frames, retângulos, elipses e textos no tamanho desejado; selecione, mova, ordene, bloqueie, oculte, altere cores e dimensões, desfaça ou refaça mudanças.',
+        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Escolha uma ferramenta e arraste para criar frames, retângulos, elipses, textos e paths editáveis com a Caneta no tamanho desejado; selecione, mova, ordene, bloqueie, oculte, redimensione, desfaça ou refaça mudanças.',
         action: { kind: 'openDesign', title: 'Design de Interface' },
+      },
+      {
+        id: 'compose',
+        title: 'Componha interfaces vetoriais responsivas',
+        body: 'Use Shift para selecionar camadas e alinhar, distribuir, combinar ou criar máscaras. Adicione gradientes, efeitos, guias e snap, depois configure o frame com auto layout horizontal, vertical, wrap ou grid e constraints responsivas nos filhos.',
+      },
+      {
+        id: 'assets-export',
+        title: 'Traga assets e exporte o trabalho aprovado',
+        body: 'Selecione, cole ou arraste imagens e SVGs para a biblioteca reutilizável de assets. Exporte a página completa em SVG, PNG, JPEG, WebP ou PDF; thumbnails vinculados à revisão mantêm prévias grandes rápidas no Canvas.',
       },
       {
         id: 'designer',

@@ -64,6 +64,13 @@ Baixe os instaladores mais recentes em
   atenção, revise seu screenshot recortado e contexto visual seguro e registre
   o feedback em uma tarefa nova para triagem do líder, uma tarefa atribuída ou
   uma tarefa existente. Segredos e estado oculto ficam de fora.
+- **Modo Design nativo:** crie documentos de interface no Canvas e abra o mesmo
+  artefato no Workbench. Desenhe paths vetoriais editáveis, combine formas, use
+  máscaras, gradientes, efeitos, snap, guias, auto layout, grids e constraints
+  responsivas; importe imagens ou SVGs reutilizáveis por seletor, colagem ou
+  arraste e exporte SVG, PNG, JPEG, WebP ou PDF. Designer e líder editam a mesma
+  revisão por tools tipadas enquanto a UI atualiza ao vivo. Documentos, assets,
+  thumbnails e histórico ficam em `.orkestrai/designs` no workspace.
 - **Decisões com Council:** abra Conselho pela barra do Canvas, pelo workspace
   no Workbench ou por `Cmd/Ctrl+K` e peça perspectivas independentes e limitadas por
   orçamento a dois a cinco agentes reais sobre uma tarefa ou objetivo, compare

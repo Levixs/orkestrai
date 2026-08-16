@@ -87,7 +87,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'design-mode',
       title: 'Modo Design nativo',
-      body: `Adicione Design pela barra do Canvas para criar um documento visual estruturado salvo em .orkestrai/designs dentro do projeto. Dê duplo-clique na prévia ou use a ação de expandir para abrir o Modo Design; o mesmo documento também abre como item completo no Workbench. Escolha frame, retângulo, elipse ou texto e arraste na página para criar no tamanho desejado; um clique simples usa o tamanho padrão. Selecione, mova, ordene, bloqueie, oculte, renomeie, redimensione, altere cores, stroke, raio, opacidade e tipografia, ou desfaça e refaça operações. Delete exclui somente a camada selecionada e Esc cancela a ferramenta ativa. Cada mutação registra revisão e histórico limitado. Conecte o node Design ao líder ou especialista para que ele leia o scene graph atual e edite por tools MCP tipadas do Orkestrai. Edições humanas e de agentes usam controle otimista de revisão, atualizam os editores abertos ao vivo e nunca exigem que um agente reescreva o arquivo JSON diretamente.`,
+      body: `Adicione Design pela barra do Canvas para criar um documento visual estruturado salvo em .orkestrai/designs dentro do projeto. Dê duplo-clique na prévia ou use expandir para abrir o Modo Design; o mesmo documento abre como item completo no Workbench. Desenhe frames, retângulos, elipses, textos e paths com a Caneta em qualquer tamanho. Use Shift para selecionar camadas, alinhar, distribuir, combinar por união, subtração, interseção ou exclusão e criar ou liberar máscaras. Edite pontos e alças dos paths; empilhe fills e strokes sólidos ou com gradiente linear/radial; adicione sombras, blur, blend modes, réguas, guias persistentes e snap. Frames aceitam auto layout horizontal, vertical, com wrap ou grid, padding e gaps, enquanto constraints dos filhos respondem ao redimensionamento. Importe PNG, JPEG, WebP, GIF ou SVG por seletor, clipboard ou arraste e solte, reutilize o asset e exporte a página como SVG, PNG, JPEG, WebP ou PDF. Delete remove apenas as camadas selecionadas, Esc cancela a ferramenta e desfazer/refazer usa operações tipadas. Cada mutação registra revisão e histórico limitado; thumbnails vinculados à revisão mantêm prévias grandes leves no Canvas. Conecte o node Design ao líder ou especialista para que ele leia e edite o scene graph exato por tools MCP tipadas do Orkestrai. Edições humanas e de agentes usam controle otimista de revisão, atualizam os editores ao vivo e nunca exigem reescrita direta do JSON.`,
     },
     {
       id: 'presets',
@@ -274,8 +274,8 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'design-figma',
       title: 'Desenhe uma interface junto com seu time de IA',
-      body: 'Adicione um node Design nativo e abra no Modo Design do Canvas ou no Workbench. Monte os primeiros frames e textos manualmente, depois conecte o documento ao Designer ou líder. O agente lê a revisão atual exata, aplica operações tipadas nos elementos e verifica o resultado enquanto seu editor atualiza ao vivo. O documento e seu histórico de revisões ficam no workspace e continuam pesquisáveis junto com tarefas, notas, arquivos, portais e o restante do time.',
-      tags: ['Modo Design nativo', 'manual + agentes', 'histórico de revisões'],
+      body: 'Adicione um node Design nativo e abra no Modo Design do Canvas ou no Workbench. Monte paths vetoriais, máscaras, gradientes, frames responsivos com auto layout e assets de imagem reutilizáveis, depois conecte o documento ao Designer ou líder. O agente lê a revisão atual exata, aplica as mesmas operações tipadas de elementos, assets, guias e layout e verifica o resultado enquanto seu editor atualiza ao vivo. Exporte a página aprovada em SVG, PNG, JPEG, WebP ou PDF. Documento, assets, thumbnails e histórico de revisões ficam no workspace e continuam pesquisáveis junto com tarefas, notas, arquivos, portais e o restante do time.',
+      tags: ['Modo Design nativo', 'vetores + auto layout', 'manual + agentes'],
     },
     {
       id: 'mcp-tools',
@@ -390,6 +390,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: 'Em desenvolvimento',
       items: [
+        'O Modo Design nativo ganhou paths de Caneta editáveis, operações booleanas, máscaras, múltiplas pinturas sólidas ou com gradiente, efeitos e blend modes; snap, réguas, guias, alinhamento e distribuição; auto layout responsivo horizontal, vertical, com wrap ou grid; assets reutilizáveis de imagem/SVG importados por seletor, colagem ou arraste; exportação SVG, PNG, JPEG, WebP e PDF; e thumbnails raster vinculados à revisão para prévias grandes eficientes no Canvas.',
         'Adicionada a primeira fase do Modo Design nativo: nodes Design persistentes e compartilhados por Canvas e Workbench, scene graph estruturado com frames, retângulos, elipses e textos, edição manual de propriedades, camadas, zoom, desfazer/refazer, histórico de revisões, atualização ao vivo por agentes e operações tipadas na CLI/MCP com proteção contra conflitos. Formas agora são criadas por arraste com preview e tamanho livre; Delete fica isolado no editor e não remove mais o node Design do Canvas; rotação e alinhamento de texto estão disponíveis nas propriedades.',
       ],
     },

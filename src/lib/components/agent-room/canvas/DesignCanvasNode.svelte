@@ -25,6 +25,9 @@
   let document = $state<DesignDocument | null>(null);
   let loading = $state(true);
   let failed = $state(false);
+  let thumbnailFailed = $state(false);
+  let thumbnailAttempt = $state(0);
+  let thumbnailRetry: ReturnType<typeof setTimeout> | null = null;
   const page = $derived(document?.pages.find((item) => item.id === document?.activePageId) ?? document?.pages[0] ?? null);
   const elements = $derived(document && page ? document.elements.filter((element) => element.pageId === page.id) : []);
 
@@ -36,6 +39,8 @@
       const payload = await response.json();
       if (!response.ok || payload.error) throw new Error(payload.error);
       document = payload.data;
+      thumbnailFailed = false;
+      thumbnailAttempt = 0;
     } catch {
       failed = true;
     } finally {
@@ -43,7 +48,22 @@
     }
   }
 
-  onMount(() => void load());
+  function retryThumbnail() {
+    thumbnailFailed = true;
+    if (thumbnailAttempt >= 6) return;
+    if (thumbnailRetry) clearTimeout(thumbnailRetry);
+    thumbnailRetry = setTimeout(() => {
+      thumbnailAttempt += 1;
+      thumbnailFailed = false;
+    }, 900);
+  }
+
+  onMount(() => {
+    void load();
+    return () => {
+      if (thumbnailRetry) clearTimeout(thumbnailRetry);
+    };
+  });
 
   $effect(() => {
     const revision = data.designRevision ?? 0;
@@ -80,9 +100,18 @@
     {:else if failed || !document || !page}
       <span class="absolute inset-0 grid place-items-center text-xs text-[var(--app-danger)]">{m['design.error_load']()}</span>
     {:else}
-      <svg class="h-full w-full p-4" viewBox={`0 0 ${page.width} ${page.height}`} preserveAspectRatio="xMidYMid meet" style:background={page.background}>
-        <DesignRenderer {elements} />
-      </svg>
+      {#if !thumbnailFailed}
+        <img
+          class="h-full w-full object-contain p-4"
+          src={`/api/agent-room/workspaces/${data.workspaceId}/designs/${id}/thumbnail?revision=${document.revision}&attempt=${thumbnailAttempt}`}
+          alt=""
+          onerror={retryThumbnail}
+        />
+      {:else}
+        <svg class="h-full w-full p-4" viewBox={`0 0 ${page.width} ${page.height}`} preserveAspectRatio="xMidYMid meet" style:background={page.background}>
+          <DesignRenderer {elements} assets={document.assets} workspaceId={data.workspaceId} />
+        </svg>
+      {/if}
       <span class="absolute bottom-2 left-2 rounded bg-[var(--app-surface)]/90 px-1.5 py-1 text-[9px] text-[var(--app-text-muted)] shadow-sm">
         {m['design.layers_count']({ count: elements.length })} · {m['design.revision']({ revision: document.revision })}
       </span>

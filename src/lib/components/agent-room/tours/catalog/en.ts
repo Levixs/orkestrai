@@ -428,8 +428,18 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open',
         title: 'Open Design Mode',
-        body: 'Open the same document in the full Canvas Design Mode. Choose a tool and drag to create frames, rectangles, ellipses, and text at the size you need; select, move, order, lock, hide, recolor, resize, and undo or redo changes.',
+        body: 'Open the same document in full Canvas Design Mode. Choose a tool and drag to create frames, rectangles, ellipses, text, and editable Pen paths at the size you need; select, move, order, lock, hide, resize, and undo or redo changes.',
         action: { kind: 'openDesign', title: 'Interface Design' },
+      },
+      {
+        id: 'compose',
+        title: 'Compose responsive vector interfaces',
+        body: 'Shift-select layers to align, distribute, combine, or mask them. Add gradients, effects, guides, and snapping, then make a frame use horizontal, vertical, wrapping, or grid auto layout with responsive child constraints.',
+      },
+      {
+        id: 'assets-export',
+        title: 'Bring assets in and approved work out',
+        body: 'Choose, paste, or drop images and SVGs into the reusable asset library. Export the complete page as SVG, PNG, JPEG, WebP, or PDF; revision-bound thumbnails keep large Canvas previews fast.',
       },
       {
         id: 'designer',

@@ -80,9 +80,12 @@ Download the latest installers from
   a new leader-triage task, a task assigned to an agent, or an existing task.
   Browser secrets and hidden state stay excluded.
 - **Native Design Mode:** create structured interface documents directly on the
-  Canvas and open the same artifact in Workbench. Build frames, shapes, and text
-  manually or connect a designer or leader that edits through typed Orkestrai
-  tools with revision checks and live updates. Documents and history stay under
+  Canvas and open the same artifact in Workbench. Draw editable vector paths,
+  combine shapes, use masks, gradients, effects, snapping, guides, auto layout,
+  grids, and responsive constraints; import reusable images or SVGs by picker,
+  paste, or drop and export SVG, PNG, JPEG, WebP, or PDF. A designer or leader
+  can edit the exact same revision through typed Orkestrai tools while the UI
+  updates live. Documents, assets, thumbnails, and history stay under
   `.orkestrai/designs` in the workspace.
 - **Council decisions:** open Council from the Canvas toolbar, the workspace in
   Workbench, or `Cmd/Ctrl+K`, then ask two to five real agents for independent,

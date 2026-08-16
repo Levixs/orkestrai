@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyDesignOperations } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
-import { designDocumentSchema, designOperationSchema, type DesignDocument } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
+import { designDocumentSchema, designOperationSchema, uploadDesignThumbnailSchema, type DesignDocument } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
 
 const WORKSPACE_ID = '00000000-0000-7000-8000-000000000001';
 const NODE_ID = '00000000-0000-7000-8000-000000000002';
@@ -8,6 +8,8 @@ const DOCUMENT_ID = '00000000-0000-7000-8000-000000000003';
 const PAGE_ID = '00000000-0000-7000-8000-000000000004';
 const FRAME_ID = '00000000-0000-7000-8000-000000000005';
 const TEXT_ID = '00000000-0000-7000-8000-000000000006';
+const ASSET_ID = '00000000-0000-7000-8000-000000000007';
+const GUIDE_ID = '00000000-0000-7000-8000-000000000008';
 const NOW = '2026-08-16T12:00:00.000Z';
 
 function document(): DesignDocument {
@@ -102,5 +104,74 @@ describe('documento de Design', () => {
     expect(renamed.name).toBe('Design system');
     expect(renamed.elements).toEqual([]);
     expect(renamed.updatedAt).toBe(NOW);
+  });
+
+  it('mantem paints, efeitos, paths e layout retrocompativeis no schema v1', () => {
+    const parsed = designDocumentSchema.parse({
+      ...document(),
+      elements: [{
+        id: FRAME_ID,
+        pageId: PAGE_ID,
+        parentId: null,
+        type: 'path',
+        name: 'Gradient path',
+        x: 10,
+        y: 20,
+        width: 100,
+        height: 80,
+        order: 0,
+        pathClosed: true,
+        pathPoints: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 50, y: 80 }],
+        fills: [{
+          type: 'linear-gradient',
+          angle: 45,
+          stops: [{ offset: 0, color: '#ff0000' }, { offset: 1, color: '#0000ff' }],
+        }],
+        effects: [{ type: 'drop-shadow', color: '#00000040', x: 0, y: 4, blur: 12 }],
+      }],
+    });
+
+    expect(parsed.elements[0]).toMatchObject({ type: 'path', pathClosed: true, layoutMode: 'none' });
+    expect(parsed.elements[0].fills[0]).toMatchObject({ type: 'linear-gradient', angle: 45, opacity: 1 });
+    expect(parsed.elements[0].effects[0]).toMatchObject({ type: 'drop-shadow', visible: true });
+  });
+
+  it('controla assets, guias e reparent pelo mesmo command bus', () => {
+    const asset = {
+      id: ASSET_ID,
+      name: 'hero.png',
+      path: `.orkestrai/designs/assets/${NODE_ID}/${ASSET_ID}-hero.png`,
+      mimeType: 'image/png' as const,
+      size: 1024,
+      width: 640,
+      height: 480,
+      createdAt: NOW,
+    };
+    const populated = applyDesignOperations(document(), [
+      { kind: 'add-asset', asset },
+      { kind: 'add-guide', guide: { id: GUIDE_ID, axis: 'x', position: 120 } },
+      designOperationSchema.parse({ kind: 'create', element: { id: FRAME_ID, pageId: PAGE_ID, parentId: null, type: 'frame', name: 'Frame', x: 0, y: 0, width: 300, height: 500 } }),
+      designOperationSchema.parse({ kind: 'create', element: { id: TEXT_ID, pageId: PAGE_ID, parentId: null, type: 'image', name: 'Hero', x: 20, y: 20, width: 200, height: 120, assetId: ASSET_ID } }),
+      { kind: 'reparent', elementId: TEXT_ID, parentId: FRAME_ID },
+    ], NOW);
+
+    expect(populated.assets).toEqual([asset]);
+    expect(populated.guides[0]).toMatchObject({ axis: 'x', position: 120 });
+    expect(populated.elements.find((element) => element.id === TEXT_ID)?.parentId).toBe(FRAME_ID);
+    expect(() => applyDesignOperations(populated, [{ kind: 'delete-asset', assetId: ASSET_ID }], NOW)).toThrow('still used');
+  });
+
+  it('aceita apenas thumbnails PNG associados a uma revisao', () => {
+    const parsed = uploadDesignThumbnailSchema.parse({
+      file: new File([new Uint8Array([137, 80, 78, 71])], 'preview.png', { type: 'image/png' }),
+      revision: '4',
+    });
+
+    expect(parsed.revision).toBe(4);
+    expect(parsed.file.type).toBe('image/png');
+    expect(() => uploadDesignThumbnailSchema.parse({
+      file: new File(['svg'], 'preview.svg', { type: 'image/svg+xml' }),
+      revision: 4,
+    })).toThrow();
   });
 });
