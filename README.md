@@ -87,9 +87,15 @@ Download the latest installers from
   grids, and responsive constraints; import SVGs as editable hierarchical vector layers,
   group or ungroup them, find and replace matching colors across the design,
   and copy or export a selection as SVG or PNG. Create typed design tokens in
-  collections with multiple modes, aliases, and property bindings; switching a
-  mode updates every bound layer immediately and agents use the same
-  revision-safe operations through MCP. Raster images remain reusable
+  collections with multiple modes, aliases, presets, DTCG/CSS import, and
+  DTCG/CSS/Tailwind export; audit repetition and bind compatible properties.
+  Turn frames into reusable components with linked instances, properties,
+  variants, slots, and local overrides. Publish versioned libraries only to
+  authorized workspaces, and statically extract CSS variables, Tailwind tokens,
+  and Svelte, React, or Vue component contracts without executing project code.
+  Switching a mode updates every bound layer immediately, components and tokens
+  are searchable, and agents use the same revision-safe operations through MCP.
+  Raster images remain reusable
   assets, while full documents export to SVG, PNG, JPEG, WebP, or PDF. A designer or leader
   can edit the exact same revision through typed Orkestrai tools while the UI
   updates live. Documents, assets, thumbnails, and history stay under

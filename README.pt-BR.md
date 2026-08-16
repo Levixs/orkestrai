@@ -68,8 +68,13 @@ Baixe os instaladores mais recentes em
   artefato no Workbench. Desenhe paths vetoriais editáveis, combine formas, use
   máscaras, gradientes, efeitos, snap, guias, auto layout, grids e constraints
   responsivas; importe imagens ou SVGs reutilizáveis por seletor, colagem ou
-  arraste e exporte SVG, PNG, JPEG, WebP ou PDF. Designer e líder editam a mesma
-  revisão por tools tipadas enquanto a UI atualiza ao vivo. Documentos, assets,
+  arraste e exporte SVG, PNG, JPEG, WebP ou PDF. Crie tokens com presets, modos,
+  aliases, importação DTCG/CSS, exportação DTCG/CSS/Tailwind e auditoria. Transforme
+  frames em componentes com instâncias, propriedades, variantes, slots e overrides;
+  publique bibliotecas versionadas somente para workspaces autorizados e extraia
+  CSS variables, Tailwind e contratos Svelte, React ou Vue sem executar código do
+  projeto. Designer e líder editam a mesma revisão por tools tipadas enquanto a UI
+  atualiza ao vivo. Componentes e tokens entram na busca; documentos, assets,
   thumbnails e histórico ficam em `.orkestrai/designs` no workspace.
 - **Decisões com Council:** abra Conselho pela barra do Canvas, pelo workspace
   no Workbench ou por `Cmd/Ctrl+K` e peça perspectivas independentes e limitadas por

@@ -113,8 +113,8 @@
           <DesignRenderer {elements} assets={document.assets} workspaceId={data.workspaceId} />
         </svg>
       {/if}
-      <span class="absolute bottom-2 left-2 rounded bg-[var(--app-surface)]/90 px-1.5 py-1 text-[9px] text-[var(--app-text-muted)] shadow-sm">
-        {m['design.layers_count']({ count: elements.length })} · {m['design.revision']({ revision: document.revision })}
+      <span class="absolute right-2 bottom-2 left-2 truncate rounded bg-[var(--app-surface)]/90 px-1.5 py-1 text-[9px] text-[var(--app-text-muted)] shadow-sm">
+        {m['design.layers_count']({ count: elements.length })} · {document.components.length} {m['design.components']()} · {document.variables.length} {m['design.tokens']()} · {m['design.revision']({ revision: document.revision })}
       </span>
     {/if}
   </button>

@@ -23,6 +23,7 @@
     ClipboardCopy,
     Combine,
     CornerDownRight,
+    Diamond,
     Download,
     Eye,
     EyeOff,
@@ -89,6 +90,7 @@
   import { resolveDesignElements } from '$lib/modules/agent-room/domain/design-variables.js';
   import * as m from '$lib/paraglide/messages.js';
   import DesignColorTools from './DesignColorTools.svelte';
+  import DesignComponentsPanel from './DesignComponentsPanel.svelte';
   import DesignPaintEditor from './DesignPaintEditor.svelte';
   import DesignRenderer from './DesignRenderer.svelte';
   import DesignToolbarButton from './DesignToolbarButton.svelte';
@@ -149,7 +151,7 @@
   let snapLinesY = $state<number[]>([]);
   let exporting = $state(false);
   let colorMenuOpen = $state(false);
-  let leftPanel = $state<'layers' | 'variables'>('layers');
+  let leftPanel = $state<'layers' | 'variables' | 'components'>('layers');
   let thumbnailRevision = $state(-1);
   let thumbnailTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -2400,9 +2402,10 @@
     </header>
 
     <aside class="flex min-h-0 flex-col border-r border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
-      <div class="grid grid-cols-2 border-b border-[var(--app-border)] p-1">
+      <div class="grid grid-cols-3 border-b border-[var(--app-border)] p-1">
         <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${leftPanel === 'layers' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={leftPanel === 'layers'} onclick={() => (leftPanel = 'layers')}><Layers3 size={12} />{m['design.layers']()}</button>
         <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${leftPanel === 'variables' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={leftPanel === 'variables'} onclick={() => (leftPanel = 'variables')}><Braces size={12} />{m['design.variables']()}</button>
+        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${leftPanel === 'components' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={leftPanel === 'components'} onclick={() => (leftPanel = 'components')}><Diamond size={12} />{m['design.components']()}</button>
       </div>
       {#if leftPanel === 'layers'}
         <div class="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_190px]">
@@ -2411,6 +2414,7 @@
               <div class="flex flex-col-reverse p-1">
                 {#each pageElements as element (element.id)}
                   <div class={`group flex h-8 items-center gap-1 rounded px-1 ${selectedIds.includes(element.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`} style:padding-left={`${4 + layerDepth(element) * 12}px`}>
+                    {#if element.componentId || element.instanceRootId === element.id}<Diamond size={10} class={`shrink-0 ${element.componentId ? 'text-[var(--app-accent)]' : 'text-[var(--app-info)]'}`} />{/if}
                     <button class="min-w-0 flex-1 truncate px-1 text-left text-[11px]" onclick={(event) => { vectorEditId = null; pathPointSelections = []; if (event.shiftKey) selectedIds = selectedIds.includes(element.id) ? selectedIds.filter((id) => id !== element.id) : [...selectedIds, element.id]; else selectedIds = [element.id]; }} ondblclick={() => { if (element.type === 'path') enterVectorEdit(element); else if (element.type === 'text') beginTextEditing(element); }}>{element.name}</button>
                     <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.visible ? m['design.hide']() : m['design.show']()} onclick={() => void updateElement(element, { visible: !element.visible })}>{#if element.visible}<Eye size={12} />{:else}<EyeOff size={12} />{/if}</button>
                     <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.locked ? m['design.unlock']() : m['design.lock']()} onclick={() => void updateElement(element, { locked: !element.locked })}>{#if element.locked}<Lock size={12} />{:else}<Unlock size={12} />{/if}</button>
@@ -2434,8 +2438,10 @@
             {/if}
           </section>
         </div>
+      {:else if leftPanel === 'variables' && document}
+        <div class="min-h-0 flex-1"><DesignVariablesPanel {document} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onSelectElements={(elementIds) => { selectedIds = elementIds; vectorEditId = null; pathPointSelections = []; }} /></div>
       {:else if document}
-        <div class="min-h-0 flex-1"><DesignVariablesPanel {document} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} /></div>
+        <div class="min-h-0 flex-1"><DesignComponentsPanel {document} {selectedIds} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onSelectElements={(elementIds) => { selectedIds = elementIds; vectorEditId = null; pathPointSelections = []; }} onDocumentChange={(nextDocument) => { document = nextDocument; selectedIds = []; undoStack = []; redoStack = []; }} /></div>
       {/if}
     </aside>
 

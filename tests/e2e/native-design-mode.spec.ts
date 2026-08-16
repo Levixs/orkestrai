@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -422,6 +422,104 @@ test.describe('Native Design Mode', () => {
       await rebound;
       current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
       expect(current.elements.find((element) => element.id === rectangleId)?.variableBindings.fill).toBe(variableId);
+      expect(pageErrors).toEqual([]);
+    } finally {
+      if (!page.isClosed()) await page.goto('about:blank');
+      await request.put('/api/agent-room/settings', { data: originalSettings });
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('builds reusable components, token presets, code links, and a local library through the visible UI', async ({ page, request }) => {
+    test.setTimeout(90_000);
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-design-system-e2e-'));
+    writeFileSync(join(dir, 'app.css'), ':root { --color-brand: #3366ee; --space-control: 12px; }');
+    writeFileSync(join(dir, 'Button.svelte'), '<script lang="ts">let { label, disabled = false } = $props<{ label: string; disabled?: boolean }>();</script><button {disabled}>{label}</button>');
+    const originalSettings = (await (await request.get('/api/agent-room/settings')).json()).data as Record<string, string>;
+    const workspace = (await (await request.post('/api/agent-room/workspaces', {
+      data: { name: `E2E design system ${Date.now()}`, workingDir: dir },
+    })).json()).data as { id: string };
+    const node = (await (await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: { type: 'design', title: 'Product foundations', x: 120, y: 120, width: 720, height: 520, payload: {} },
+    })).json()).data as { id: string };
+    const initial = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as { revision: number; activePageId: string };
+    const rootId = randomUUID();
+    const textId = randomUUID();
+    await request.patch(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`, {
+      data: {
+        baseRevision: initial.revision,
+        operations: [
+          { kind: 'create', element: { id: rootId, pageId: initial.activePageId, parentId: null, type: 'frame', name: 'Button source', x: 180, y: 180, width: 220, height: 64, fill: '#3366ee' } },
+          { kind: 'create', element: { id: textId, pageId: initial.activePageId, parentId: rootId, type: 'text', name: 'Label', x: 210, y: 200, width: 160, height: 24, text: 'Continue' } },
+        ],
+        summary: 'Seed component source',
+        actor: { kind: 'user', id: null, name: null, taskId: null },
+      },
+    });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+
+    try {
+      await request.put('/api/agent-room/settings', { data: { ...originalSettings, uiLanguage: 'en' } });
+      await page.goto(`/canvas?workspace=${workspace.id}&node=${node.id}&design=1`);
+      const editor = page.locator('[data-testid="canvas-design-mode"]');
+      const sidebar = editor.locator('aside').first();
+      await expect(editor).toBeVisible();
+
+      await sidebar.getByRole('button', { name: 'Button source', exact: true }).click();
+      await sidebar.getByRole('button', { name: 'Components', exact: true }).click();
+      const componentCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await sidebar.getByRole('button', { name: 'Create component', exact: true }).click();
+      await componentCreated;
+      await expect(sidebar.getByText('Button source', { exact: true })).toBeVisible();
+
+      const instanceCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await sidebar.getByRole('button', { name: 'Create instance', exact: true }).click();
+      await instanceCreated;
+
+      await sidebar.getByRole('button', { name: 'Layers', exact: true }).click();
+      await sidebar.getByRole('button', { name: 'Label', exact: true }).last().click();
+      await sidebar.getByRole('button', { name: 'Components', exact: true }).click();
+      const exposeProperty = sidebar.getByRole('button', { name: 'Expose property', exact: true });
+      await expect(exposeProperty).toBeEnabled();
+      await exposeProperty.click();
+      const propertyCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.getByRole('menuitem', { name: 'Text', exact: true }).click();
+      await propertyCreated;
+
+      await sidebar.getByRole('button', { name: 'Variables', exact: true }).click();
+      await sidebar.getByRole('button', { name: 'Token presets', exact: true }).click();
+      const presetAdded = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.getByRole('menuitem', { name: 'Product foundation', exact: true }).click();
+      await presetAdded;
+      await expect(sidebar.getByLabel('Collection name')).toHaveValue('Product foundation');
+
+      await sidebar.getByRole('button', { name: 'Components', exact: true }).click();
+      await sidebar.getByRole('button', { name: 'Code', exact: true }).click();
+      await expect(sidebar.getByText('app.css', { exact: true })).toBeVisible();
+      const componentLinked = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await sidebar.getByRole('button', { name: /Button.*Button\.svelte/ }).click();
+      await componentLinked;
+      await expect(sidebar.getByText('Connected', { exact: true })).toBeVisible();
+
+      await sidebar.getByRole('button', { name: 'Libraries', exact: true }).click();
+      const published = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith(`/designs/${node.id}/libraries`));
+      await sidebar.getByRole('button', { name: 'Publish library', exact: true }).click();
+      await published;
+      await expect(sidebar.getByRole('button', { name: 'Update library', exact: true })).toBeVisible();
+
+      const current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as {
+        components: Array<{ id: string; codeConnect: { path: string } | null; properties: unknown[] }>;
+        variableCollections: unknown[];
+        variables: unknown[];
+        elements: Array<{ instanceOf: string | null }>;
+      };
+      expect(current.components[0].properties).toHaveLength(1);
+      expect(current.components[0].codeConnect?.path).toBe('Button.svelte');
+      expect(current.variableCollections).toHaveLength(1);
+      expect(current.variables.length).toBeGreaterThan(8);
+      expect(current.elements.some((element) => element.instanceOf === current.components[0].id)).toBe(true);
       expect(pageErrors).toEqual([]);
     } finally {
       if (!page.isClosed()) await page.goto('about:blank');

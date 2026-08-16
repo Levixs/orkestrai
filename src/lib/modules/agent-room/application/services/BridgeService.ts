@@ -927,7 +927,7 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_
 - \`orkestrai note write <nodeId> "<conteúdo>"\` — substitui o conteúdo da nota.
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edição pontual.
 - \`orkestrai design list\` / \`design read <nodeId>\` — lista e lê o scene graph de documentos visuais nativos conectados ao trabalho. Leia sempre a revisão atual antes de alterar.
-- Tool MCP \`design_apply_operations\` — command bus completo para elementos, grupos, vetores, guias, coleções, modos, variáveis, aliases e bindings. As tools \`design_create_element\`, \`design_update_element\` e \`design_delete_element\` são atalhos para operações simples. Passe \`taskId\` quando a alteração pertence a uma task. Trabalhe no ciclo ler → alterar usando \`baseRevision\` → ler e verificar; conflito exige reler, nunca sobrescrever o trabalho humano.
+- Tool MCP \`design_apply_operations\` — command bus completo para elementos, grupos, vetores, guias, tokens, modos, bindings, componentes, instâncias, propriedades, variantes, slots e links de bibliotecas. As tools \`design_create_element\`, \`design_update_element\` e \`design_delete_element\` são atalhos para operações simples. Passe \`taskId\` quando a alteração pertence a uma task. Trabalhe no ciclo ler → alterar usando \`baseRevision\` → ler e verificar; conflito exige reler, nunca sobrescrever o trabalho humano.
 - \`orkestrai design apply <nodeId> '<operations-json>' --revision <n> [--task <taskId>]\` — fallback CLI para as mesmas operações transacionais. Nunca edite \`.orkestrai/designs/*.json\` diretamente.
 - \`orkestrai task list\` — quadro de tarefas do workspace. Tarefas podem ter IMAGENS DE REFERÊNCIA (paths relativos ao workspace, ex.: .orkestrai/images/x.png) — leia o arquivo se a referência for útil para a execução.
 - \`orkestrai task columns\` — lista as etapas configuradas pelo usuário neste quadro. Nunca suponha que todo workspace usa somente "a fazer / fazendo / feito".
@@ -1086,7 +1086,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai usage` — cotas reais e recomendação do nó Usage; líderes consultam antes de delegar e roteiam novas tarefas ao recommendedProvider quando shouldFallback=true.',
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
-      '- `orkestrai design list/read/apply` — documentos visuais nativos com elementos, vetores, grupos, variaveis, modos e bindings; use preferencialmente a tool MCP design_apply_operations (ou os atalhos design_*) e sempre leia a revisao antes/depois de alterar.',
+      '- `orkestrai design list/read/apply` — documentos visuais nativos com elementos, vetores, grupos, tokens, modos, bindings, componentes, instancias, variantes e slots; use preferencialmente a tool MCP design_apply_operations (ou os atalhos design_*) e sempre leia a revisao antes/depois de alterar.',
       '- `orkestrai task list/columns/add/move/done` — quadro do time; consulte `task columns` e respeite as etapas personalizadas pelo usuário.',
       '- `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.',
       '- `orkestrai device list/attach/tap/swipe/pinch/type/permissions/tree/screenshot/stop` — device mobile visivel no Workbench; aparelhos Android fisicos so podem ser anexados pelo usuario apos confirmacao na UI.',

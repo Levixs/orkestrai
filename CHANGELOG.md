@@ -9,6 +9,19 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Completed the Design Systems phase of native Design Mode. Designers can start
+  from product, marketing, or mobile token presets; import DTCG JSON or CSS
+  variables; export DTCG, CSS, or Tailwind tokens; and audit duplicate, unused,
+  and repeated hardcoded values plus repeated component candidates. Frames and
+  groups can become reusable components with linked instances, text, boolean,
+  and slot properties, local overrides, whole-instance or variant swapping, and
+  safe detaching. Versioned local libraries publish to explicitly authorized
+  workspaces, preserve local placement while synchronizing, and can be detached
+  into local copies. A read-only codebase scan extracts CSS variables, static
+  Tailwind tokens, and Svelte, React, or Vue component contracts without
+  executing project code, then maintains source hashes and visual-to-code
+  links. Tokens and components are also available through universal search,
+  Canvas summaries, and the revision-safe MCP command bus.
 - Native Design documents now include typed design variables organized into
   collections and modes. Designers can create color, spacing, radius,
   typography, opacity, effect, breakpoint, string, and boolean tokens, reuse

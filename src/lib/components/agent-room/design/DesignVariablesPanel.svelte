@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { Braces, Link2, Plus, Search, Trash2 } from '@lucide/svelte';
+  import { ArrowDown, ArrowUp, Braces, Copy, Download, FileJson, Link2, MoreHorizontal, Plus, ScanSearch, Search, Sparkles, Trash2, Upload } from '@lucide/svelte';
+  import { toast } from 'svelte-sonner';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Switch } from '$lib/components/ui/switch';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as NativeSelect from '$lib/components/ui/native-select';
   import type {
     DesignDocument,
@@ -13,6 +15,16 @@
     DesignVariableType,
     DesignVariableValue,
   } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
+  import {
+    auditDesignSystem,
+    createDesignTokenPreset,
+    designVariableUsageCount,
+    exportDesignTokensCss,
+    exportDesignTokensDtcg,
+    exportDesignTokensTailwind,
+    importDesignTokens,
+    type DesignTokenPreset,
+  } from '$lib/modules/agent-room/domain/design-tokens.js';
   import * as m from '$lib/paraglide/messages.js';
   import DesignVariableCombobox from './DesignVariableCombobox.svelte';
 
@@ -21,11 +33,13 @@
     saving,
     makeId,
     onApply,
+    onSelectElements,
   }: {
     document: DesignDocument;
     saving: boolean;
     makeId: () => string;
     onApply: (operations: DesignOperation[], summary: string, inverse: DesignOperation[]) => Promise<boolean>;
+    onSelectElements: (elementIds: string[]) => void;
   } = $props();
 
   const variableTypes: DesignVariableType[] = [
@@ -37,6 +51,8 @@
   let selectedVariableId = $state('');
   let search = $state('');
   let nextType = $state<DesignVariableType>('color');
+  let importInput: HTMLInputElement;
+  let auditOpen = $state(false);
 
   const collections = $derived([...document.variableCollections].sort((left, right) => left.order - right.order));
   const collection = $derived(collections.find((candidate) => candidate.id === selectedCollectionId) ?? collections[0] ?? null);
@@ -46,6 +62,7 @@
         .sort((left, right) => left.order - right.order)
     : []);
   const selectedVariable = $derived(document.variables.find((candidate) => candidate.id === selectedVariableId && candidate.collectionId === collection?.id) ?? variables[0] ?? null);
+  const audit = $derived(auditDesignSystem(document));
 
   $effect(() => {
     if (collection && selectedCollectionId !== collection.id) selectedCollectionId = collection.id;
@@ -109,6 +126,9 @@
       modes: [{ id: modeId, name: m['design.default_mode']() }],
       defaultModeId: modeId,
       order: collections.length,
+      libraryId: null,
+      librarySourceId: null,
+      codeSource: null,
     };
     if (await onApply(
       [{ kind: 'add-variable-collection', collection: next }],
@@ -118,6 +138,65 @@
       selectedCollectionId = next.id;
       selectedVariableId = '';
     }
+  }
+
+  async function addImportedTokens(imported: ReturnType<typeof createDesignTokenPreset>, summary: string) {
+    const collectionWithOrder = { ...imported.collection, order: collections.length };
+    const operations: DesignOperation[] = [
+      { kind: 'add-variable-collection', collection: collectionWithOrder },
+      ...imported.variables.map((variable) => ({ kind: 'add-variable' as const, variable })),
+    ];
+    if (await onApply(operations, summary, [{ kind: 'delete-variable-collection', collectionId: collectionWithOrder.id }])) {
+      selectedCollectionId = collectionWithOrder.id;
+      selectedVariableId = imported.variables[0]?.id ?? '';
+      if (imported.warnings.length) toast.warning(m['design.tokens_import_warnings']({ count: String(imported.warnings.length) }));
+    }
+  }
+
+  async function addPreset(preset: DesignTokenPreset) {
+    const imported = createDesignTokenPreset(preset, makeId);
+    imported.collection.name = preset === 'product'
+      ? m['design.preset_product']()
+      : preset === 'marketing'
+        ? m['design.preset_marketing']()
+        : m['design.preset_mobile']();
+    imported.collection.modes = imported.collection.modes.map((mode, index) => ({
+      ...mode,
+      name: preset === 'marketing'
+        ? (index === 0 ? m['design.default_mode']() : m['design.high_contrast_mode']())
+        : (index === 0 ? m['theme.light']() : m['theme.dark']()),
+    }));
+    await addImportedTokens(imported, m['design.operation_add_token_preset']({ name: imported.collection.name }));
+  }
+
+  async function importTokenFile(event: Event) {
+    const file = (event.currentTarget as HTMLInputElement).files?.[0];
+    if (!file) return;
+    try {
+      const imported = importDesignTokens(await file.text(), file.name, makeId);
+      await addImportedTokens(imported, m['design.operation_import_tokens']({ name: imported.collection.name }));
+    } catch {
+      toast.error(m['design.tokens_import_error']());
+    } finally {
+      (event.currentTarget as HTMLInputElement).value = '';
+    }
+  }
+
+  function downloadText(content: string, filename: string, type: string) {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const anchor = window.document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportTokens(format: 'dtcg' | 'css' | 'tailwind') {
+    if (!collection) return;
+    const base = collection.name.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'tokens';
+    if (format === 'dtcg') downloadText(exportDesignTokensDtcg(document, collection.id), `${base}.tokens.json`, 'application/json');
+    if (format === 'css') downloadText(exportDesignTokensCss(document, collection.id), `${base}.css`, 'text/css');
+    if (format === 'tailwind') downloadText(exportDesignTokensTailwind(document, collection.id), `${base}.tailwind.js`, 'text/javascript');
   }
 
   async function updateCollection(changes: Partial<DesignVariableCollection>) {
@@ -232,6 +311,9 @@
       description: '',
       values: Object.fromEntries(collection.modes.map((mode) => [mode.id, defaultValue(nextType)])),
       order: document.variables.filter((candidate) => candidate.collectionId === collection.id).length,
+      libraryId: null,
+      librarySourceId: null,
+      codeSourceKey: null,
     };
     if (await onApply(
       [{ kind: 'add-variable', variable }],
@@ -289,14 +371,85 @@
       [{ kind: 'add-variable', variable: selectedVariable }, ...bindings],
     )) selectedVariableId = '';
   }
+
+  async function duplicateVariable() {
+    if (!selectedVariable) return;
+    const duplicate: DesignVariable = {
+      ...structuredClone(selectedVariable),
+      id: makeId(),
+      name: `${selectedVariable.name} ${m['design.copy_suffix']()}`,
+      order: document.variables.filter((candidate) => candidate.collectionId === selectedVariable.collectionId).length,
+    };
+    if (await onApply(
+      [{ kind: 'add-variable', variable: duplicate }],
+      m['design.operation_duplicate_variable']({ name: selectedVariable.name }),
+      [{ kind: 'delete-variable', variableId: duplicate.id }],
+    )) selectedVariableId = duplicate.id;
+  }
+
+  async function moveVariable(direction: -1 | 1) {
+    if (!selectedVariable || !collection) return;
+    const siblings = document.variables.filter((variable) => variable.collectionId === collection.id).sort((left, right) => left.order - right.order);
+    const index = siblings.findIndex((variable) => variable.id === selectedVariable.id);
+    const other = siblings[index + direction];
+    if (!other) return;
+    await onApply(
+      [
+        { kind: 'update-variable', variableId: selectedVariable.id, changes: { order: other.order } },
+        { kind: 'update-variable', variableId: other.id, changes: { order: selectedVariable.order } },
+      ],
+      m['design.operation_reorder_variable']({ name: selectedVariable.name }),
+      [
+        { kind: 'update-variable', variableId: selectedVariable.id, changes: { order: selectedVariable.order } },
+        { kind: 'update-variable', variableId: other.id, changes: { order: other.order } },
+      ],
+    );
+  }
+
+  function selectVariableUsages(variableId: string) {
+    onSelectElements(document.elements.filter((element) => Object.values(element.variableBindings).includes(variableId)).map((element) => element.id));
+  }
 </script>
 
 <div class="flex h-full min-h-0 flex-col text-[11px]">
+  <input class="hidden" type="file" accept=".json,.tokens.json,.css,application/json,text/css" bind:this={importInput} onchange={(event) => void importTokenFile(event)} />
   <div class="space-y-2 border-b border-[var(--app-border)] p-2">
     <div class="flex h-6 items-center justify-between">
       <span class="text-[9px] font-semibold uppercase text-[var(--app-text-muted)]">{m['design.collections']()}</span>
-      <Button variant="ghost" size="icon-sm" class="size-6" aria-label={m['design.add_collection']()} title={m['design.add_collection']()} disabled={saving} onclick={() => void addCollection()}><Plus size={12} /></Button>
+      <div class="flex items-center gap-0.5">
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger class="inline-grid size-6 place-items-center rounded hover:bg-[var(--app-surface-raised)]" aria-label={m['design.token_presets']()}><Sparkles size={12} /></DropdownMenu.Trigger>
+          <DropdownMenu.Content class="z-[140] min-w-48" align="start">
+            <DropdownMenu.Label>{m['design.token_presets']()}</DropdownMenu.Label>
+            <DropdownMenu.Item onclick={() => void addPreset('product')}>{m['design.preset_product']()}</DropdownMenu.Item>
+            <DropdownMenu.Item onclick={() => void addPreset('marketing')}>{m['design.preset_marketing']()}</DropdownMenu.Item>
+            <DropdownMenu.Item onclick={() => void addPreset('mobile')}>{m['design.preset_mobile']()}</DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
+        <Button variant="ghost" size="icon-sm" class="size-6" aria-label={m['design.import_tokens']()} title={m['design.import_tokens']()} disabled={saving} onclick={() => importInput?.click()}><Upload size={12} /></Button>
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger class="inline-grid size-6 place-items-center rounded hover:bg-[var(--app-surface-raised)] disabled:opacity-40" disabled={!collection} aria-label={m['design.export_tokens']()}><Download size={12} /></DropdownMenu.Trigger>
+          <DropdownMenu.Content class="z-[140] min-w-44" align="start">
+            <DropdownMenu.Item onclick={() => exportTokens('dtcg')}><FileJson size={13} />DTCG JSON</DropdownMenu.Item>
+            <DropdownMenu.Item onclick={() => exportTokens('css')}><Braces size={13} />CSS variables</DropdownMenu.Item>
+            <DropdownMenu.Item onclick={() => exportTokens('tailwind')}><Braces size={13} />Tailwind</DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
+        <Button variant={auditOpen ? 'secondary' : 'ghost'} size="icon-sm" class="size-6" aria-label={m['design.audit_tokens']()} title={m['design.audit_tokens']()} onclick={() => (auditOpen = !auditOpen)}><ScanSearch size={12} /></Button>
+        <Button variant="ghost" size="icon-sm" class="size-6" aria-label={m['design.add_collection']()} title={m['design.add_collection']()} disabled={saving} onclick={() => void addCollection()}><Plus size={12} /></Button>
+      </div>
     </div>
+    {#if auditOpen}
+      <div class="max-h-52 space-y-2 overflow-y-auto border border-[var(--app-border)] bg-[var(--app-surface-raised)] p-2">
+        <div class="grid grid-cols-3 gap-1 text-center text-[9px]"><div><strong class="block text-sm text-[var(--app-text)]">{audit.duplicateTokens.length}</strong>{m['design.audit_duplicates']()}</div><div><strong class="block text-sm text-[var(--app-text)]">{audit.unusedVariableIds.length}</strong>{m['design.audit_unused']()}</div><div><strong class="block text-sm text-[var(--app-text)]">{audit.componentCandidates.length}</strong>{m['design.audit_components']()}</div></div>
+        {#each audit.hardcodedValues as group}
+          <button class="flex w-full items-center justify-between gap-2 rounded px-1.5 py-1 text-left hover:bg-[var(--app-border)]" onclick={() => onSelectElements(group.elementIds)}><span class="truncate">{group.property} · {group.value}</span><span class="shrink-0 text-[9px] text-[var(--app-text-muted)]">{group.elementIds.length}</span></button>
+        {/each}
+        {#each audit.componentCandidates as candidate, index}
+          <button class="flex w-full items-center justify-between gap-2 rounded px-1.5 py-1 text-left hover:bg-[var(--app-border)]" onclick={() => onSelectElements(candidate.elementIds)}><span class="truncate">{m['design.component_candidate']({ number: String(index + 1) })}</span><span class="shrink-0 text-[9px] text-[var(--app-text-muted)]">{candidate.elementIds.length}</span></button>
+        {/each}
+      </div>
+    {/if}
     {#if collection}
       <div class="grid grid-cols-[minmax(0,1fr)_28px] gap-1.5">
         <NativeSelect.Root class="min-w-0" aria-label={m['design.collection']()} value={collection.id} onchange={(event: Event) => { selectedCollectionId = inputValue(event); selectedVariableId = ''; }}>
@@ -340,11 +493,14 @@
         <div class="max-h-52 shrink-0 overflow-y-auto border-b border-[var(--app-border)] p-1">
           {#if !variables.length}<p class="p-2 text-[10px] leading-4 text-[var(--app-text-muted)]">{m['design.no_variable_results']()}</p>{/if}
           {#each variables as variable (variable.id)}
-            <button class={`flex h-8 w-full items-center gap-2 rounded px-2 text-left ${selectedVariable?.id === variable.id ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`} onclick={() => (selectedVariableId = variable.id)}>
-              {#if variable.type === 'color'}<span class="size-3 shrink-0 rounded-sm border border-black/15" style:background={rawValue(variable, document.activeVariableModes[collection.id] ?? collection.defaultModeId).kind === 'color' ? (rawValue(variable, document.activeVariableModes[collection.id] ?? collection.defaultModeId) as { kind: 'color'; value: string }).value : 'transparent'}></span>{:else}<Braces size={12} class="shrink-0 text-[var(--app-text-muted)]" />{/if}
-              <span class="min-w-0 flex-1 truncate">{variable.name}</span>
-              <span class="text-[8px] uppercase text-[var(--app-text-muted)]">{typeLabel(variable.type)}</span>
-            </button>
+            <div class={`flex h-8 w-full items-center rounded pr-1 ${selectedVariable?.id === variable.id ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`}>
+              <button class="flex min-w-0 flex-1 items-center gap-2 self-stretch px-2 text-left" onclick={() => (selectedVariableId = variable.id)}>
+                {#if variable.type === 'color'}<span class="size-3 shrink-0 rounded-sm border border-black/15" style:background={rawValue(variable, document.activeVariableModes[collection.id] ?? collection.defaultModeId).kind === 'color' ? (rawValue(variable, document.activeVariableModes[collection.id] ?? collection.defaultModeId) as { kind: 'color'; value: string }).value : 'transparent'}></span>{:else}<Braces size={12} class="shrink-0 text-[var(--app-text-muted)]" />{/if}
+                <span class="min-w-0 flex-1 truncate">{variable.name}</span>
+                <span class="text-[8px] uppercase text-[var(--app-text-muted)]">{typeLabel(variable.type)}</span>
+              </button>
+              <button class="shrink-0 rounded px-1 text-[8px] tabular-nums text-[var(--app-text-muted)] hover:bg-[var(--app-border)]" aria-label={m['design.variable_usages']({ count: String(designVariableUsageCount(document, variable.id)) })} onclick={() => selectVariableUsages(variable.id)}>{designVariableUsageCount(document, variable.id)}</button>
+            </div>
           {/each}
         </div>
 
@@ -353,7 +509,7 @@
             <div class="space-y-3">
               <div class="grid grid-cols-[minmax(0,1fr)_28px] gap-1.5">
                 <Input aria-label={m['design.variable_name']()} value={selectedVariable.name} onchange={(event: Event) => void updateVariable({ name: inputValue(event) })} />
-                <Button variant="ghost" size="icon-sm" aria-label={m['design.delete_variable']()} title={m['design.delete_variable']()} onclick={() => void deleteVariable()}><Trash2 size={12} /></Button>
+                <DropdownMenu.Root><DropdownMenu.Trigger class="inline-grid size-7 place-items-center rounded hover:bg-[var(--app-surface-raised)]" aria-label={m['design.variable_actions']()}><MoreHorizontal size={13} /></DropdownMenu.Trigger><DropdownMenu.Content class="z-[140] min-w-44" align="end"><DropdownMenu.Item onclick={() => void duplicateVariable()}><Copy size={13} />{m['design.duplicate']()}</DropdownMenu.Item><DropdownMenu.Item onclick={() => void moveVariable(-1)}><ArrowUp size={13} />{m['design.move_up']()}</DropdownMenu.Item><DropdownMenu.Item onclick={() => void moveVariable(1)}><ArrowDown size={13} />{m['design.move_down']()}</DropdownMenu.Item><DropdownMenu.Separator /><DropdownMenu.Item class="text-[var(--app-danger)]" onclick={() => void deleteVariable()}><Trash2 size={13} />{m['design.delete_variable']()}</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Root>
               </div>
               <NativeSelect.Root class="w-full" aria-label={m['design.variable_type']()} value={selectedVariable.type} onchange={(event: Event) => void changeVariableType(inputValue(event) as DesignVariableType)}>
                 {#each variableTypes as type}<NativeSelect.Option value={type}>{typeLabel(type)}</NativeSelect.Option>{/each}

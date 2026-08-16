@@ -444,7 +444,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'design-system',
         title: 'Make the visual language reusable',
-        body: 'Open Variables beside Layers. Create typed tokens inside a collection, add Light, Dark, brand, or product modes, and use aliases when one token should reuse another. Select a layer and bind compatible properties in the inspector. Switching the active mode previews every bound layer immediately; agents use the same revision-safe operations.',
+        body: 'Open Variables beside Layers. Start from a product, marketing, or mobile preset, import DTCG/CSS or export DTCG/CSS/Tailwind; create modes, aliases, and bindings, then audit repetition. Under Components, turn frames into reusable sources and create instances, properties, variants, and slots. Under Libraries, share versions only with authorized workspaces. Under Code, extract CSS variables, Tailwind, and Svelte, React, or Vue contracts without executing files and connect the visual source to its implementation. Agents use the same revision-safe command bus.',
       },
       {
         id: 'designer',

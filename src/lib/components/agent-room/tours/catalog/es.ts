@@ -444,7 +444,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'design-system',
         title: 'Haz reutilizable el lenguaje visual',
-        body: 'Abre Variables junto a Capas. Crea tokens tipados en una colección, agrega modos Claro, Oscuro, marca o producto y usa aliases cuando un token deba reutilizar otro. Selecciona una capa y vincula propiedades compatibles desde el inspector. Cambiar el modo activo previsualiza todas las capas vinculadas de inmediato; los agentes usan las mismas operaciones protegidas por revisión.',
+        body: 'Abre Variables junto a Capas. Empieza con un preset de producto, marketing o mobile, importa DTCG/CSS o exporta DTCG/CSS/Tailwind; crea modos, aliases y bindings y audita repeticiones. En Componentes, convierte frames en fuentes reutilizables y crea instancias, propiedades, variantes y slots. En Bibliotecas, comparte versiones solo con workspaces autorizados. En Código, extrae CSS variables, Tailwind y contratos Svelte, React o Vue sin ejecutar archivos y conecta la fuente visual con su implementación. Los agentes usan el mismo command bus protegido por revisión.',
       },
       {
         id: 'designer',

@@ -11,6 +11,7 @@ import { roleService } from './RoleService.js';
 import { skillMarketService } from './SkillMarketService.js';
 import { taskBoardService } from './TaskBoardService.js';
 import { routineService } from './RoutineService.js';
+import { designDocumentService } from './DesignDocumentService.js';
 import type { WorkspaceSearchDto } from '../dto/WorkspaceSearchDto.js';
 
 const INDEX_TTL_MS = 15_000;
@@ -180,6 +181,45 @@ export class WorkspaceSearchService {
         path: null,
         route: `/terminal?workspace=${workspace.id}&node=${node.id}`,
       }, [node.type, (node.payload as Record<string, unknown>).provider, nodeAttachmentSearchText(node)]));
+    }
+
+    const designDocuments = await Promise.all(nodes
+      .filter((node) => node.type === 'design')
+      .map(async (node) => ({ node, document: await designDocumentService.get(workspace.id, node.id).catch(() => null) })));
+    for (const { node, document } of designDocuments) {
+      if (!document) continue;
+      const route = `/terminal?workspace=${workspace.id}&node=${node.id}`;
+      for (const component of document.components.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-component:${node.id}:${component.id}`,
+          kind: 'artifact',
+          title: component.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(component.description || component.key),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['design component componente componente de diseño', component.key, Object.values(component.variantValues), component.codeConnect?.path]));
+      }
+      for (const variable of document.variables.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        const collection = document.variableCollections.find((candidate) => candidate.id === variable.collectionId);
+        results.push(indexed({
+          id: `design-variable:${node.id}:${variable.id}`,
+          kind: 'artifact',
+          title: variable.name,
+          subtitle: `${workspace.name} · ${collection?.name ?? document.name}`,
+          preview: clip(variable.description || variable.type),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['design token variável variable', variable.type, collection?.codeSource?.path]));
+      }
     }
 
     for (const task of tasks.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {

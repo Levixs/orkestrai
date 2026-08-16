@@ -5,6 +5,8 @@ import {
   designDocumentSchema,
   type DesignAsset,
   type DesignBindableProperty,
+  type DesignComponent,
+  type DesignComponentProperty,
   type DesignDocument,
   type DesignElement,
   type DesignOperation,
@@ -173,6 +175,207 @@ function detachVariableAliases(document: DesignDocument, removedIds: Set<string>
   }));
 }
 
+function elementDescendants(document: DesignDocument, rootId: string): DesignElement[] {
+  const ids = new Set([rootId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const element of document.elements) {
+      if (element.parentId && ids.has(element.parentId) && !ids.has(element.id)) {
+        ids.add(element.id);
+        changed = true;
+      }
+    }
+  }
+  return document.elements.filter((element) => ids.has(element.id));
+}
+
+function isElementDescendant(document: DesignDocument, elementId: string, rootId: string): boolean {
+  let current = document.elements.find((element) => element.id === elementId);
+  while (current) {
+    if (current.id === rootId) return true;
+    current = current.parentId ? document.elements.find((element) => element.id === current?.parentId) : undefined;
+  }
+  return false;
+}
+
+function componentPropertyValue(component: DesignComponent, root: DesignElement, property: DesignComponentProperty) {
+  return root.instanceProperties[property.id] ?? property.defaultValue;
+}
+
+function applyComponentProperties(document: DesignDocument, component: DesignComponent, root: DesignElement): void {
+  for (const property of component.properties) {
+    if (property.type === 'slot') continue;
+    const target = document.elements.find((element) =>
+      element.instanceRootId === root.id && element.instanceSourceId === property.targetElementId,
+    );
+    if (!target) continue;
+    const value = componentPropertyValue(component, root, property);
+    if (property.type === 'text' && typeof value === 'string') target.text = value;
+    if (property.type === 'boolean' && typeof value === 'boolean') target.visible = value;
+  }
+}
+
+function applyInstanceOverrides(root: DesignElement, element: DesignElement): DesignElement {
+  if (!element.instanceSourceId) return element;
+  const overrides = root.instanceOverrides[element.instanceSourceId];
+  return overrides ? { ...element, ...structuredClone(overrides) } : element;
+}
+
+function componentDefaultProperties(component: DesignComponent): DesignElement['instanceProperties'] {
+  return Object.fromEntries(component.properties.map((property) => [property.id, structuredClone(property.defaultValue)]));
+}
+
+function cloneComponentElements(
+  document: DesignDocument,
+  component: DesignComponent,
+  placement: { instanceId: string; pageId: string; parentId: string | null; x: number; y: number; order?: number },
+): DesignElement[] {
+  const sourceRoot = document.elements.find((element) => element.id === component.rootElementId);
+  if (!sourceRoot) throw new Error('Component root layer not found.');
+  const sourceElements = elementDescendants(document, sourceRoot.id);
+  const ids = new Map(sourceElements.map((element) => [element.id, element.id === sourceRoot.id ? placement.instanceId : uuidv7()]));
+  const dx = placement.x - sourceRoot.x;
+  const dy = placement.y - sourceRoot.y;
+  return sourceElements.map((source) => {
+    const isRoot = source.id === sourceRoot.id;
+    const clone: DesignElement = {
+      ...structuredClone(source),
+      id: ids.get(source.id)!,
+      pageId: placement.pageId,
+      parentId: isRoot ? placement.parentId : ids.get(source.parentId!) ?? placement.instanceId,
+      x: source.x + dx,
+      y: source.y + dy,
+      order: isRoot ? placement.order ?? source.order : source.order,
+      name: isRoot ? `${component.name} instance` : source.name,
+      componentId: null,
+      instanceOf: isRoot ? component.id : null,
+      instanceRootId: placement.instanceId,
+      instanceSourceId: source.id,
+      instanceProperties: isRoot ? componentDefaultProperties(component) : {},
+      instanceOverrides: {},
+      slotAssignments: {},
+    };
+    return clone;
+  });
+}
+
+function syncComponentInstance(document: DesignDocument, root: DesignElement): void {
+  const component = root.instanceOf ? document.components.find((candidate) => candidate.id === root.instanceOf) : null;
+  if (!component) return;
+  const sourceRoot = document.elements.find((element) => element.id === component.rootElementId);
+  if (!sourceRoot) return;
+  const sources = elementDescendants(document, sourceRoot.id);
+  const desiredSourceIds = new Set(sources.map((source) => source.id));
+  const existing = new Map(
+    document.elements
+      .filter((element) => element.instanceRootId === root.id && element.instanceSourceId)
+      .map((element) => [element.instanceSourceId!, element]),
+  );
+  const ids = new Map(sources.map((source) => [source.id, source.id === sourceRoot.id ? root.id : existing.get(source.id)?.id ?? uuidv7()]));
+  const dx = root.x - sourceRoot.x;
+  const dy = root.y - sourceRoot.y;
+  const synced = sources.map((source) => {
+    const isRoot = source.id === sourceRoot.id;
+    const previous = isRoot ? root : existing.get(source.id);
+    const candidate: DesignElement = {
+      ...structuredClone(source),
+      id: ids.get(source.id)!,
+      pageId: root.pageId,
+      parentId: isRoot ? root.parentId : ids.get(source.parentId!) ?? root.id,
+      x: isRoot ? root.x : source.x + dx,
+      y: isRoot ? root.y : source.y + dy,
+      order: isRoot ? root.order : source.order,
+      name: isRoot ? root.name : source.name,
+      componentId: null,
+      instanceOf: isRoot ? component.id : null,
+      instanceRootId: root.id,
+      instanceSourceId: source.id,
+      instanceProperties: isRoot ? Object.fromEntries(component.properties.map((property) => [
+        property.id,
+        structuredClone(root.instanceProperties[property.id] ?? property.defaultValue),
+      ])) : {},
+      instanceOverrides: isRoot ? root.instanceOverrides : {},
+      slotAssignments: isRoot ? root.slotAssignments : {},
+    };
+    return applyInstanceOverrides(root, previous ? { ...candidate, id: previous.id } : candidate);
+  });
+  document.elements = document.elements.filter((element) =>
+    element.instanceRootId !== root.id
+    || element.id === root.id
+    || !element.instanceSourceId
+    || desiredSourceIds.has(element.instanceSourceId)
+  );
+  const syncedIds = new Set(synced.map((element) => element.id));
+  document.elements = document.elements.filter((element) => !syncedIds.has(element.id));
+  document.elements.push(...synced);
+  const syncedRoot = document.elements.find((element) => element.id === root.id)!;
+  applyComponentProperties(document, component, syncedRoot);
+}
+
+function syncComponentInstances(document: DesignDocument): void {
+  const roots = document.elements.filter((element) => element.instanceOf && element.instanceRootId === element.id);
+  for (const root of roots) syncComponentInstance(document, root);
+}
+
+function detachComponentInstance(document: DesignDocument, instanceId: string): void {
+  const root = document.elements.find((element) => element.id === instanceId && element.instanceRootId === instanceId && element.instanceOf);
+  if (!root) throw new Error('Component instance not found.');
+  for (const element of document.elements) {
+    if (element.instanceRootId !== instanceId) continue;
+    element.instanceOf = null;
+    element.instanceRootId = null;
+    element.instanceSourceId = null;
+    element.instanceProperties = {};
+    element.instanceOverrides = {};
+    element.slotAssignments = {};
+  }
+}
+
+function validateDesignComponents(document: DesignDocument): void {
+  const components = new Map(document.components.map((component) => [component.id, component]));
+  if (components.size !== document.components.length) throw new Error('Design component ids must be unique.');
+  const keys = new Set<string>();
+  const sets = new Map(document.componentSets.map((set) => [set.id, set]));
+  if (sets.size !== document.componentSets.length) throw new Error('Design component set ids must be unique.');
+  const libraryLinks = new Set(document.libraryLinks.map((link) => link.id));
+  if (libraryLinks.size !== document.libraryLinks.length) throw new Error('Design library links must be unique.');
+  const validateLibraryReference = (libraryId: string | null, sourceId: string | null) => {
+    if (Boolean(libraryId) !== Boolean(sourceId) || (libraryId && !libraryLinks.has(libraryId))) throw new Error('Invalid design library reference.');
+  };
+  for (const collection of document.variableCollections) validateLibraryReference(collection.libraryId, collection.librarySourceId);
+  for (const variable of document.variables) validateLibraryReference(variable.libraryId, variable.librarySourceId);
+  for (const set of document.componentSets) validateLibraryReference(set.libraryId, set.librarySourceId);
+  for (const component of document.components) {
+    validateLibraryReference(component.libraryId, component.librarySourceId);
+    if (keys.has(component.key)) throw new Error('Design component keys must be unique.');
+    keys.add(component.key);
+    const root = document.elements.find((element) => element.id === component.rootElementId);
+    if (!root || root.componentId !== component.id || (root.type !== 'frame' && root.type !== 'group')) throw new Error('Invalid design component root.');
+    if (component.setId && !sets.has(component.setId)) throw new Error('Design component set not found.');
+    const propertyIds = new Set<string>();
+    for (const property of component.properties) {
+      if (propertyIds.has(property.id) || !isElementDescendant(document, property.targetElementId, root.id)) throw new Error('Invalid component property target.');
+      propertyIds.add(property.id);
+      const target = document.elements.find((element) => element.id === property.targetElementId)!;
+      if (property.type === 'text' && (target.type !== 'text' || typeof property.defaultValue !== 'string')) throw new Error('Invalid text component property.');
+      if (property.type === 'boolean' && typeof property.defaultValue !== 'boolean') throw new Error('Invalid boolean component property.');
+      if (property.type === 'slot' && target.type !== 'frame' && target.type !== 'group') throw new Error('Invalid component slot.');
+    }
+  }
+  for (const element of document.elements) {
+    if (element.componentId && components.get(element.componentId)?.rootElementId !== element.id) throw new Error('Invalid component layer reference.');
+    if (!element.instanceRootId && !element.instanceOf && !element.instanceSourceId) continue;
+    if (!element.instanceRootId || !element.instanceSourceId) throw new Error('Invalid component instance.');
+    const root = document.elements.find((candidate) => candidate.id === element.instanceRootId);
+    if (!root?.instanceOf || root.instanceRootId !== root.id || !components.has(root.instanceOf)) throw new Error('Invalid component instance root.');
+    const component = components.get(root.instanceOf)!;
+    if (!isElementDescendant(document, element.instanceSourceId, component.rootElementId)) throw new Error('Invalid component instance source.');
+    if (element.id === root.id && element.instanceOf !== root.instanceOf) throw new Error('Invalid component instance root reference.');
+    if (element.id !== root.id && element.instanceOf) throw new Error('Only the instance root can reference a component.');
+  }
+}
+
 export function applyDesignOperations(document: DesignDocument, operations: DesignOperation[], now: string): DesignDocument {
   let next: DesignDocument = structuredClone(document);
   for (const operation of operations) {
@@ -205,9 +408,36 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
     if (operation.kind === 'update') {
       const index = next.elements.findIndex((element) => element.id === operation.elementId);
       if (index < 0) throw new Error('Design element not found.');
+      const protectedFields = ['componentId', 'instanceOf', 'instanceRootId', 'instanceSourceId', 'instanceProperties', 'instanceOverrides', 'slotAssignments'] as const;
+      if (protectedFields.some((field) => field in operation.changes)) throw new Error('Component metadata requires a component operation.');
       if (next.elements[index].locked) {
         const onlyLockChange = Object.keys(operation.changes).every((key) => key === 'locked');
         if (!onlyLockChange) throw new Error('Design element is locked.');
+      }
+      const target = next.elements[index];
+      if (target.instanceRootId && target.instanceSourceId) {
+        const root = next.elements.find((element) => element.id === target.instanceRootId);
+        if (!root) throw new Error('Component instance root not found.');
+        const changes = structuredClone(operation.changes) as Record<string, unknown>;
+        if (target.id === root.id) {
+          delete changes.x;
+          delete changes.y;
+          delete changes.parentId;
+          delete changes.order;
+        }
+        const allowed = new Set([
+          'name', 'x', 'y', 'width', 'height', 'rotation', 'opacity', 'visible',
+          'fill', 'stroke', 'strokeWidth', 'fills', 'strokes', 'effects',
+          'blendMode', 'cornerRadius', 'text', 'fontSize', 'fontWeight',
+          'textAlign', 'assetId', 'imageFit',
+        ]);
+        const overrides = Object.fromEntries(Object.entries(changes).filter(([key]) => allowed.has(key)));
+        if (Object.keys(overrides).length) {
+          root.instanceOverrides[target.instanceSourceId] = {
+            ...(root.instanceOverrides[target.instanceSourceId] ?? {}),
+            ...overrides,
+          } as DesignElement['instanceOverrides'][string];
+        }
       }
       next.elements[index] = { ...next.elements[index], ...operation.changes };
       continue;
@@ -216,6 +446,7 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       const target = next.elements.find((element) => element.id === operation.elementId);
       if (!target) throw new Error('Design element not found.');
       if (target.locked) throw new Error('Design element is locked.');
+      if (target.instanceRootId && target.instanceRootId !== target.id) throw new Error('Detach the component instance before deleting one of its layers.');
       const descendants = new Set<string>([operation.elementId]);
       let changed = true;
       while (changed) {
@@ -237,6 +468,7 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       const target = next.elements.find((element) => element.id === operation.elementId);
       if (!target) throw new Error('Design element not found.');
       if (target.locked) throw new Error('Design element is locked.');
+      if (target.instanceRootId && target.instanceRootId !== target.id) throw new Error('Detach the component instance before changing its hierarchy.');
       target.order = operation.order;
       continue;
     }
@@ -348,6 +580,124 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       else delete element.variableBindings[operation.property];
       continue;
     }
+    if (operation.kind === 'add-component') {
+      if (next.components.some((component) => component.id === operation.component.id)) throw new Error('Design component already exists.');
+      const root = next.elements.find((element) => element.id === operation.component.rootElementId);
+      if (!root || (root.type !== 'frame' && root.type !== 'group') || root.componentId || root.instanceRootId) throw new Error('Select an independent frame or group for the component.');
+      root.componentId = operation.component.id;
+      next.components.push(operation.component);
+      continue;
+    }
+    if (operation.kind === 'update-component') {
+      const component = next.components.find((candidate) => candidate.id === operation.componentId);
+      if (!component) throw new Error('Design component not found.');
+      Object.assign(component, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-component') {
+      const component = next.components.find((candidate) => candidate.id === operation.componentId);
+      if (!component) throw new Error('Design component not found.');
+      for (const instance of next.elements.filter((element) => element.instanceOf === component.id && element.instanceRootId === element.id)) {
+        detachComponentInstance(next, instance.id);
+      }
+      const root = next.elements.find((element) => element.id === component.rootElementId);
+      if (root) root.componentId = null;
+      next.components = next.components.filter((candidate) => candidate.id !== component.id);
+      continue;
+    }
+    if (operation.kind === 'add-component-set') {
+      if (next.componentSets.some((set) => set.id === operation.componentSet.id)) throw new Error('Design component set already exists.');
+      next.componentSets.push(operation.componentSet);
+      continue;
+    }
+    if (operation.kind === 'update-component-set') {
+      const set = next.componentSets.find((candidate) => candidate.id === operation.componentSetId);
+      if (!set) throw new Error('Design component set not found.');
+      Object.assign(set, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-component-set') {
+      if (!next.componentSets.some((set) => set.id === operation.componentSetId)) throw new Error('Design component set not found.');
+      next.componentSets = next.componentSets.filter((set) => set.id !== operation.componentSetId);
+      next.components = next.components.map((component) => component.setId === operation.componentSetId ? { ...component, setId: null, variantValues: {} } : component);
+      continue;
+    }
+    if (operation.kind === 'add-library-link') {
+      if (next.libraryLinks.some((link) => link.id === operation.link.id)) throw new Error('Design library is already linked.');
+      next.libraryLinks.push(operation.link);
+      continue;
+    }
+    if (operation.kind === 'update-library-link') {
+      const link = next.libraryLinks.find((candidate) => candidate.id === operation.libraryId);
+      if (!link) throw new Error('Design library link not found.');
+      Object.assign(link, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-library-link') {
+      if (!next.libraryLinks.some((link) => link.id === operation.libraryId)) throw new Error('Design library link not found.');
+      next.libraryLinks = next.libraryLinks.filter((link) => link.id !== operation.libraryId);
+      continue;
+    }
+    if (operation.kind === 'create-component-instance') {
+      if (next.elements.some((element) => element.id === operation.instanceId)) throw new Error('Component instance already exists.');
+      const component = next.components.find((candidate) => candidate.id === operation.componentId);
+      if (!component) throw new Error('Design component not found.');
+      if (!next.pages.some((page) => page.id === operation.pageId)) throw new Error('Design page not found.');
+      if (operation.parentId) {
+        const parent = next.elements.find((element) => element.id === operation.parentId);
+        if (!parent || parent.pageId !== operation.pageId || (parent.type !== 'frame' && parent.type !== 'group')) throw new Error('Invalid component instance parent.');
+      }
+      next.elements.push(...cloneComponentElements(next, component, operation));
+      continue;
+    }
+    if (operation.kind === 'swap-component-instance') {
+      const root = next.elements.find((element) => element.id === operation.instanceId && element.instanceRootId === element.id && element.instanceOf);
+      const component = next.components.find((candidate) => candidate.id === operation.componentId);
+      if (!root || !component) throw new Error('Component instance not found.');
+      if (Object.values(root.slotAssignments).some((elementIds) => elementIds.length)) throw new Error('Remove slot content before swapping this instance.');
+      const previousComponent = next.components.find((candidate) => candidate.id === root.instanceOf);
+      const previousValues = new Map((previousComponent?.properties ?? []).map((property) => [property.name, root.instanceProperties[property.id]]));
+      const properties = Object.fromEntries(component.properties.map((property) => [property.id, previousValues.get(property.name) ?? structuredClone(property.defaultValue)]));
+      const placement = { instanceId: root.id, pageId: root.pageId, parentId: root.parentId, x: root.x, y: root.y, order: root.order };
+      next.elements = next.elements.filter((element) => element.instanceRootId !== root.id);
+      const clones = cloneComponentElements(next, component, placement);
+      clones[0].name = root.name;
+      clones[0].instanceProperties = properties;
+      next.elements.push(...clones);
+      continue;
+    }
+    if (operation.kind === 'set-instance-property') {
+      const root = next.elements.find((element) => element.id === operation.instanceId && element.instanceRootId === element.id && element.instanceOf);
+      const component = root?.instanceOf ? next.components.find((candidate) => candidate.id === root.instanceOf) : null;
+      const property = component?.properties.find((candidate) => candidate.id === operation.propertyId);
+      if (!root || !component || !property || property.type === 'slot') throw new Error('Component property not found.');
+      if (property.type === 'text' && typeof operation.value !== 'string') throw new Error('Text component properties require text values.');
+      if (property.type === 'boolean' && typeof operation.value !== 'boolean') throw new Error('Boolean component properties require boolean values.');
+      root.instanceProperties[property.id] = operation.value;
+      continue;
+    }
+    if (operation.kind === 'assign-instance-slot') {
+      const root = next.elements.find((element) => element.id === operation.instanceId && element.instanceRootId === element.id && element.instanceOf);
+      const component = root?.instanceOf ? next.components.find((candidate) => candidate.id === root.instanceOf) : null;
+      const property = component?.properties.find((candidate) => candidate.id === operation.propertyId && candidate.type === 'slot');
+      const target = property ? next.elements.find((element) => element.instanceRootId === root?.id && element.instanceSourceId === property.targetElementId) : null;
+      if (!root || !component || !property || !target) throw new Error('Component slot not found.');
+      const previousIds = new Set(root.slotAssignments[property.id] ?? []);
+      for (const element of next.elements) {
+        if (previousIds.has(element.id) && !operation.elementIds.includes(element.id)) element.parentId = root.parentId;
+      }
+      for (const elementId of operation.elementIds) {
+        const element = next.elements.find((candidate) => candidate.id === elementId);
+        if (!element || element.pageId !== root.pageId || element.instanceRootId || isElementDescendant(next, element.id, root.id)) throw new Error('Invalid component slot content.');
+        element.parentId = target.id;
+      }
+      root.slotAssignments[property.id] = [...operation.elementIds];
+      continue;
+    }
+    if (operation.kind === 'detach-component-instance') {
+      detachComponentInstance(next, operation.instanceId);
+      continue;
+    }
     if (operation.kind === 'set-active-page') {
       if (!next.pages.some((page) => page.id === operation.pageId)) throw new Error('Design page not found.');
       next.activePageId = operation.pageId;
@@ -361,7 +711,9 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
     if (element.assetId && !assetIds.has(element.assetId)) throw new Error('Design asset not found.');
     if (element.maskId && (!elementIds.has(element.maskId) || element.maskId === element.id)) throw new Error('Invalid design mask.');
   }
+  syncComponentInstances(next);
   validateDesignVariables(next);
+  validateDesignComponents(next);
   next.elements = sortElements(next.elements);
   next.updatedAt = now;
   return designDocumentSchema.parse(next);
@@ -427,6 +779,9 @@ export class DesignDocumentService {
       variableCollections: [],
       variables: [],
       activeVariableModes: {},
+      components: [],
+      componentSets: [],
+      libraryLinks: [],
       createdAt: now,
       updatedAt: now,
     };

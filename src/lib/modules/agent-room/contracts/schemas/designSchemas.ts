@@ -80,12 +80,22 @@ export const designVariableModeSchema = z.object({
   name: z.string().trim().min(1).max(80),
 });
 
+export const designCodeSourceSchema = z.object({
+  path: z.string().trim().min(1).max(512),
+  format: z.enum(['css', 'tailwind', 'svelte', 'react', 'vue']),
+  hash: z.string().regex(/^[0-9a-f]{64}$/),
+  syncedAt: z.string().datetime(),
+});
+
 export const designVariableCollectionSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
   modes: z.array(designVariableModeSchema).min(1).max(16),
   defaultModeId: z.string().uuid(),
   order: z.number().int().min(0).max(10_000),
+  libraryId: z.string().uuid().nullable().default(null),
+  librarySourceId: z.string().uuid().nullable().default(null),
+  codeSource: designCodeSourceSchema.nullable().default(null),
 });
 
 export const designVariableSchema = z.object({
@@ -96,6 +106,9 @@ export const designVariableSchema = z.object({
   description: z.string().max(1_000).default(''),
   values: z.record(z.string().uuid(), designVariableValueSchema),
   order: z.number().int().min(0).max(100_000),
+  libraryId: z.string().uuid().nullable().default(null),
+  librarySourceId: z.string().uuid().nullable().default(null),
+  codeSourceKey: z.string().trim().min(1).max(800).nullable().default(null),
 });
 
 export const designBindablePropertySchema = z.enum([
@@ -115,6 +128,90 @@ export const designBindablePropertySchema = z.enum([
   'layoutPaddingLeft',
   'effects',
 ]);
+
+export const designComponentPropertyTypeSchema = z.enum(['text', 'boolean', 'slot']);
+export const designComponentPropertyValueSchema = z.union([
+  z.string().max(20_000),
+  z.boolean(),
+  z.null(),
+]);
+
+export const designComponentPropertySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  type: designComponentPropertyTypeSchema,
+  targetElementId: z.string().uuid(),
+  defaultValue: designComponentPropertyValueSchema,
+  preferredValues: z.array(z.string().uuid()).max(200).default([]),
+  order: z.number().int().min(0).max(10_000),
+});
+
+export const designComponentSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(160),
+  description: z.string().max(1_000).default(''),
+  rootElementId: z.string().uuid(),
+  setId: z.string().uuid().nullable().default(null),
+  variantValues: z.record(z.string().trim().min(1).max(80), z.string().trim().min(1).max(120)).default({}),
+  properties: z.array(designComponentPropertySchema).max(200).default([]),
+  key: z.string().trim().min(1).max(240),
+  libraryId: z.string().uuid().nullable().default(null),
+  librarySourceId: z.string().uuid().nullable().default(null),
+  codeConnect: z.object({
+    path: z.string().trim().min(1).max(512),
+    framework: z.enum(['svelte', 'react', 'vue']),
+    exportName: z.string().trim().min(1).max(160),
+    props: z.array(z.string().trim().min(1).max(120)).max(200).default([]),
+    hash: z.string().regex(/^[0-9a-f]{64}$/),
+    syncedAt: z.string().datetime(),
+  }).nullable().default(null),
+  updatedAt: z.string().datetime(),
+});
+
+export const designComponentSetSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(160),
+  propertyNames: z.array(z.string().trim().min(1).max(80)).max(32).default([]),
+  order: z.number().int().min(0).max(10_000),
+  libraryId: z.string().uuid().nullable().default(null),
+  librarySourceId: z.string().uuid().nullable().default(null),
+});
+
+export const designLibraryLinkSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(160),
+  sourceWorkspaceId: z.string().uuid(),
+  sourceNodeId: z.string().uuid(),
+  sourceRevision: z.number().int().min(0),
+  mappings: z.record(z.string().uuid(), z.string().uuid()),
+  importedAt: z.string().datetime(),
+  syncedAt: z.string().datetime(),
+});
+
+const designInstanceElementOverridesSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  x: z.number().finite().optional(),
+  y: z.number().finite().optional(),
+  width: z.number().finite().min(1).max(100_000).optional(),
+  height: z.number().finite().min(1).max(100_000).optional(),
+  rotation: z.number().finite().min(-3600).max(3600).optional(),
+  opacity: z.number().finite().min(0).max(1).optional(),
+  visible: z.boolean().optional(),
+  fill: legacyDesignPaintSchema.optional(),
+  stroke: legacyDesignPaintSchema.optional(),
+  strokeWidth: z.number().finite().min(0).max(100).optional(),
+  fills: z.array(designPaintSchema).max(16).optional(),
+  strokes: z.array(designPaintSchema).max(16).optional(),
+  effects: z.array(designEffectSchema).max(16).optional(),
+  blendMode: z.enum(['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten']).optional(),
+  cornerRadius: z.number().finite().min(0).max(10_000).optional(),
+  text: z.string().max(20_000).optional(),
+  fontSize: z.number().finite().min(4).max(1000).optional(),
+  fontWeight: z.number().int().min(100).max(900).optional(),
+  textAlign: z.enum(['left', 'center', 'right']).optional(),
+  assetId: z.string().uuid().nullable().optional(),
+  imageFit: z.enum(['fill', 'contain', 'cover']).optional(),
+});
 
 export const designPathPointSchema = z.object({
   x: z.number().finite(),
@@ -192,6 +289,14 @@ export const designElementSchema = z.object({
   constraintHorizontal: z.enum(['left', 'right', 'left-right', 'center', 'scale']).default('left'),
   constraintVertical: z.enum(['top', 'bottom', 'top-bottom', 'center', 'scale']).default('top'),
   variableBindings: z.record(designBindablePropertySchema, z.string().uuid()).default({}),
+  componentId: z.string().uuid().nullable().default(null),
+  instanceOf: z.string().uuid().nullable().default(null),
+  instanceRootId: z.string().uuid().nullable().default(null),
+  instanceSourceId: z.string().uuid().nullable().default(null),
+  instanceProperties: z.record(z.string().uuid(), designComponentPropertyValueSchema).default({}),
+  instanceOverrides: z.record(z.string().uuid(), designInstanceElementOverridesSchema).default({}),
+  slotAssignments: z.record(z.string().uuid(), z.array(z.string().uuid()).max(200)).default({}),
+  slotName: z.string().trim().min(1).max(120).nullable().default(null),
   order: z.number().int().min(0).max(1_000_000),
 });
 
@@ -219,6 +324,9 @@ export const designDocumentSchema = z.object({
   variableCollections: z.array(designVariableCollectionSchema).max(100).default([]),
   variables: z.array(designVariableSchema).max(5_000).default([]),
   activeVariableModes: z.record(z.string().uuid(), z.string().uuid()).default({}),
+  components: z.array(designComponentSchema).max(2_000).default([]),
+  componentSets: z.array(designComponentSetSchema).max(500).default([]),
+  libraryLinks: z.array(designLibraryLinkSchema).max(200).default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -229,6 +337,9 @@ const designElementChangesSchema = designElementSchema
 
 const designVariableCollectionChangesSchema = designVariableCollectionSchema.omit({ id: true }).partial();
 const designVariableChangesSchema = designVariableSchema.omit({ id: true }).partial();
+const designComponentChangesSchema = designComponentSchema.omit({ id: true, rootElementId: true }).partial();
+const designComponentSetChangesSchema = designComponentSetSchema.omit({ id: true }).partial();
+const designLibraryLinkChangesSchema = designLibraryLinkSchema.omit({ id: true, sourceWorkspaceId: true, sourceNodeId: true }).partial();
 
 export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -255,6 +366,29 @@ export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('delete-variable'), variableId: z.string().uuid() }),
   z.object({ kind: z.literal('set-active-variable-mode'), collectionId: z.string().uuid(), modeId: z.string().uuid() }),
   z.object({ kind: z.literal('bind-variable'), elementId: z.string().uuid(), property: designBindablePropertySchema, variableId: z.string().uuid().nullable() }),
+  z.object({ kind: z.literal('add-component'), component: designComponentSchema }),
+  z.object({ kind: z.literal('update-component'), componentId: z.string().uuid(), changes: designComponentChangesSchema }),
+  z.object({ kind: z.literal('delete-component'), componentId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-component-set'), componentSet: designComponentSetSchema }),
+  z.object({ kind: z.literal('update-component-set'), componentSetId: z.string().uuid(), changes: designComponentSetChangesSchema }),
+  z.object({ kind: z.literal('delete-component-set'), componentSetId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-library-link'), link: designLibraryLinkSchema }),
+  z.object({ kind: z.literal('update-library-link'), libraryId: z.string().uuid(), changes: designLibraryLinkChangesSchema }),
+  z.object({ kind: z.literal('delete-library-link'), libraryId: z.string().uuid() }),
+  z.object({
+    kind: z.literal('create-component-instance'),
+    componentId: z.string().uuid(),
+    instanceId: z.string().uuid(),
+    pageId: z.string().uuid(),
+    parentId: z.string().uuid().nullable(),
+    x: z.number().finite(),
+    y: z.number().finite(),
+    order: z.number().int().min(0).max(1_000_000).optional(),
+  }),
+  z.object({ kind: z.literal('swap-component-instance'), instanceId: z.string().uuid(), componentId: z.string().uuid() }),
+  z.object({ kind: z.literal('set-instance-property'), instanceId: z.string().uuid(), propertyId: z.string().uuid(), value: designComponentPropertyValueSchema }),
+  z.object({ kind: z.literal('assign-instance-slot'), instanceId: z.string().uuid(), propertyId: z.string().uuid(), elementIds: z.array(z.string().uuid()).max(200) }),
+  z.object({ kind: z.literal('detach-component-instance'), instanceId: z.string().uuid() }),
   z.object({ kind: z.literal('set-active-page'), pageId: z.string().uuid() }),
   z.object({ kind: z.literal('rename-document'), name: z.string().trim().min(1).max(180) }),
 ]);
@@ -317,9 +451,16 @@ export type DesignGuide = z.infer<typeof designGuideSchema>;
 export type DesignVariableType = z.infer<typeof designVariableTypeSchema>;
 export type DesignVariableValue = z.infer<typeof designVariableValueSchema>;
 export type DesignVariableMode = z.infer<typeof designVariableModeSchema>;
+export type DesignCodeSource = z.infer<typeof designCodeSourceSchema>;
 export type DesignVariableCollection = z.infer<typeof designVariableCollectionSchema>;
 export type DesignVariable = z.infer<typeof designVariableSchema>;
 export type DesignBindableProperty = z.infer<typeof designBindablePropertySchema>;
+export type DesignComponentPropertyType = z.infer<typeof designComponentPropertyTypeSchema>;
+export type DesignComponentPropertyValue = z.infer<typeof designComponentPropertyValueSchema>;
+export type DesignComponentProperty = z.infer<typeof designComponentPropertySchema>;
+export type DesignComponent = z.infer<typeof designComponentSchema>;
+export type DesignComponentSet = z.infer<typeof designComponentSetSchema>;
+export type DesignLibraryLink = z.infer<typeof designLibraryLinkSchema>;
 export type DesignDocument = z.infer<typeof designDocumentSchema>;
 export type DesignOperation = z.infer<typeof designOperationSchema>;
 export type ApplyDesignOperationsInput = z.infer<typeof applyDesignOperationsSchema>;
