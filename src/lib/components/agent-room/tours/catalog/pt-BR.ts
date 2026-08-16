@@ -446,6 +446,11 @@ export const TOURS_PT: Tour[] = [
         body: 'Cole, arraste ou escolha um SVG para transformar paths, formas, transforms, estilos e gradientes em camadas nativas editáveis. Imagens raster continuam na biblioteca reutilizável. Copie a seleção como SVG ou PNG ou exporte a seleção ou página inteira em SVG, PNG, JPEG, WebP ou PDF.',
       },
       {
+        id: 'design-system',
+        title: 'Torne a linguagem visual reutilizável',
+        body: 'Abra Variáveis ao lado de Camadas. Crie tokens tipados numa coleção, adicione modos Claro, Escuro, marca ou produto e use aliases quando um token precisar reutilizar outro. Selecione uma camada e vincule propriedades compatíveis no inspector. Trocar o modo ativo mostra todas as camadas vinculadas imediatamente; agentes usam as mesmas operações protegidas por revisão.',
+      },
+      {
         id: 'designer',
         title: 'Adicione um designer ao mesmo documento',
         body: 'Crio um agente Designer. Ele inspeciona e edita o documento estruturado exato com tools tipadas do Orkestrai, sem adivinhar o visual por um screenshot.',

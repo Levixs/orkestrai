@@ -17,6 +17,7 @@
     ArrowDown,
     ArrowUp,
     Blend,
+    Braces,
     ChevronDown,
     Circle,
     ClipboardCopy,
@@ -29,6 +30,7 @@
     Group,
     ImagePlus,
     Lock,
+    Layers3,
     MoveDiagonal2,
     Magnet,
     Maximize2,
@@ -60,6 +62,7 @@
   import {
     designElementSchema,
     type DesignAsset,
+    type DesignBindableProperty,
     type DesignDocument,
     type DesignEffect,
     type DesignElement,
@@ -83,11 +86,14 @@
     type DesignBooleanOperation,
   } from '$lib/modules/agent-room/domain/design-geometry.js';
   import { importSvgToDesign, SvgImportError } from '$lib/modules/agent-room/domain/design-svg-import.js';
+  import { resolveDesignElements } from '$lib/modules/agent-room/domain/design-variables.js';
   import * as m from '$lib/paraglide/messages.js';
   import DesignColorTools from './DesignColorTools.svelte';
   import DesignPaintEditor from './DesignPaintEditor.svelte';
   import DesignRenderer from './DesignRenderer.svelte';
   import DesignToolbarButton from './DesignToolbarButton.svelte';
+  import DesignVariableBindings from './DesignVariableBindings.svelte';
+  import DesignVariablesPanel from './DesignVariablesPanel.svelte';
 
   let {
     workspaceId,
@@ -143,6 +149,7 @@
   let snapLinesY = $state<number[]>([]);
   let exporting = $state(false);
   let colorMenuOpen = $state(false);
+  let leftPanel = $state<'layers' | 'variables'>('layers');
   let thumbnailRevision = $state(-1);
   let thumbnailTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -156,7 +163,7 @@
         : [...pageElements, draft]
       : pageElements;
     if (editingTextId) elements = elements.map((element) => element.id === editingTextId ? { ...element, text: '' } : element);
-    return elements;
+    return document ? resolveDesignElements(document, elements) : elements;
   });
   const selectedElements = $derived(pageElements.filter((element) => selectedIds.includes(element.id)));
   const selected = $derived(selectedElements.length === 1 ? selectedElements[0] : null);
@@ -982,6 +989,17 @@
       }
     }
     await apply(operations, m['design.operation_update']({ name: summary }), { inverse });
+  }
+
+  async function bindSelectedVariable(property: DesignBindableProperty, variableId: string | null) {
+    if (!selected) return;
+    const previous = selected.variableBindings[property] ?? null;
+    if (previous === variableId) return;
+    await apply(
+      [{ kind: 'bind-variable', elementId: selected.id, property, variableId }],
+      m['design.operation_bind_variable']({ property }),
+      { inverse: [{ kind: 'bind-variable', elementId: selected.id, property, variableId: previous }] },
+    );
   }
 
   async function updateElement(element: DesignElement, changes: Partial<DesignElement>) {
@@ -2381,35 +2399,44 @@
       </DropdownMenu.Root>
     </header>
 
-    <aside class="grid min-h-0 grid-rows-[minmax(0,1fr)_190px] border-r border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
-      <section class="min-h-0 overflow-y-auto">
-        <div class="sticky top-0 z-10 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">{m['design.layers']()}</div>
-        {#if loading}<p class="p-3 text-xs text-[var(--app-text-muted)]">{m['design.loading']()}</p>{:else}
-          <div class="flex flex-col-reverse p-1">
-            {#each pageElements as element (element.id)}
-              <div class={`group flex h-8 items-center gap-1 rounded px-1 ${selectedIds.includes(element.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`} style:padding-left={`${4 + layerDepth(element) * 12}px`}>
-                <button class="min-w-0 flex-1 truncate px-1 text-left text-[11px]" onclick={(event) => { vectorEditId = null; pathPointSelections = []; if (event.shiftKey) selectedIds = selectedIds.includes(element.id) ? selectedIds.filter((id) => id !== element.id) : [...selectedIds, element.id]; else selectedIds = [element.id]; }} ondblclick={() => { if (element.type === 'path') enterVectorEdit(element); else if (element.type === 'text') beginTextEditing(element); }}>{element.name}</button>
-                <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.visible ? m['design.hide']() : m['design.show']()} onclick={() => void updateElement(element, { visible: !element.visible })}>{#if element.visible}<Eye size={12} />{:else}<EyeOff size={12} />{/if}</button>
-                <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.locked ? m['design.unlock']() : m['design.lock']()} onclick={() => void updateElement(element, { locked: !element.locked })}>{#if element.locked}<Lock size={12} />{:else}<Unlock size={12} />{/if}</button>
+    <aside class="flex min-h-0 flex-col border-r border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
+      <div class="grid grid-cols-2 border-b border-[var(--app-border)] p-1">
+        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${leftPanel === 'layers' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={leftPanel === 'layers'} onclick={() => (leftPanel = 'layers')}><Layers3 size={12} />{m['design.layers']()}</button>
+        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${leftPanel === 'variables' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={leftPanel === 'variables'} onclick={() => (leftPanel = 'variables')}><Braces size={12} />{m['design.variables']()}</button>
+      </div>
+      {#if leftPanel === 'layers'}
+        <div class="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_190px]">
+          <section class="min-h-0 overflow-y-auto">
+            {#if loading}<p class="p-3 text-xs text-[var(--app-text-muted)]">{m['design.loading']()}</p>{:else}
+              <div class="flex flex-col-reverse p-1">
+                {#each pageElements as element (element.id)}
+                  <div class={`group flex h-8 items-center gap-1 rounded px-1 ${selectedIds.includes(element.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`} style:padding-left={`${4 + layerDepth(element) * 12}px`}>
+                    <button class="min-w-0 flex-1 truncate px-1 text-left text-[11px]" onclick={(event) => { vectorEditId = null; pathPointSelections = []; if (event.shiftKey) selectedIds = selectedIds.includes(element.id) ? selectedIds.filter((id) => id !== element.id) : [...selectedIds, element.id]; else selectedIds = [element.id]; }} ondblclick={() => { if (element.type === 'path') enterVectorEdit(element); else if (element.type === 'text') beginTextEditing(element); }}>{element.name}</button>
+                    <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.visible ? m['design.hide']() : m['design.show']()} onclick={() => void updateElement(element, { visible: !element.visible })}>{#if element.visible}<Eye size={12} />{:else}<EyeOff size={12} />{/if}</button>
+                    <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.locked ? m['design.unlock']() : m['design.lock']()} onclick={() => void updateElement(element, { locked: !element.locked })}>{#if element.locked}<Lock size={12} />{:else}<Unlock size={12} />{/if}</button>
+                  </div>
+                {/each}
               </div>
-            {/each}
-          </div>
-        {/if}
-      </section>
-      <section class="min-h-0 overflow-y-auto border-t border-[var(--app-border)]">
-        <div class="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-1.5 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]"><span>{m['design.assets']()}</span><Button variant="ghost" size="icon-sm" class="size-6" aria-label={m['design.import_asset']()} onclick={() => assetInput?.click()}><Plus size={12} /></Button></div>
-        {#if !document?.assets.length}<p class="p-3 text-[10px] leading-4 text-[var(--app-text-muted)]">{m['design.assets_empty']()}</p>{:else}
-          <div class="grid grid-cols-2 gap-1.5 p-2">
-            {#each document.assets as asset (asset.id)}
-              <div class="group relative overflow-hidden border border-[var(--app-border)] bg-[var(--app-canvas)]">
-                <button class="block aspect-square w-full" title={m['design.insert_asset']()} onclick={() => void insertAsset(asset)}><img class="h-full w-full object-contain" src={`/api/agent-room/workspaces/${workspaceId}/fs/raw?path=${encodeURIComponent(asset.path)}`} alt={asset.name} /></button>
-                <span class="block truncate border-t border-[var(--app-border)] px-1.5 py-1 text-[9px]">{asset.name}</span>
-                {#if !document.elements.some((element) => element.assetId === asset.id)}<button class="absolute top-1 right-1 grid size-6 place-items-center bg-[var(--app-surface)] text-[var(--app-danger)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus:opacity-100" aria-label={m['design.delete']()} onclick={() => void deleteAsset(asset)}><Trash2 size={11} /></button>{/if}
+            {/if}
+          </section>
+          <section class="min-h-0 overflow-y-auto border-t border-[var(--app-border)]">
+            <div class="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-1.5 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]"><span>{m['design.assets']()}</span><Button variant="ghost" size="icon-sm" class="size-6" aria-label={m['design.import_asset']()} onclick={() => assetInput?.click()}><Plus size={12} /></Button></div>
+            {#if !document?.assets.length}<p class="p-3 text-[10px] leading-4 text-[var(--app-text-muted)]">{m['design.assets_empty']()}</p>{:else}
+              <div class="grid grid-cols-2 gap-1.5 p-2">
+                {#each document.assets as asset (asset.id)}
+                  <div class="group relative overflow-hidden border border-[var(--app-border)] bg-[var(--app-canvas)]">
+                    <button class="block aspect-square w-full" title={m['design.insert_asset']()} onclick={() => void insertAsset(asset)}><img class="h-full w-full object-contain" src={`/api/agent-room/workspaces/${workspaceId}/fs/raw?path=${encodeURIComponent(asset.path)}`} alt={asset.name} /></button>
+                    <span class="block truncate border-t border-[var(--app-border)] px-1.5 py-1 text-[9px]">{asset.name}</span>
+                    {#if !document.elements.some((element) => element.assetId === asset.id)}<button class="absolute top-1 right-1 grid size-6 place-items-center bg-[var(--app-surface)] text-[var(--app-danger)] opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus:opacity-100" aria-label={m['design.delete']()} onclick={() => void deleteAsset(asset)}><Trash2 size={11} /></button>{/if}
+                  </div>
+                {/each}
               </div>
-            {/each}
-          </div>
-        {/if}
-      </section>
+            {/if}
+          </section>
+        </div>
+      {:else if document}
+        <div class="min-h-0 flex-1"><DesignVariablesPanel {document} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} /></div>
+      {/if}
     </aside>
 
     <main class="relative min-h-0 min-w-0 overflow-auto bg-[var(--app-canvas)]" bind:this={viewport} ondragover={(event) => event.preventDefault()} ondrop={handleDrop}>
@@ -2616,12 +2643,13 @@
 
     <aside class="min-h-0 overflow-y-auto border-l border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
       <div class="sticky top-0 z-10 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">{m['design.properties']()}</div>
-      {#if selected}
+      {#if selected && document}
         <div class="space-y-4 p-3 text-[11px]">
           <label class="block space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.name']()}</span><Input value={selected.name} onchange={(event: Event) => void updateSelected({ name: (event.currentTarget as HTMLInputElement).value })} /></label>
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.position']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">X</span><Input type="number" value={selected.x} onchange={(event: Event) => void updateSelected({ x: number(event) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">Y</span><Input type="number" value={selected.y} onchange={(event: Event) => void updateSelected({ y: number(event) })} /></label><label class="col-span-2 space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.rotation']()}</span><Input type="number" value={selected.rotation} onchange={(event: Event) => void updateSelected({ rotation: number(event) })} /></label></div></section>
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.size']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">W</span><Input type="number" min="1" value={selected.width} onchange={(event: Event) => void updateSelected({ width: Math.max(1, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">H</span><Input type="number" min="1" value={selected.height} onchange={(event: Event) => void updateSelected({ height: Math.max(1, number(event)) })} /></label></div></section>
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.appearance']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.stroke_width']()}</span><Input type="number" min="0" value={selected.strokeWidth} onchange={(event: Event) => void updateSelected({ strokeWidth: Math.max(0, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.radius']()}</span><Input type="number" min="0" value={selected.cornerRadius} onchange={(event: Event) => void updateSelected({ cornerRadius: Math.max(0, number(event)) })} /></label><label class="col-span-2 space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.opacity']()}</span><Input type="number" min="0" max="100" value={Math.round(selected.opacity * 100)} onchange={(event: Event) => void updateSelected({ opacity: Math.max(0, Math.min(1, number(event) / 100)) })} /></label></div><label class="block space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.blend_mode']()}</span><NativeSelect.Root class="w-full" value={selected.blendMode} onchange={(event: Event) => void updateSelected({ blendMode: (event.currentTarget as HTMLSelectElement).value as DesignElement['blendMode'] })}><NativeSelect.Option value="normal">{m['design.blend_normal']()}</NativeSelect.Option><NativeSelect.Option value="multiply">{m['design.blend_multiply']()}</NativeSelect.Option><NativeSelect.Option value="screen">{m['design.blend_screen']()}</NativeSelect.Option><NativeSelect.Option value="overlay">{m['design.blend_overlay']()}</NativeSelect.Option><NativeSelect.Option value="darken">{m['design.blend_darken']()}</NativeSelect.Option><NativeSelect.Option value="lighten">{m['design.blend_lighten']()}</NativeSelect.Option></NativeSelect.Root></label></section>
+          <DesignVariableBindings document={document} element={selected} onBind={(property, variableId) => void bindSelectedVariable(property, variableId)} onOpenVariables={() => (leftPanel = 'variables')} />
           {#if selected.type !== 'image' && selected.type !== 'group'}
             <DesignPaintEditor title={m['design.fill']()} paints={selected.fills} fallbackColor={selected.fill} onChange={(fills: DesignPaint[]) => void updateSelected({ fills, fill: fills.length ? 'transparent' : selected.fill })} />
             <DesignColorTools role="fill" color={primaryColor(selected, 'fill')} matches={matchingColorLayers('fill', primaryColor(selected, 'fill'))} selectionCount={selectedElements.length} onSelectMatches={() => { const color = primaryColor(selected, 'fill'); if (color) selectMatchingColor('fill', color); }} onSelectLayer={(id) => (selectedIds = [id])} onApplySelection={(color) => void applyColorToSelection('fill', color)} onReplaceMatches={(color) => { const from = primaryColor(selected, 'fill'); if (from) void replaceMatchingColor('fill', from, color); }} />

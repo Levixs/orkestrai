@@ -6,6 +6,7 @@
   import HeaderIconButton from './HeaderIconButton.svelte';
   import DesignRenderer from '../design/DesignRenderer.svelte';
   import type { DesignDocument } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
+  import { resolveDesignElements } from '$lib/modules/agent-room/domain/design-variables.js';
   import * as m from '$lib/paraglide/messages.js';
 
   export type DesignNodeData = {
@@ -29,7 +30,7 @@
   let thumbnailAttempt = $state(0);
   let thumbnailRetry: ReturnType<typeof setTimeout> | null = null;
   const page = $derived(document?.pages.find((item) => item.id === document?.activePageId) ?? document?.pages[0] ?? null);
-  const elements = $derived(document && page ? document.elements.filter((element) => element.pageId === page.id) : []);
+  const elements = $derived(document && page ? resolveDesignElements(document, document.elements.filter((element) => element.pageId === page.id)) : []);
 
   async function load() {
     loading = true;

@@ -357,4 +357,77 @@ test.describe('Native Design Mode', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  test('manages variable modes and binds tokens through the visible editor UI', async ({ page, request }) => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-design-variables-e2e-'));
+    const originalSettings = (await (await request.get('/api/agent-room/settings')).json()).data as Record<string, string>;
+    const workspace = (await (await request.post('/api/agent-room/workspaces', {
+      data: { name: `E2E design variables ${Date.now()}`, workingDir: dir },
+    })).json()).data as { id: string };
+    const node = (await (await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: { type: 'design', title: 'Design system', x: 120, y: 120, width: 720, height: 520, payload: {} },
+    })).json()).data as { id: string };
+    const initial = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as { revision: number; activePageId: string };
+    const collectionId = randomUUID();
+    const lightModeId = randomUUID();
+    const darkModeId = randomUUID();
+    const variableId = randomUUID();
+    const rectangleId = randomUUID();
+    await request.patch(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`, {
+      data: {
+        baseRevision: initial.revision,
+        operations: [
+          { kind: 'add-variable-collection', collection: { id: collectionId, name: 'Brand', modes: [{ id: lightModeId, name: 'Light' }, { id: darkModeId, name: 'Dark' }], defaultModeId: lightModeId, order: 0 } },
+          { kind: 'add-variable', variable: { id: variableId, collectionId, name: 'Primary', type: 'color', description: 'Primary action', values: { [lightModeId]: { kind: 'color', value: '#2255ee' }, [darkModeId]: { kind: 'color', value: '#88aaff' } }, order: 0 } },
+          { kind: 'create', element: { id: rectangleId, pageId: initial.activePageId, parentId: null, type: 'rectangle', name: 'Token button', x: 240, y: 220, width: 240, height: 96, variableBindings: { fill: variableId } } },
+        ],
+        summary: 'Seed design system',
+        actor: { kind: 'user', id: null, name: null, taskId: null },
+      },
+    });
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+
+    try {
+      await request.put('/api/agent-room/settings', { data: { ...originalSettings, uiLanguage: 'en' } });
+      await page.goto(`/canvas?workspace=${workspace.id}&node=${node.id}&design=1`);
+      const editor = page.locator('[data-testid="canvas-design-mode"]');
+      await expect(editor).toBeVisible();
+      const rendered = editor.locator(`[data-design-element="${rectangleId}"] > rect`).first();
+      await expect(rendered).toHaveAttribute('fill', '#2255ee');
+
+      await editor.getByRole('button', { name: 'Variables', exact: true }).click();
+      await expect(editor.getByLabel('Collection name')).toHaveValue('Brand');
+      await expect(editor.getByText('Primary', { exact: true })).toBeVisible();
+      const modeChanged = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await editor.getByLabel('Active mode', { exact: true }).selectOption(darkModeId);
+      await modeChanged;
+      await expect(rendered).toHaveAttribute('fill', '#88aaff');
+
+      await editor.getByRole('button', { name: 'Layers', exact: true }).click();
+      await editor.getByRole('button', { name: 'Token button', exact: true }).click();
+      const binding = editor.getByRole('combobox', { name: 'Bind Fill to a variable' });
+      await expect(binding).toContainText('Brand / Primary');
+      await binding.click();
+      const unbound = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.getByRole('option', { name: 'Not bound', exact: true }).click();
+      await unbound;
+      let current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as { elements: Array<{ id: string; variableBindings: Record<string, string> }> };
+      expect(current.elements.find((element) => element.id === rectangleId)?.variableBindings.fill).toBeUndefined();
+
+      await binding.click();
+      await page.getByPlaceholder('Search variables...').fill('Primary');
+      const rebound = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.getByRole('option', { name: 'Brand / Primary', exact: true }).click();
+      await rebound;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      expect(current.elements.find((element) => element.id === rectangleId)?.variableBindings.fill).toBe(variableId);
+      expect(pageErrors).toEqual([]);
+    } finally {
+      if (!page.isClosed()) await page.goto('about:blank');
+      await request.put('/api/agent-room/settings', { data: originalSettings });
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

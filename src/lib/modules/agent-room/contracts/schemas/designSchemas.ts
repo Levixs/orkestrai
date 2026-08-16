@@ -52,6 +52,70 @@ export const designEffectSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
+export const designVariableTypeSchema = z.enum([
+  'color',
+  'spacing',
+  'radius',
+  'font-size',
+  'font-weight',
+  'line-height',
+  'opacity',
+  'effect',
+  'breakpoint',
+  'string',
+  'boolean',
+]);
+
+export const designVariableValueSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('color'), value: designColorSchema }),
+  z.object({ kind: z.literal('number'), value: z.number().finite().min(-100_000).max(100_000) }),
+  z.object({ kind: z.literal('string'), value: z.string().max(2_000) }),
+  z.object({ kind: z.literal('boolean'), value: z.boolean() }),
+  z.object({ kind: z.literal('effect'), value: z.array(designEffectSchema).max(16) }),
+  z.object({ kind: z.literal('alias'), variableId: z.string().uuid() }),
+]);
+
+export const designVariableModeSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(80),
+});
+
+export const designVariableCollectionSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  modes: z.array(designVariableModeSchema).min(1).max(16),
+  defaultModeId: z.string().uuid(),
+  order: z.number().int().min(0).max(10_000),
+});
+
+export const designVariableSchema = z.object({
+  id: z.string().uuid(),
+  collectionId: z.string().uuid(),
+  name: z.string().trim().min(1).max(160),
+  type: designVariableTypeSchema,
+  description: z.string().max(1_000).default(''),
+  values: z.record(z.string().uuid(), designVariableValueSchema),
+  order: z.number().int().min(0).max(100_000),
+});
+
+export const designBindablePropertySchema = z.enum([
+  'fill',
+  'stroke',
+  'opacity',
+  'cornerRadius',
+  'strokeWidth',
+  'fontSize',
+  'fontWeight',
+  'layoutGap',
+  'layoutRowGap',
+  'layoutColumnGap',
+  'layoutPaddingTop',
+  'layoutPaddingRight',
+  'layoutPaddingBottom',
+  'layoutPaddingLeft',
+  'effects',
+]);
+
 export const designPathPointSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
@@ -127,6 +191,7 @@ export const designElementSchema = z.object({
   clipContent: z.boolean().default(false),
   constraintHorizontal: z.enum(['left', 'right', 'left-right', 'center', 'scale']).default('left'),
   constraintVertical: z.enum(['top', 'bottom', 'top-bottom', 'center', 'scale']).default('top'),
+  variableBindings: z.record(designBindablePropertySchema, z.string().uuid()).default({}),
   order: z.number().int().min(0).max(1_000_000),
 });
 
@@ -151,6 +216,9 @@ export const designDocumentSchema = z.object({
   elements: z.array(designElementSchema).max(25_000),
   assets: z.array(designAssetSchema).max(5_000).default([]),
   guides: z.array(designGuideSchema).max(1_000).default([]),
+  variableCollections: z.array(designVariableCollectionSchema).max(100).default([]),
+  variables: z.array(designVariableSchema).max(5_000).default([]),
+  activeVariableModes: z.record(z.string().uuid(), z.string().uuid()).default({}),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -158,6 +226,9 @@ export const designDocumentSchema = z.object({
 const designElementChangesSchema = designElementSchema
   .omit({ id: true, pageId: true, parentId: true, type: true })
   .partial();
+
+const designVariableCollectionChangesSchema = designVariableCollectionSchema.omit({ id: true }).partial();
+const designVariableChangesSchema = designVariableSchema.omit({ id: true }).partial();
 
 export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -176,6 +247,14 @@ export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('add-guide'), guide: designGuideSchema }),
   z.object({ kind: z.literal('update-guide'), guideId: z.string().uuid(), position: z.number().finite().min(-100_000).max(100_000) }),
   z.object({ kind: z.literal('delete-guide'), guideId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-variable-collection'), collection: designVariableCollectionSchema }),
+  z.object({ kind: z.literal('update-variable-collection'), collectionId: z.string().uuid(), changes: designVariableCollectionChangesSchema }),
+  z.object({ kind: z.literal('delete-variable-collection'), collectionId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-variable'), variable: designVariableSchema }),
+  z.object({ kind: z.literal('update-variable'), variableId: z.string().uuid(), changes: designVariableChangesSchema }),
+  z.object({ kind: z.literal('delete-variable'), variableId: z.string().uuid() }),
+  z.object({ kind: z.literal('set-active-variable-mode'), collectionId: z.string().uuid(), modeId: z.string().uuid() }),
+  z.object({ kind: z.literal('bind-variable'), elementId: z.string().uuid(), property: designBindablePropertySchema, variableId: z.string().uuid().nullable() }),
   z.object({ kind: z.literal('set-active-page'), pageId: z.string().uuid() }),
   z.object({ kind: z.literal('rename-document'), name: z.string().trim().min(1).max(180) }),
 ]);
@@ -235,6 +314,12 @@ export type DesignEffect = z.infer<typeof designEffectSchema>;
 export type DesignPathPoint = z.infer<typeof designPathPointSchema>;
 export type DesignAsset = z.infer<typeof designAssetSchema>;
 export type DesignGuide = z.infer<typeof designGuideSchema>;
+export type DesignVariableType = z.infer<typeof designVariableTypeSchema>;
+export type DesignVariableValue = z.infer<typeof designVariableValueSchema>;
+export type DesignVariableMode = z.infer<typeof designVariableModeSchema>;
+export type DesignVariableCollection = z.infer<typeof designVariableCollectionSchema>;
+export type DesignVariable = z.infer<typeof designVariableSchema>;
+export type DesignBindableProperty = z.infer<typeof designBindablePropertySchema>;
 export type DesignDocument = z.infer<typeof designDocumentSchema>;
 export type DesignOperation = z.infer<typeof designOperationSchema>;
 export type ApplyDesignOperationsInput = z.infer<typeof applyDesignOperationsSchema>;

@@ -26,9 +26,10 @@ const TOOLS = [
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
   { name: 'design_list', description: 'Lista documentos de design nativos do workspace e suas revisoes.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
-  { name: 'design_create_element', description: 'Cria frame, retangulo, elipse ou texto no documento. A operacao falha em revisao antiga, sem sobrescrever trabalho humano.', inputSchema: { type: 'object', properties: {
+  { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: elementos, grupos, vetores, assets, guias, colecoes, modos, variaveis, aliases e bindings. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
+  { name: 'design_create_element', description: 'Cria frame, grupo, retangulo, elipse, texto, vetor ou imagem no documento. A operacao falha em revisao antiga, sem sobrescrever trabalho humano.', inputSchema: { type: 'object', properties: {
     nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, parentId: { type: ['string', 'null'] },
-    type: { type: 'string', enum: ['frame', 'rectangle', 'ellipse', 'text'] }, name: { type: 'string' },
+    type: { type: 'string', enum: ['frame', 'group', 'rectangle', 'ellipse', 'text', 'path', 'image'] }, name: { type: 'string' },
     x: { type: 'number' }, y: { type: 'number' }, width: { type: 'number' }, height: { type: 'number' },
     fill: { type: 'string' }, stroke: { type: 'string' }, strokeWidth: { type: 'number' }, cornerRadius: { type: 'number' },
     text: { type: 'string' }, fontSize: { type: 'number' }, fontWeight: { type: 'number' }, summary: { type: 'string' }, taskId: { type: 'string' },
@@ -95,6 +96,14 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', '/api/agent-room/bridge/designs');
     case 'design_read':
       return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`);
+    case 'design_apply_operations':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: args.operations,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
     case 'design_create_element': {
       const { nodeId, baseRevision, summary, taskId, ...element } = args;
       return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`, {

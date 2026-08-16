@@ -86,7 +86,10 @@ Download the latest installers from
   combine shapes, use masks, gradients, effects, snapping, guides, auto layout,
   grids, and responsive constraints; import SVGs as editable hierarchical vector layers,
   group or ungroup them, find and replace matching colors across the design,
-  and copy or export a selection as SVG or PNG. Raster images remain reusable
+  and copy or export a selection as SVG or PNG. Create typed design tokens in
+  collections with multiple modes, aliases, and property bindings; switching a
+  mode updates every bound layer immediately and agents use the same
+  revision-safe operations through MCP. Raster images remain reusable
   assets, while full documents export to SVG, PNG, JPEG, WebP, or PDF. A designer or leader
   can edit the exact same revision through typed Orkestrai tools while the UI
   updates live. Documents, assets, thumbnails, and history stay under

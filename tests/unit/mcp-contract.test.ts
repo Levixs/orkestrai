@@ -50,6 +50,7 @@ const EXPECTED: Record<string, Expectation> = {
   note_create: { method: 'POST', path: /\/bridge\/notes$/, schema: bridgeNoteCreateSchema },
   design_list: { method: 'GET', path: /\/bridge\/designs$/ },
   design_read: { method: 'GET', path: /\/bridge\/designs\/n1$/ },
+  design_apply_operations: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_create_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_update_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_delete_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
@@ -78,6 +79,21 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   note_edit: { nodeId: 'n1', oldText: 'a', newText: 'b' },
   note_create: { title: 'T', content: 'c' },
   design_read: { nodeId: 'n1' },
+  design_apply_operations: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    summary: 'Create color collection',
+    operations: [{
+      kind: 'add-variable-collection',
+      collection: {
+        id: '00000000-0000-7000-8000-000000000010',
+        name: 'Brand',
+        modes: [{ id: '00000000-0000-7000-8000-000000000011', name: 'Light' }],
+        defaultModeId: '00000000-0000-7000-8000-000000000011',
+        order: 0,
+      },
+    }],
+  },
   design_create_element: {
     nodeId: 'n1',
     baseRevision: 0,

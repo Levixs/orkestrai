@@ -442,6 +442,11 @@ export const TOURS_EN: Tour[] = [
         body: 'Paste, drop, or choose an SVG to turn its paths, shapes, transforms, styles, and gradients into editable native layers. Raster images stay in the reusable asset library. Copy a selection as SVG or PNG, or export the selection or full page as SVG, PNG, JPEG, WebP, or PDF.',
       },
       {
+        id: 'design-system',
+        title: 'Make the visual language reusable',
+        body: 'Open Variables beside Layers. Create typed tokens inside a collection, add Light, Dark, brand, or product modes, and use aliases when one token should reuse another. Select a layer and bind compatible properties in the inspector. Switching the active mode previews every bound layer immediately; agents use the same revision-safe operations.',
+      },
+      {
         id: 'designer',
         title: 'Add a designer to the same document',
         body: 'I create a Designer agent. It can inspect and edit the exact structured document with typed Orkestrai tools instead of guessing from a screenshot.',

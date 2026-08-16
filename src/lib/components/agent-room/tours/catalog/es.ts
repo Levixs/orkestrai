@@ -442,6 +442,11 @@ export const TOURS_ES: Tour[] = [
         body: 'Pega, arrastra o elige un SVG para convertir paths, formas, transforms, estilos y gradientes en capas nativas editables. Las imágenes raster permanecen en la biblioteca reutilizable. Copia la selección como SVG o PNG o exporta la selección o página completa como SVG, PNG, JPEG, WebP o PDF.',
       },
       {
+        id: 'design-system',
+        title: 'Haz reutilizable el lenguaje visual',
+        body: 'Abre Variables junto a Capas. Crea tokens tipados en una colección, agrega modos Claro, Oscuro, marca o producto y usa aliases cuando un token deba reutilizar otro. Selecciona una capa y vincula propiedades compatibles desde el inspector. Cambiar el modo activo previsualiza todas las capas vinculadas de inmediato; los agentes usan las mismas operaciones protegidas por revisión.',
+      },
+      {
         id: 'designer',
         title: 'Agrega un diseñador al mismo documento',
         body: 'Creo un agente Diseñador. Puede inspeccionar y editar el documento estructurado exacto con tools tipadas de Orkestrai, sin adivinar desde una captura.',

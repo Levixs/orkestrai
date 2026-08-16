@@ -4,12 +4,17 @@ import { uuidv7 } from '@beeblock/svelar/support';
 import {
   designDocumentSchema,
   type DesignAsset,
+  type DesignBindableProperty,
   type DesignDocument,
   type DesignElement,
   type DesignOperation,
+  type DesignVariable,
+  type DesignVariableType,
+  type DesignVariableValue,
 } from '../../contracts/schemas/designSchemas.js';
 import type { ApplyDesignOperationsDto } from '../dto/DesignDtos.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
+import { resolveDesignVariableValue } from '../../domain/design-variables.js';
 
 export class DesignRevisionConflictError extends Error {
   constructor(public readonly current: DesignDocument) {
@@ -65,6 +70,107 @@ function assetMimeType(name: string, declared: string): DesignAsset['mimeType'] 
     throw new Error('Design asset type does not match its filename.');
   }
   return canonical;
+}
+
+function valueKindForType(type: DesignVariableType): Exclude<DesignVariableValue['kind'], 'alias'> {
+  if (type === 'color') return 'color';
+  if (type === 'effect') return 'effect';
+  if (type === 'string') return 'string';
+  if (type === 'boolean') return 'boolean';
+  return 'number';
+}
+
+function compatibleVariableTypes(property: DesignBindableProperty): DesignVariableType[] {
+  if (property === 'fill' || property === 'stroke') return ['color'];
+  if (property === 'effects') return ['effect'];
+  if (property === 'opacity') return ['opacity'];
+  if (property === 'cornerRadius') return ['radius'];
+  if (property === 'fontSize') return ['font-size'];
+  if (property === 'fontWeight') return ['font-weight'];
+  return ['spacing'];
+}
+
+function validateVariableValue(variable: DesignVariable, value: DesignVariableValue): void {
+  if (value.kind === 'alias') return;
+  if (value.kind !== valueKindForType(variable.type)) throw new Error(`Invalid value for ${variable.type} variable.`);
+  if (value.kind !== 'number') return;
+  if (variable.type === 'opacity' && (value.value < 0 || value.value > 1)) throw new Error('Opacity variables must be between 0 and 1.');
+  if (variable.type === 'font-weight' && (value.value < 100 || value.value > 900)) throw new Error('Font weight variables must be between 100 and 900.');
+  if (['spacing', 'radius', 'font-size', 'line-height', 'breakpoint'].includes(variable.type) && value.value < 0) {
+    throw new Error(`${variable.type} variables cannot be negative.`);
+  }
+}
+
+function validateDesignVariables(document: DesignDocument): void {
+  const collections = new Map(document.variableCollections.map((collection) => [collection.id, collection]));
+  if (collections.size !== document.variableCollections.length) throw new Error('Design variable collection ids must be unique.');
+  const allModeIds = new Set<string>();
+  for (const collection of document.variableCollections) {
+    const modeIds = new Set(collection.modes.map((mode) => mode.id));
+    if (modeIds.size !== collection.modes.length) throw new Error('Design variable mode ids must be unique.');
+    if (!modeIds.has(collection.defaultModeId)) throw new Error('The default design variable mode is missing.');
+    for (const modeId of modeIds) {
+      if (allModeIds.has(modeId)) throw new Error('Design variable mode ids must be unique across the document.');
+      allModeIds.add(modeId);
+    }
+    const activeModeId = document.activeVariableModes[collection.id];
+    if (activeModeId && !modeIds.has(activeModeId)) throw new Error('The active design variable mode is invalid.');
+  }
+  for (const collectionId of Object.keys(document.activeVariableModes)) {
+    if (!collections.has(collectionId)) throw new Error('The active design variable collection is invalid.');
+  }
+
+  const variables = new Map(document.variables.map((variable) => [variable.id, variable]));
+  if (variables.size !== document.variables.length) throw new Error('Design variable ids must be unique.');
+  const names = new Set<string>();
+  for (const variable of document.variables) {
+    const collection = collections.get(variable.collectionId);
+    if (!collection) throw new Error('Design variable collection not found.');
+    const nameKey = `${variable.collectionId}:${variable.name.toLocaleLowerCase()}`;
+    if (names.has(nameKey)) throw new Error('Design variable names must be unique within a collection.');
+    names.add(nameKey);
+    const modeIds = new Set(collection.modes.map((mode) => mode.id));
+    if (!variable.values[collection.defaultModeId]) throw new Error('A design variable needs a value for the default mode.');
+    for (const [modeId, value] of Object.entries(variable.values)) {
+      if (!modeIds.has(modeId)) throw new Error('Design variable value references an unknown mode.');
+      validateVariableValue(variable, value);
+      if (value.kind === 'alias') {
+        const target = variables.get(value.variableId);
+        if (!target || target.type !== variable.type || target.id === variable.id) throw new Error('Invalid design variable alias.');
+      }
+    }
+  }
+
+  const visit = (variableId: string, path: Set<string>) => {
+    if (path.has(variableId)) throw new Error('Design variable aliases cannot form a cycle.');
+    const variable = variables.get(variableId);
+    if (!variable) return;
+    const nextPath = new Set(path).add(variableId);
+    for (const value of Object.values(variable.values)) if (value.kind === 'alias') visit(value.variableId, nextPath);
+  };
+  for (const variableId of variables.keys()) visit(variableId, new Set());
+
+  for (const element of document.elements) {
+    for (const [property, variableId] of Object.entries(element.variableBindings) as Array<[DesignBindableProperty, string]>) {
+      const variable = variables.get(variableId);
+      if (!variable || !compatibleVariableTypes(property).includes(variable.type)) throw new Error('Invalid design variable binding.');
+    }
+  }
+}
+
+function detachVariableAliases(document: DesignDocument, removedIds: Set<string>): void {
+  const resolvedValues = new Map(
+    [...removedIds].map((variableId) => [variableId, resolveDesignVariableValue(document, variableId)]),
+  );
+  document.variables = document.variables.map((variable) => ({
+    ...variable,
+    values: Object.fromEntries(Object.entries(variable.values).map(([modeId, value]) => {
+      if (value.kind !== 'alias' || !removedIds.has(value.variableId)) return [modeId, value];
+      const resolved = resolvedValues.get(value.variableId);
+      if (!resolved) throw new Error('The deleted design variable could not be resolved.');
+      return [modeId, structuredClone(resolved)];
+    })),
+  }));
 }
 
 export function applyDesignOperations(document: DesignDocument, operations: DesignOperation[], now: string): DesignDocument {
@@ -182,6 +288,66 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       next.guides = next.guides.filter((guide) => guide.id !== operation.guideId);
       continue;
     }
+    if (operation.kind === 'add-variable-collection') {
+      if (next.variableCollections.some((collection) => collection.id === operation.collection.id)) throw new Error('Design variable collection already exists.');
+      next.variableCollections.push(operation.collection);
+      next.activeVariableModes[operation.collection.id] = operation.collection.defaultModeId;
+      continue;
+    }
+    if (operation.kind === 'update-variable-collection') {
+      const collection = next.variableCollections.find((candidate) => candidate.id === operation.collectionId);
+      if (!collection) throw new Error('Design variable collection not found.');
+      Object.assign(collection, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-variable-collection') {
+      if (!next.variableCollections.some((collection) => collection.id === operation.collectionId)) throw new Error('Design variable collection not found.');
+      const removedIds = new Set(next.variables.filter((variable) => variable.collectionId === operation.collectionId).map((variable) => variable.id));
+      detachVariableAliases(next, removedIds);
+      next.variableCollections = next.variableCollections.filter((collection) => collection.id !== operation.collectionId);
+      next.variables = next.variables.filter((variable) => !removedIds.has(variable.id));
+      delete next.activeVariableModes[operation.collectionId];
+      next.elements = next.elements.map((element) => ({
+        ...element,
+        variableBindings: Object.fromEntries(Object.entries(element.variableBindings).filter(([, variableId]) => !removedIds.has(variableId))),
+      }));
+      continue;
+    }
+    if (operation.kind === 'add-variable') {
+      if (next.variables.some((variable) => variable.id === operation.variable.id)) throw new Error('Design variable already exists.');
+      next.variables.push(operation.variable);
+      continue;
+    }
+    if (operation.kind === 'update-variable') {
+      const variable = next.variables.find((candidate) => candidate.id === operation.variableId);
+      if (!variable) throw new Error('Design variable not found.');
+      Object.assign(variable, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-variable') {
+      if (!next.variables.some((variable) => variable.id === operation.variableId)) throw new Error('Design variable not found.');
+      detachVariableAliases(next, new Set([operation.variableId]));
+      next.variables = next.variables.filter((variable) => variable.id !== operation.variableId);
+      next.elements = next.elements.map((element) => ({
+        ...element,
+        variableBindings: Object.fromEntries(Object.entries(element.variableBindings).filter(([, variableId]) => variableId !== operation.variableId)),
+      }));
+      continue;
+    }
+    if (operation.kind === 'set-active-variable-mode') {
+      const collection = next.variableCollections.find((candidate) => candidate.id === operation.collectionId);
+      if (!collection || !collection.modes.some((mode) => mode.id === operation.modeId)) throw new Error('Design variable mode not found.');
+      next.activeVariableModes[operation.collectionId] = operation.modeId;
+      continue;
+    }
+    if (operation.kind === 'bind-variable') {
+      const element = next.elements.find((candidate) => candidate.id === operation.elementId);
+      if (!element) throw new Error('Design element not found.');
+      if (element.locked) throw new Error('Design element is locked.');
+      if (operation.variableId) element.variableBindings[operation.property] = operation.variableId;
+      else delete element.variableBindings[operation.property];
+      continue;
+    }
     if (operation.kind === 'set-active-page') {
       if (!next.pages.some((page) => page.id === operation.pageId)) throw new Error('Design page not found.');
       next.activePageId = operation.pageId;
@@ -195,6 +361,7 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
     if (element.assetId && !assetIds.has(element.assetId)) throw new Error('Design asset not found.');
     if (element.maskId && (!elementIds.has(element.maskId) || element.maskId === element.id)) throw new Error('Invalid design mask.');
   }
+  validateDesignVariables(next);
   next.elements = sortElements(next.elements);
   next.updatedAt = now;
   return designDocumentSchema.parse(next);
@@ -257,6 +424,9 @@ export class DesignDocumentService {
       elements: [],
       assets: [],
       guides: [],
+      variableCollections: [],
+      variables: [],
+      activeVariableModes: {},
       createdAt: now,
       updatedAt: now,
     };

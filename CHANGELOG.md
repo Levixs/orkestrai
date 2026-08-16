@@ -9,6 +9,13 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Native Design documents now include typed design variables organized into
+  collections and modes. Designers can create color, spacing, radius,
+  typography, opacity, effect, breakpoint, string, and boolean tokens, reuse
+  values through aliases, bind compatible layer properties, and switch the
+  active mode with an immediate canvas preview. The same revision-safe command
+  bus is exposed to agents through `design_apply_operations` in the Orkestrai
+  MCP, including variable, mode, alias, and binding operations.
 - SVG files copied, pasted, dropped, or chosen in Design Mode are now parsed
   into editable native vector layers, including paths, primitive shapes,
   nested transforms and group hierarchy, inline and class styles, reusable
