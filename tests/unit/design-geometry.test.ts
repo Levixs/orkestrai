@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { designElementSchema, type DesignElement } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
-import { autoLayoutChanges, combineDesignElements, constrainedChildChanges } from '$lib/modules/agent-room/domain/design-geometry.js';
+import { autoLayoutChanges, combineDesignElements, constrainedChildChanges, cornerDesignPathPoint, designPathData, smoothDesignPathPoint, splitDesignPathSegment } from '$lib/modules/agent-room/domain/design-geometry.js';
 
 const PAGE_ID = '00000000-0000-7000-8000-000000000004';
 
@@ -71,5 +71,41 @@ describe('geometria do Design Mode', () => {
       constraintVertical: 'bottom',
     });
     expect(constrainedChildChanges(child, frame, { x: 10, y: 20, width: 300, height: 400 })).toMatchObject({ x: 260, y: 370 });
+  });
+
+  it('divide curvas sem alterar o seu percurso', () => {
+    const points = [
+      { x: 0, y: 0, inX: null, inY: null, outX: 30, outY: 0 },
+      { x: 90, y: 60, inX: 60, inY: 60, outX: null, outY: null },
+    ];
+    const split = splitDesignPathSegment(points, 0, 0.5, false);
+
+    expect(split).toHaveLength(3);
+    expect(split[0]).toMatchObject({ outX: 15, outY: 0 });
+    expect(split[1]).toMatchObject({ x: 45, y: 30, inX: 30, inY: 15, outX: 60, outY: 45 });
+    expect(split[2]).toMatchObject({ inX: 75, inY: 60 });
+  });
+
+  it('converte pontos entre corner e smooth e fecha curvas com handles', () => {
+    const source = [
+      { x: 0, y: 0, inX: null, inY: null, outX: null, outY: null },
+      { x: 50, y: 60, inX: null, inY: null, outX: null, outY: null },
+      { x: 100, y: 0, inX: null, inY: null, outX: null, outY: null },
+    ];
+    const smooth = smoothDesignPathPoint(source, 1, false);
+    expect(smooth[1].inX).not.toBeNull();
+    expect(smooth[1].outX).not.toBeNull();
+    expect(cornerDesignPathPoint(smooth, 1)[1]).toMatchObject({ inX: null, inY: null, outX: null, outY: null });
+
+    const path = element('00000000-0000-7000-8000-000000000018', {
+      type: 'path',
+      pathPoints: [
+        { ...source[0], inX: -10, inY: 0 },
+        source[1],
+        { ...source[2], outX: 110, outY: 0 },
+      ],
+      pathClosed: true,
+    });
+    expect(designPathData(path)).toContain('C 110 0 -10 0 0 0 Z');
   });
 });

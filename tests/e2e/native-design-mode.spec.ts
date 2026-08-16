@@ -103,16 +103,29 @@ test.describe('Native Design Mode', () => {
       const editor = page.locator('[data-testid="canvas-design-mode"]');
       await expect(editor).toBeVisible();
 
+      const penButton = editor.getByRole('button', { name: 'Pen', exact: true });
+      await penButton.hover();
+      const penTooltip = page.locator('[data-slot="tooltip-content"]').filter({ hasText: 'Click for corners' });
+      await expect(penTooltip).toBeVisible();
+      expect(await penTooltip.evaluate((element) => Number(getComputedStyle(element).zIndex))).toBeGreaterThan(70);
+
       await editor.getByRole('button', { name: 'Rectangle A', exact: true }).click();
       await editor.getByRole('button', { name: 'Rectangle B', exact: true }).click({ modifiers: ['Shift'] });
       await editor.getByRole('button', { name: 'Boolean operation', exact: true }).click();
+      const booleanMenu = page.getByRole('menu');
+      await expect(booleanMenu).toBeVisible();
+      expect(await booleanMenu.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const top = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + 8);
+        return Boolean(top && (top === element || element.contains(top)));
+      })).toBe(true);
       const combined = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
       await page.getByRole('menuitem', { name: 'Union', exact: true }).click();
       await combined;
 
       let current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as {
         revision: number;
-        elements: Array<{ type: string; pathSubpaths: unknown[][] }>;
+        elements: Array<{ id: string; type: string; pathSubpaths: unknown[][]; pathPoints: Array<{ inX: number | null; outX: number | null }> }>;
         guides: unknown[];
         assets: unknown[];
       };
@@ -120,11 +133,15 @@ test.describe('Native Design Mode', () => {
       expect(current.elements[0].type).toBe('path');
       expect(current.elements[0].pathSubpaths[0].length).toBeGreaterThan(3);
 
-      await editor.getByRole('button', { name: 'Pen', exact: true }).click();
+      await penButton.click();
       const pageSvg = editor.locator('svg[role="application"]');
       const bounds = await pageSvg.boundingBox();
       expect(bounds).not.toBeNull();
-      await page.mouse.click(bounds!.x + bounds!.width * 0.58, bounds!.y + bounds!.height * 0.28);
+      const curveStart = { x: bounds!.x + bounds!.width * 0.58, y: bounds!.y + bounds!.height * 0.28 };
+      await page.mouse.move(curveStart.x, curveStart.y);
+      await page.mouse.down();
+      await page.mouse.move(curveStart.x + 34, curveStart.y - 22, { steps: 6 });
+      await page.mouse.up();
       await page.waitForTimeout(80);
       await page.mouse.click(bounds!.x + bounds!.width * 0.78, bounds!.y + bounds!.height * 0.42);
       await page.waitForTimeout(80);
@@ -132,6 +149,40 @@ test.describe('Native Design Mode', () => {
       const pathCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
       await page.keyboard.press('Enter');
       await pathCreated;
+
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      const editablePath = current.elements.find((element) => element.type === 'path' && element.pathPoints.length > 0)!;
+      expect(editablePath.pathPoints[0].outX).not.toBeNull();
+      const handle = editor.getByRole('button', { name: 'Outgoing handle 1', exact: true });
+      const handleBounds = await handle.boundingBox();
+      expect(handleBounds).not.toBeNull();
+      const handleMoved = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.mouse.move(handleBounds!.x + handleBounds!.width / 2, handleBounds!.y + handleBounds!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(handleBounds!.x + handleBounds!.width / 2 + 24, handleBounds!.y + handleBounds!.height / 2 + 12, { steps: 5 });
+      await page.mouse.up();
+      await handleMoved;
+
+      const properties = editor.locator('aside').last();
+      const madeCorner = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await properties.getByRole('button', { name: 'Corner', exact: true }).click();
+      await madeCorner;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      expect(current.elements.find((element) => element.id === editablePath.id)!.pathPoints[0]).toMatchObject({ inX: null, outX: null });
+
+      const madeSmooth = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await properties.getByRole('button', { name: 'Smooth', exact: true }).click();
+      await madeSmooth;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      const beforeInsert = current.elements.find((element) => element.id === editablePath.id)!.pathPoints.length;
+      const pointAdded = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await properties.getByRole('button', { name: 'Add point', exact: true }).click();
+      await pointAdded;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      expect(current.elements.find((element) => element.id === editablePath.id)!.pathPoints).toHaveLength(beforeInsert + 1);
+      const pointDeleted = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await properties.getByRole('button', { name: 'Delete point', exact: true }).click();
+      await pointDeleted;
 
       await editor.getByRole('button', { name: 'Rulers and guides', exact: true }).click();
       const guideCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));

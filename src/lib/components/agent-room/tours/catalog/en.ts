@@ -428,7 +428,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open',
         title: 'Open Design Mode',
-        body: 'Open the same document in full Canvas Design Mode. Choose a tool and drag to create frames, rectangles, ellipses, text, and editable Pen paths at the size you need; select, move, order, lock, hide, resize, and undo or redo changes.',
+        body: 'Open the same document in full Canvas Design Mode. Every icon has a tooltip and arrow buttons open options. With Pen, click for corners, click-drag for tangents, finish with Enter or close on the first point; then move anchors and Bezier handles, insert or remove points, and switch between Corner and Smooth.',
         action: { kind: 'openDesign', title: 'Interface Design' },
       },
       {

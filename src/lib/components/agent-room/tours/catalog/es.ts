@@ -428,7 +428,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'open',
         title: 'Abre el Modo Diseño',
-        body: 'Abre el mismo documento en el Modo Diseño a pantalla completa en Canvas. Elige una herramienta y arrastra para crear frames, rectángulos, elipses, texto y paths editables con Pluma en el tamaño que necesites; selecciona, mueve, ordena, bloquea, oculta, redimensiona, deshaz o rehace cambios.',
+        body: 'Abre el mismo documento en el Modo Diseño a pantalla completa en Canvas. Todos los iconos tienen tooltip y las flechas abren opciones. Con Pluma, haz clic para esquinas, haz clic y arrastra para tangentes, termina con Enter o cierra en el primer punto; luego mueve anclas y manejadores Bézier, inserta o elimina puntos y cambia entre Esquina y Suave.',
         action: { kind: 'openDesign', title: 'Diseño de Interfaz' },
       },
       {

@@ -432,7 +432,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'open',
         title: 'Abra o Modo Design',
-        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Escolha uma ferramenta e arraste para criar frames, retângulos, elipses, textos e paths editáveis com a Caneta no tamanho desejado; selecione, mova, ordene, bloqueie, oculte, redimensione, desfaça ou refaça mudanças.',
+        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Todos os ícones têm tooltip e as setas abrem opções. Na Caneta, clique para cantos, clique e arraste para tangentes, finalize com Enter ou feche no primeiro ponto; depois mova âncoras e alças Bézier, insira ou remova pontos e alterne entre Canto e Suave.',
         action: { kind: 'openDesign', title: 'Design de Interface' },
       },
       {

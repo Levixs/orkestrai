@@ -102,9 +102,102 @@ export function designPathData(element: DesignElement): string {
         commands.push(`L ${element.x + point.x} ${element.y + point.y}`);
       }
     }
-    if (element.pathClosed) commands.push('Z');
+    if (element.pathClosed && points.length > 1) {
+      const last = points.at(-1)!;
+      const first = points[0];
+      if (last.outX !== null && last.outY !== null && first.inX !== null && first.inY !== null) {
+        commands.push(`C ${element.x + last.outX} ${element.y + last.outY} ${element.x + first.inX} ${element.y + first.inY} ${element.x + first.x} ${element.y + first.y}`);
+      }
+      commands.push('Z');
+    }
     return commands.join(' ');
   }).filter(Boolean).join(' ');
+}
+
+type Point = { x: number; y: number };
+
+function lerpPoint(from: Point, to: Point, amount: number): Point {
+  return {
+    x: from.x + (to.x - from.x) * amount,
+    y: from.y + (to.y - from.y) * amount,
+  };
+}
+
+export function designPathSegmentPoint(from: DesignPathPoint, to: DesignPathPoint, amount: number): Point {
+  const t = Math.max(0, Math.min(1, amount));
+  if (from.outX === null || from.outY === null || to.inX === null || to.inY === null) {
+    return lerpPoint(from, to, t);
+  }
+  const p01 = lerpPoint(from, { x: from.outX, y: from.outY }, t);
+  const p12 = lerpPoint({ x: from.outX, y: from.outY }, { x: to.inX, y: to.inY }, t);
+  const p23 = lerpPoint({ x: to.inX, y: to.inY }, to, t);
+  return lerpPoint(lerpPoint(p01, p12, t), lerpPoint(p12, p23, t), t);
+}
+
+export function splitDesignPathSegment(
+  points: DesignPathPoint[],
+  segmentStartIndex: number,
+  amount: number,
+  closed: boolean,
+): DesignPathPoint[] {
+  if (points.length < 2 || segmentStartIndex < 0 || segmentStartIndex >= points.length) return points;
+  const nextIndex = (segmentStartIndex + 1) % points.length;
+  if (!closed && nextIndex === 0) return points;
+  const t = Math.max(0.01, Math.min(0.99, amount));
+  const from = points[segmentStartIndex];
+  const to = points[nextIndex];
+  const curved = from.outX !== null && from.outY !== null && to.inX !== null && to.inY !== null;
+  const next = points.map((point) => ({ ...point }));
+  let inserted: DesignPathPoint;
+  if (curved) {
+    const controlFrom = { x: from.outX!, y: from.outY! };
+    const controlTo = { x: to.inX!, y: to.inY! };
+    const p01 = lerpPoint(from, controlFrom, t);
+    const p12 = lerpPoint(controlFrom, controlTo, t);
+    const p23 = lerpPoint(controlTo, to, t);
+    const p012 = lerpPoint(p01, p12, t);
+    const p123 = lerpPoint(p12, p23, t);
+    const point = lerpPoint(p012, p123, t);
+    next[segmentStartIndex].outX = p01.x;
+    next[segmentStartIndex].outY = p01.y;
+    next[nextIndex].inX = p23.x;
+    next[nextIndex].inY = p23.y;
+    inserted = { ...point, inX: p012.x, inY: p012.y, outX: p123.x, outY: p123.y };
+  } else {
+    inserted = { ...lerpPoint(from, to, t), inX: null, inY: null, outX: null, outY: null };
+  }
+  if (nextIndex === 0) next.push(inserted);
+  else next.splice(nextIndex, 0, inserted);
+  return next;
+}
+
+export function cornerDesignPathPoint(points: DesignPathPoint[], index: number): DesignPathPoint[] {
+  return points.map((point, pointIndex) => pointIndex === index
+    ? { ...point, inX: null, inY: null, outX: null, outY: null }
+    : point);
+}
+
+export function smoothDesignPathPoint(points: DesignPathPoint[], index: number, closed: boolean): DesignPathPoint[] {
+  const point = points[index];
+  if (!point || points.length < 2) return points;
+  const previous = index > 0 ? points[index - 1] : closed ? points.at(-1)! : point;
+  const following = index < points.length - 1 ? points[index + 1] : closed ? points[0] : point;
+  const dx = following.x - previous.x;
+  const dy = following.y - previous.y;
+  const magnitude = Math.hypot(dx, dy) || 1;
+  const unitX = dx / magnitude;
+  const unitY = dy / magnitude;
+  const incomingLength = previous === point ? Math.hypot(following.x - point.x, following.y - point.y) / 3 : Math.hypot(point.x - previous.x, point.y - previous.y) / 3;
+  const outgoingLength = following === point ? Math.hypot(point.x - previous.x, point.y - previous.y) / 3 : Math.hypot(following.x - point.x, following.y - point.y) / 3;
+  return points.map((candidate, pointIndex) => pointIndex === index
+    ? {
+        ...candidate,
+        inX: candidate.x - unitX * incomingLength,
+        inY: candidate.y - unitY * incomingLength,
+        outX: candidate.x + unitX * outgoingLength,
+        outY: candidate.y + unitY * outgoingLength,
+      }
+    : candidate);
 }
 
 export function autoLayoutChanges(frame: DesignElement, children: DesignElement[]): Map<string, Partial<DesignElement>> {

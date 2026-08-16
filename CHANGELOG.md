@@ -27,6 +27,11 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Raised Design Mode tooltips and dropdown menus above its full-screen overlay,
+  made every toolbar action discoverable, and replaced the incomplete Pen tool
+  with direct Bezier editing: drag to create tangents, move anchors and handles,
+  split segments without changing their curve, convert corner/smooth points,
+  and add or remove individual points with undoable document operations.
 - Design shapes now draw by dragging in any direction, with a live preview and
   the exact released size; a simple click still creates the useful default.
 - Isolated Design Mode keyboard shortcuts from the underlying Canvas so Delete

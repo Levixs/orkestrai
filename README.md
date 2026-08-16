@@ -80,7 +80,8 @@ Download the latest installers from
   a new leader-triage task, a task assigned to an agent, or an existing task.
   Browser secrets and hidden state stay excluded.
 - **Native Design Mode:** create structured interface documents directly on the
-  Canvas and open the same artifact in Workbench. Draw editable vector paths,
+  Canvas and open the same artifact in Workbench. Draw vector paths with direct
+  anchor and Bezier-handle editing,
   combine shapes, use masks, gradients, effects, snapping, guides, auto layout,
   grids, and responsive constraints; import reusable images or SVGs by picker,
   paste, or drop and export SVG, PNG, JPEG, WebP, or PDF. A designer or leader
