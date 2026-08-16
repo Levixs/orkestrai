@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -68,7 +68,7 @@ test.describe('Native Design Mode', () => {
   });
 
   test('combines vectors, draws paths, imports assets, exports, and caches its preview', async ({ page, request }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(90_000);
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-design-phase2-e2e-'));
     const originalSettings = (await (await request.get('/api/agent-room/settings')).json()).data as Record<string, string>;
     const workspace = (await (await request.post('/api/agent-room/workspaces', {
@@ -125,7 +125,7 @@ test.describe('Native Design Mode', () => {
 
       let current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as {
         revision: number;
-        elements: Array<{ id: string; type: string; pathSubpaths: unknown[][]; pathPoints: Array<{ inX: number | null; outX: number | null }> }>;
+        elements: Array<{ id: string; type: string; width: number; height: number; text: string; pathSubpaths: unknown[][]; pathPoints: Array<{ inX: number | null; outX: number | null }> }>;
         guides: unknown[];
         assets: unknown[];
       };
@@ -153,7 +153,9 @@ test.describe('Native Design Mode', () => {
       current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
       const editablePath = current.elements.find((element) => element.type === 'path' && element.pathPoints.length > 0)!;
       expect(editablePath.pathPoints[0].outX).not.toBeNull();
+      await editor.getByRole('button', { name: 'Anchor 1', exact: true }).click();
       const handle = editor.getByRole('button', { name: 'Outgoing handle 1', exact: true });
+      await expect(handle).toBeVisible();
       const handleBounds = await handle.boundingBox();
       expect(handleBounds).not.toBeNull();
       const handleMoved = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
@@ -171,7 +173,7 @@ test.describe('Native Design Mode', () => {
       expect(current.elements.find((element) => element.id === editablePath.id)!.pathPoints[0]).toMatchObject({ inX: null, outX: null });
 
       const madeSmooth = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
-      await properties.getByRole('button', { name: 'Smooth', exact: true }).click();
+      await properties.getByRole('button', { name: 'Mirrored', exact: true }).click();
       await madeSmooth;
       current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
       const beforeInsert = current.elements.find((element) => element.id === editablePath.id)!.pathPoints.length;
@@ -183,6 +185,38 @@ test.describe('Native Design Mode', () => {
       const pointDeleted = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
       await properties.getByRole('button', { name: 'Delete point', exact: true }).click();
       await pointDeleted;
+
+      await page.keyboard.press('Escape');
+      await expect(editor.getByRole('button', { name: 'Anchor 1', exact: true })).toHaveCount(0);
+      await expect(properties.getByRole('button', { name: 'Edit vector', exact: true })).toBeVisible();
+      const resizeHandle = editor.getByRole('button', { name: 'Resize handle se', exact: true });
+      const resizeBounds = await resizeHandle.boundingBox();
+      expect(resizeBounds).not.toBeNull();
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      const widthBeforeResize = current.elements.find((element) => element.id === editablePath.id)!.width;
+      const resized = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await page.mouse.move(resizeBounds!.x + resizeBounds!.width / 2, resizeBounds!.y + resizeBounds!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(resizeBounds!.x + resizeBounds!.width / 2 + 36, resizeBounds!.y + resizeBounds!.height / 2 + 18, { steps: 6 });
+      await page.mouse.up();
+      await resized;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      expect(current.elements.find((element) => element.id === editablePath.id)!.width).toBeGreaterThan(widthBeforeResize);
+
+      const textCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await editor.getByRole('button', { name: 'Text', exact: true }).click();
+      await page.mouse.click(bounds!.x + bounds!.width * 0.32, bounds!.y + bounds!.height * 0.72);
+      await textCreated;
+      await page.keyboard.press('Enter');
+      const textEditor = editor.locator('[data-design-text-editor]');
+      await expect(textEditor).toBeVisible();
+      await textEditor.fill('Design text edited on canvas');
+      const textSaved = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
+      await textEditor.press('Control+Enter');
+      await textSaved;
+      current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data;
+      const editedText = current.elements.find((element) => element.type === 'text' && element.text === 'Design text edited on canvas');
+      expect(editedText?.height).toBeGreaterThan(48);
 
       await editor.getByRole('button', { name: 'Rulers and guides', exact: true }).click();
       const guideCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
@@ -208,7 +242,9 @@ test.describe('Native Design Mode', () => {
       await editor.getByRole('button', { name: 'Export', exact: true }).click();
       const download = page.waitForEvent('download');
       await page.getByRole('menuitem', { name: 'Export SVG', exact: true }).click();
-      expect((await download).suggestedFilename()).toMatch(/\.svg$/);
+      const exported = await download;
+      expect(exported.suggestedFilename()).toMatch(/\.svg$/);
+      expect(readFileSync((await exported.path())!, 'utf8')).not.toContain('data-design-ui');
 
       await expect.poll(async () => (await request.get(
         `/api/agent-room/workspaces/${workspace.id}/designs/${node.id}/thumbnail?revision=${current.revision}`,

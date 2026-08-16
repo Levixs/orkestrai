@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { designElementSchema, type DesignElement } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
-import { autoLayoutChanges, combineDesignElements, constrainedChildChanges, cornerDesignPathPoint, designPathData, smoothDesignPathPoint, splitDesignPathSegment } from '$lib/modules/agent-room/domain/design-geometry.js';
+import { autoLayoutChanges, bendDesignPathSegment, combineDesignElements, constrainedChildChanges, convertDesignPathPointMode, cornerDesignPathPoint, designPathBounds, designPathData, designTextHeight, designTextLines, scaleDesignPathSubpaths, smoothDesignPathPoint, splitDesignPathSegment } from '$lib/modules/agent-room/domain/design-geometry.js';
 
 const PAGE_ID = '00000000-0000-7000-8000-000000000004';
 
@@ -75,8 +75,8 @@ describe('geometria do Design Mode', () => {
 
   it('divide curvas sem alterar o seu percurso', () => {
     const points = [
-      { x: 0, y: 0, inX: null, inY: null, outX: 30, outY: 0 },
-      { x: 90, y: 60, inX: 60, inY: 60, outX: null, outY: null },
+      { x: 0, y: 0, inX: null, inY: null, outX: 30, outY: 0, mode: 'disconnected' as const },
+      { x: 90, y: 60, inX: 60, inY: 60, outX: null, outY: null, mode: 'disconnected' as const },
     ];
     const split = splitDesignPathSegment(points, 0, 0.5, false);
 
@@ -88,9 +88,9 @@ describe('geometria do Design Mode', () => {
 
   it('converte pontos entre corner e smooth e fecha curvas com handles', () => {
     const source = [
-      { x: 0, y: 0, inX: null, inY: null, outX: null, outY: null },
-      { x: 50, y: 60, inX: null, inY: null, outX: null, outY: null },
-      { x: 100, y: 0, inX: null, inY: null, outX: null, outY: null },
+      { x: 0, y: 0, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+      { x: 50, y: 60, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+      { x: 100, y: 0, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
     ];
     const smooth = smoothDesignPathPoint(source, 1, false);
     expect(smooth[1].inX).not.toBeNull();
@@ -107,5 +107,58 @@ describe('geometria do Design Mode', () => {
       pathClosed: true,
     });
     expect(designPathData(path)).toContain('C 110 0 -10 0 0 0 Z');
+  });
+
+  it('renderiza e mede curvas com apenas uma alca sem incluir o controle nos bounds', () => {
+    const points = [
+      { x: 0, y: 0, inX: null, inY: null, outX: 50, outY: -100, mode: 'disconnected' as const },
+      { x: 100, y: 0, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+    ];
+    const path = element('00000000-0000-7000-8000-000000000019', { type: 'path', pathPoints: points });
+
+    expect(designPathData(path)).toContain('C 50 -100 100 0 100 0');
+    const bounds = designPathBounds([points], false)!;
+    expect(bounds.y).toBeGreaterThan(-100);
+    expect(bounds.y).toBeLessThan(-40);
+    expect(bounds.height).toBeLessThan(100);
+  });
+
+  it('escala path geometry e oferece os tres modos de espelhamento', () => {
+    const source = [
+      { x: 0, y: 0, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+      { x: 60, y: 60, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+      { x: 120, y: 0, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+    ];
+    const mirrored = convertDesignPathPointMode(source, 1, 'mirrored', false);
+    expect(mirrored[1].mode).toBe('mirrored');
+    expect(Math.hypot(mirrored[1].x - mirrored[1].inX!, mirrored[1].y - mirrored[1].inY!)).toBeCloseTo(
+      Math.hypot(mirrored[1].x - mirrored[1].outX!, mirrored[1].y - mirrored[1].outY!),
+    );
+    expect(convertDesignPathPointMode(mirrored, 1, 'asymmetric', false)[1].mode).toBe('asymmetric');
+    expect(convertDesignPathPointMode(mirrored, 1, 'disconnected', false)[1].mode).toBe('disconnected');
+
+    const scaled = scaleDesignPathSubpaths([mirrored], 2, 0.5)[0];
+    expect(scaled[1]).toMatchObject({ x: 120, y: 30 });
+    expect(scaled[1].outX).toBeCloseTo(mirrored[1].outX! * 2);
+    expect(scaled[1].outY).toBeCloseTo(mirrored[1].outY! * 0.5);
+  });
+
+  it('dobra um segmento mantendo os anchors e criando controles editaveis', () => {
+    const points = [
+      { x: 0, y: 0, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+      { x: 100, y: 0, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const },
+    ];
+    const bent = bendDesignPathSegment(points, 0, 0.5, 0, 30, false);
+    expect(bent[0]).toMatchObject({ x: 0, y: 0, mode: 'disconnected' });
+    expect(bent[1]).toMatchObject({ x: 100, y: 0, mode: 'disconnected' });
+    expect(bent[0].outY).toBeCloseTo(40);
+    expect(bent[1].inY).toBeCloseTo(40);
+  });
+
+  it('quebra texto por largura e calcula a altura necessaria sem cortar linhas', () => {
+    expect(designTextLines('Complete your order', 360, 34, 700)).toEqual(['Complete your order']);
+    const lines = designTextLines('Design text edited on canvas', 240, 32, 600);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(designTextHeight('Design text edited on canvas', 240, 32, 600)).toBe(lines.length * 32 * 1.2);
   });
 });

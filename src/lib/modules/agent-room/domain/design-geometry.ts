@@ -4,6 +4,56 @@ import type { DesignElement, DesignPathPoint } from '../contracts/schemas/design
 
 export type DesignBooleanOperation = 'union' | 'subtract' | 'intersect' | 'exclude';
 
+function estimatedGlyphWidth(character: string, fontSize: number, fontWeight: number): number {
+  const weightAdjustment = Math.max(0, fontWeight - 400) / 10_000;
+  if (/\s/.test(character)) return fontSize * 0.28;
+  if (/[ilI1.,'`!|:;]/.test(character)) return fontSize * (0.28 + weightAdjustment);
+  if (/[MW@#%&]/.test(character)) return fontSize * (0.84 + weightAdjustment);
+  if (/[A-Z]/.test(character)) return fontSize * (0.64 + weightAdjustment);
+  return fontSize * (0.52 + weightAdjustment);
+}
+
+function estimatedTextWidth(value: string, fontSize: number, fontWeight: number): number {
+  return Array.from(value).reduce((width, character) => width + estimatedGlyphWidth(character, fontSize, fontWeight), 0);
+}
+
+export function designTextLines(value: string, width: number, fontSize: number, fontWeight = 400): string[] {
+  const availableWidth = Math.max(fontSize, width);
+  return value.split('\n').flatMap((paragraph) => {
+    if (!paragraph) return [''];
+    const lines: string[] = [];
+    let current = '';
+    for (const word of paragraph.split(/\s+/)) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (estimatedTextWidth(candidate, fontSize, fontWeight) <= availableWidth) {
+        current = candidate;
+        continue;
+      }
+      if (current) lines.push(current);
+      if (estimatedTextWidth(word, fontSize, fontWeight) <= availableWidth) {
+        current = word;
+        continue;
+      }
+      let chunk = '';
+      for (const character of Array.from(word)) {
+        if (chunk && estimatedTextWidth(chunk + character, fontSize, fontWeight) > availableWidth) {
+          lines.push(chunk);
+          chunk = character;
+        } else {
+          chunk += character;
+        }
+      }
+      current = chunk;
+    }
+    if (current) lines.push(current);
+    return lines.length ? lines : [''];
+  });
+}
+
+export function designTextHeight(value: string, width: number, fontSize: number, fontWeight = 400): number {
+  return Math.max(fontSize * 1.2, designTextLines(value, width, fontSize, fontWeight).length * fontSize * 1.2);
+}
+
 function rotatePoint(point: [number, number], element: DesignElement): [number, number] {
   if (!element.rotation) return point;
   const radians = element.rotation * Math.PI / 180;
@@ -84,6 +134,7 @@ export function combineDesignElements(
       inY: null,
       outX: null,
       outY: null,
+      mode: 'corner',
     }))),
   };
 }
@@ -96,18 +147,12 @@ export function designPathData(element: DesignElement): string {
     for (let index = 1; index < points.length; index += 1) {
       const previous = points[index - 1];
       const point = points[index];
-      if (previous.outX !== null && previous.outY !== null && point.inX !== null && point.inY !== null) {
-        commands.push(`C ${element.x + previous.outX} ${element.y + previous.outY} ${element.x + point.inX} ${element.y + point.inY} ${element.x + point.x} ${element.y + point.y}`);
-      } else {
-        commands.push(`L ${element.x + point.x} ${element.y + point.y}`);
-      }
+      commands.push(designPathSegmentData(previous, point, element.x, element.y));
     }
     if (element.pathClosed && points.length > 1) {
       const last = points.at(-1)!;
       const first = points[0];
-      if (last.outX !== null && last.outY !== null && first.inX !== null && first.inY !== null) {
-        commands.push(`C ${element.x + last.outX} ${element.y + last.outY} ${element.x + first.inX} ${element.y + first.inY} ${element.x + first.x} ${element.y + first.y}`);
-      }
+      commands.push(designPathSegmentData(last, first, element.x, element.y));
       commands.push('Z');
     }
     return commands.join(' ');
@@ -123,14 +168,29 @@ function lerpPoint(from: Point, to: Point, amount: number): Point {
   };
 }
 
+function pathControls(from: DesignPathPoint, to: DesignPathPoint): { first: Point; second: Point; curved: boolean } {
+  const hasFirst = from.outX !== null && from.outY !== null;
+  const hasSecond = to.inX !== null && to.inY !== null;
+  return {
+    first: hasFirst ? { x: from.outX!, y: from.outY! } : { x: from.x, y: from.y },
+    second: hasSecond ? { x: to.inX!, y: to.inY! } : { x: to.x, y: to.y },
+    curved: hasFirst || hasSecond,
+  };
+}
+
+export function designPathSegmentData(from: DesignPathPoint, to: DesignPathPoint, offsetX = 0, offsetY = 0): string {
+  const controls = pathControls(from, to);
+  if (!controls.curved) return `L ${offsetX + to.x} ${offsetY + to.y}`;
+  return `C ${offsetX + controls.first.x} ${offsetY + controls.first.y} ${offsetX + controls.second.x} ${offsetY + controls.second.y} ${offsetX + to.x} ${offsetY + to.y}`;
+}
+
 export function designPathSegmentPoint(from: DesignPathPoint, to: DesignPathPoint, amount: number): Point {
   const t = Math.max(0, Math.min(1, amount));
-  if (from.outX === null || from.outY === null || to.inX === null || to.inY === null) {
-    return lerpPoint(from, to, t);
-  }
-  const p01 = lerpPoint(from, { x: from.outX, y: from.outY }, t);
-  const p12 = lerpPoint({ x: from.outX, y: from.outY }, { x: to.inX, y: to.inY }, t);
-  const p23 = lerpPoint({ x: to.inX, y: to.inY }, to, t);
+  const controls = pathControls(from, to);
+  if (!controls.curved) return lerpPoint(from, to, t);
+  const p01 = lerpPoint(from, controls.first, t);
+  const p12 = lerpPoint(controls.first, controls.second, t);
+  const p23 = lerpPoint(controls.second, to, t);
   return lerpPoint(lerpPoint(p01, p12, t), lerpPoint(p12, p23, t), t);
 }
 
@@ -146,15 +206,13 @@ export function splitDesignPathSegment(
   const t = Math.max(0.01, Math.min(0.99, amount));
   const from = points[segmentStartIndex];
   const to = points[nextIndex];
-  const curved = from.outX !== null && from.outY !== null && to.inX !== null && to.inY !== null;
+  const controls = pathControls(from, to);
   const next = points.map((point) => ({ ...point }));
   let inserted: DesignPathPoint;
-  if (curved) {
-    const controlFrom = { x: from.outX!, y: from.outY! };
-    const controlTo = { x: to.inX!, y: to.inY! };
-    const p01 = lerpPoint(from, controlFrom, t);
-    const p12 = lerpPoint(controlFrom, controlTo, t);
-    const p23 = lerpPoint(controlTo, to, t);
+  if (controls.curved) {
+    const p01 = lerpPoint(from, controls.first, t);
+    const p12 = lerpPoint(controls.first, controls.second, t);
+    const p23 = lerpPoint(controls.second, to, t);
     const p012 = lerpPoint(p01, p12, t);
     const p123 = lerpPoint(p12, p23, t);
     const point = lerpPoint(p012, p123, t);
@@ -162,9 +220,9 @@ export function splitDesignPathSegment(
     next[segmentStartIndex].outY = p01.y;
     next[nextIndex].inX = p23.x;
     next[nextIndex].inY = p23.y;
-    inserted = { ...point, inX: p012.x, inY: p012.y, outX: p123.x, outY: p123.y };
+    inserted = { ...point, inX: p012.x, inY: p012.y, outX: p123.x, outY: p123.y, mode: 'mirrored' };
   } else {
-    inserted = { ...lerpPoint(from, to, t), inX: null, inY: null, outX: null, outY: null };
+    inserted = { ...lerpPoint(from, to, t), inX: null, inY: null, outX: null, outY: null, mode: 'corner' };
   }
   if (nextIndex === 0) next.push(inserted);
   else next.splice(nextIndex, 0, inserted);
@@ -173,11 +231,17 @@ export function splitDesignPathSegment(
 
 export function cornerDesignPathPoint(points: DesignPathPoint[], index: number): DesignPathPoint[] {
   return points.map((point, pointIndex) => pointIndex === index
-    ? { ...point, inX: null, inY: null, outX: null, outY: null }
+    ? { ...point, inX: null, inY: null, outX: null, outY: null, mode: 'corner' as const }
     : point);
 }
 
-export function smoothDesignPathPoint(points: DesignPathPoint[], index: number, closed: boolean): DesignPathPoint[] {
+export function convertDesignPathPointMode(
+  points: DesignPathPoint[],
+  index: number,
+  mode: DesignPathPoint['mode'],
+  closed: boolean,
+): DesignPathPoint[] {
+  if (mode === 'corner') return cornerDesignPathPoint(points, index);
   const point = points[index];
   if (!point || points.length < 2) return points;
   const previous = index > 0 ? points[index - 1] : closed ? points.at(-1)! : point;
@@ -189,15 +253,107 @@ export function smoothDesignPathPoint(points: DesignPathPoint[], index: number, 
   const unitY = dy / magnitude;
   const incomingLength = previous === point ? Math.hypot(following.x - point.x, following.y - point.y) / 3 : Math.hypot(point.x - previous.x, point.y - previous.y) / 3;
   const outgoingLength = following === point ? Math.hypot(point.x - previous.x, point.y - previous.y) / 3 : Math.hypot(following.x - point.x, following.y - point.y) / 3;
-  return points.map((candidate, pointIndex) => pointIndex === index
-    ? {
-        ...candidate,
-        inX: candidate.x - unitX * incomingLength,
-        inY: candidate.y - unitY * incomingLength,
-        outX: candidate.x + unitX * outgoingLength,
-        outY: candidate.y + unitY * outgoingLength,
-      }
-    : candidate);
+  const currentIncoming = point.inX === null || point.inY === null ? 0 : Math.hypot(point.inX - point.x, point.inY - point.y);
+  const currentOutgoing = point.outX === null || point.outY === null ? 0 : Math.hypot(point.outX - point.x, point.outY - point.y);
+  const mirroredLength = currentIncoming && currentOutgoing
+    ? (currentIncoming + currentOutgoing) / 2
+    : currentIncoming || currentOutgoing || (incomingLength + outgoingLength) / 2;
+  const nextIncomingLength = mode === 'mirrored' ? mirroredLength : currentIncoming || incomingLength;
+  const nextOutgoingLength = mode === 'mirrored' ? mirroredLength : currentOutgoing || outgoingLength;
+  return points.map((candidate, pointIndex) => pointIndex === index ? {
+    ...candidate,
+    inX: candidate.x - unitX * nextIncomingLength,
+    inY: candidate.y - unitY * nextIncomingLength,
+    outX: candidate.x + unitX * nextOutgoingLength,
+    outY: candidate.y + unitY * nextOutgoingLength,
+    mode,
+  } : candidate);
+}
+
+export function smoothDesignPathPoint(points: DesignPathPoint[], index: number, closed: boolean): DesignPathPoint[] {
+  return convertDesignPathPointMode(points, index, 'mirrored', closed);
+}
+
+function cubicAt(start: number, first: number, second: number, end: number, amount: number): number {
+  const inverse = 1 - amount;
+  return inverse ** 3 * start + 3 * inverse ** 2 * amount * first + 3 * inverse * amount ** 2 * second + amount ** 3 * end;
+}
+
+function cubicExtrema(start: number, first: number, second: number, end: number): number[] {
+  const a = -start + 3 * first - 3 * second + end;
+  const b = 2 * (start - 2 * first + second);
+  const c = first - start;
+  if (Math.abs(a) < 1e-9) return Math.abs(b) < 1e-9 ? [] : [-c / b].filter((value) => value > 0 && value < 1);
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return [];
+  const root = Math.sqrt(discriminant);
+  return [(-b + root) / (2 * a), (-b - root) / (2 * a)].filter((value) => value > 0 && value < 1);
+}
+
+export function designPathBounds(subpaths: DesignPathPoint[][], closed: boolean): { x: number; y: number; width: number; height: number } | null {
+  const values: Point[] = [];
+  for (const points of subpaths) {
+    if (!points.length) continue;
+    values.push(...points.map((point) => ({ x: point.x, y: point.y })));
+    const segmentCount = closed ? points.length : Math.max(0, points.length - 1);
+    for (let index = 0; index < segmentCount; index += 1) {
+      const from = points[index];
+      const to = points[(index + 1) % points.length];
+      const controls = pathControls(from, to);
+      if (!controls.curved) continue;
+      const extrema = new Set([
+        ...cubicExtrema(from.x, controls.first.x, controls.second.x, to.x),
+        ...cubicExtrema(from.y, controls.first.y, controls.second.y, to.y),
+      ]);
+      for (const amount of extrema) values.push({
+        x: cubicAt(from.x, controls.first.x, controls.second.x, to.x, amount),
+        y: cubicAt(from.y, controls.first.y, controls.second.y, to.y, amount),
+      });
+    }
+  }
+  if (!values.length) return null;
+  const minX = Math.min(...values.map((point) => point.x));
+  const minY = Math.min(...values.map((point) => point.y));
+  const maxX = Math.max(...values.map((point) => point.x));
+  const maxY = Math.max(...values.map((point) => point.y));
+  return { x: minX, y: minY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+}
+
+export function scaleDesignPathSubpaths(subpaths: DesignPathPoint[][], scaleX: number, scaleY: number): DesignPathPoint[][] {
+  return subpaths.map((points) => points.map((point) => ({
+    ...point,
+    x: point.x * scaleX,
+    y: point.y * scaleY,
+    inX: point.inX === null ? null : point.inX * scaleX,
+    inY: point.inY === null ? null : point.inY * scaleY,
+    outX: point.outX === null ? null : point.outX * scaleX,
+    outY: point.outY === null ? null : point.outY * scaleY,
+  })));
+}
+
+export function bendDesignPathSegment(
+  points: DesignPathPoint[],
+  segmentStartIndex: number,
+  amount: number,
+  deltaX: number,
+  deltaY: number,
+  closed: boolean,
+): DesignPathPoint[] {
+  if (points.length < 2 || segmentStartIndex < 0 || segmentStartIndex >= points.length) return points;
+  const nextIndex = (segmentStartIndex + 1) % points.length;
+  if (!closed && nextIndex === 0) return points;
+  const t = Math.max(0.05, Math.min(0.95, amount));
+  const influence = 3 * (1 - t) * t;
+  const from = points[segmentStartIndex];
+  const to = points[nextIndex];
+  const controls = pathControls(from, to);
+  const offsetX = deltaX / influence;
+  const offsetY = deltaY / influence;
+  return points.map((point, index) => {
+    if (index === segmentStartIndex) return { ...point, outX: controls.first.x + offsetX, outY: controls.first.y + offsetY, mode: 'disconnected' };
+    if (index === nextIndex) return { ...point, inX: controls.second.x + offsetX, inY: controls.second.y + offsetY, mode: 'disconnected' };
+    return point;
+  });
 }
 
 export function autoLayoutChanges(frame: DesignElement, children: DesignElement[]): Map<string, Partial<DesignElement>> {

@@ -428,13 +428,13 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open',
         title: 'Open Design Mode',
-        body: 'Open the same document in full Canvas Design Mode. Every icon has a tooltip and arrow buttons open options. With Pen, click for corners, click-drag for tangents, finish with Enter or close on the first point; then move anchors and Bezier handles, insert or remove points, and switch between Corner and Smooth.',
+        body: 'Open the same document in full Canvas Design Mode. Tooltips show every tool and shortcut. Pen previews the next segment and close target; click or drag to draw, then press Enter or double-click the path to edit it. Bend or split segments, continue an endpoint, and choose Corner, Mirrored, Asymmetric, or Disconnected tangents.',
         action: { kind: 'openDesign', title: 'Interface Design' },
       },
       {
         id: 'compose',
         title: 'Compose responsive vector interfaces',
-        body: 'Shift-select layers to align, distribute, combine, or mask them. Add gradients, effects, guides, and snapping, then make a frame use horizontal, vertical, wrapping, or grid auto layout with responsive child constraints.',
+        body: 'Box-select vector points and transform them together, resize any layer from eight handles, and edit multiline text directly on the canvas. Shift-select layers to align, distribute, combine, or mask them; add gradients, effects, guides, snapping, and responsive auto layout.',
       },
       {
         id: 'assets-export',

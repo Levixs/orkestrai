@@ -432,13 +432,13 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'open',
         title: 'Abra o Modo Design',
-        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Todos os ícones têm tooltip e as setas abrem opções. Na Caneta, clique para cantos, clique e arraste para tangentes, finalize com Enter ou feche no primeiro ponto; depois mova âncoras e alças Bézier, insira ou remova pontos e alterne entre Canto e Suave.',
+        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Tooltips mostram cada ferramenta e atalho. A Caneta antecipa o próximo segmento e o fechamento; clique ou arraste para desenhar e use Enter ou duplo-clique no path para editá-lo. Curve ou divida segmentos, continue por uma extremidade e escolha tangentes Canto, Espelhado, Assimétrico ou Desconectado.',
         action: { kind: 'openDesign', title: 'Design de Interface' },
       },
       {
         id: 'compose',
         title: 'Componha interfaces vetoriais responsivas',
-        body: 'Use Shift para selecionar camadas e alinhar, distribuir, combinar ou criar máscaras. Adicione gradientes, efeitos, guias e snap, depois configure o frame com auto layout horizontal, vertical, wrap ou grid e constraints responsivas nos filhos.',
+        body: 'Selecione pontos vetoriais por caixa e transforme-os juntos, redimensione qualquer camada pelas oito alças e edite texto multilinha diretamente no canvas. Use Shift para alinhar, distribuir, combinar ou mascarar camadas; adicione gradientes, efeitos, guias, snap e auto layout responsivo.',
       },
       {
         id: 'assets-export',

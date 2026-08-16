@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
   import {
@@ -20,12 +20,14 @@
     ChevronDown,
     Circle,
     Combine,
+    CornerDownRight,
     Download,
     Eye,
     EyeOff,
     Frame,
     ImagePlus,
     Lock,
+    MoveDiagonal2,
     Magnet,
     Maximize2,
     MousePointer2,
@@ -35,9 +37,11 @@
     RectangleHorizontal,
     Ruler,
     Sparkles,
+    Spline,
     Trash2,
     Type,
     Undo2,
+    Unlink2,
     Unlock,
     ZoomIn,
     ZoomOut,
@@ -61,12 +65,16 @@
   } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
   import {
     autoLayoutChanges,
+    bendDesignPathSegment,
     combineDesignElements,
-    cornerDesignPathPoint,
+    convertDesignPathPointMode,
+    designPathBounds,
     constrainedChildChanges,
     designPathData,
+    designPathSegmentData,
     designPathSegmentPoint,
-    smoothDesignPathPoint,
+    designTextHeight,
+    scaleDesignPathSubpaths,
     splitDesignPathSegment,
     type DesignBooleanOperation,
   } from '$lib/modules/agent-room/domain/design-geometry.js';
@@ -92,6 +100,10 @@
   type HistoryEntry = { forward: DesignOperation[]; inverse: DesignOperation[]; summary: string };
   type AlignMode = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' | 'distribute-x' | 'distribute-y';
   type PathPointSelection = { elementId: string; subpathIndex: number; pointIndex: number };
+  type PathSegmentSelection = { elementId: string; subpathIndex: number; segmentIndex: number };
+  type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+  type SelectionMarquee = { start: { x: number; y: number }; current: { x: number; y: number } };
+  const resizeHandles: ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
   let document = $state<DesignDocument | null>(null);
   let selectedIds = $state<string[]>([]);
@@ -109,7 +121,16 @@
   let draftElement = $state<DesignElement | null>(null);
   let cancelDrawing: (() => void) | null = null;
   let penPoints = $state<DesignPathPoint[]>([]);
-  let pathPointSelection = $state<PathPointSelection | null>(null);
+  let penPointer = $state<{ x: number; y: number } | null>(null);
+  let penContinuation = $state<{ original: DesignElement; subpathIndex: number } | null>(null);
+  let vectorEditId = $state<string | null>(null);
+  let pathPointSelections = $state<PathPointSelection[]>([]);
+  let hoveredPathSegment = $state<PathSegmentSelection | null>(null);
+  let selectionMarquee = $state<SelectionMarquee | null>(null);
+  let selectionMarqueeKind = $state<'layers' | 'points' | null>(null);
+  let editingTextId = $state<string | null>(null);
+  let editingTextDraft = $state('');
+  let textEditor = $state<HTMLTextAreaElement>();
   let snapEnabled = $state(true);
   let rulersVisible = $state(true);
   let snapLinesX = $state<number[]>([]);
@@ -120,14 +141,55 @@
 
   const page = $derived(document?.pages.find((item) => item.id === document?.activePageId) ?? document?.pages[0] ?? null);
   const pageElements = $derived(document && page ? document.elements.filter((element) => element.pageId === page.id) : []);
-  const renderedElements = $derived(draftElement ? [...pageElements, draftElement] : pageElements);
+  const renderedElements = $derived.by(() => {
+    const draft = draftElement;
+    let elements: DesignElement[] = draft
+      ? pageElements.some((element) => element.id === draft.id)
+        ? pageElements.map((element) => element.id === draft.id ? draft : element)
+        : [...pageElements, draft]
+      : pageElements;
+    if (editingTextId) elements = elements.map((element) => element.id === editingTextId ? { ...element, text: '' } : element);
+    return elements;
+  });
   const selectedElements = $derived(pageElements.filter((element) => selectedIds.includes(element.id)));
   const selected = $derived(selectedElements.length === 1 ? selectedElements[0] : null);
+  const primaryPathPointSelection = $derived(pathPointSelections.at(-1) ?? null);
   const selectedPathPoint = $derived.by(() => {
-    if (!selected || selected.type !== 'path' || pathPointSelection?.elementId !== selected.id) return null;
+    if (!selected || selected.type !== 'path' || primaryPathPointSelection?.elementId !== selected.id) return null;
     const subpaths = selected.pathSubpaths.length ? selected.pathSubpaths : [selected.pathPoints];
-    return subpaths[pathPointSelection.subpathIndex]?.[pathPointSelection.pointIndex] ?? null;
+    return subpaths[primaryPathPointSelection.subpathIndex]?.[primaryPathPointSelection.pointIndex] ?? null;
   });
+  const vectorEditing = $derived(Boolean(selected?.type === 'path' && vectorEditId === selected.id));
+  const rendererSelectionIds = $derived(vectorEditing && selected ? selectedIds.filter((id) => id !== selected.id) : selectedIds);
+  const selectedPathPointMode = $derived.by(() => {
+    if (!selected || selected.type !== 'path' || !pathPointSelections.length) return null;
+    const subpaths = pathSubpaths(selected);
+    const modes = new Set(pathPointSelections
+      .filter((selection) => selection.elementId === selected.id)
+      .map((selection) => subpaths[selection.subpathIndex]?.[selection.pointIndex]?.mode)
+      .filter(Boolean));
+    return modes.size === 1 ? [...modes][0] : null;
+  });
+  const selectedPathPointBounds = $derived.by(() => {
+    if (!selected || selected.type !== 'path' || pathPointSelections.length < 2) return null;
+    const subpaths = pathSubpaths(selected);
+    const points = pathPointSelections
+      .filter((selection) => selection.elementId === selected.id)
+      .map((selection) => subpaths[selection.subpathIndex]?.[selection.pointIndex])
+      .filter((point): point is DesignPathPoint => Boolean(point));
+    if (points.length < 2) return null;
+    const left = Math.min(...points.map((point) => point.x));
+    const top = Math.min(...points.map((point) => point.y));
+    const right = Math.max(...points.map((point) => point.x));
+    const bottom = Math.max(...points.map((point) => point.y));
+    return { x: selected.x + left, y: selected.y + top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+  });
+  const penWillClose = $derived(Boolean(
+    penPointer && penPoints.length >= 3 && Math.hypot(penPointer.x - penPoints[0].x, penPointer.y - penPoints[0].y) * zoom <= 10,
+  ));
+  const editingTextHeight = $derived(selected?.type === 'text' && editingTextId === selected.id
+    ? Math.max(selected.height, Math.ceil(designTextHeight(editingTextDraft, selected.width, selected.fontSize, selected.fontWeight)))
+    : 0);
   const rulerXTicks = $derived(page ? Array.from({ length: Math.ceil(page.width / 100) + 1 }, (_, index) => index * 100) : []);
   const rulerYTicks = $derived(page ? Array.from({ length: Math.ceil(page.height / 100) + 1 }, (_, index) => index * 100) : []);
 
@@ -227,6 +289,20 @@
     return m['design.select']();
   }
 
+  function switchTool(next: Tool) {
+    cancelDrawing?.();
+    tool = next;
+    penPoints = [];
+    penPointer = null;
+    penContinuation = null;
+    draftElement = null;
+    editingTextId = null;
+    if (next !== 'select') {
+      vectorEditId = null;
+      pathPointSelections = [];
+    }
+  }
+
   function elementDefaults(kind: Exclude<Tool, 'select'> | 'image', x: number, y: number): DesignElement {
     const count = document?.elements.filter((element) => element.type === kind).length ?? 0;
     return designElementSchema.parse({
@@ -279,12 +355,21 @@
       if (moveEvent.pointerId !== pointerId) return;
       const current = pagePoint(moveEvent, svg);
       if (Math.hypot(moveEvent.clientX - event.clientX, moveEvent.clientY - event.clientY) >= 4) dragged = true;
+      let deltaX = current.x - start.x;
+      let deltaY = current.y - start.y;
+      if (moveEvent.shiftKey) {
+        const size = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+        deltaX = Math.sign(deltaX || 1) * size;
+        deltaY = Math.sign(deltaY || 1) * size;
+      }
+      const endX = start.x + deltaX;
+      const endY = start.y + deltaY;
       draftElement = {
         ...initial,
-        x: Math.min(start.x, current.x),
-        y: Math.min(start.y, current.y),
-        width: Math.max(1, Math.abs(current.x - start.x)),
-        height: Math.max(1, Math.abs(current.y - start.y)),
+        x: moveEvent.altKey ? start.x - Math.abs(deltaX) : Math.min(start.x, endX),
+        y: moveEvent.altKey ? start.y - Math.abs(deltaY) : Math.min(start.y, endY),
+        width: Math.max(1, Math.abs(deltaX) * (moveEvent.altKey ? 2 : 1)),
+        height: Math.max(1, Math.abs(deltaY) * (moveEvent.altKey ? 2 : 1)),
       };
     };
     const finish = (upEvent: PointerEvent) => {
@@ -314,14 +399,15 @@
     window.addEventListener('pointercancel', cancel);
   }
 
-  function draftPath(points: DesignPathPoint[], closed = false): DesignElement | null {
+  function draftPath(points: DesignPathPoint[], closed = false, base: DesignElement | null = null): DesignElement | null {
     if (!page || !points.length) return null;
-    const x = Math.min(...points.map((point) => point.x));
-    const y = Math.min(...points.map((point) => point.y));
-    const width = Math.max(1, Math.max(...points.map((point) => point.x)) - x);
-    const height = Math.max(1, Math.max(...points.map((point) => point.y)) - y);
+    const bounds = designPathBounds([points], closed);
+    if (!bounds) return null;
+    const { x, y, width, height } = bounds;
     return designElementSchema.parse({
-      ...elementDefaults('path', x, y),
+      ...(base ?? elementDefaults('path', x, y)),
+      x,
+      y,
       width,
       height,
       pathPoints: points.map((point) => ({
@@ -331,7 +417,9 @@
         inY: point.inY === null ? null : point.inY - y,
         outX: point.outX === null ? null : point.outX - x,
         outY: point.outY === null ? null : point.outY - y,
+        mode: point.mode,
       })),
+      pathSubpaths: [],
       pathClosed: closed,
     });
   }
@@ -350,9 +438,9 @@
       void finishPath();
       return;
     }
-    const point: DesignPathPoint = { ...position, inX: null, inY: null, outX: null, outY: null };
+    const point: DesignPathPoint = { ...position, inX: null, inY: null, outX: null, outY: null, mode: 'corner' };
     penPoints = [...penPoints, point];
-    draftElement = draftPath(penPoints);
+    draftElement = draftPath(penPoints, false, penContinuation?.original ?? null);
     const pointerId = event.pointerId;
     const move = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
@@ -367,9 +455,10 @@
             inY: position.y - dy,
             outX: position.x + dx,
             outY: position.y + dy,
+            mode: 'mirrored' as const,
           }
         : candidate);
-      draftElement = draftPath(penPoints);
+      draftElement = draftPath(penPoints, false, penContinuation?.original ?? null);
     };
     const up = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
@@ -383,21 +472,114 @@
   }
 
   async function finishPath(closed = false) {
-    const element = draftPath(penPoints, closed);
+    const continuation = penContinuation;
+    const element = draftPath(penPoints, closed, continuation?.original ?? null);
     if (!element || penPoints.length < (closed ? 3 : 2)) return;
     draftElement = null;
     penPoints = [];
-    if (await apply([{ kind: 'create', element }], m['design.operation_create']({ type: m['design.pen']() }), {
-      inverse: [{ kind: 'delete', elementId: element.id }],
-    })) {
-      selectedIds = [element.id];
-      pathPointSelection = { elementId: element.id, subpathIndex: 0, pointIndex: element.pathPoints.length - 1 };
-      tool = 'select';
-    }
+    penPointer = null;
+    penContinuation = null;
+    const saved = continuation
+      ? await apply([{ kind: 'update', elementId: continuation.original.id, changes: {
+          x: element.x,
+          y: element.y,
+          width: element.width,
+          height: element.height,
+          pathPoints: element.pathPoints,
+          pathSubpaths: [],
+          pathClosed: closed,
+        } }], m['design.operation_update']({ name: continuation.original.name }), {
+          inverse: [{ kind: 'update', elementId: continuation.original.id, changes: {
+            x: continuation.original.x,
+            y: continuation.original.y,
+            width: continuation.original.width,
+            height: continuation.original.height,
+            pathPoints: continuation.original.pathPoints,
+            pathSubpaths: continuation.original.pathSubpaths,
+            pathClosed: continuation.original.pathClosed,
+          } }],
+        })
+      : await apply([{ kind: 'create', element }], m['design.operation_create']({ type: m['design.pen']() }), {
+          inverse: [{ kind: 'delete', elementId: element.id }],
+        });
+    if (!saved) return;
+    selectedIds = [element.id];
+    vectorEditId = element.id;
+    pathPointSelections = [{ elementId: element.id, subpathIndex: 0, pointIndex: element.pathPoints.length - 1 }];
+    tool = 'select';
+  }
+
+  function beginPathContinuation(event: PointerEvent, element: DesignElement, atStart: boolean) {
+    if (tool !== 'path' || element.type !== 'path' || element.locked || element.pathClosed || element.pathSubpaths.length || element.pathPoints.length < 2) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const original = pathSnapshot(element);
+    const source = original.pathPoints.map((point) => ({
+      ...point,
+      x: original.x + point.x,
+      y: original.y + point.y,
+      inX: point.inX === null ? null : original.x + point.inX,
+      inY: point.inY === null ? null : original.y + point.inY,
+      outX: point.outX === null ? null : original.x + point.outX,
+      outY: point.outY === null ? null : original.y + point.outY,
+    }));
+    const points = atStart
+      ? source.reverse().map((point) => ({ ...point, inX: point.outX, inY: point.outY, outX: point.inX, outY: point.inY }))
+      : source;
+    selectedIds = [element.id];
+    vectorEditId = element.id;
+    pathPointSelections = [];
+    penContinuation = { original, subpathIndex: 0 };
+    penPoints = points;
+    draftElement = draftPath(points, false, original);
+  }
+
+  function enterVectorEdit(element: DesignElement) {
+    if (element.type !== 'path' || element.locked) return;
+    selectedIds = [element.id];
+    vectorEditId = element.id;
+    pathPointSelections = [];
+    tool = 'select';
+  }
+
+  function beginTextEditing(element: DesignElement) {
+    if (element.type !== 'text' || element.locked) return;
+    selectedIds = [element.id];
+    vectorEditId = null;
+    pathPointSelections = [];
+    editingTextId = element.id;
+    editingTextDraft = element.text || element.name;
+    void tick().then(() => {
+      textEditor?.focus();
+      textEditor?.select();
+    });
+  }
+
+  async function finishTextEditing(save = true) {
+    const element = pageElements.find((candidate) => candidate.id === editingTextId);
+    const value = editingTextDraft;
+    editingTextId = null;
+    if (!save || !element || element.type !== 'text') return;
+    const height = Math.max(element.height, Math.ceil(designTextHeight(value, element.width, element.fontSize, element.fontWeight)));
+    if (value === element.text && height === element.height) return;
+    await updateElement(element, { text: value, height });
+  }
+
+  function canvasDoubleClick(event: MouseEvent) {
+    const target = (event.target as SVGElement).closest<SVGGElement>('[data-design-element]');
+    const element = target ? pageElements.find((candidate) => candidate.id === target.dataset.designElement) : null;
+    if (!element) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (element.type === 'path') enterVectorEdit(element);
+    else if (element.type === 'text') beginTextEditing(element);
   }
 
   function selectForPointer(element: DesignElement, event: PointerEvent): string[] {
-    if (pathPointSelection?.elementId !== element.id) pathPointSelection = null;
+    if (vectorEditId !== element.id) {
+      vectorEditId = null;
+      pathPointSelections = [];
+    }
     if (event.shiftKey) {
       selectedIds = selectedIds.includes(element.id)
         ? selectedIds.filter((id) => id !== element.id)
@@ -423,10 +605,7 @@
       const target = (event.target as SVGElement).closest<SVGGElement>('[data-design-element]');
       const element = target ? pageElements.find((item) => item.id === target.dataset.designElement) : null;
       if (!element) {
-        if (!event.shiftKey) {
-          selectedIds = [];
-          pathPointSelection = null;
-        }
+        startSelectionMarquee(event, vectorEditing ? 'points' : 'layers');
         return;
       }
       const dragIds = selectForPointer(element, event);
@@ -434,6 +613,62 @@
       return;
     }
     startCreate(event, tool, event.currentTarget as SVGSVGElement);
+  }
+
+  function startSelectionMarquee(event: PointerEvent, kind: 'layers' | 'points') {
+    if (!document || event.button !== 0) return;
+    event.preventDefault();
+    const start = pagePoint(event);
+    const pointerId = event.pointerId;
+    const initialIds = [...selectedIds];
+    const initialPoints = [...pathPointSelections];
+    let dragged = false;
+    selectionMarquee = { start, current: start };
+    selectionMarqueeKind = kind;
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      const current = pagePoint(moveEvent);
+      if (!dragged && Math.hypot(current.x - start.x, current.y - start.y) * zoom >= 3) dragged = true;
+      selectionMarquee = { start, current };
+      const left = Math.min(start.x, current.x);
+      const right = Math.max(start.x, current.x);
+      const top = Math.min(start.y, current.y);
+      const bottom = Math.max(start.y, current.y);
+      if (kind === 'layers') {
+        const found = pageElements.filter((element) => element.visible && !element.locked
+          && element.x <= right && element.x + element.width >= left
+          && element.y <= bottom && element.y + element.height >= top).map((element) => element.id);
+        selectedIds = moveEvent.shiftKey ? [...new Set([...initialIds, ...found])] : found;
+      } else if (selected?.type === 'path') {
+        const found = pathSubpaths(selected).flatMap((points, subpathIndex) => points.flatMap((point, pointIndex) => {
+          const { x, y } = rotatePoint({ x: selected.x + point.x, y: selected.y + point.y }, selected);
+          return x >= left && x <= right && y >= top && y <= bottom
+            ? [{ elementId: selected.id, subpathIndex, pointIndex }]
+            : [];
+        }));
+        pathPointSelections = moveEvent.shiftKey
+          ? [...initialPoints, ...found.filter((candidate) => !initialPoints.some((currentSelection) => samePathPoint(currentSelection, candidate)))]
+          : found;
+      }
+    };
+    const up = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      selectionMarquee = null;
+      selectionMarqueeKind = null;
+      if (dragged || upEvent.shiftKey) return;
+      if (kind === 'points') pathPointSelections = [];
+      else {
+        selectedIds = [];
+        vectorEditId = null;
+        pathPointSelections = [];
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   }
 
   function snappedPosition(element: DesignElement, x: number, y: number, excluded: Set<string>) {
@@ -512,13 +747,178 @@
     window.addEventListener('pointerup', up, { once: true });
   }
 
+  function resizedElement(original: DesignElement, handle: ResizeHandle, point: { x: number; y: number }, shiftKey: boolean, altKey: boolean): DesignElement {
+    const leftHandle = handle.includes('w');
+    const rightHandle = handle.includes('e');
+    const topHandle = handle.includes('n');
+    const bottomHandle = handle.includes('s');
+    const centerX = original.x + original.width / 2;
+    const centerY = original.y + original.height / 2;
+    let left = leftHandle ? point.x : original.x;
+    let right = rightHandle ? point.x : original.x + original.width;
+    let top = topHandle ? point.y : original.y;
+    let bottom = bottomHandle ? point.y : original.y + original.height;
+    if (altKey) {
+      if (leftHandle || rightHandle) {
+        const half = Math.abs(point.x - centerX);
+        left = centerX - half;
+        right = centerX + half;
+      }
+      if (topHandle || bottomHandle) {
+        const half = Math.abs(point.y - centerY);
+        top = centerY - half;
+        bottom = centerY + half;
+      }
+    }
+    if (left > right) [left, right] = [right, left];
+    if (top > bottom) [top, bottom] = [bottom, top];
+    let width = Math.max(1, right - left);
+    let height = Math.max(1, bottom - top);
+    if (shiftKey && (leftHandle || rightHandle) && (topHandle || bottomHandle)) {
+      const ratio = original.width / original.height;
+      if (width / height > ratio) height = width / ratio;
+      else width = height * ratio;
+      if (altKey) {
+        left = centerX - width / 2;
+        top = centerY - height / 2;
+      } else {
+        if (leftHandle) left = original.x + original.width - width;
+        if (topHandle) top = original.y + original.height - height;
+      }
+    }
+    const scaleX = width / original.width;
+    const scaleY = height / original.height;
+    const scaled = original.type === 'path' ? scaleDesignPathSubpaths(pathSubpaths(original), scaleX, scaleY) : null;
+    return {
+      ...original,
+      x: Math.round(left),
+      y: Math.round(top),
+      width: Math.max(1, Math.round(width)),
+      height: Math.max(1, Math.round(height)),
+      ...(scaled ? original.pathSubpaths.length ? { pathSubpaths: scaled } : { pathPoints: scaled[0] ?? [] } : {}),
+    };
+  }
+
+  function unrotatePoint(point: { x: number; y: number }, element: DesignElement): { x: number; y: number } {
+    if (!element.rotation) return point;
+    const radians = -element.rotation * Math.PI / 180;
+    const centerX = element.x + element.width / 2;
+    const centerY = element.y + element.height / 2;
+    const dx = point.x - centerX;
+    const dy = point.y - centerY;
+    return {
+      x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
+      y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians),
+    };
+  }
+
+  function rotatePoint(point: { x: number; y: number }, element: DesignElement): { x: number; y: number } {
+    if (!element.rotation) return point;
+    const radians = element.rotation * Math.PI / 180;
+    const centerX = element.x + element.width / 2;
+    const centerY = element.y + element.height / 2;
+    const dx = point.x - centerX;
+    const dy = point.y - centerY;
+    return {
+      x: centerX + dx * Math.cos(radians) - dy * Math.sin(radians),
+      y: centerY + dx * Math.sin(radians) + dy * Math.cos(radians),
+    };
+  }
+
+  function resizeHandlePosition(element: Pick<DesignElement, 'x' | 'y' | 'width' | 'height'>, handle: ResizeHandle): { x: number; y: number } {
+    return {
+      x: handle.includes('w') ? element.x : handle.includes('e') ? element.x + element.width : element.x + element.width / 2,
+      y: handle.includes('n') ? element.y : handle.includes('s') ? element.y + element.height : element.y + element.height / 2,
+    };
+  }
+
+  function resizeCursor(handle: ResizeHandle): string {
+    if (handle === 'n' || handle === 's') return 'ns-resize';
+    if (handle === 'e' || handle === 'w') return 'ew-resize';
+    if (handle === 'ne' || handle === 'sw') return 'nesw-resize';
+    return 'nwse-resize';
+  }
+
+  function penPreviewData(): string {
+    const from = penPoints.at(-1);
+    if (!from || !penPointer) return '';
+    const to: DesignPathPoint = { ...penPointer, inX: null, inY: null, outX: null, outY: null, mode: 'corner' };
+    return `M ${from.x} ${from.y} ${designPathSegmentData(from, to)}`;
+  }
+
+  function startResize(event: PointerEvent, handle: ResizeHandle) {
+    if (!selected || selected.locked || !document) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const original = pathSnapshot(selected);
+    const childSnapshots = selected.type === 'frame'
+      ? pageElements.filter((element) => element.parentId === selected.id).map((element) => ({ ...element }))
+      : [];
+    const pointerId = event.pointerId;
+    let next = original;
+    let changed = false;
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId || !document) return;
+      next = resizedElement(original, handle, unrotatePoint(pagePoint(moveEvent), original), moveEvent.shiftKey, moveEvent.altKey);
+      changed = next.x !== original.x || next.y !== original.y || next.width !== original.width || next.height !== original.height;
+      const childChanges = new Map(childSnapshots.map((child) => [child.id, constrainedChildChanges(child, original, next)]));
+      document = {
+        ...document,
+        elements: document.elements.map((element) => {
+          if (element.id === original.id) return next;
+          const changes = childChanges.get(element.id);
+          return changes ? { ...element, ...changes } : element;
+        }),
+      };
+    };
+    const up = async (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (!changed) return;
+      const changes: Partial<DesignElement> = { x: next.x, y: next.y, width: next.width, height: next.height };
+      if (original.type === 'path') {
+        if (original.pathSubpaths.length) changes.pathSubpaths = next.pathSubpaths;
+        else changes.pathPoints = next.pathPoints;
+      }
+      const operations: DesignOperation[] = [{ kind: 'update', elementId: original.id, changes }];
+      const inverse: DesignOperation[] = [{ kind: 'update', elementId: original.id, changes: {
+        x: original.x,
+        y: original.y,
+        width: original.width,
+        height: original.height,
+        ...(original.pathSubpaths.length ? { pathSubpaths: original.pathSubpaths } : original.type === 'path' ? { pathPoints: original.pathPoints } : {}),
+      } }];
+      for (const child of childSnapshots) {
+        const childChanges = constrainedChildChanges(child, original, next);
+        operations.push({ kind: 'update', elementId: child.id, changes: childChanges });
+        inverse.push({ kind: 'update', elementId: child.id, changes: Object.fromEntries(Object.keys(childChanges).map((key) => [key, child[key as keyof DesignElement]])) as Partial<DesignElement> });
+      }
+      await apply(operations, m['design.operation_resize']({ name: original.name }), { inverse });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
   async function updateSelected(changes: Partial<DesignElement>, summary = selected?.name ?? '') {
     if (!selected) return;
-    const inverseChanges = Object.fromEntries(Object.keys(changes).map((key) => [key, selected[key as keyof DesignElement]])) as Partial<DesignElement>;
-    const operations: DesignOperation[] = [{ kind: 'update', elementId: selected.id, changes }];
+    let resolvedChanges = { ...changes };
+    if (selected.type === 'path' && ('width' in changes || 'height' in changes)) {
+      const scaleX = Math.max(1, changes.width ?? selected.width) / selected.width;
+      const scaleY = Math.max(1, changes.height ?? selected.height) / selected.height;
+      const scaled = scaleDesignPathSubpaths(pathSubpaths(selected), scaleX, scaleY);
+      resolvedChanges = {
+        ...resolvedChanges,
+        ...(selected.pathSubpaths.length ? { pathSubpaths: scaled } : { pathPoints: scaled[0] ?? [] }),
+      };
+    }
+    const inverseChanges = Object.fromEntries(Object.keys(resolvedChanges).map((key) => [key, selected[key as keyof DesignElement]])) as Partial<DesignElement>;
+    const operations: DesignOperation[] = [{ kind: 'update', elementId: selected.id, changes: resolvedChanges }];
     const inverse: DesignOperation[] = [{ kind: 'update', elementId: selected.id, changes: inverseChanges }];
-    if (selected.type === 'frame' && ['x', 'y', 'width', 'height'].some((key) => key in changes)) {
-      const nextFrame = { ...selected, ...changes };
+    if (selected.type === 'frame' && ['x', 'y', 'width', 'height'].some((key) => key in resolvedChanges)) {
+      const nextFrame = { ...selected, ...resolvedChanges };
       for (const child of pageElements.filter((element) => element.parentId === selected.id)) {
         const childChanges = constrainedChildChanges(child, selected, nextFrame);
         operations.push({ kind: 'update', elementId: child.id, changes: childChanges });
@@ -561,7 +961,8 @@
       inverse: snapshots.map((element) => ({ kind: 'create', element })),
     })) {
       selectedIds = [];
-      pathPointSelection = null;
+      vectorEditId = null;
+      pathPointSelections = [];
     }
   }
 
@@ -777,16 +1178,10 @@
   }
 
   function normalizedPathChanges(element: DesignElement, subpaths: DesignPathPoint[][]): Partial<DesignElement> {
-    const values = subpaths.flatMap((subpath) => subpath.flatMap((point) => [
-      { x: point.x, y: point.y },
-      ...(point.inX === null || point.inY === null ? [] : [{ x: point.inX, y: point.inY }]),
-      ...(point.outX === null || point.outY === null ? [] : [{ x: point.outX, y: point.outY }]),
-    ]));
-    if (!values.length) return element.pathSubpaths.length ? { pathSubpaths: subpaths } : { pathPoints: subpaths[0] ?? [] };
-    const minX = Math.min(...values.map((point) => point.x));
-    const minY = Math.min(...values.map((point) => point.y));
-    const maxX = Math.max(...values.map((point) => point.x));
-    const maxY = Math.max(...values.map((point) => point.y));
+    const bounds = designPathBounds(subpaths, element.pathClosed);
+    if (!bounds) return element.pathSubpaths.length ? { pathSubpaths: subpaths } : { pathPoints: subpaths[0] ?? [] };
+    const minX = bounds.x;
+    const minY = bounds.y;
     const normalized = subpaths.map((subpath) => subpath.map((point) => ({
       ...point,
       x: point.x - minX,
@@ -799,8 +1194,8 @@
     return {
       x: element.x + minX,
       y: element.y + minY,
-      width: Math.max(1, maxX - minX),
-      height: Math.max(1, maxY - minY),
+      width: bounds.width,
+      height: bounds.height,
       ...(element.pathSubpaths.length ? { pathSubpaths: normalized } : { pathPoints: normalized[0] ?? [] }),
     };
   }
@@ -827,34 +1222,62 @@
     });
   }
 
+  function samePathPoint(left: PathPointSelection, right: PathPointSelection): boolean {
+    return left.elementId === right.elementId && left.subpathIndex === right.subpathIndex && left.pointIndex === right.pointIndex;
+  }
+
+  function isPathPointSelected(elementId: string, subpathIndex: number, pointIndex: number): boolean {
+    return pathPointSelections.some((selection) => samePathPoint(selection, { elementId, subpathIndex, pointIndex }));
+  }
+
+  function selectPathPoint(event: PointerEvent, selection: PathPointSelection): boolean {
+    const exists = pathPointSelections.some((candidate) => samePathPoint(candidate, selection));
+    if (event.shiftKey && exists) {
+      pathPointSelections = pathPointSelections.filter((candidate) => !samePathPoint(candidate, selection));
+      return false;
+    }
+    if (event.shiftKey) pathPointSelections = [...pathPointSelections, selection];
+    else if (!exists) pathPointSelections = [selection];
+    return true;
+  }
+
   function startPathPointDrag(event: PointerEvent, subpathIndex: number, index: number) {
-    if (!selected || selected.type !== 'path' || !document) return;
+    if (!selected || selected.type !== 'path' || selected.locked || !document) return;
     event.preventDefault();
     event.stopPropagation();
     const original = pathSnapshot(selected);
     const subpaths = pathSubpaths(original);
     const source = subpaths[subpathIndex]?.[index];
     if (!source) return;
+    const selection = { elementId: original.id, subpathIndex, pointIndex: index };
+    if (!selectPathPoint(event, selection)) return;
+    const movingSelections = pathPointSelections.filter((candidate) => candidate.elementId === original.id);
+    const sources = new Map(movingSelections.map((candidate) => [
+      `${candidate.subpathIndex}:${candidate.pointIndex}`,
+      { ...subpaths[candidate.subpathIndex][candidate.pointIndex] },
+    ]));
     const pointerId = event.pointerId;
     let changed = false;
-    pathPointSelection = { elementId: original.id, subpathIndex, pointIndex: index };
+    const origin = unrotatePoint(pagePoint(event), original);
     const move = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
+      const point = unrotatePoint(pagePoint(moveEvent), original);
+      const dx = point.x - origin.x;
+      const dy = point.y - origin.y;
+      if (!changed && Math.hypot(dx, dy) * zoom < 2) return;
       changed = true;
-      const point = pagePoint(moveEvent);
-      const x = point.x - original.x;
-      const y = point.y - original.y;
-      const dx = x - source.x;
-      const dy = y - source.y;
-      subpaths[subpathIndex][index] = {
-        ...source,
-        x,
-        y,
-        inX: source.inX === null ? null : source.inX + dx,
-        inY: source.inY === null ? null : source.inY + dy,
-        outX: source.outX === null ? null : source.outX + dx,
-        outY: source.outY === null ? null : source.outY + dy,
-      };
+      for (const candidate of movingSelections) {
+        const initial = sources.get(`${candidate.subpathIndex}:${candidate.pointIndex}`)!;
+        subpaths[candidate.subpathIndex][candidate.pointIndex] = {
+          ...initial,
+          x: initial.x + dx,
+          y: initial.y + dy,
+          inX: initial.inX === null ? null : initial.inX + dx,
+          inY: initial.inY === null ? null : initial.inY + dy,
+          outX: initial.outX === null ? null : initial.outX + dx,
+          outY: initial.outY === null ? null : initial.outY + dy,
+        };
+      }
       setLivePath(original.id, subpaths);
     };
     const up = async (upEvent: PointerEvent) => {
@@ -870,7 +1293,7 @@
   }
 
   function startPathHandleDrag(event: PointerEvent, subpathIndex: number, index: number, handle: 'in' | 'out') {
-    if (!selected || selected.type !== 'path' || !document) return;
+    if (!selected || selected.type !== 'path' || selected.locked || !document) return;
     event.preventDefault();
     event.stopPropagation();
     const original = pathSnapshot(selected);
@@ -879,11 +1302,11 @@
     if (!source) return;
     const pointerId = event.pointerId;
     let changed = false;
-    pathPointSelection = { elementId: original.id, subpathIndex, pointIndex: index };
+    pathPointSelections = [{ elementId: original.id, subpathIndex, pointIndex: index }];
     const move = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
       changed = true;
-      const pagePosition = pagePoint(moveEvent);
+      const pagePosition = unrotatePoint(pagePoint(moveEvent), original);
       let x = pagePosition.x - original.x;
       let y = pagePosition.y - original.y;
       if (moveEvent.shiftKey) {
@@ -892,7 +1315,7 @@
         x = source.x + Math.cos(angle) * distance;
         y = source.y + Math.sin(angle) * distance;
       }
-      const next = { ...subpaths[subpathIndex][index] };
+      const next = { ...subpaths[subpathIndex][index], mode: moveEvent.altKey ? 'disconnected' as const : source.mode };
       if (handle === 'in') {
         next.inX = x;
         next.inY = y;
@@ -900,11 +1323,13 @@
         next.outX = x;
         next.outY = y;
       }
-      if (!moveEvent.altKey) {
+      if (!moveEvent.altKey && source.mode !== 'disconnected' && source.mode !== 'corner') {
         const opposite = handle === 'in' ? 'out' : 'in';
         const oppositeX = opposite === 'in' ? next.inX : next.outX;
         const oppositeY = opposite === 'in' ? next.inY : next.outY;
-        const length = oppositeX === null || oppositeY === null
+        const length = source.mode === 'mirrored'
+          ? Math.hypot(x - source.x, y - source.y)
+          : oppositeX === null || oppositeY === null
           ? Math.hypot(x - source.x, y - source.y)
           : Math.hypot(oppositeX - source.x, oppositeY - source.y);
         const magnitude = Math.hypot(x - source.x, y - source.y) || 1;
@@ -933,19 +1358,73 @@
     window.addEventListener('pointercancel', up);
   }
 
-  async function insertPathPoint(event: MouseEvent) {
+  function segmentAmount(event: PointerEvent | MouseEvent, element: DesignElement, points: DesignPathPoint[], segmentIndex: number): number {
+    const position = unrotatePoint(pagePoint(event as PointerEvent), element);
+    const local = { x: position.x - element.x, y: position.y - element.y };
+    const from = points[segmentIndex];
+    const to = points[(segmentIndex + 1) % points.length];
+    let best = { amount: 0.5, distance: Number.POSITIVE_INFINITY };
+    for (let step = 0; step <= 64; step += 1) {
+      const amount = step / 64;
+      const candidate = designPathSegmentPoint(from, to, amount);
+      const distance = Math.hypot(candidate.x - local.x, candidate.y - local.y);
+      if (distance < best.distance) best = { amount, distance };
+    }
+    return best.amount;
+  }
+
+  function startPathSegmentDrag(event: PointerEvent, subpathIndex: number, segmentIndex: number) {
+    if (!selected || selected.type !== 'path' || selected.locked || !document) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const original = pathSnapshot(selected);
+    const subpaths = pathSubpaths(original);
+    const source = subpaths[subpathIndex];
+    if (!source?.length) return;
+    const amount = segmentAmount(event, original, source, segmentIndex);
+    const origin = unrotatePoint(pagePoint(event), original);
+    const pointerId = event.pointerId;
+    let changed = false;
+    pathPointSelections = [
+      { elementId: original.id, subpathIndex, pointIndex: segmentIndex },
+      { elementId: original.id, subpathIndex, pointIndex: (segmentIndex + 1) % source.length },
+    ];
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      const current = unrotatePoint(pagePoint(moveEvent), original);
+      const dx = current.x - origin.x;
+      const dy = current.y - origin.y;
+      if (!changed && Math.hypot(dx, dy) * zoom < 3) return;
+      changed = true;
+      subpaths[subpathIndex] = bendDesignPathSegment(source, segmentIndex, amount, dx, dy, original.pathClosed);
+      setLivePath(original.id, subpaths);
+    };
+    const up = async (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (changed) await commitPathEdit(original, subpaths);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
+  async function insertPathPoint(event: MouseEvent, targetSubpathIndex?: number, targetSegmentIndex?: number) {
     if (!selected || selected.type !== 'path') return;
     event.preventDefault();
     event.stopPropagation();
     const original = pathSnapshot(selected);
     const subpaths = pathSubpaths(original);
-    const position = pagePoint(event as unknown as PointerEvent);
+    const position = unrotatePoint(pagePoint(event as unknown as PointerEvent), original);
     const local = { x: position.x - original.x, y: position.y - original.y };
     let best: { subpathIndex: number; segmentIndex: number; amount: number; distance: number } | null = null;
     for (let subpathIndex = 0; subpathIndex < subpaths.length; subpathIndex += 1) {
       const subpath = subpaths[subpathIndex];
       const segmentCount = original.pathClosed ? subpath.length : Math.max(0, subpath.length - 1);
       for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+        if (targetSubpathIndex !== undefined && (subpathIndex !== targetSubpathIndex || segmentIndex !== targetSegmentIndex)) continue;
         const from = subpath[segmentIndex];
         const to = subpath[(segmentIndex + 1) % subpath.length];
         for (let step = 0; step <= 32; step += 1) {
@@ -960,54 +1439,129 @@
     const oldLength = subpaths[best.subpathIndex].length;
     subpaths[best.subpathIndex] = splitDesignPathSegment(subpaths[best.subpathIndex], best.segmentIndex, best.amount, original.pathClosed);
     const pointIndex = best.segmentIndex === oldLength - 1 && original.pathClosed ? oldLength : best.segmentIndex + 1;
-    if (await commitPathEdit(original, subpaths)) pathPointSelection = { elementId: original.id, subpathIndex: best.subpathIndex, pointIndex };
+    if (await commitPathEdit(original, subpaths) && vectorEditId === original.id) pathPointSelections = [{ elementId: original.id, subpathIndex: best.subpathIndex, pointIndex }];
   }
 
   async function addPathPointAfterSelection() {
-    if (!selected || selected.type !== 'path' || !pathPointSelection) return;
+    const selection = primaryPathPointSelection;
+    if (!selected || selected.type !== 'path' || !selection) return;
     const original = pathSnapshot(selected);
     const subpaths = pathSubpaths(original);
-    const subpath = subpaths[pathPointSelection.subpathIndex];
+    const subpath = subpaths[selection.subpathIndex];
     if (!subpath?.length) return;
-    const segmentIndex = !original.pathClosed && pathPointSelection.pointIndex >= subpath.length - 1
+    const segmentIndex = !original.pathClosed && selection.pointIndex >= subpath.length - 1
       ? Math.max(0, subpath.length - 2)
-      : pathPointSelection.pointIndex;
+      : selection.pointIndex;
     const oldLength = subpath.length;
-    subpaths[pathPointSelection.subpathIndex] = splitDesignPathSegment(subpath, segmentIndex, 0.5, original.pathClosed);
+    subpaths[selection.subpathIndex] = splitDesignPathSegment(subpath, segmentIndex, 0.5, original.pathClosed);
     const pointIndex = segmentIndex === oldLength - 1 && original.pathClosed ? oldLength : segmentIndex + 1;
-    if (await commitPathEdit(original, subpaths)) pathPointSelection = { elementId: original.id, subpathIndex: pathPointSelection.subpathIndex, pointIndex };
+    if (await commitPathEdit(original, subpaths) && vectorEditId === original.id) pathPointSelections = [{ elementId: original.id, subpathIndex: selection.subpathIndex, pointIndex }];
   }
 
-  async function setSelectedPathPointMode(mode: 'corner' | 'smooth') {
-    if (!selected || selected.type !== 'path' || !pathPointSelection) return;
+  async function setSelectedPathPointMode(mode: DesignPathPoint['mode']) {
+    if (!selected || selected.type !== 'path' || !pathPointSelections.length) return;
     const original = pathSnapshot(selected);
     const subpaths = pathSubpaths(original);
-    const points = subpaths[pathPointSelection.subpathIndex];
-    if (!points?.[pathPointSelection.pointIndex]) return;
-    subpaths[pathPointSelection.subpathIndex] = mode === 'corner'
-      ? cornerDesignPathPoint(points, pathPointSelection.pointIndex)
-      : smoothDesignPathPoint(points, pathPointSelection.pointIndex, original.pathClosed);
+    for (const selection of pathPointSelections.filter((candidate) => candidate.elementId === original.id)) {
+      const points = subpaths[selection.subpathIndex];
+      if (!points?.[selection.pointIndex]) continue;
+      subpaths[selection.subpathIndex] = convertDesignPathPointMode(points, selection.pointIndex, mode, original.pathClosed);
+    }
     await commitPathEdit(original, subpaths);
   }
 
-  async function deleteSelectedPathPoint(): Promise<boolean> {
-    if (!selected || selected.type !== 'path' || !pathPointSelection) return false;
+  async function updateSelectedPathPointPosition(axis: 'x' | 'y', value: number) {
+    const selection = primaryPathPointSelection;
+    if (!selected || selected.type !== 'path' || !selection) return;
     const original = pathSnapshot(selected);
     const subpaths = pathSubpaths(original);
-    const points = subpaths[pathPointSelection.subpathIndex];
-    if (!points?.[pathPointSelection.pointIndex]) return false;
-    if (points.length <= 2 && subpaths.length === 1) {
-      pathPointSelection = null;
+    const point = subpaths[selection.subpathIndex]?.[selection.pointIndex];
+    if (!point) return;
+    const delta = value - point[axis];
+    subpaths[selection.subpathIndex][selection.pointIndex] = {
+      ...point,
+      [axis]: value,
+      ...(axis === 'x'
+        ? { inX: point.inX === null ? null : point.inX + delta, outX: point.outX === null ? null : point.outX + delta }
+        : { inY: point.inY === null ? null : point.inY + delta, outY: point.outY === null ? null : point.outY + delta }),
+    };
+    await commitPathEdit(original, subpaths);
+  }
+
+  function startPathPointResize(event: PointerEvent, handle: ResizeHandle) {
+    if (!selected || selected.type !== 'path' || !selectedPathPointBounds || !document) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const original = pathSnapshot(selected);
+    const subpaths = pathSubpaths(original);
+    const bounds = { ...selectedPathPointBounds };
+    const boxElement: DesignElement = { ...original, type: 'rectangle', x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+    const selectedPoints = pathPointSelections.filter((selection) => selection.elementId === original.id);
+    const sources = new Map(selectedPoints.map((selection) => [
+      `${selection.subpathIndex}:${selection.pointIndex}`,
+      { ...subpaths[selection.subpathIndex][selection.pointIndex] },
+    ]));
+    const pointerId = event.pointerId;
+    let changed = false;
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      const pointer = unrotatePoint(pagePoint(moveEvent), original);
+      const next = resizedElement(boxElement, handle, pointer, moveEvent.shiftKey, moveEvent.altKey);
+      const scaleX = next.width / bounds.width;
+      const scaleY = next.height / bounds.height;
+      changed = next.x !== bounds.x || next.y !== bounds.y || next.width !== bounds.width || next.height !== bounds.height;
+      for (const selection of selectedPoints) {
+        const source = sources.get(`${selection.subpathIndex}:${selection.pointIndex}`)!;
+        const transformX = (value: number) => next.x + (original.x + value - bounds.x) * scaleX - original.x;
+        const transformY = (value: number) => next.y + (original.y + value - bounds.y) * scaleY - original.y;
+        subpaths[selection.subpathIndex][selection.pointIndex] = {
+          ...source,
+          x: transformX(source.x),
+          y: transformY(source.y),
+          inX: source.inX === null ? null : transformX(source.inX),
+          inY: source.inY === null ? null : transformY(source.inY),
+          outX: source.outX === null ? null : transformX(source.outX),
+          outY: source.outY === null ? null : transformY(source.outY),
+        };
+      }
+      setLivePath(original.id, subpaths);
+    };
+    const up = async (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (changed) await commitPathEdit(original, subpaths);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
+  async function deleteSelectedPathPoint(): Promise<boolean> {
+    if (!selected || selected.type !== 'path' || !pathPointSelections.length) return false;
+    const original = pathSnapshot(selected);
+    const subpaths = pathSubpaths(original);
+    const bySubpath = new Map<number, number[]>();
+    for (const selection of pathPointSelections.filter((candidate) => candidate.elementId === original.id)) {
+      bySubpath.set(selection.subpathIndex, [...(bySubpath.get(selection.subpathIndex) ?? []), selection.pointIndex]);
+    }
+    for (const [subpathIndex, indexes] of [...bySubpath.entries()].sort((left, right) => right[0] - left[0])) {
+      const remaining = subpaths[subpathIndex]?.filter((_, index) => !indexes.includes(index)) ?? [];
+      if (remaining.length < 2) subpaths.splice(subpathIndex, 1);
+      else subpaths[subpathIndex] = remaining;
+    }
+    if (!subpaths.length) {
+      pathPointSelections = [];
       await removeSelected();
       return true;
     }
-    if (points.length <= 2) subpaths.splice(pathPointSelection.subpathIndex, 1);
-    else points.splice(pathPointSelection.pointIndex, 1);
-    const nextSubpathIndex = Math.min(pathPointSelection.subpathIndex, subpaths.length - 1);
-    const nextPointIndex = Math.min(pathPointSelection.pointIndex, (subpaths[nextSubpathIndex]?.length ?? 1) - 1);
     const closed = original.pathClosed && subpaths.every((subpath) => subpath.length >= 3);
-    if (await commitPathEdit(original, subpaths, { pathClosed: closed })) {
-      pathPointSelection = { elementId: original.id, subpathIndex: nextSubpathIndex, pointIndex: nextPointIndex };
+    if (await commitPathEdit(original, subpaths, { pathClosed: closed }) && vectorEditId === original.id) {
+      const firstSubpathIndex = Math.min(...bySubpath.keys());
+      const nextSubpathIndex = Math.min(firstSubpathIndex, subpaths.length - 1);
+      const firstPointIndex = Math.min(...(bySubpath.get(firstSubpathIndex) ?? [0]));
+      pathPointSelections = [{ elementId: original.id, subpathIndex: nextSubpathIndex, pointIndex: Math.min(firstPointIndex, subpaths[nextSubpathIndex].length - 1) }];
     }
     return true;
   }
@@ -1118,7 +1672,7 @@
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     clone.setAttribute('width', String(page?.width ?? 1));
     clone.setAttribute('height', String(page?.height ?? 1));
-    clone.querySelectorAll('[data-design-selection],[data-design-guide],[data-design-ruler],[data-design-snap]').forEach((element) => element.remove());
+    clone.querySelectorAll('[data-design-selection],[data-design-guide],[data-design-ruler],[data-design-snap],[data-design-ui]').forEach((element) => element.remove());
     if (page?.background && page.background !== 'transparent') {
       const background = globalThis.document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       background.setAttribute('width', '100%');
@@ -1248,6 +1802,34 @@
     }
   }
 
+  async function nudgeSelection(dx: number, dy: number) {
+    if (!document) return;
+    if (vectorEditing && selected?.type === 'path' && pathPointSelections.length) {
+      const original = pathSnapshot(selected);
+      const subpaths = pathSubpaths(original);
+      for (const selection of pathPointSelections.filter((candidate) => candidate.elementId === original.id)) {
+        const point = subpaths[selection.subpathIndex]?.[selection.pointIndex];
+        if (!point) continue;
+        subpaths[selection.subpathIndex][selection.pointIndex] = {
+          ...point,
+          x: point.x + dx,
+          y: point.y + dy,
+          inX: point.inX === null ? null : point.inX + dx,
+          inY: point.inY === null ? null : point.inY + dy,
+          outX: point.outX === null ? null : point.outX + dx,
+          outY: point.outY === null ? null : point.outY + dy,
+        };
+      }
+      await commitPathEdit(original, subpaths);
+      return;
+    }
+    const targets = selectedElements.filter((element) => !element.locked);
+    if (!targets.length) return;
+    await apply(targets.map((element) => ({ kind: 'update', elementId: element.id, changes: { x: element.x + dx, y: element.y + dy } })), m['design.operation_move']({ name: targets.length === 1 ? targets[0].name : String(targets.length) }), {
+      inverse: targets.map((element) => ({ kind: 'update', elementId: element.id, changes: { x: element.x, y: element.y } })),
+    });
+  }
+
   function fitPage() {
     if (!viewport || !page) return;
     zoom = Math.max(0.1, Math.min(1.5, Math.min((viewport.clientWidth - 96) / page.width, (viewport.clientHeight - 96) / page.height)));
@@ -1263,14 +1845,38 @@
       void (event.shiftKey ? redo() : undo());
       return;
     }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a' && vectorEditing && selected?.type === 'path') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pathPointSelections = pathSubpaths(selected).flatMap((points, subpathIndex) => points.map((_, pointIndex) => ({ elementId: selected.id, subpathIndex, pointIndex })));
+      return;
+    }
     if (event.key === 'Enter' && tool === 'path' && penPoints.length >= 2) {
       event.preventDefault();
       void finishPath();
       return;
     }
-    if (event.key === 'Escape' && pathPointSelection) {
+    if (event.key === 'Enter' && selected?.type === 'path' && !vectorEditing) {
       event.preventDefault();
-      pathPointSelection = null;
+      enterVectorEdit(selected);
+      return;
+    }
+    if (event.key === 'Enter' && selected?.type === 'text' && !editingTextId) {
+      event.preventDefault();
+      beginTextEditing(selected);
+      return;
+    }
+    if (event.key === 'Escape' && tool === 'path' && penPoints.length >= 2) {
+      event.preventDefault();
+      void finishPath();
+      return;
+    }
+    if (event.key === 'Escape' && vectorEditing) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pathPointSelections = [];
+      hoveredPathSegment = null;
+      vectorEditId = null;
       return;
     }
     if (event.key === 'Escape' && tool !== 'select') {
@@ -1278,16 +1884,33 @@
       event.stopImmediatePropagation();
       cancelDrawing?.();
       penPoints = [];
+      penPointer = null;
+      penContinuation = null;
       draftElement = null;
       tool = 'select';
+      return;
+    }
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const amount = event.shiftKey ? 10 : 1;
+      void nudgeSelection(event.key === 'ArrowLeft' ? -amount : event.key === 'ArrowRight' ? amount : 0, event.key === 'ArrowUp' ? -amount : event.key === 'ArrowDown' ? amount : 0);
       return;
     }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (pathPointSelection) void deleteSelectedPathPoint();
+      if (pathPointSelections.length) void deleteSelectedPathPoint();
       else void removeSelected();
+      return;
     }
+    const shortcut = event.key.toLowerCase();
+    if (shortcut === 'v') switchTool('select');
+    else if (shortcut === 'f') switchTool('frame');
+    else if (shortcut === 'r') switchTool('rectangle');
+    else if (shortcut === 'o') switchTool('ellipse');
+    else if (shortcut === 't') switchTool('text');
+    else if (shortcut === 'p') switchTool('path');
   }
 
   function number(event: Event): number {
@@ -1340,14 +1963,14 @@
   >
     <header class="col-span-3 flex min-w-0 items-center gap-1 overflow-x-auto border-b border-[var(--app-border)] bg-[var(--app-surface)] px-2 @max-[660px]:col-span-1">
       {#each [
-        { id: 'select' as const, icon: MousePointer2 },
-        { id: 'frame' as const, icon: Frame },
-        { id: 'rectangle' as const, icon: RectangleHorizontal },
-        { id: 'ellipse' as const, icon: Circle },
-        { id: 'text' as const, icon: Type },
-        { id: 'path' as const, icon: PenTool },
+        { id: 'select' as const, icon: MousePointer2, shortcut: 'V' },
+        { id: 'frame' as const, icon: Frame, shortcut: 'F' },
+        { id: 'rectangle' as const, icon: RectangleHorizontal, shortcut: 'R' },
+        { id: 'ellipse' as const, icon: Circle, shortcut: 'O' },
+        { id: 'text' as const, icon: Type, shortcut: 'T' },
+        { id: 'path' as const, icon: PenTool, shortcut: 'P' },
       ] as item (item.id)}
-        <DesignToolbarButton label={toolLabel(item.id)} hint={item.id === 'path' ? m['design.pen_hint']() : undefined} active={tool === item.id} pressed={tool === item.id} onclick={() => { tool = item.id; penPoints = []; draftElement = null; pathPointSelection = null; }}>
+        <DesignToolbarButton label={toolLabel(item.id)} hint={item.id === 'path' ? `${item.shortcut} · ${m['design.pen_hint']()}` : item.shortcut} active={tool === item.id} pressed={tool === item.id} onclick={() => switchTool(item.id)}>
           <item.icon size={16} />
         </DesignToolbarButton>
       {/each}
@@ -1419,7 +2042,7 @@
           <div class="flex flex-col-reverse p-1">
             {#each pageElements as element (element.id)}
               <div class={`group flex h-8 items-center gap-1 rounded px-1 ${selectedIds.includes(element.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)] hover:bg-[var(--app-surface-raised)]'}`} style:padding-left={`${4 + (element.parentId ? 12 : 0)}px`}>
-                <button class="min-w-0 flex-1 truncate px-1 text-left text-[11px]" onclick={(event) => { if (event.shiftKey) selectedIds = selectedIds.includes(element.id) ? selectedIds.filter((id) => id !== element.id) : [...selectedIds, element.id]; else selectedIds = [element.id]; }}>{element.name}</button>
+                <button class="min-w-0 flex-1 truncate px-1 text-left text-[11px]" onclick={(event) => { vectorEditId = null; pathPointSelections = []; if (event.shiftKey) selectedIds = selectedIds.includes(element.id) ? selectedIds.filter((id) => id !== element.id) : [...selectedIds, element.id]; else selectedIds = [element.id]; }} ondblclick={() => { if (element.type === 'path') enterVectorEdit(element); else if (element.type === 'text') beginTextEditing(element); }}>{element.name}</button>
                 <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.visible ? m['design.hide']() : m['design.show']()} onclick={() => void updateElement(element, { visible: !element.visible })}>{#if element.visible}<Eye size={12} />{:else}<EyeOff size={12} />{/if}</button>
                 <button class="grid size-6 place-items-center text-[var(--app-text-muted)] hover:text-[var(--app-text)]" aria-label={element.locked ? m['design.unlock']() : m['design.lock']()} onclick={() => void updateElement(element, { locked: !element.locked })}>{#if element.locked}<Lock size={12} />{:else}<Unlock size={12} />{/if}</button>
               </div>
@@ -1449,6 +2072,20 @@
       {:else if loading || !document || !page}
         <div class="grid h-full place-items-center text-xs text-[var(--app-text-muted)]">{m['design.loading']()}</div>
       {:else}
+        {#if vectorEditing && selected?.type === 'path'}
+          <div class="absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-1 shadow-lg">
+            <span class="whitespace-nowrap px-2 text-[10px] font-medium text-[var(--app-text-soft)]">{m['design.vector_edit']()}</span>
+            <span class="h-5 w-px bg-[var(--app-border)]"></span>
+            <DesignToolbarButton label={m['design.path_corner']()} active={selectedPathPointMode === 'corner'} pressed={selectedPathPointMode === 'corner'} disabled={!pathPointSelections.length} onclick={() => void setSelectedPathPointMode('corner')}><CornerDownRight size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.path_mirrored']()} active={selectedPathPointMode === 'mirrored'} pressed={selectedPathPointMode === 'mirrored'} disabled={!pathPointSelections.length} onclick={() => void setSelectedPathPointMode('mirrored')}><Spline size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.path_asymmetric']()} active={selectedPathPointMode === 'asymmetric'} pressed={selectedPathPointMode === 'asymmetric'} disabled={!pathPointSelections.length} onclick={() => void setSelectedPathPointMode('asymmetric')}><MoveDiagonal2 size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.path_disconnected']()} active={selectedPathPointMode === 'disconnected'} pressed={selectedPathPointMode === 'disconnected'} disabled={!pathPointSelections.length} onclick={() => void setSelectedPathPointMode('disconnected')}><Unlink2 size={15} /></DesignToolbarButton>
+            <span class="h-5 w-px bg-[var(--app-border)]"></span>
+            <DesignToolbarButton label={m['design.path_add_point']()} disabled={!pathPointSelections.length} onclick={() => void addPathPointAfterSelection()}><Plus size={15} /></DesignToolbarButton>
+            <DesignToolbarButton label={m['design.path_delete_point']()} disabled={!pathPointSelections.length} onclick={() => void deleteSelectedPathPoint()}><Trash2 size={15} /></DesignToolbarButton>
+            <span class="min-w-7 px-1 text-center text-[10px] tabular-nums text-[var(--app-text-muted)]" aria-label={m['design.vector_selection_count']({ count: String(pathPointSelections.length) })}>{pathPointSelections.length}</span>
+          </div>
+        {/if}
         <div class="relative min-h-full min-w-full p-12" style:width={`${Math.max(viewport?.clientWidth ?? 0, page.width * zoom + 96)}px`} style:height={`${Math.max(viewport?.clientHeight ?? 0, page.height * zoom + 96)}px`}>
           <svg
             bind:this={pageSvg}
@@ -1458,10 +2095,13 @@
             viewBox={`0 0 ${page.width} ${page.height}`}
             style:background={page.background}
             onpointerdown={canvasPointerDown}
+            onpointermove={(event) => { if (tool === 'path') penPointer = pagePoint(event); }}
+            onpointerleave={() => { if (tool === 'path') penPointer = null; }}
+            ondblclick={canvasDoubleClick}
             role="application"
             aria-label={page.name}
           >
-            <DesignRenderer elements={renderedElements} assets={document.assets} {workspaceId} {selectedIds} />
+            <DesignRenderer elements={renderedElements} assets={document.assets} {workspaceId} selectedIds={rendererSelectionIds} />
             {#if rulersVisible}
               <g data-design-ruler pointer-events="none" opacity="0.65">
                 <rect x="0" y="0" width={page.width} height="18" fill="var(--app-surface)" />
@@ -1473,38 +2113,130 @@
             {#each document.guides as guide (guide.id)}
               <line data-design-guide={guide.id} x1={guide.axis === 'x' ? guide.position : 0} y1={guide.axis === 'y' ? guide.position : 0} x2={guide.axis === 'x' ? guide.position : page.width} y2={guide.axis === 'y' ? guide.position : page.height} stroke="var(--app-secondary)" stroke-width="1" vector-effect="non-scaling-stroke" class="cursor-col-resize" />
             {/each}
-            {#each snapLinesX as line}<line data-design-snap x1={line} x2={line} y1="0" y2={page.height} stroke="var(--app-accent)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" pointer-events="none" />{/each}
-            {#each snapLinesY as line}<line data-design-snap y1={line} y2={line} x1="0" x2={page.width} stroke="var(--app-accent)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" pointer-events="none" />{/each}
-            {#if selected?.type === 'path'}
-              <g data-design-selection>
-                <path d={designPathData(selected)} fill="none" stroke="transparent" stroke-width={14 / zoom} pointer-events="stroke" class="cursor-copy" role="button" aria-label={m['design.path_add_point']()} tabindex="0" onpointerdown={(event) => event.stopPropagation()} ondblclick={insertPathPoint} onkeydown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void addPathPointAfterSelection(); } }} />
+            {#each snapLinesX as line}<line data-design-snap x1={line} x2={line} y1="0" y2={page.height} stroke="#2563eb" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" pointer-events="none" />{/each}
+            {#each snapLinesY as line}<line data-design-snap y1={line} y2={line} x1="0" x2={page.width} stroke="#2563eb" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" pointer-events="none" />{/each}
+            {#if selected && !vectorEditing && !selected.locked}
+              <g data-design-resize data-design-ui transform={`rotate(${selected.rotation} ${selected.x + selected.width / 2} ${selected.y + selected.height / 2})`}>
+                {#each resizeHandles as handle}
+                  {@const position = resizeHandlePosition(selected, handle)}
+                  <rect
+                    x={position.x - 4 / zoom}
+                    y={position.y - 4 / zoom}
+                    width={8 / zoom}
+                    height={8 / zoom}
+                    rx={1.5 / zoom}
+                    fill="#ffffff"
+                    stroke="#2563eb"
+                    stroke-width={1.5 / zoom}
+                    vector-effect="non-scaling-stroke"
+                    style:cursor={resizeCursor(handle)}
+                    role="button"
+                    aria-label={m['design.resize_handle']({ handle })}
+                    tabindex="0"
+                    onpointerdown={(event) => startResize(event, handle)}
+                  />
+                {/each}
+              </g>
+            {/if}
+            {#if vectorEditing && selected?.type === 'path'}
+              <g data-design-vector-edit data-design-ui transform={`rotate(${selected.rotation} ${selected.x + selected.width / 2} ${selected.y + selected.height / 2})`}>
+                <path d={designPathData(selected)} fill="none" stroke="#2563eb" stroke-width={1.5 / zoom} vector-effect="non-scaling-stroke" pointer-events="none" />
+                {#if selectedPathPointBounds}
+                  <rect x={selectedPathPointBounds.x} y={selectedPathPointBounds.y} width={selectedPathPointBounds.width} height={selectedPathPointBounds.height} fill="none" stroke="#2563eb" stroke-width={1 / zoom} stroke-dasharray={`${4 / zoom} ${3 / zoom}`} pointer-events="none" />
+                  {#each resizeHandles as handle}
+                    {@const position = resizeHandlePosition(selectedPathPointBounds, handle)}
+                    <rect x={position.x - 3.5 / zoom} y={position.y - 3.5 / zoom} width={7 / zoom} height={7 / zoom} rx={1 / zoom} fill="#ffffff" stroke="#2563eb" stroke-width={1.25 / zoom} style:cursor={resizeCursor(handle)} role="button" aria-label={m['design.resize_vector_points']({ handle })} tabindex="0" onpointerdown={(event) => startPathPointResize(event, handle)} />
+                  {/each}
+                {/if}
                 {#each pathSubpaths(selected) as points, subpathIndex}
+                  {@const segmentCount = selected.pathClosed ? points.length : Math.max(0, points.length - 1)}
+                  {#each Array(segmentCount) as _, segmentIndex}
+                    {@const from = points[segmentIndex]}
+                    {@const to = points[(segmentIndex + 1) % points.length]}
+                    {@const hovered = hoveredPathSegment?.elementId === selected.id && hoveredPathSegment.subpathIndex === subpathIndex && hoveredPathSegment.segmentIndex === segmentIndex}
+                    <path
+                      d={`M ${selected.x + from.x} ${selected.y + from.y} ${designPathSegmentData(from, to, selected.x, selected.y)}`}
+                      fill="none"
+                      stroke="transparent"
+                      stroke-width={14 / zoom}
+                      pointer-events="stroke"
+                      class="cursor-crosshair"
+                      role="button"
+                      aria-label={m['design.path_segment']({ index: String(segmentIndex + 1) })}
+                      tabindex="0"
+                      onpointerenter={() => hoveredPathSegment = { elementId: selected.id, subpathIndex, segmentIndex }}
+                      onpointerleave={() => hoveredPathSegment = null}
+                      onpointerdown={(event) => startPathSegmentDrag(event, subpathIndex, segmentIndex)}
+                      ondblclick={(event) => void insertPathPoint(event, subpathIndex, segmentIndex)}
+                    />
+                    {#if hovered}<path d={`M ${selected.x + from.x} ${selected.y + from.y} ${designPathSegmentData(from, to, selected.x, selected.y)}`} fill="none" stroke="#60a5fa" stroke-width={4 / zoom} pointer-events="none" />{/if}
+                  {/each}
                   {#each points as point, index}
-                    {#if point.inX !== null && point.inY !== null}
-                      <line x1={selected.x + point.x} y1={selected.y + point.y} x2={selected.x + point.inX} y2={selected.y + point.inY} stroke="var(--app-secondary)" stroke-width={1 / zoom} pointer-events="none" />
-                      <circle cx={selected.x + point.inX} cy={selected.y + point.inY} r={3.5 / zoom} fill="var(--app-surface)" stroke="var(--app-secondary)" stroke-width={1.5 / zoom} class="cursor-crosshair" role="button" aria-label={m['design.path_handle_in']({ index: String(index + 1) })} tabindex="0" onpointerdown={(event) => startPathHandleDrag(event, subpathIndex, index, 'in')} />
-                    {/if}
-                    {#if point.outX !== null && point.outY !== null}
-                      <line x1={selected.x + point.x} y1={selected.y + point.y} x2={selected.x + point.outX} y2={selected.y + point.outY} stroke="var(--app-secondary)" stroke-width={1 / zoom} pointer-events="none" />
-                      <circle cx={selected.x + point.outX} cy={selected.y + point.outY} r={3.5 / zoom} fill="var(--app-surface)" stroke="var(--app-secondary)" stroke-width={1.5 / zoom} class="cursor-crosshair" role="button" aria-label={m['design.path_handle_out']({ index: String(index + 1) })} tabindex="0" onpointerdown={(event) => startPathHandleDrag(event, subpathIndex, index, 'out')} />
+                    {@const pointSelected = isPathPointSelected(selected.id, subpathIndex, index)}
+                    {#if pointSelected}
+                      {#if point.inX !== null && point.inY !== null}
+                        <line x1={selected.x + point.x} y1={selected.y + point.y} x2={selected.x + point.inX} y2={selected.y + point.inY} stroke="#60a5fa" stroke-width={1 / zoom} vector-effect="non-scaling-stroke" pointer-events="none" />
+                        <circle cx={selected.x + point.inX} cy={selected.y + point.inY} r={4 / zoom} fill="#ffffff" stroke="#2563eb" stroke-width={1.5 / zoom} vector-effect="non-scaling-stroke" class="cursor-crosshair" role="button" aria-label={m['design.path_handle_in']({ index: String(index + 1) })} tabindex="0" onpointerdown={(event) => startPathHandleDrag(event, subpathIndex, index, 'in')} />
+                      {/if}
+                      {#if point.outX !== null && point.outY !== null}
+                        <line x1={selected.x + point.x} y1={selected.y + point.y} x2={selected.x + point.outX} y2={selected.y + point.outY} stroke="#60a5fa" stroke-width={1 / zoom} vector-effect="non-scaling-stroke" pointer-events="none" />
+                        <circle cx={selected.x + point.outX} cy={selected.y + point.outY} r={4 / zoom} fill="#ffffff" stroke="#2563eb" stroke-width={1.5 / zoom} vector-effect="non-scaling-stroke" class="cursor-crosshair" role="button" aria-label={m['design.path_handle_out']({ index: String(index + 1) })} tabindex="0" onpointerdown={(event) => startPathHandleDrag(event, subpathIndex, index, 'out')} />
+                      {/if}
                     {/if}
                     <circle
                       cx={selected.x + point.x}
                       cy={selected.y + point.y}
-                      r={5 / zoom}
-                      fill={pathPointSelection?.elementId === selected.id && pathPointSelection.subpathIndex === subpathIndex && pathPointSelection.pointIndex === index ? 'var(--app-accent)' : 'var(--app-surface)'}
-                      stroke="var(--app-accent)"
+                      r={(pointSelected ? 5 : 4) / zoom}
+                      fill={pointSelected ? '#2563eb' : '#ffffff'}
+                      stroke="#2563eb"
                       stroke-width={1.5 / zoom}
+                      vector-effect="non-scaling-stroke"
                       class="cursor-move"
                       role="button"
                       aria-label={m['design.path_anchor']({ index: String(index + 1) })}
                       tabindex="0"
                       onpointerdown={(event) => startPathPointDrag(event, subpathIndex, index)}
-                      ondblclick={(event) => { event.stopPropagation(); pathPointSelection = { elementId: selected.id, subpathIndex, pointIndex: index }; void setSelectedPathPointMode(point.inX === null && point.outX === null ? 'smooth' : 'corner'); }}
+                      ondblclick={(event) => { event.stopPropagation(); pathPointSelections = [{ elementId: selected.id, subpathIndex, pointIndex: index }]; void setSelectedPathPointMode(point.mode === 'corner' ? 'mirrored' : 'corner'); }}
                     />
                   {/each}
                 {/each}
               </g>
+            {/if}
+            {#if tool === 'path' && selected?.type === 'path' && !selected.pathClosed && !selected.pathSubpaths.length && selected.pathPoints.length >= 2 && !penPoints.length}
+              <g data-design-ui transform={`rotate(${selected.rotation} ${selected.x + selected.width / 2} ${selected.y + selected.height / 2})`}>
+                {#each [0, selected.pathPoints.length - 1] as pointIndex}
+                  {@const endpoint = selected.pathPoints[pointIndex]}
+                  <circle cx={selected.x + endpoint.x} cy={selected.y + endpoint.y} r={7 / zoom} fill="#ffffff" stroke="#2563eb" stroke-width={2 / zoom} vector-effect="non-scaling-stroke" class="cursor-crosshair" role="button" aria-label={m['design.path_continue']()} tabindex="0" onpointerdown={(event) => beginPathContinuation(event, selected, pointIndex === 0)} />
+                {/each}
+              </g>
+            {/if}
+            {#if tool === 'path' && penPoints.length && penPointer}
+              <g data-design-ui>
+                <path d={penPreviewData()} fill="none" stroke={penWillClose ? '#16a34a' : '#2563eb'} stroke-width={1.5 / zoom} stroke-dasharray={`${5 / zoom} ${4 / zoom}`} vector-effect="non-scaling-stroke" pointer-events="none" />
+                {#each penPoints as point, index}
+                  <circle cx={point.x} cy={point.y} r={(index === 0 && penWillClose ? 7 : 4) / zoom} fill={index === 0 && penWillClose ? '#16a34a' : '#ffffff'} stroke={index === 0 && penWillClose ? '#16a34a' : '#2563eb'} stroke-width={1.5 / zoom} vector-effect="non-scaling-stroke" pointer-events="none" />
+                {/each}
+              </g>
+            {/if}
+            {#if selectionMarquee}
+              {@const marqueeX = Math.min(selectionMarquee.start.x, selectionMarquee.current.x)}
+              {@const marqueeY = Math.min(selectionMarquee.start.y, selectionMarquee.current.y)}
+              <rect data-design-ui x={marqueeX} y={marqueeY} width={Math.abs(selectionMarquee.current.x - selectionMarquee.start.x)} height={Math.abs(selectionMarquee.current.y - selectionMarquee.start.y)} fill="#2563eb1a" stroke="#2563eb" stroke-width={1 / zoom} vector-effect="non-scaling-stroke" pointer-events="none" />
+            {/if}
+            {#if editingTextId && selected?.type === 'text' && editingTextId === selected.id}
+              <foreignObject data-design-ui x={selected.x} y={selected.y} width={Math.max(selected.width, 40)} height={Math.max(editingTextHeight, selected.fontSize * 1.5)} transform={`rotate(${selected.rotation} ${selected.x + selected.width / 2} ${selected.y + selected.height / 2})`}>
+                <textarea
+                  bind:this={textEditor}
+                  data-design-text-editor
+                  class="size-full resize-none overflow-hidden border-2 border-[#2563eb] bg-transparent p-0 outline-none"
+                  style={`font: ${selected.fontWeight} ${selected.fontSize}px/1.2 Inter Variable, Inter, sans-serif; color: ${selected.fills[0]?.type === 'solid' ? selected.fills[0].color : selected.fill}; text-align: ${selected.textAlign};`}
+                  value={editingTextDraft}
+                  oninput={(event) => editingTextDraft = event.currentTarget.value}
+                  onpointerdown={(event) => event.stopPropagation()}
+                  onblur={() => void finishTextEditing(true)}
+                  onkeydown={(event) => { if (event.key === 'Escape') { event.preventDefault(); void finishTextEditing(false); } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void finishTextEditing(true); } }}
+                ></textarea>
+              </foreignObject>
             {/if}
           </svg>
           {#if !renderedElements.length}<div class="pointer-events-none absolute inset-0 grid place-items-center p-10 text-center text-xs text-[var(--app-text-muted)]">{m['design.empty']()}</div>{/if}
@@ -1526,15 +2258,27 @@
           <section class="space-y-2"><div class="flex items-center justify-between"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.effects']()}</h3><div class="flex gap-1"><Button variant="ghost" size="sm" class="h-6 px-1.5 text-[9px]" onclick={() => void updateSelected({ effects: [...selected.effects, { type: 'drop-shadow', color: '#00000040', x: 0, y: 4, blur: 12, spread: 0, visible: true }] })}>{m['design.add_shadow']()}</Button><Button variant="ghost" size="sm" class="h-6 px-1.5 text-[9px]" onclick={() => void updateSelected({ effects: [...selected.effects, { type: 'layer-blur', blur: 8, visible: true }] })}>{m['design.add_blur']()}</Button></div></div>{#each selected.effects as effect, index}<div class="grid grid-cols-[1fr_64px_26px] items-center gap-1.5 border border-[var(--app-border)] p-2"><span>{effect.type === 'drop-shadow' || effect.type === 'inner-shadow' ? m['design.shadow']() : m['design.blur']()}</span><Input class="h-7" type="number" min="0" value={effect.blur} onchange={(event: Event) => { const effects = selected.effects.map((item, itemIndex) => itemIndex === index ? { ...item, blur: Math.max(0, number(event)) } as DesignEffect : item); void updateSelected({ effects }); }} /><Button variant="ghost" size="icon-sm" class="size-6" aria-label={m['design.delete']()} onclick={() => void updateSelected({ effects: selected.effects.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={11} /></Button></div>{/each}</section>
           {#if selected.type === 'text'}<section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.content']()}</h3><Textarea value={selected.text} onchange={(event: Event) => void updateSelected({ text: (event.currentTarget as HTMLTextAreaElement).value })} /><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.font_size']()}</span><Input type="number" min="4" value={selected.fontSize} onchange={(event: Event) => void updateSelected({ fontSize: Math.max(4, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.font_weight']()}</span><Input type="number" min="100" max="900" step="100" value={selected.fontWeight} onchange={(event: Event) => void updateSelected({ fontWeight: Math.max(100, Math.min(900, number(event))) })} /></label></div><div class="grid grid-cols-3 gap-1">{#each [{ value: 'left' as const, icon: AlignLeft, label: m['design.align_left']() }, { value: 'center' as const, icon: AlignCenter, label: m['design.align_center']() }, { value: 'right' as const, icon: AlignRight, label: m['design.align_right']() }] as alignment}<Button variant={selected.textAlign === alignment.value ? 'secondary' : 'outline'} size="sm" aria-label={alignment.label} onclick={() => void updateSelected({ textAlign: alignment.value })}><alignment.icon size={14} /></Button>{/each}</div></section>{/if}
           {#if selected.type === 'path'}
-            <section class="space-y-2">
+            <section class="space-y-2 border-y border-[var(--app-border)] py-3">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.path_points']()}</h3>
-                <span class="tabular-nums text-[var(--app-text-muted)]">{pathSubpaths(selected).reduce((total, points) => total + points.length, 0)}</span>
+                <span class="tabular-nums text-[var(--app-text-muted)]">{pathPointSelections.length}/{pathSubpaths(selected).reduce((total, points) => total + points.length, 0)}</span>
               </div>
-              {#if selectedPathPoint && pathPointSelection}
+              {#if !vectorEditing}
+                <Button class="w-full" variant="outline" size="sm" onclick={() => enterVectorEdit(selected)}><Spline size={13} />{m['design.vector_edit']()}</Button>
+              {:else if pathPointSelections.length}
+                <div class="grid grid-cols-4 gap-1">
+                  <Button variant={selectedPathPointMode === 'corner' ? 'secondary' : 'outline'} size="icon-sm" aria-label={m['design.path_corner']()} title={m['design.path_corner']()} onclick={() => void setSelectedPathPointMode('corner')}><CornerDownRight size={13} /></Button>
+                  <Button variant={selectedPathPointMode === 'mirrored' ? 'secondary' : 'outline'} size="icon-sm" aria-label={m['design.path_mirrored']()} title={m['design.path_mirrored']()} onclick={() => void setSelectedPathPointMode('mirrored')}><Spline size={13} /></Button>
+                  <Button variant={selectedPathPointMode === 'asymmetric' ? 'secondary' : 'outline'} size="icon-sm" aria-label={m['design.path_asymmetric']()} title={m['design.path_asymmetric']()} onclick={() => void setSelectedPathPointMode('asymmetric')}><MoveDiagonal2 size={13} /></Button>
+                  <Button variant={selectedPathPointMode === 'disconnected' ? 'secondary' : 'outline'} size="icon-sm" aria-label={m['design.path_disconnected']()} title={m['design.path_disconnected']()} onclick={() => void setSelectedPathPointMode('disconnected')}><Unlink2 size={13} /></Button>
+                </div>
+                {#if selectedPathPoint}
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="space-y-1"><span class="text-[var(--app-text-muted)]">X</span><Input type="number" value={Math.round(selectedPathPoint.x * 100) / 100} onchange={(event: Event) => void updateSelectedPathPointPosition('x', number(event))} /></label>
+                    <label class="space-y-1"><span class="text-[var(--app-text-muted)]">Y</span><Input type="number" value={Math.round(selectedPathPoint.y * 100) / 100} onchange={(event: Event) => void updateSelectedPathPointPosition('y', number(event))} /></label>
+                  </div>
+                {/if}
                 <div class="grid grid-cols-2 gap-1.5">
-                  <Button variant={selectedPathPoint.inX === null && selectedPathPoint.outX === null ? 'secondary' : 'outline'} size="sm" onclick={() => void setSelectedPathPointMode('corner')}>{m['design.path_corner']()}</Button>
-                  <Button variant={selectedPathPoint.inX !== null || selectedPathPoint.outX !== null ? 'secondary' : 'outline'} size="sm" onclick={() => void setSelectedPathPointMode('smooth')}>{m['design.path_smooth']()}</Button>
                   <Button variant="outline" size="sm" onclick={() => void addPathPointAfterSelection()}><Plus size={12} />{m['design.path_add_point']()}</Button>
                   <Button variant="outline" size="sm" onclick={() => void deleteSelectedPathPoint()}><Trash2 size={12} />{m['design.path_delete_point']()}</Button>
                 </div>

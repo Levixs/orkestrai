@@ -27,11 +27,17 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
-- Raised Design Mode tooltips and dropdown menus above its full-screen overlay,
-  made every toolbar action discoverable, and replaced the incomplete Pen tool
-  with direct Bezier editing: drag to create tangents, move anchors and handles,
-  split segments without changing their curve, convert corner/smooth points,
-  and add or remove individual points with undoable document operations.
+- Rebuilt Design Mode interaction around explicit layer and vector-edit states.
+  Pen now previews its next segment and close target, continues existing open
+  paths, bends segments directly, splits curves without changing their shape,
+  and supports multi-point box selection, group transforms, keyboard nudging,
+  and corner, mirrored, asymmetric, or disconnected handles. Selected layers
+  have eight direct resize handles with Shift/Option modifiers, path geometry
+  scales with its bounds, rotated paths edit in place, and text can be edited
+  directly on the canvas. Editing overlays no longer leak into exports or
+  thumbnails, selection contrast stays legible across themes, and multiline
+  text wraps consistently while inline editing grows the layer to keep every
+  line visible.
 - Design shapes now draw by dragging in any direction, with a live preview and
   the exact released size; a simple click still creates the useful default.
 - Isolated Design Mode keyboard shortcuts from the underlying Canvas so Delete

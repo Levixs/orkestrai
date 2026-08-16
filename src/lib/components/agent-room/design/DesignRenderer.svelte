@@ -124,7 +124,7 @@
         height={element.height + 4}
         rx={Math.max(0, element.cornerRadius + 2)}
         fill="none"
-        stroke="var(--app-accent)"
+        stroke="#2563eb"
         stroke-width="2"
         vector-effect="non-scaling-stroke"
         pointer-events="none"

@@ -428,13 +428,13 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'open',
         title: 'Abre el Modo Diseño',
-        body: 'Abre el mismo documento en el Modo Diseño a pantalla completa en Canvas. Todos los iconos tienen tooltip y las flechas abren opciones. Con Pluma, haz clic para esquinas, haz clic y arrastra para tangentes, termina con Enter o cierra en el primer punto; luego mueve anclas y manejadores Bézier, inserta o elimina puntos y cambia entre Esquina y Suave.',
+        body: 'Abre el mismo documento en el Modo Diseño a pantalla completa en Canvas. Los tooltips muestran cada herramienta y atajo. Pluma anticipa el siguiente segmento y el cierre; haz clic o arrastra para dibujar y usa Enter o doble clic sobre el path para editarlo. Curva o divide segmentos, continúa desde un extremo y elige tangentes Esquina, Reflejado, Asimétrico o Desconectado.',
         action: { kind: 'openDesign', title: 'Diseño de Interfaz' },
       },
       {
         id: 'compose',
         title: 'Compón interfaces vectoriales responsivas',
-        body: 'Usa Shift para seleccionar capas y alinear, distribuir, combinar o crear máscaras. Agrega gradientes, efectos, guías y ajuste, y configura el frame con auto layout horizontal, vertical, wrap o grid y constraints responsivas en sus hijos.',
+        body: 'Selecciona puntos vectoriales por caja y transfórmalos juntos, redimensiona cualquier capa con ocho controles y edita texto multilínea directamente en el canvas. Usa Shift para alinear, distribuir, combinar o enmascarar capas; agrega gradientes, efectos, guías, ajuste y auto layout responsivo.',
       },
       {
         id: 'assets-export',

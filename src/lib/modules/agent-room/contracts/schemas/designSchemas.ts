@@ -59,6 +59,7 @@ export const designPathPointSchema = z.object({
   inY: z.number().finite().nullable().default(null),
   outX: z.number().finite().nullable().default(null),
   outY: z.number().finite().nullable().default(null),
+  mode: z.enum(['corner', 'mirrored', 'asymmetric', 'disconnected']).default('corner'),
 });
 
 export const designAssetSchema = z.object({

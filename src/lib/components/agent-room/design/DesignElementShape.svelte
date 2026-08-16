@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { DesignElement } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
-  import { designPathData } from '$lib/modules/agent-room/domain/design-geometry.js';
+  import { designPathData, designTextLines } from '$lib/modules/agent-room/domain/design-geometry.js';
 
   let {
     element,
@@ -21,6 +21,7 @@
     assetUrl?: string | null;
     pointerEvents?: string;
   } = $props();
+
 </script>
 
 {#if element.type === 'ellipse'}
@@ -51,20 +52,24 @@
   />
 {:else if element.type === 'text'}
   <rect x={element.x} y={element.y} width={element.width} height={element.height} fill="transparent" pointer-events={pointerEvents} />
-  <text
-    x={element.textAlign === 'center' ? element.x + element.width / 2 : element.textAlign === 'right' ? element.x + element.width : element.x}
-    y={element.y + element.fontSize}
-    {fill}
-    fill-opacity={fillOpacity}
-    {stroke}
-    stroke-opacity={strokeOpacity}
-    stroke-width={strokeWidth}
-    font-family="Inter Variable, Inter, sans-serif"
-    font-size={element.fontSize}
-    font-weight={element.fontWeight}
-    text-anchor={element.textAlign === 'center' ? 'middle' : element.textAlign === 'right' ? 'end' : 'start'}
-    pointer-events={pointerEvents}
-  >{element.text || element.name}</text>
+  <svg x={element.x} y={element.y} width={element.width} height={element.height} overflow="hidden" pointer-events="none">
+    <text
+      x={element.textAlign === 'center' ? element.width / 2 : element.textAlign === 'right' ? element.width : 0}
+      {fill}
+      fill-opacity={fillOpacity}
+      {stroke}
+      stroke-opacity={strokeOpacity}
+      stroke-width={strokeWidth}
+      font-family="Inter Variable, Inter, sans-serif"
+      font-size={element.fontSize}
+      font-weight={element.fontWeight}
+      text-anchor={element.textAlign === 'center' ? 'middle' : element.textAlign === 'right' ? 'end' : 'start'}
+    >
+      {#each designTextLines(element.text || element.name, element.width, element.fontSize, element.fontWeight) as line, index}
+        <tspan x={element.textAlign === 'center' ? element.width / 2 : element.textAlign === 'right' ? element.width : 0} y={element.fontSize + index * element.fontSize * 1.2}>{line}</tspan>
+      {/each}
+    </text>
+  </svg>
 {:else if element.type === 'image' && assetUrl}
   {#if element.cornerRadius > 0}
     <defs>
