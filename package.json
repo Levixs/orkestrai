@@ -236,10 +236,23 @@
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "rpm"
       ],
       "category": "Development",
       "icon": "electron/resources/icons"
+    },
+    "rpm": {
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "libappindicator",
+        "libsecret"
+      ],
+      "packageCategory": "Development/Tools",
+      "compression": "xz"
     },
     "publish": [
       {

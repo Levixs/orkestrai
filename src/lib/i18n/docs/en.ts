@@ -381,6 +381,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Next release',
       items: [
+        'Added RPM packaging for Linux (Fedora/RHEL/CentOS). The release pipeline now builds and publishes .rpm alongside the existing AppImage, and the validation and audit scripts verify the new artifact.',
         'Windows workspaces can now combine native execution and multiple WSL distributions in one team. The workspace defines the default, each terminal can inherit or override it, and provider detection/models, PTY, resume, Council, recruitment, and the bridge follow the effective runtime. A change restarts only the affected terminal and validates the distribution, path, and CLI without silent fallback.',
       ],
     },
@@ -621,7 +622,7 @@ export const DOCS_EN: DocsCatalog = {
         'A release becomes public only after validating installers, blockmaps, latest-*.yml manifests, sizes and SHA-512; macOS requires update ZIPs for both architectures and the Windows installer uses the exact filename referenced by latest.yml.',
         '“Check now” returns the actual result and no longer stays stuck on “Checking”; boot events are also retained when the screen mounts later.',
         'A temporary GitHub check failure no longer opens the manual update dialog. The fallback appears only after a found update fails to download or install.',
-        'Windows NSIS and Linux AppImage update unsigned; on macOS without an Apple certificate, the app keeps the safe manual download fallback.',
+        'Windows NSIS, Linux AppImage and Linux RPM update unsigned; on macOS without an Apple certificate, the app keeps the safe manual download fallback.',
       ],
     },
     {

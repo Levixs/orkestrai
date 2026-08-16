@@ -231,8 +231,11 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Package Linux AppImage
-        run: npx electron-builder --linux AppImage --x64 --publish never
+      - name: Install RPM build tools
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Package Linux installers
+        run: npx electron-builder --linux AppImage rpm --x64 --publish never
 
       - name: Verify updater is packaged
         run: test -f release/linux-unpacked/resources/app/node_modules/electron-updater/package.json
@@ -245,6 +248,7 @@ jobs:
           if-no-files-found: error
           path: |
             release/*.AppImage
+            release/*.rpm
             release/latest-linux.yml
 
   publish:

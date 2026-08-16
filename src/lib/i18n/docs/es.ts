@@ -381,6 +381,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: 'Próxima versión',
       items: [
+        'Añadido empaquetado RPM para Linux (Fedora/RHEL/CentOS). El pipeline de release ahora genera y publica .rpm junto al AppImage existente, y los scripts de validación y auditoría verifican el nuevo artefacto.',
         'Los workspaces de Windows ahora combinan ejecución nativa y múltiples distribuciones WSL en un mismo equipo. El workspace define el valor predeterminado, cada terminal puede heredarlo o sobrescribirlo, y detección/modelos del provider, PTY, reanudación, Council, reclutamiento y puente siguen el runtime efectivo. El cambio reinicia solo la terminal afectada y valida distribución, ruta y CLI sin fallback silencioso.',
       ],
     },
@@ -621,7 +622,7 @@ export const DOCS_ES: DocsCatalog = {
         'La release solo se hace pública después de validar instaladores, blockmaps, manifests latest-*.yml, tamaños y SHA-512; macOS exige ZIPs de update para ambas arquitecturas y el instalador de Windows usa exactamente el nombre referenciado por latest.yml.',
         '“Verificar ahora” devuelve el estado real y ya no queda trabado en “Verificando”; los eventos del inicio tampoco se pierden si la pantalla monta después.',
         'Un fallo temporal al consultar GitHub ya no abre el diálogo manual. El fallback aparece solo si una actualización encontrada falla al descargar o instalar.',
-        'Windows NSIS y Linux AppImage actualizan sin firma; en macOS sin certificado Apple, la app mantiene la descarga manual segura.',
+        'Windows NSIS, Linux AppImage y Linux RPM actualizan sin firma; en macOS sin certificado Apple, la app mantiene la descarga manual segura.',
       ],
     },
     {

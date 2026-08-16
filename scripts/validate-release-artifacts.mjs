@@ -100,6 +100,7 @@ export function validateReleaseArtifacts(directory, version) {
     [new RegExp(`^Orkestrai-Setup-${v}\\.exe$`), 'Windows NSIS installer'],
     [new RegExp(`^Orkestrai-Setup-${v}\\.exe\\.blockmap$`), 'Windows NSIS blockmap'],
     [new RegExp(`^Orkestrai-${v}\\.AppImage$`), 'Linux AppImage'],
+    [new RegExp(`^Orkestrai-${v}\\.x86_64\\.rpm$`), 'Linux RPM'],
   ];
   for (const [pattern, description] of required) requireFile(files, pattern, description);
 
@@ -120,6 +121,7 @@ export function validateReleaseArtifacts(directory, version) {
 
   const linuxUrls = manifestFiles(linux, 'latest-linux.yml').map((entry) => String(entry.url));
   if (!linuxUrls.some((url) => url.endsWith('.AppImage'))) fail('latest-linux.yml does not contain the AppImage');
+  if (!linuxUrls.some((url) => url.endsWith('.rpm'))) fail('latest-linux.yml does not contain the RPM');
 
   console.log(`Validated ${files.length} release assets for Orkestrai ${version}.`);
   return files;

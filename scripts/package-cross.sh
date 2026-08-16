@@ -5,9 +5,10 @@
 #
 # Uso:
 #   ./scripts/package-cross.sh linux        # AppImage x64
+#   ./scripts/package-cross.sh linux-rpm    # RPM x64 (Fedora/RHEL/CentOS)
 #   ./scripts/package-cross.sh windows      # NSIS x64 (imagem wine; emulada em Mac ARM)
 #   ./scripts/package-cross.sh windows-zip  # zip portatil x64 (nao precisa de wine)
-#   ./scripts/package-cross.sh all          # os dois
+#   ./scripts/package-cross.sh all          # todos os targets
 #   ./scripts/package-cross.sh clean        # remove imagens dos builders + camadas dangling
 #
 # Notas:
@@ -80,6 +81,13 @@ if [[ "$TARGET" == "linux" || "$TARGET" == "all" ]]; then
   echo "==> Linux (AppImage x64)"
   run_builder electronuserland/builder:latest \
     "npm install -g $NPM_PIN && cd /project && npm ci --no-audit --no-fund && npx electron-builder --linux AppImage --x64 --publish never"
+fi
+
+if [[ "$TARGET" == "linux-rpm" || "$TARGET" == "all" ]]; then
+  echo "==> Linux (RPM x64 — Fedora/RHEL/CentOS)"
+  # rpm-build nao vem na imagem electronuserland/builder:latest (CentOS-based).
+  run_builder electronuserland/builder:latest \
+    "yum install -y rpm-build && npm install -g $NPM_PIN && cd /project && npm ci --no-audit --no-fund && npx electron-builder --linux rpm --x64 --publish never"
 fi
 
 if [[ "$TARGET" == "windows" || "$TARGET" == "windows-zip" || "$TARGET" == "all" ]]; then

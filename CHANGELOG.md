@@ -9,6 +9,9 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added RPM packaging for Linux (Fedora/RHEL/CentOS). The release pipeline now
+  builds and publishes `.rpm` alongside the existing AppImage, and the validation
+  and audit scripts verify the new artifact (thanks to @rlevidev).
 - Added mixed Windows and WSL execution inside the same workspace. The
   workspace runtime remains the default, while every terminal can inherit it,
   force native Windows, or target an exact installed WSL distribution and Linux
