@@ -83,7 +83,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'design-mode',
       title: 'Modo Diseño nativo',
-      body: `Agrega Diseño desde la barra del Canvas para crear un documento visual estructurado guardado en .orkestrai/designs dentro del proyecto. Haz doble clic en la vista previa o usa la acción de expandir para abrir el Modo Diseño; el mismo documento también se abre como elemento completo del Workbench. Crea frames, rectángulos, elipses y texto; selecciona, arrastra, ordena, bloquea, oculta, renombra, redimensiona, cambia colores, trazo, radio, opacidad y tipografía, o deshaz y rehace operaciones. Cada mutación registra una revisión y un historial limitado. Conecta el nodo Diseño al líder o especialista para que lea el scene graph actual y lo edite mediante tools MCP tipadas de Orkestrai. Las ediciones humanas y de agentes usan control optimista de revisión, actualizan los editores abiertos en vivo y nunca requieren que un agente reescriba el archivo JSON directamente.`,
+      body: `Agrega Diseño desde la barra del Canvas para crear un documento visual estructurado guardado en .orkestrai/designs dentro del proyecto. Haz doble clic en la vista previa o usa la acción de expandir para abrir el Modo Diseño; el mismo documento también se abre como elemento completo del Workbench. Elige frame, rectángulo, elipse o texto y arrastra en la página para crearlo con el tamaño que necesites; un clic simple usa el tamaño predeterminado. Selecciona, mueve, ordena, bloquea, oculta, renombra, redimensiona, cambia colores, trazo, radio, opacidad y tipografía, o deshaz y rehace operaciones. Delete elimina solo la capa seleccionada y Escape cancela la herramienta activa. Cada mutación registra una revisión y un historial limitado. Conecta el nodo Diseño al líder o especialista para que lea el scene graph actual y lo edite mediante tools MCP tipadas de Orkestrai. Las ediciones humanas y de agentes usan control optimista de revisión, actualizan los editores abiertos en vivo y nunca requieren que un agente reescriba el archivo JSON directamente.`,
     },
     {
       id: 'presets',
@@ -386,7 +386,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: 'En desarrollo',
       items: [
-        'Se agregó la primera fase del Modo Diseño nativo: nodos Diseño persistentes compartidos por Canvas y Workbench, scene graph estructurado con frames, rectángulos, elipses y texto, edición manual de propiedades, capas, zoom, deshacer/rehacer, historial de revisiones, actualizaciones en vivo de agentes y operaciones tipadas por CLI/MCP con protección contra conflictos.',
+        'Se agregó la primera fase del Modo Diseño nativo: nodos Diseño persistentes compartidos por Canvas y Workbench, scene graph estructurado con frames, rectángulos, elipses y texto, edición manual de propiedades, capas, zoom, deshacer/rehacer, historial de revisiones, actualizaciones en vivo de agentes y operaciones tipadas por CLI/MCP con protección contra conflictos. Las formas ahora se crean arrastrando con vista previa y tamaño libre; Delete queda aislado en el editor y ya no elimina el nodo Diseño del Canvas; la rotación y alineación de texto están disponibles en las propiedades.',
       ],
     },
     {

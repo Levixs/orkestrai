@@ -16,6 +16,16 @@ pt-BR, English, and Spanish translations.
   Connected agents use typed CLI/MCP operations with optimistic revision
   checks instead of rewriting project JSON directly.
 
+### Fixed
+
+- Design shapes now draw by dragging in any direction, with a live preview and
+  the exact released size; a simple click still creates the useful default.
+- Isolated Design Mode keyboard shortcuts from the underlying Canvas so Delete
+  removes only the selected layer instead of also deleting its Design node,
+  and replaced invalid cloning of Svelte state proxies that froze deletion.
+- Exposed rotation and text alignment in the property inspector, matching
+  capabilities already supported by the native document and renderer.
+
 ## 0.12.0 - 2026-08-15
 
 ### Added

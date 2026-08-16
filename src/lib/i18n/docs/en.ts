@@ -83,7 +83,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'design-mode',
       title: 'Native Design Mode',
-      body: `Add Design from the Canvas toolbar to create a structured visual document stored under .orkestrai/designs in the project. Double-click its preview or use the expand action to open Design Mode; the same document also opens as a full Workbench item. Create frames, rectangles, ellipses, and text, then select, drag, reorder, lock, hide, rename, resize, recolor, adjust stroke, radius, opacity, and typography, or undo and redo operations. Every mutation records a revision and bounded history. Connect the Design node to a leader or specialist so they can read the current scene graph and edit it through typed Orkestrai MCP tools. Human and agent edits use optimistic revision checks, update open editors live, and never require an agent to rewrite the JSON file directly.`,
+      body: `Add Design from the Canvas toolbar to create a structured visual document stored under .orkestrai/designs in the project. Double-click its preview or use the expand action to open Design Mode; the same document also opens as a full Workbench item. Choose frame, rectangle, ellipse, or text and drag on the page to create it at the size you need; a simple click uses the default size. Select, move, reorder, lock, hide, rename, resize, recolor, adjust stroke, radius, opacity, and typography, or undo and redo operations. Delete removes only the selected layer, and Escape cancels the active tool. Every mutation records a revision and bounded history. Connect the Design node to a leader or specialist so they can read the current scene graph and edit it through typed Orkestrai MCP tools. Human and agent edits use optimistic revision checks, update open editors live, and never require an agent to rewrite the JSON file directly.`,
     },
     {
       id: 'presets',
@@ -386,7 +386,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'In development',
       items: [
-        'Added the first phase of native Design Mode: persistent Design nodes shared by Canvas and Workbench, a structured scene graph with frames, rectangles, ellipses, and text, manual property editing, layers, zoom, undo/redo, revision history, live agent updates, and typed CLI/MCP operations with conflict protection.',
+        'Added the first phase of native Design Mode: persistent Design nodes shared by Canvas and Workbench, a structured scene graph with frames, rectangles, ellipses, and text, manual property editing, layers, zoom, undo/redo, revision history, live agent updates, and typed CLI/MCP operations with conflict protection. Shapes now draw by dragging with a live preview and free sizing; Delete stays isolated inside the editor and no longer removes the Design node from Canvas; rotation and text alignment are available in the property inspector.',
       ],
     },
     {

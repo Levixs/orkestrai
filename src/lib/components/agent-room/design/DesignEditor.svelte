@@ -20,6 +20,9 @@
     ZoomOut,
     ArrowDown,
     ArrowUp,
+    AlignCenter,
+    AlignLeft,
+    AlignRight,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -60,9 +63,12 @@
   let editorRoot = $state<HTMLElement>();
   let undoStack = $state<HistoryEntry[]>([]);
   let redoStack = $state<HistoryEntry[]>([]);
+  let draftElement = $state<DesignElement | null>(null);
+  let cancelDrawing: (() => void) | null = null;
 
   const page = $derived(document?.pages.find((item) => item.id === document?.activePageId) ?? document?.pages[0] ?? null);
   const pageElements = $derived(document && page ? document.elements.filter((element) => element.pageId === page.id) : []);
+  const renderedElements = $derived(draftElement ? [...pageElements, draftElement] : pageElements);
   const selected = $derived(document?.elements.find((element) => element.id === selectedId) ?? null);
 
   function uuidv7(): string {
@@ -189,8 +195,77 @@
     return common;
   }
 
-  async function canvasPointerDown(event: PointerEvent) {
-    if (!page) return;
+  function pagePoint(event: PointerEvent, svg: SVGSVGElement): { x: number; y: number } {
+    const bounds = svg.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(page?.width ?? 0, Math.round((event.clientX - bounds.left) * (page?.width ?? 0) / bounds.width))),
+      y: Math.max(0, Math.min(page?.height ?? 0, Math.round((event.clientY - bounds.top) * (page?.height ?? 0) / bounds.height))),
+    };
+  }
+
+  function startCreate(event: PointerEvent, kind: Exclude<Tool, 'select'>, svg: SVGSVGElement) {
+    if (!page || event.button !== 0 || saving) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cancelDrawing?.();
+
+    const start = pagePoint(event, svg);
+    const pointerId = event.pointerId;
+    const initial = { ...elementDefaults(kind, start.x, start.y), width: 1, height: 1 };
+    let dragged = false;
+    draftElement = initial;
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', cancel);
+      cancelDrawing = null;
+    };
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      const current = pagePoint(moveEvent, svg);
+      if (Math.hypot(moveEvent.clientX - event.clientX, moveEvent.clientY - event.clientY) >= 4) dragged = true;
+      draftElement = {
+        ...initial,
+        x: Math.min(start.x, current.x),
+        y: Math.min(start.y, current.y),
+        width: Math.max(1, Math.abs(current.x - start.x)),
+        height: Math.max(1, Math.abs(current.y - start.y)),
+      };
+    };
+    const finish = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      cleanup();
+      const element = dragged && draftElement
+        ? { ...draftElement }
+        : elementDefaults(kind, start.x, start.y);
+      draftElement = null;
+      void apply(
+        [{ kind: 'create', element }],
+        m['design.operation_create']({ type: toolLabel(kind) }),
+        { inverse: [{ kind: 'delete', elementId: element.id }] },
+      ).then((created) => {
+        if (!created) return;
+        selectedId = element.id;
+        tool = 'select';
+      });
+    };
+    const cancel = (cancelEvent: PointerEvent) => {
+      if (cancelEvent.pointerId !== pointerId) return;
+      cleanup();
+      draftElement = null;
+    };
+    cancelDrawing = () => {
+      cleanup();
+      draftElement = null;
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', cancel);
+  }
+
+  function canvasPointerDown(event: PointerEvent) {
+    if (!page || event.button !== 0) return;
     if (tool === 'select') {
       const target = (event.target as SVGElement).closest<SVGGElement>('[data-design-element]');
       const element = target ? pageElements.find((item) => item.id === target.dataset.designElement) : null;
@@ -198,18 +273,7 @@
       if (element) startDrag(event, element);
       return;
     }
-    const svg = event.currentTarget as SVGSVGElement;
-    const bounds = svg.getBoundingClientRect();
-    const x = Math.max(0, Math.round((event.clientX - bounds.left) * page.width / bounds.width));
-    const y = Math.max(0, Math.round((event.clientY - bounds.top) * page.height / bounds.height));
-    const element = elementDefaults(tool, x, y);
-    const operation: DesignOperation = { kind: 'create', element };
-    if (await apply([operation], m['design.operation_create']({ type: toolLabel(tool) }), {
-      inverse: [{ kind: 'delete', elementId: element.id }],
-    })) {
-      selectedId = element.id;
-      tool = 'select';
-    }
+    startCreate(event, tool, event.currentTarget as SVGSVGElement);
   }
 
   function startDrag(event: PointerEvent, element: Element) {
@@ -261,7 +325,7 @@
 
   async function removeSelected() {
     if (!selected || selected.locked) return;
-    const target = structuredClone(selected);
+    const target = { ...selected };
     if (await apply(
       [{ kind: 'delete', elementId: selected.id }],
       m['design.operation_delete']({ name: selected.name }),
@@ -315,11 +379,20 @@
     if (target.closest('input, textarea, [contenteditable="true"]')) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
       event.preventDefault();
+      event.stopImmediatePropagation();
       void (event.shiftKey ? redo() : undo());
+      return;
+    }
+    if (event.key === 'Escape' && tool !== 'select') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      cancelDrawing?.();
+      tool = 'select';
       return;
     }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
+      event.stopImmediatePropagation();
       void removeSelected();
     }
   }
@@ -336,6 +409,11 @@
 
   onMount(() => {
     void load().then(fitPage);
+    window.addEventListener('keydown', keyboard, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', keyboard, { capture: true });
+      cancelDrawing?.();
+    };
   });
 
   $effect(() => {
@@ -344,8 +422,6 @@
     void load(true);
   });
 </script>
-
-<svelte:window onkeydown={keyboard} />
 
 <div class={`@container/design h-full min-h-0 ${className}`}>
   <div
@@ -430,9 +506,9 @@
           role="application"
           aria-label={page.name}
         >
-          <DesignRenderer elements={pageElements} {selectedId} />
+          <DesignRenderer elements={renderedElements} selectedId={draftElement?.id ?? selectedId} />
         </svg>
-        {#if !pageElements.length}
+        {#if !renderedElements.length}
           <div class="pointer-events-none absolute inset-0 grid place-items-center p-10 text-center text-xs text-[var(--app-text-muted)]">{m['design.empty']()}</div>
         {/if}
       </div>
@@ -449,6 +525,7 @@
           <div class="grid grid-cols-2 gap-2">
             <label class="space-y-1"><span class="text-[var(--app-text-muted)]">X</span><Input type="number" value={selected.x} onchange={(event: Event) => void updateSelected({ x: number(event) })} /></label>
             <label class="space-y-1"><span class="text-[var(--app-text-muted)]">Y</span><Input type="number" value={selected.y} onchange={(event: Event) => void updateSelected({ y: number(event) })} /></label>
+            <label class="col-span-2 space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.rotation']()}</span><Input type="number" value={selected.rotation} onchange={(event: Event) => void updateSelected({ rotation: number(event) })} /></label>
           </div>
         </section>
         <section class="space-y-2">
@@ -475,6 +552,20 @@
             <div class="grid grid-cols-2 gap-2">
               <label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.font_size']()}</span><Input type="number" min="4" value={selected.fontSize} onchange={(event: Event) => void updateSelected({ fontSize: Math.max(4, number(event)) })} /></label>
               <label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.font_weight']()}</span><Input type="number" min="100" max="900" step="100" value={selected.fontWeight} onchange={(event: Event) => void updateSelected({ fontWeight: Math.max(100, Math.min(900, number(event))) })} /></label>
+            </div>
+            <div class="space-y-1">
+              <span class="text-[var(--app-text-muted)]">{m['design.text_align']()}</span>
+              <div class="grid grid-cols-3 gap-1" role="group" aria-label={m['design.text_align']()}>
+                {#each [
+                  { value: 'left' as const, label: m['design.align_left'](), icon: AlignLeft },
+                  { value: 'center' as const, label: m['design.align_center'](), icon: AlignCenter },
+                  { value: 'right' as const, label: m['design.align_right'](), icon: AlignRight },
+                ] as alignment (alignment.value)}
+                  <Button variant={selected.textAlign === alignment.value ? 'secondary' : 'outline'} size="sm" aria-label={alignment.label} aria-pressed={selected.textAlign === alignment.value} onclick={() => void updateSelected({ textAlign: alignment.value })}>
+                    <alignment.icon size={14} aria-hidden="true" />
+                  </Button>
+                {/each}
+              </div>
             </div>
           </section>
         {/if}

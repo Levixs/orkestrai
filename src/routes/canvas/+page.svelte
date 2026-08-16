@@ -1672,7 +1672,8 @@
    * retorna false (bloqueia) e abre a modal de confirmacao — o canvas nao
    * perde o no se o usuario cancelar. Arestas passam direto (barato refazer).
    */
-  function handleBeforeDelete({ nodes: deletingNodes }: { nodes: Node[]; edges: Edge[] }): boolean {
+  async function handleBeforeDelete({ nodes: deletingNodes }: { nodes: Node[]; edges: Edge[] }): Promise<boolean> {
+    if (designModeNodeId) return false;
     if (!deletingNodes.length) return true;
     pendingNodeDeletion = { nodeIds: deletingNodes.map((node) => node.id), edgeIds: [] };
     return false;
@@ -1904,7 +1905,7 @@
         minZoom={0.05}
         maxZoom={4}
         panOnDrag={drawTool === null ? true : [1, 2]}
-        deleteKey={['Backspace', 'Delete']}
+        deleteKey={designModeNodeId ? null : ['Backspace', 'Delete']}
         onconnect={handleConnect}
         onedgeclick={handleEdgeClick}
         onbeforedelete={handleBeforeDelete}

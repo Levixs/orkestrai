@@ -428,7 +428,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open',
         title: 'Open Design Mode',
-        body: 'Open the same document in the full Canvas Design Mode. Add frames, rectangles, ellipses, and text; select, move, order, lock, hide, recolor, resize, and undo or redo changes.',
+        body: 'Open the same document in the full Canvas Design Mode. Choose a tool and drag to create frames, rectangles, ellipses, and text at the size you need; select, move, order, lock, hide, recolor, resize, and undo or redo changes.',
         action: { kind: 'openDesign', title: 'Interface Design' },
       },
       {

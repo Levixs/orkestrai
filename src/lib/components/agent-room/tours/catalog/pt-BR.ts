@@ -432,7 +432,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'open',
         title: 'Abra o Modo Design',
-        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Adicione frames, retângulos, elipses e textos; selecione, mova, ordene, bloqueie, oculte, altere cores e dimensões, desfaça ou refaça mudanças.',
+        body: 'Abra o mesmo documento no Modo Design em tela cheia no Canvas. Escolha uma ferramenta e arraste para criar frames, retângulos, elipses e textos no tamanho desejado; selecione, mova, ordene, bloqueie, oculte, altere cores e dimensões, desfaça ou refaça mudanças.',
         action: { kind: 'openDesign', title: 'Design de Interface' },
       },
       {

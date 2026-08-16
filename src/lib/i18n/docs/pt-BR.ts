@@ -87,7 +87,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'design-mode',
       title: 'Modo Design nativo',
-      body: `Adicione Design pela barra do Canvas para criar um documento visual estruturado salvo em .orkestrai/designs dentro do projeto. Dê duplo-clique na prévia ou use a ação de expandir para abrir o Modo Design; o mesmo documento também abre como item completo no Workbench. Crie frames, retângulos, elipses e textos; selecione, arraste, ordene, bloqueie, oculte, renomeie, redimensione, altere cores, stroke, raio, opacidade e tipografia, ou desfaça e refaça operações. Cada mutação registra revisão e histórico limitado. Conecte o node Design ao líder ou especialista para que ele leia o scene graph atual e edite por tools MCP tipadas do Orkestrai. Edições humanas e de agentes usam controle otimista de revisão, atualizam os editores abertos ao vivo e nunca exigem que um agente reescreva o arquivo JSON diretamente.`,
+      body: `Adicione Design pela barra do Canvas para criar um documento visual estruturado salvo em .orkestrai/designs dentro do projeto. Dê duplo-clique na prévia ou use a ação de expandir para abrir o Modo Design; o mesmo documento também abre como item completo no Workbench. Escolha frame, retângulo, elipse ou texto e arraste na página para criar no tamanho desejado; um clique simples usa o tamanho padrão. Selecione, mova, ordene, bloqueie, oculte, renomeie, redimensione, altere cores, stroke, raio, opacidade e tipografia, ou desfaça e refaça operações. Delete exclui somente a camada selecionada e Esc cancela a ferramenta ativa. Cada mutação registra revisão e histórico limitado. Conecte o node Design ao líder ou especialista para que ele leia o scene graph atual e edite por tools MCP tipadas do Orkestrai. Edições humanas e de agentes usam controle otimista de revisão, atualizam os editores abertos ao vivo e nunca exigem que um agente reescreva o arquivo JSON diretamente.`,
     },
     {
       id: 'presets',
@@ -390,7 +390,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: 'Em desenvolvimento',
       items: [
-        'Adicionada a primeira fase do Modo Design nativo: nodes Design persistentes e compartilhados por Canvas e Workbench, scene graph estruturado com frames, retângulos, elipses e textos, edição manual de propriedades, camadas, zoom, desfazer/refazer, histórico de revisões, atualização ao vivo por agentes e operações tipadas na CLI/MCP com proteção contra conflitos.',
+        'Adicionada a primeira fase do Modo Design nativo: nodes Design persistentes e compartilhados por Canvas e Workbench, scene graph estruturado com frames, retângulos, elipses e textos, edição manual de propriedades, camadas, zoom, desfazer/refazer, histórico de revisões, atualização ao vivo por agentes e operações tipadas na CLI/MCP com proteção contra conflitos. Formas agora são criadas por arraste com preview e tamanho livre; Delete fica isolado no editor e não remove mais o node Design do Canvas; rotação e alinhamento de texto estão disponíveis nas propriedades.',
       ],
     },
     {
