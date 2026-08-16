@@ -24,6 +24,17 @@ const TOOLS = [
   { name: 'note_write', description: 'Substitui o conteudo de uma nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, content: { type: 'string' } }, required: ['nodeId', 'content'] } },
   { name: 'note_edit', description: 'Edicao pontual: troca um trecho da nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, oldText: { type: 'string' }, newText: { type: 'string' } }, required: ['nodeId', 'oldText', 'newText'] } },
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
+  { name: 'design_list', description: 'Lista documentos de design nativos do workspace e suas revisoes.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'design_create_element', description: 'Cria frame, retangulo, elipse ou texto no documento. A operacao falha em revisao antiga, sem sobrescrever trabalho humano.', inputSchema: { type: 'object', properties: {
+    nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, parentId: { type: ['string', 'null'] },
+    type: { type: 'string', enum: ['frame', 'rectangle', 'ellipse', 'text'] }, name: { type: 'string' },
+    x: { type: 'number' }, y: { type: 'number' }, width: { type: 'number' }, height: { type: 'number' },
+    fill: { type: 'string' }, stroke: { type: 'string' }, strokeWidth: { type: 'number' }, cornerRadius: { type: 'number' },
+    text: { type: 'string' }, fontSize: { type: 'number' }, fontWeight: { type: 'number' }, summary: { type: 'string' }, taskId: { type: 'string' },
+  }, required: ['nodeId', 'baseRevision', 'pageId', 'type', 'name', 'x', 'y', 'width', 'height'] } },
+  { name: 'design_update_element', description: 'Atualiza propriedades tipadas de um elemento existente no Design node.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, elementId: { type: 'string' }, changes: { type: 'object' }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'elementId', 'changes'] } },
+  { name: 'design_delete_element', description: 'Exclui um elemento e seus descendentes do Design node, respeitando lock e revisao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, elementId: { type: 'string' }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'elementId'] } },
   { name: 'task_list', description: 'Lista as tarefas do quadro (kanban) do workspace.', inputSchema: { type: 'object', properties: {} } },
   { name: 'task_columns', description: 'Lista as colunas e chaves validas do kanban.', inputSchema: { type: 'object', properties: {} } },
   { name: 'task_add', description: 'Cria tarefa; com assignee ja despacha para o agente.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string', description: 'Descricao em markdown (checklists, links)' }, assignee: { type: 'string' }, note: { type: 'string', description: 'Nota de spec (id ou titulo)' }, column: { type: 'string', description: 'Chave ou nome da coluna inicial' } }, required: ['title'] } },
@@ -80,6 +91,36 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('PATCH', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`, { old: args.oldText, new: args.newText });
     case 'note_create':
       return bridge('POST', '/api/agent-room/bridge/notes', { title: args.title, content: args.content, connect: args.connect ?? 'all', from: selfAgent });
+    case 'design_list':
+      return bridge('GET', '/api/agent-room/bridge/designs');
+    case 'design_read':
+      return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`);
+    case 'design_create_element': {
+      const { nodeId, baseRevision, summary, taskId, ...element } = args;
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`, {
+        baseRevision,
+        operations: [{ kind: 'create', element: { ...element, parentId: element.parentId ?? null } }],
+        summary: summary ?? `Create ${element.type} ${element.name}`,
+        from: selfAgent,
+        taskId,
+      });
+    }
+    case 'design_update_element':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'update', elementId: args.elementId, changes: args.changes }],
+        summary: args.summary ?? `Update design element ${args.elementId}`,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_delete_element':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'delete', elementId: args.elementId }],
+        summary: args.summary ?? `Delete design element ${args.elementId}`,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
     case 'task_list':
       return bridge('GET', '/api/agent-room/bridge/tasks');
     case 'task_columns':

@@ -5,6 +5,17 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Added
+
+- Added the first phase of Orkestrai's native Design Mode. A persistent Design
+  node now opens the same structured visual document in Canvas and Workbench,
+  with frames, rectangles, ellipses, text, layers, property editing, zoom,
+  undo/redo, revision history, and live refresh when an agent changes it.
+  Connected agents use typed CLI/MCP operations with optimistic revision
+  checks instead of rewriting project JSON directly.
+
 ## 0.12.0 - 2026-08-15
 
 ### Added

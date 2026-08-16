@@ -5,6 +5,7 @@ import { TOURS_ES } from './catalog/es.js';
 import { localeState } from '$lib/i18n/locale.svelte.js';
 import { checkPasses, isTourComplete } from './checks.js';
 import { goto } from '$app/navigation';
+import { getCsrfToken } from '@beeblock/svelar/http';
 
 const CATALOGS: Record<string, Tour[]> = {
   'pt-BR': TOURS_PT,
@@ -40,9 +41,14 @@ let workspaceId: string | null = null;
 
 async function api<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
+    const csrf = getCsrfToken();
     const response = await fetch(path, {
       ...init,
-      headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+      headers: {
+        'content-type': 'application/json',
+        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+        ...(init?.headers ?? {}),
+      },
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.error) return null;
@@ -223,6 +229,23 @@ async function runAction(action: TourAction): Promise<void> {
         }
         break;
       }
+      case 'createDesign': {
+        const nodes = await api<WorkspaceSnapshot['nodes']>(`/api/agent-room/workspaces/${workspaceId}/nodes`);
+        if (!nodes?.some((node) => node.type === 'design' && node.title === action.title)) {
+          await api(`/api/agent-room/workspaces/${workspaceId}/nodes`, {
+            method: 'POST',
+            body: JSON.stringify({
+              type: 'design',
+              title: action.title,
+              ...nextPosition(),
+              width: 600,
+              height: 420,
+              payload: {},
+            }),
+          });
+        }
+        break;
+      }
       case 'createTask': {
         const assigneeNodeId = action.assigneeTitle ? await findNodeId(action.assigneeTitle) : null;
         await api(`/api/agent-room/workspaces/${workspaceId}/tasks`, {
@@ -290,6 +313,12 @@ async function runAction(action: TourAction): Promise<void> {
         window.dispatchEvent(new CustomEvent('orkestrai:open-sharing', {
           detail: { workspaceId },
         }));
+        break;
+      }
+      case 'openDesign': {
+        const nodeId = await findNodeId(action.title);
+        if (!nodeId) throw new Error(`Design "${action.title}" nao encontrado.`);
+        await goto(`/canvas?workspace=${encodeURIComponent(String(workspaceId))}&node=${encodeURIComponent(nodeId)}&design=1`);
         break;
       }
       case 'openPage': {

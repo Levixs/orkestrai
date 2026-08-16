@@ -6,6 +6,7 @@ export type TourAction =
   | { kind: 'createTasksBoard' }
   | { kind: 'createUsage'; title: string }
   | { kind: 'createDevice'; title: string }
+  | { kind: 'createDesign'; title: string }
   | { kind: 'createTask'; title: string; assigneeTitle?: string }
   | { kind: 'connect'; fromTitle: string; toTitle: string }
   | { kind: 'createPortal'; url: string; title?: string }
@@ -15,6 +16,7 @@ export type TourAction =
   | { kind: 'installMcp'; key: string }
   | { kind: 'openCouncil' }
   | { kind: 'openSharing' }
+  | { kind: 'openDesign'; title: string }
   | { kind: 'openPage'; path: string };
 
 export type TourCheck =

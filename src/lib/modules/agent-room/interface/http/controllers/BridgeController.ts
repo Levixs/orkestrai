@@ -6,7 +6,7 @@ import { boardColumnService } from '$lib/modules/agent-room/application/services
 import { floorService } from '$lib/modules/agent-room/application/services/FloorService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { filesystemService } from '$lib/modules/agent-room/application/services/FilesystemService.js';
-import { bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
+import { bridgeDesignApplySchema, bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { portalService } from '$lib/modules/agent-room/application/services/PortalService.js';
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
@@ -26,6 +26,8 @@ import {
   BridgeActivityRequest,
 } from '$lib/modules/agent-room/interface/http/requests/BridgeRequests.js';
 import { DeviceCommandRequest } from '$lib/modules/agent-room/interface/http/requests/DeviceCommandRequest.js';
+import { ApplyDesignOperationsDto } from '$lib/modules/agent-room/application/dto/DesignDtos.js';
+import { DesignRevisionConflictError, designDocumentService } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -42,7 +44,10 @@ export class BridgeController extends Controller {
       const portals = agentNodeId
         ? await bridgeService.portalsForAgent(workspace.id, agentNodeId).catch(() => [] as Array<{ id: string; title: string; url: string }>)
         : [];
-      return this.json({ data: { workspace: { id: workspace.id, name: workspace.name }, agents, notes, portals } });
+      const designs = agentNodeId
+        ? await bridgeService.designsForAgent(workspace.id, agentNodeId).catch(() => [] as Array<{ id: string; title: string }>)
+        : [];
+      return this.json({ data: { workspace: { id: workspace.id, name: workspace.name }, agents, notes, portals, designs } });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao listar agentes.', 401);
     }
@@ -78,6 +83,56 @@ export class BridgeController extends Controller {
       }) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao controlar dispositivo.');
+    }
+  }
+
+  async listDesigns(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const designs = (await workspaceRepository.listNodes(workspace.id)).filter((node) => node.type === 'design');
+      const data = await Promise.all(designs.map(async (node) => {
+        const document = await designDocumentService.get(workspace.id, node.id);
+        return {
+          nodeId: node.id,
+          title: node.title || document.name,
+          revision: document.revision,
+          pages: document.pages.length,
+          elements: document.elements.length,
+        };
+      }));
+      return this.json({ data });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar documentos de design.', 401);
+    }
+  }
+
+  async readDesign(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await designDocumentService.get(workspace.id, event.params.nodeId) });
+    } catch (error) {
+      return this.errorResponse(error, 'Documento de design nao encontrado.', 404);
+    }
+  }
+
+  async applyDesign(event: any) {
+    try {
+      const input = bridgeDesignApplySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        input.operations,
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        input.summary,
+      ));
+      return this.json({ data: document });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) {
+        return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      }
+      return this.errorResponse(error, 'Falha ao alterar documento de design.');
     }
   }
 

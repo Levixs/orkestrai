@@ -14,6 +14,7 @@
   import FlowCanvasNode from './canvas/FlowCanvasNode.svelte';
   import ImageCanvasNode from './canvas/ImageCanvasNode.svelte';
   import UsageCanvasNode from './canvas/UsageCanvasNode.svelte';
+  import DesignCanvasNode from './canvas/DesignCanvasNode.svelte';
   import WorkbenchFileView from './WorkbenchFileView.svelte';
   import type { TerminalThemeName } from './terminal-themes.js';
   import type {
@@ -65,6 +66,7 @@
     flow: FlowCanvasNode,
     image: ImageCanvasNode,
     usage: UsageCanvasNode,
+    design: DesignCanvasNode,
   };
 
   let host: HTMLDivElement;

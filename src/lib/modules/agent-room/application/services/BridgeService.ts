@@ -625,6 +625,20 @@ export class BridgeService {
       }));
   }
 
+  /** Designs conectados ao agente, usados pelo briefing automatico da ponte. */
+  async designsForAgent(workspaceId: string, agentNodeId: string): Promise<Array<{ id: string; title: string }>> {
+    const edges = await workspaceRepository.listEdges(workspaceId);
+    const designIds = new Set<string>();
+    for (const edge of edges) {
+      if (edge.sourceNodeId === agentNodeId) designIds.add(edge.targetNodeId);
+      if (edge.targetNodeId === agentNodeId) designIds.add(edge.sourceNodeId);
+    }
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    return nodes
+      .filter((node) => designIds.has(node.id) && node.type === 'design')
+      .map((node) => ({ id: node.id, title: node.title ?? 'design' }));
+  }
+
   async notify(
     workspace: Workspace,
     input: { message: string; kind?: NativeNotificationKind; title?: string | null; from?: string | null }
@@ -894,7 +908,7 @@ export class BridgeService {
     const providerIds = listAgentAdapters().map((adapter) => adapter.id).join('|');
     return `---
 name: orkestrai-bridge
-description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, consultar cotas de providers, montar/orquestrar um time de agentes, recrutar ou dispensar agentes, distribuir tarefas no quadro (kanban), criar notas, controlar portais ou devices, ou gerenciar andares (worktrees git).
+description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, consultar cotas de providers, montar/orquestrar um time, distribuir tarefas, criar notas, ler ou editar designs nativos, controlar portais/devices, ou gerenciar andares.
 ---
 
 # Ponte Orkestrai
@@ -902,9 +916,9 @@ description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com 
 Você está rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` dá acesso à ponte.
 Sua identidade já está no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem você é, então \`--from\` e \`--agent\` são opcionais.
 Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), execute o launcher da variável ORKESTRAI_CLI DIRETO (SEM prefixar \`node\`): \`"$ORKESTRAI_CLI" ...\` (Linux/macOS), \`%ORKESTRAI_CLI% ...\` (cmd.exe) ou \`& $env:ORKESTRAI_CLI ...\` (PowerShell). ORKESTRAI_CLI aponta para um launcher autocontido que já chama o runtime certo — funciona sempre, sem depender de PATH. NUNCA rode o caminho \`...orkestrai.js\` cru no Windows: o shell o abre pelo Windows Script Host e falha ("Caractere inválido").
-Se as tools \`orkestrai\` (list/usage/ask/note_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
+Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
-- \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas e portais conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
+- \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas, portais e designs conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
 - \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage. Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\`. Não troque silenciosamente o provider de um terminal que já executa trabalho.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda uma resposta confirmada. Só diga que falou/consultou o agente quando o comando terminar com sucesso e imprimir \`Resposta confirmada de ...\`. Timeout, erro ou \`Resposta nao confirmada\` significam que a conversa NÃO foi concluída — informe isso sem inventar resposta.
 - \`orkestrai status working "<ação atual>" --task <taskId>\` — registra o trabalho atual no Control Center. Use \`waiting_input\`, \`waiting_permission\`, \`blocked\`, \`idle\`, \`done\` ou \`error\` sempre que houver uma transição real; não use como heartbeat.
@@ -912,6 +926,9 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/task_*/portal_*/floor_*/device_
 - \`orkestrai note create "<título>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
 - \`orkestrai note write <nodeId> "<conteúdo>"\` — substitui o conteúdo da nota.
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edição pontual.
+- \`orkestrai design list\` / \`design read <nodeId>\` — lista e lê o scene graph de documentos visuais nativos conectados ao trabalho. Leia sempre a revisão atual antes de alterar.
+- Tools MCP \`design_create_element\`, \`design_update_element\` e \`design_delete_element\` — alteram frames, retângulos, elipses e textos com operações tipadas e controle otimista de revisão. Passe \`taskId\` quando a alteração pertence a uma task. Trabalhe no ciclo ler → alterar usando \`baseRevision\` → ler e verificar; conflito exige reler, nunca sobrescrever o trabalho humano.
+- \`orkestrai design apply <nodeId> '<operations-json>' --revision <n> [--task <taskId>]\` — fallback CLI para as mesmas operações transacionais. Nunca edite \`.orkestrai/designs/*.json\` diretamente.
 - \`orkestrai task list\` — quadro de tarefas do workspace. Tarefas podem ter IMAGENS DE REFERÊNCIA (paths relativos ao workspace, ex.: .orkestrai/images/x.png) — leia o arquivo se a referência for útil para a execução.
 - \`orkestrai task columns\` — lista as etapas configuradas pelo usuário neste quadro. Nunca suponha que todo workspace usa somente "a fazer / fazendo / feito".
 - \`orkestrai task add "<título>" --assign "<Agente>" [--column "<etapa>"]\` — cria tarefa, opcionalmente numa etapa específica, e já despacha para o agente.
@@ -1069,6 +1086,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai usage` — cotas reais e recomendação do nó Usage; líderes consultam antes de delegar e roteiam novas tarefas ao recommendedProvider quando shouldFallback=true.',
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
+      '- `orkestrai design list/read/apply` — documentos visuais nativos; use preferencialmente as tools MCP design_* e sempre leia a revisao antes/depois de alterar.',
       '- `orkestrai task list/columns/add/move/done` — quadro do time; consulte `task columns` e respeite as etapas personalizadas pelo usuário.',
       '- `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.',
       '- `orkestrai device list/attach/tap/swipe/pinch/type/permissions/tree/screenshot/stop` — device mobile visivel no Workbench; aparelhos Android fisicos so podem ser anexados pelo usuario apos confirmacao na UI.',

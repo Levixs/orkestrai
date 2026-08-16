@@ -81,6 +81,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `The Image tool (bottom bar) creates a visual reference node on the canvas: mockup, screenshot, architecture diagram. Paste with Ctrl+V or click to pick the file — the image is saved in the workspace (.orkestrai/images/). Connect the node to the leader (or to a specific agent, like the designer) to make clear who should use that reference, and say in chat what to do with it. Double-click the title to rename; the image icon in the header swaps the file.`,
     },
     {
+      id: 'design-mode',
+      title: 'Native Design Mode',
+      body: `Add Design from the Canvas toolbar to create a structured visual document stored under .orkestrai/designs in the project. Double-click its preview or use the expand action to open Design Mode; the same document also opens as a full Workbench item. Create frames, rectangles, ellipses, and text, then select, drag, reorder, lock, hide, rename, resize, recolor, adjust stroke, radius, opacity, and typography, or undo and redo operations. Every mutation records a revision and bounded history. Connect the Design node to a leader or specialist so they can read the current scene graph and edit it through typed Orkestrai MCP tools. Human and agent edits use optimistic revision checks, update open editors live, and never require an agent to rewrite the JSON file directly.`,
+    },
+    {
       id: 'presets',
       title: 'Team presets',
       body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, extensive operational roles, skills, a brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Preset agents start with autonomous full access and receive roles through the CLI's native instruction mechanism without leaving the terminal blocked by pasted text. The leader receives the complete initial task and must assign it before delegating. Use New workspace for another folder or + to add the team to the current canvas.`,
@@ -264,9 +269,9 @@ export const DOCS_EN: DocsCatalog = {
     },
     {
       id: 'design-figma',
-      title: 'From Figma to code with the designer',
-      body: 'Create a Designer agent, paste the mockup screenshot into an Image node (Ctrl+V) connected to it and ask for the UI. For full fidelity, install the Figma MCP (Skills page → MCPs tab → search Figma, with your personal access token): the agent reads frames, components, variables and styles straight from the file — and generates code faithful to the design system, without guessing pixels.',
-      tags: ['Figma', 'designer', 'Image node'],
+      title: 'Design an interface together with your AI team',
+      body: 'Add a native Design node and open it in Canvas Design Mode or Workbench. Build the first frames and text yourself, then connect the document to a Designer or leader. The agent reads the exact current revision, applies typed element operations, and verifies the result while your editor refreshes live. The document and its revision history stay in the workspace and remain searchable alongside tasks, notes, files, portals, and the rest of the team.',
+      tags: ['Native Design Mode', 'manual + agents', 'revision history'],
     },
     {
       id: 'mcp-tools',
@@ -378,6 +383,12 @@ export const DOCS_EN: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'In development',
+      items: [
+        'Added the first phase of native Design Mode: persistent Design nodes shared by Canvas and Workbench, a structured scene graph with frames, rectangles, ellipses, and text, manual property editing, layers, zoom, undo/redo, revision history, live agent updates, and typed CLI/MCP operations with conflict protection.',
+      ],
+    },
     {
       date: 'Aug 15, 2026 · 0.12.0',
       items: [

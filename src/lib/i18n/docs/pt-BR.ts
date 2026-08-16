@@ -85,6 +85,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `A ferramenta Imagem (barra inferior) cria um nó de referência visual no canvas: mockup, screenshot, diagrama de arquitetura. Cole com Ctrl+V ou clique para escolher o arquivo — a imagem fica salva no workspace (.orkestrai/images/). Conecte o nó ao líder (ou a um agente específico, como o designer) para deixar claro quem deve usar aquela referência, e diga no chat o que fazer com ela. Duplo-clique no título renomeia; o ícone de imagem no cabeçalho troca o arquivo.`,
     },
     {
+      id: 'design-mode',
+      title: 'Modo Design nativo',
+      body: `Adicione Design pela barra do Canvas para criar um documento visual estruturado salvo em .orkestrai/designs dentro do projeto. Dê duplo-clique na prévia ou use a ação de expandir para abrir o Modo Design; o mesmo documento também abre como item completo no Workbench. Crie frames, retângulos, elipses e textos; selecione, arraste, ordene, bloqueie, oculte, renomeie, redimensione, altere cores, stroke, raio, opacidade e tipografia, ou desfaça e refaça operações. Cada mutação registra revisão e histórico limitado. Conecte o node Design ao líder ou especialista para que ele leia o scene graph atual e edite por tools MCP tipadas do Orkestrai. Edições humanas e de agentes usam controle otimista de revisão, atualizam os editores abertos ao vivo e nunca exigem que um agente reescreva o arquivo JSON diretamente.`,
+    },
+    {
       id: 'presets',
       title: 'Presets de equipe',
       body: `A Biblioteca de presets fica no ícone de template da barra lateral e no botão Presets da barra inferior. Além dos times de Produto, React, Next.js, SvelteKit, Svelar e Laravel, ela traz Campanha e lançamento, Brand e design, Conteúdo e SEO e Orkestrai Contributing. Cada receita inclui líder, especialistas, roles operacionais extensas, skills, briefing, quadro, tarefa inicial e layout; o time de contribuição inclui ainda consenso obrigatório entre Claude, Codex e Kimi. Agentes de preset iniciam com acesso total autônomo e recebem a role pelo mecanismo nativo da CLI, sem deixar o terminal preso em texto colado. O líder recebe a tarefa inicial completa e deve atribuí-la antes de delegar. Use Novo workspace para outra pasta ou + para somar o time ao canvas atual sem apagar nada.`,
@@ -268,9 +273,9 @@ export const DOCS_PT: DocsCatalog = {
     },
     {
       id: 'design-figma',
-      title: 'Do Figma ao código com o designer',
-      body: 'Crie um agente Designer, cole o print do mockup num nó Imagem (Ctrl+V) conectado a ele e peça a UI. Para fidelidade total, instale o Figma MCP (página Skills → aba MCPs → busque Figma, com seu token de acesso pessoal): o agente lê frames, componentes, variáveis e estilos direto do arquivo — e gera código fiel ao design system, sem adivinhar pixel.',
-      tags: ['Figma', 'designer', 'nó Imagem'],
+      title: 'Desenhe uma interface junto com seu time de IA',
+      body: 'Adicione um node Design nativo e abra no Modo Design do Canvas ou no Workbench. Monte os primeiros frames e textos manualmente, depois conecte o documento ao Designer ou líder. O agente lê a revisão atual exata, aplica operações tipadas nos elementos e verifica o resultado enquanto seu editor atualiza ao vivo. O documento e seu histórico de revisões ficam no workspace e continuam pesquisáveis junto com tarefas, notas, arquivos, portais e o restante do time.',
+      tags: ['Modo Design nativo', 'manual + agentes', 'histórico de revisões'],
     },
     {
       id: 'mcp-tools',
@@ -382,6 +387,12 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Em desenvolvimento',
+      items: [
+        'Adicionada a primeira fase do Modo Design nativo: nodes Design persistentes e compartilhados por Canvas e Workbench, scene graph estruturado com frames, retângulos, elipses e textos, edição manual de propriedades, camadas, zoom, desfazer/refazer, histórico de revisões, atualização ao vivo por agentes e operações tipadas na CLI/MCP com proteção contra conflitos.',
+      ],
+    },
     {
       date: '15 ago 2026 · 0.12.0',
       items: [

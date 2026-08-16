@@ -79,6 +79,11 @@ Download the latest installers from
   review its cropped screenshot and safe visual context, then track feedback in
   a new leader-triage task, a task assigned to an agent, or an existing task.
   Browser secrets and hidden state stay excluded.
+- **Native Design Mode:** create structured interface documents directly on the
+  Canvas and open the same artifact in Workbench. Build frames, shapes, and text
+  manually or connect a designer or leader that edits through typed Orkestrai
+  tools with revision checks and live updates. Documents and history stay under
+  `.orkestrai/designs` in the workspace.
 - **Council decisions:** open Council from the Canvas toolbar, the workspace in
   Workbench, or `Cmd/Ctrl+K`, then ask two to five real agents for independent,
   budget-limited perspectives on one task or objective, compare the same

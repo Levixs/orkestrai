@@ -44,6 +44,7 @@ Uso:
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
+  orkestrai design list | design read <nodeId> | design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
   orkestrai role show [nome] | role write <nome> <prompt> | role edit <nome> <antigo> <novo>
   orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]
   orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
@@ -252,6 +253,12 @@ export async function run(argv, options = {}) {
         if (data.portals?.length) {
           out(`Controle o portal com: orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>`);
         }
+        for (const design of data.designs ?? []) {
+          out(`Design conectado: ${design.title} (${design.id})`);
+        }
+        if (data.designs?.length) {
+          out('Edite com tools MCP design_* (preferencial) ou orkestrai design read/apply. Leia a revisao novamente apos cada alteracao.');
+        }
       }
       return 0;
     }
@@ -356,6 +363,41 @@ export async function run(argv, options = {}) {
         return 0;
       }
       throw new Error(`Acao de nota desconhecida: ${action}`);
+    }
+    case 'design': {
+      const [action, nodeId, ...values] = rest;
+      if (action === 'list') {
+        const data = await bridge(config, 'GET', '/api/agent-room/bridge/designs');
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else {
+          for (const design of data) out(`- ${design.title} [rev ${design.revision}, ${design.elements} elementos] (${design.nodeId})`);
+          if (!data.length) out('(nenhum documento de design)');
+        }
+        return 0;
+      }
+      if (action === 'read' && nodeId) {
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`);
+        out(JSON.stringify(data, null, 2));
+        return 0;
+      }
+      if (action === 'apply' && nodeId) {
+        const baseRevision = Number(flags.revision);
+        if (!Number.isInteger(baseRevision) || baseRevision < 0 || !values.length) {
+          throw new Error('Uso: orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>]');
+        }
+        const operations = JSON.parse(values.join(' '));
+        const data = await bridge(config, 'PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`, {
+          baseRevision,
+          operations: Array.isArray(operations) ? operations : [operations],
+          summary: flags.summary ?? 'Agent design update',
+          from: flags.from,
+          taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Design atualizado para a revisao ${data.revision}.`);
+        return 0;
+      }
+      throw new Error('Uso: orkestrai design <list|read|apply> ...');
     }
     case 'recruit': {
       const [title] = rest;

@@ -32,6 +32,7 @@
   import ControlCenterView from '$lib/components/agent-room/ControlCenterView.svelte';
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
+  import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
   import WorkspaceSharingButton from '$lib/components/collaboration/WorkspaceSharingButton.svelte';
   import WorkspaceSharingDialog from '$lib/components/collaboration/WorkspaceSharingDialog.svelte';
@@ -142,10 +143,12 @@
     'controlCenter',
     'reviewCenter',
     'device',
+    'design',
   ]);
 
   let workspaces = $state<Workspace[]>([]);
   let nodesByWorkspace = $state<Record<string, CanvasNode[]>>({});
+  let designRevisions = $state<Record<string, number>>({});
   let edgesByWorkspace = $state<Record<string, CanvasEdge[]>>({});
   let floorsByWorkspace = $state<Record<string, Floor[]>>({});
   let providers = $state<AgentProviderInfo[]>([]);
@@ -176,7 +179,7 @@
   const EXPLORER_GROUPS: Array<{ id: 'agents' | 'work' | 'content' | 'tools'; types: CanvasNodeType[] }> = [
     { id: 'agents', types: ['terminal'] },
     { id: 'work', types: ['tasks', 'flow', 'loop'] },
-    { id: 'content', types: ['note', 'image'] },
+    { id: 'content', types: ['note', 'image', 'design'] },
     { id: 'tools', types: ['portal', 'device', 'diff', 'usage'] },
   ];
 
@@ -577,6 +580,7 @@
     if (node.type === 'reviewCenter') return m['review_center.title']();
     if (node.type === 'automation') return m['automation.title']();
     if (node.type === 'device') return m['device.title']();
+    if (node.type === 'design') return m['terminal_browser.kind_design']();
     return node.type;
   }
 
@@ -786,6 +790,10 @@
             if (refreshTimer) clearTimeout(refreshTimer);
             refreshTimer = setTimeout(() => void loadWorkspace(String(message.workspaceId)), 200);
           }
+          if (message.type === 'designChanged' && message.nodeId) {
+            const nodeId = String(message.nodeId);
+            designRevisions = { ...designRevisions, [nodeId]: Number(message.revision) || 0 };
+          }
           if (message.type === 'controlCenterChanged' || message.type === 'messageDelivery') {
             void refreshControlCenter(String(message.workspaceId));
           }
@@ -964,6 +972,10 @@
         {:else if paneNode.type === 'device'}
           {#key `${pane.id}:${paneNode.id}`}
             <DeviceWorkbenchPanel workspaceId={selectedWorkspace.id} />
+          {/key}
+        {:else if paneNode.type === 'design'}
+          {#key `${pane.id}:${paneNode.id}`}
+            <DesignEditor workspaceId={selectedWorkspace.id} nodeId={paneNode.id} externalRevision={designRevisions[paneNode.id] ?? 0} />
           {/key}
         {:else}
           {#key `${pane.id}:${paneNode.id}`}

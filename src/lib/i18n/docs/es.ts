@@ -81,6 +81,11 @@ export const DOCS_ES: DocsCatalog = {
       body: `La herramienta Imagen (barra inferior) crea un nodo de referencia visual en el canvas: mockup, screenshot, diagrama de arquitectura. Pega con Ctrl+V o haz clic para elegir el archivo — la imagen queda guardada en el workspace (.orkestrai/images/). Conecta el nodo al líder (o a un agente específico, como el diseñador) para dejar claro quién debe usar esa referencia, y di en el chat qué hacer con ella. Doble clic en el título renombra; el ícono de imagen en el encabezado cambia el archivo.`,
     },
     {
+      id: 'design-mode',
+      title: 'Modo Diseño nativo',
+      body: `Agrega Diseño desde la barra del Canvas para crear un documento visual estructurado guardado en .orkestrai/designs dentro del proyecto. Haz doble clic en la vista previa o usa la acción de expandir para abrir el Modo Diseño; el mismo documento también se abre como elemento completo del Workbench. Crea frames, rectángulos, elipses y texto; selecciona, arrastra, ordena, bloquea, oculta, renombra, redimensiona, cambia colores, trazo, radio, opacidad y tipografía, o deshaz y rehace operaciones. Cada mutación registra una revisión y un historial limitado. Conecta el nodo Diseño al líder o especialista para que lea el scene graph actual y lo edite mediante tools MCP tipadas de Orkestrai. Las ediciones humanas y de agentes usan control optimista de revisión, actualizan los editores abiertos en vivo y nunca requieren que un agente reescriba el archivo JSON directamente.`,
+    },
+    {
       id: 'presets',
       title: 'Presets de equipo',
       body: `La Biblioteca de presets está en el icono de plantilla de la barra lateral y en Presets de la barra inferior. Además de Producto, React, Next.js, SvelteKit, Svelar y Laravel, incluye Campaña y lanzamiento, Brand y diseño, Contenido y SEO y Orkestrai Contributing. Cada receta trae líder, especialistas, roles operativos extensos, skills, briefing, tablero, tarea inicial y layout; el equipo de contribución también exige consenso entre Claude, Codex y Kimi. Los agentes comienzan con acceso total autónomo y reciben el rol mediante el mecanismo nativo de la CLI, sin dejar la terminal bloqueada por texto pegado. El líder recibe la tarea inicial completa y debe asignarla antes de delegar. Usa Nuevo workspace para otra carpeta o + para sumar el equipo al canvas actual.`,
@@ -264,9 +269,9 @@ export const DOCS_ES: DocsCatalog = {
     },
     {
       id: 'design-figma',
-      title: 'De Figma al código con el diseñador',
-      body: 'Crea un agente Diseñador, pega el print del mockup en un nodo Imagen (Ctrl+V) conectado a él y pide la UI. Para fidelidad total, instala el Figma MCP (página Skills → pestaña MCPs → busca Figma, con tu token de acceso personal): el agente lee frames, componentes, variables y estilos directo del archivo — y genera código fiel al design system, sin adivinar píxeles.',
-      tags: ['Figma', 'diseñador', 'nodo Imagen'],
+      title: 'Diseña una interfaz junto con tu equipo de IA',
+      body: 'Agrega un nodo Diseño nativo y ábrelo en el Modo Diseño del Canvas o en Workbench. Crea manualmente los primeros frames y textos y luego conecta el documento al Diseñador o líder. El agente lee la revisión actual exacta, aplica operaciones tipadas sobre los elementos y verifica el resultado mientras tu editor se actualiza en vivo. El documento y su historial de revisiones quedan en el workspace y siguen disponibles en la búsqueda junto con tareas, notas, archivos, portales y el resto del equipo.',
+      tags: ['Modo Diseño nativo', 'manual + agentes', 'historial de revisiones'],
     },
     {
       id: 'mcp-tools',
@@ -378,6 +383,12 @@ export const DOCS_ES: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'En desarrollo',
+      items: [
+        'Se agregó la primera fase del Modo Diseño nativo: nodos Diseño persistentes compartidos por Canvas y Workbench, scene graph estructurado con frames, rectángulos, elipses y texto, edición manual de propiedades, capas, zoom, deshacer/rehacer, historial de revisiones, actualizaciones en vivo de agentes y operaciones tipadas por CLI/MCP con protección contra conflictos.',
+      ],
+    },
     {
       date: '15 ago 2026 · 0.12.0',
       items: [

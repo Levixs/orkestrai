@@ -168,6 +168,31 @@ describe('orkestrai CLI', () => {
     expect(request.body.connect).toBe('all');
   });
 
+  it('design apply envia operacoes e revisao sem editar o arquivo diretamente', async () => {
+    const { out } = capture();
+    await run([
+      'design',
+      'apply',
+      'design-1',
+      JSON.stringify({ kind: 'update', elementId: 'element-1', changes: { x: 80 } }),
+      '--revision',
+      '4',
+      '--summary',
+      'Move heading',
+      '--task',
+      '00000000-0000-7000-8000-000000000003',
+    ], { env: { ORKESTRAI_NODE_ID: 'designer-1' }, cwd, out });
+    const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/designs/design-1').at(-1);
+    expect(request.method).toBe('PATCH');
+    expect(request.body).toMatchObject({
+      baseRevision: 4,
+      summary: 'Move heading',
+      from: 'designer-1',
+      taskId: '00000000-0000-7000-8000-000000000003',
+      operations: [{ kind: 'update', elementId: 'element-1', changes: { x: 80 } }],
+    });
+  });
+
   it('task assign usa o flag --assign', async () => {
     const { out } = capture();
     await run(['task', 'add', 'Revisar PR', '--assign', 'Claude'], { env: {}, cwd, out });

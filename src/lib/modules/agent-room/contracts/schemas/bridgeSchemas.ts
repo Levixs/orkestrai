@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import { applyDesignOperationsSchema } from './designSchemas.js';
+
+export const bridgeDesignApplySchema = applyDesignOperationsSchema.omit({ actor: true }).extend({
+  token: z.string().trim().min(1).nullish(),
+  from: z.string().trim().max(120).nullish(),
+  taskId: z.string().uuid().nullish(),
+});
+
+export type BridgeDesignApplyInput = z.infer<typeof bridgeDesignApplySchema>;
 
 export const bridgeAskSchema = z.object({
   token: z.string().trim().min(1).nullish(),

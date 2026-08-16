@@ -8,6 +8,7 @@ import { workspaceRepository } from '../../infrastructure/repositories/Workspace
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.ts';
 import { bridgeService } from './BridgeService.js';
+import { designDocumentService } from './DesignDocumentService.js';
 import { roleService } from './RoleService.js';
 import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
 import type {
@@ -308,6 +309,9 @@ export class WorkspaceService {
     }
     const node = await workspaceRepository.updateNode(dto.nodeId, changes);
     if (!node) throw new Error('No nao encontrado.');
+    if (existing.type === 'design' && typeof changes.title === 'string' && node.title !== existing.title) {
+      await designDocumentService.renameDocument(node.workspaceId, node.id, node.title);
+    }
     return node;
   }
 
@@ -421,6 +425,7 @@ export class WorkspaceService {
         __orkestraiStopWorkspaceDevice?: (targetWorkspaceId: string) => Promise<void>;
       }).__orkestraiStopWorkspaceDevice?.(workspaceId).catch(() => undefined);
     }
+    if (node.type === 'design') await designDocumentService.remove(workspaceId, nodeId);
     await workspaceRepository.deleteNode(nodeId);
     if (node.type === 'terminal') {
       const workspace = await workspaceRepository.getWorkspace(workspaceId);

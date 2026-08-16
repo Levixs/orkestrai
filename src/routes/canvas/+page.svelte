@@ -62,6 +62,8 @@
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
   import UsageCanvasNode from '$lib/components/agent-room/canvas/UsageCanvasNode.svelte';
   import DeviceCanvasNode from '$lib/components/agent-room/canvas/DeviceCanvasNode.svelte';
+  import DesignCanvasNode from '$lib/components/agent-room/canvas/DesignCanvasNode.svelte';
+  import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
   import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
   import PresetLibraryPanel from '$lib/components/agent-room/canvas/PresetLibraryPanel.svelte';
   import AgentToolbarMenu from '$lib/components/agent-room/canvas/AgentToolbarMenu.svelte';
@@ -82,7 +84,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -110,6 +112,7 @@
     image: ImageCanvasNode,
     usage: UsageCanvasNode,
     device: DeviceCanvasNode,
+    design: DesignCanvasNode,
   };
 
   let workspaces = $state<Workspace[]>([]);
@@ -133,6 +136,8 @@
   let nodes = $state<Node[]>([]);
   let edges = $state<Edge[]>([]);
   let errorMessage = $state('');
+  let designModeNodeId = $state<string | null>(null);
+  let designRevisions = $state<Record<string, number>>({});
   let permissionWorkspace = $state<Workspace | null>(null);
 
   // Formulario de novo workspace
@@ -209,7 +214,7 @@
   }
 
   // Modo "desenhar no": clique na ferramenta e arraste o retangulo no canvas.
-  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'device' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage';
+  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'device' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'design';
   let drawTool = $state<DrawTool | null>(null);
   let drawStart = $state<{ x: number; y: number } | null>(null);
   let drawCurrent = $state<{ x: number; y: number } | null>(null);
@@ -242,6 +247,7 @@
     flow: async (rect) => { await addFlowNode(rect); },
     image: async (rect) => { await addImageNode(rect); },
     usage: async (rect) => { await addUsageNode(rect); },
+    design: async (rect) => { await addDesignNode(rect); },
   };
 
   function toggleDrawTool(tool: DrawTool, provider?: AgentProviderInfo) {
@@ -571,6 +577,14 @@
             if (activeWorkspace) selectWorkspace(activeWorkspace.id, { force: true });
           }, 250);
         }
+        if (message.type === 'designChanged' && message.workspaceId === activeWorkspace?.id && message.nodeId) {
+          const nodeId = String(message.nodeId);
+          const revision = Number(message.revision) || 0;
+          designRevisions = { ...designRevisions, [nodeId]: revision };
+          nodes = nodes.map((node) => node.id === nodeId
+            ? { ...node, data: { ...node.data, designRevision: revision } }
+            : node);
+        }
         if (message.type === 'controlCenterChanged' || message.type === 'messageDelivery') {
           void refreshActivity();
         }
@@ -619,6 +633,9 @@
           if (requestedNodeId && nodes.some((node) => node.id === requestedNodeId)) {
             await tick();
             const requestedNode = nodes.find((node) => node.id === requestedNodeId);
+            if (requestedNode?.type === 'design' && params.get('design') === '1') {
+              designModeNodeId = requestedNodeId;
+            }
             requestAnimationFrame(() => requestAnimationFrame(() => (
               requestedNode?.type === 'device'
                 ? jumpToNode(requestedNodeId, 0.64, 26)
@@ -747,6 +764,7 @@
         onColorChange: (id: string, color: string) => updateNodePayload(id, { color }),
         onRoleChange: (id: string, role: string | null) => updateNodePayload(id, { role }),
         onOpenFile: (path: string) => openEditor(path),
+        onOpenWorkbench: (id: string) => (designModeNodeId = id),
         onUrlChange: (id: string, url: string) => updateNodePayload(id, { url }),
         onRename: (id: string, title: string) => {
           nodes = nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, title } } : node));
@@ -902,6 +920,8 @@
       if (changingWorkspace) {
         leaderDictationState = 'idle';
         leaderDictationNodeId = null;
+        designModeNodeId = null;
+        designRevisions = {};
       }
       floors = floorList;
       if (!options.force) {
@@ -1277,6 +1297,24 @@
     nodes = [...nodes, toFlowNode(node)];
   }
 
+  async function addDesignNode(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'design',
+        title: m['design.default_name'](),
+        ...position,
+        ...nodeSize(rect, 360, 260, 520, 380),
+        payload: { schemaVersion: 1 },
+        floorId: visibleFloorId,
+      }),
+    });
+    nodes = [...nodes, toFlowNode(node)];
+    designModeNodeId = node.id;
+  }
+
   async function addDiff(rect?: { x: number; y: number; width: number; height: number }) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1444,6 +1482,7 @@
 
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
+    { id: 'design', label: m['tool.design'](), hint: m['canvas.hint_action'](), run: () => void addDesignNode() },
     { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
     { id: 'share-workspace', label: m['collaboration.share_workspace'](), hint: m['canvas.hint_action'](), run: () => (sharingOpen = true) },
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
@@ -1830,6 +1869,20 @@
   <section class="canvas-area" class:drawing={drawTool !== null}>
     <SvelteFlowProvider>
     {#if activeWorkspace}
+      {#if designModeNodeId}
+        <div class="absolute inset-0 z-[70] flex min-h-0 flex-col bg-[var(--app-canvas)]" data-testid="canvas-design-mode">
+          <header class="flex h-10 shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3">
+            <Palette size={15} class="text-[var(--app-secondary)]" />
+            <strong class="min-w-0 flex-1 truncate text-xs">{String(nodes.find((item) => item.id === designModeNodeId)?.data?.title ?? m['design.title']())}</strong>
+            <span class="text-[10px] text-[var(--app-text-muted)]">{m['workspace_view.canvas']()} · {m['design.title']()}</span>
+            <HeaderIconButton label={m['onboarding.close']()} onclick={() => (designModeNodeId = null)}><X size={14} /></HeaderIconButton>
+          </header>
+          <div class="min-h-0 flex-1">
+            <DesignEditor workspaceId={activeWorkspace.id} nodeId={designModeNodeId} externalRevision={designRevisions[designModeNodeId] ?? 0} />
+          </div>
+        </div>
+      {/if}
+      <div class="contents" inert={designModeNodeId !== null} aria-hidden={designModeNodeId ? 'true' : undefined}>
       <ZoomBridge onReady={(api) => (zoomApi = api)} />
       {#if ghostRect}
         <div
@@ -1900,6 +1953,9 @@
             <ToolbarButton label={m['tool.image']()} active={drawTool === 'image'} onclick={() => toggleDrawTool('image')}>
               <ImageIcon size={15} class="tool-icon-svg" /> {m['node.image']()}
             </ToolbarButton>
+            <ToolbarButton label={m['tool.design']()} active={drawTool === 'design'} onclick={() => toggleDrawTool('design')}>
+              <Palette size={15} class="tool-icon-svg" /> {m['design.title']()}
+            </ToolbarButton>
             <ToolbarButton label={m['tool.files']()} active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
               <FolderTree size={15} class="tool-icon-svg" /> {m['canvas.default_files']()}
             </ToolbarButton>
@@ -1956,6 +2012,7 @@
           </div>
         </Panel>
       </SvelteFlow>
+      </div>
     {:else}
       <div class="canvas-empty">
         <img src="/brand/icon.svg" width="56" height="56" alt="" />
