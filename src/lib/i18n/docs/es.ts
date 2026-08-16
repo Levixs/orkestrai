@@ -379,10 +379,12 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
-      date: 'Próxima versión',
+      date: '15 ago 2026 · 0.12.0',
       items: [
         'Añadido empaquetado RPM para Linux (Fedora/RHEL/CentOS). El pipeline de release ahora genera y publica .rpm junto al AppImage existente, y los scripts de validación y auditoría verifican el nuevo artefacto.',
-        'Los workspaces de Windows ahora combinan ejecución nativa y múltiples distribuciones WSL en un mismo equipo. El workspace define el valor predeterminado, cada terminal puede heredarlo o sobrescribirlo, y detección/modelos del provider, PTY, reanudación, Council, reclutamiento y puente siguen el runtime efectivo. El cambio reinicia solo la terminal afectada y valida distribución, ruta y CLI sin fallback silencioso.',
+        'Orkestrai 0.12.0 permite combinar Windows nativo y múltiples distribuciones WSL en un mismo equipo. El workspace define el runtime predeterminado, cada terminal puede heredarlo o seleccionar su propio entorno, y detección/modelos del provider, PTY, reanudación, Council, reclutamiento y puente siguen el runtime efectivo. El cambio reinicia solo la terminal afectada y valida distribución, ruta y CLI sin fallback silencioso.',
+        'El servidor empaquetado ahora incluye los módulos necesarios del runtime WSL, lo que permite crear, restaurar y ejecutar workspaces WSL también en la aplicación instalada.',
+        'Al crear o editar un workspace WSL, Orkestrai deriva y bloquea automáticamente la carpeta visible desde Windows a partir de la ruta Linux, sin exigir una segunda ruta equivalente ni rechazar la configuración por error.',
       ],
     },
     {

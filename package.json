@@ -1,6 +1,6 @@
 {
   "name": "orkestrai",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "A visual canvas for orchestrating multidisciplinary teams of AI agents.",
   "private": true,
   "license": "Apache-2.0",
@@ -179,27 +179,27 @@
         "dmg",
         "zip"
       ],
-    "icon": "electron/resources/icon.icns",
-    "extraResources": [
-      {
-        "from": "electron/resources/macos-locales/en.lproj",
-        "to": "en.lproj"
-      },
-      {
-        "from": "electron/resources/macos-locales/pt-BR.lproj",
-        "to": "pt-BR.lproj"
-      },
-      {
-        "from": "electron/resources/macos-locales/es.lproj",
-        "to": "es.lproj"
+      "icon": "electron/resources/icon.icns",
+      "extraResources": [
+        {
+          "from": "electron/resources/macos-locales/en.lproj",
+          "to": "en.lproj"
+        },
+        {
+          "from": "electron/resources/macos-locales/pt-BR.lproj",
+          "to": "pt-BR.lproj"
+        },
+        {
+          "from": "electron/resources/macos-locales/es.lproj",
+          "to": "es.lproj"
+        }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Orkestrai uses the microphone only when you start voice dictation.",
+        "NSDownloadsFolderUsageDescription": "Orkestrai needs access to projects you choose inside Downloads.",
+        "NSDocumentsFolderUsageDescription": "Orkestrai needs access to projects you choose inside Documents.",
+        "NSDesktopFolderUsageDescription": "Orkestrai needs access to projects you choose on the Desktop."
       }
-    ],
-    "extendInfo": {
-      "NSMicrophoneUsageDescription": "Orkestrai uses the microphone only when you start voice dictation.",
-      "NSDownloadsFolderUsageDescription": "Orkestrai needs access to projects you choose inside Downloads.",
-      "NSDocumentsFolderUsageDescription": "Orkestrai needs access to projects you choose inside Documents.",
-      "NSDesktopFolderUsageDescription": "Orkestrai needs access to projects you choose on the Desktop."
-    }
     },
     "win": {
       "target": [
