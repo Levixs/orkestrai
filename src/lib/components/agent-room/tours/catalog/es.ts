@@ -845,6 +845,11 @@ export const TOURS_ES: Tour[] = [
         check: { kind: 'nodeExists', nodeType: 'usage', titleIncludes: 'Uso de providers' },
       },
       {
+        id: 'understand-provider-capabilities',
+        title: 'Lee solo capacidad verificada',
+        body: 'Claude, Codex y Kimi reportan porcentajes automáticos. Antigravity apunta a /usage o /quota; Cursor y Devin explican el requisito de API administrativa; OpenCode y Cline apuntan al provider de modelo elegido. Orkestrai nunca inventa una cuota.',
+      },
+      {
         id: 'set-policy',
         title: 'Ajusta la política',
         body: 'En el nodo, elige el origen, un fallback diferente, la ventana de 5 horas, semanal o mensual y el porcentaje que significa "cerca del límite". Si el provider no reporta ese período, el nodo pide otra ventana.',
@@ -1276,6 +1281,27 @@ export const TOURS_ES: Tour[] = [
         title: 'Elige el camino de decisión',
         body: 'Envía propuestas inciertas a Council o crea un Piso aislado para una implementación paralela. Al compartir de forma remota, aprueba Diseño por separado como Ver, Comentar, Proponer o Editar y decidir. Remote recibe resúmenes sanitizados, nunca el scene graph, assets, archivos ni rutas locales.',
       },
+    ],
+  },
+  {
+    id: 'design-quality',
+    icon: 'ShieldCheck',
+    title: 'Audita y protege un documento Diseño',
+    tagline: 'Encuentra defectos visuales, usa templates completos y recupera con seguridad.',
+    steps: [
+      {
+        id: 'open-design-quality',
+        title: 'Abre el inspector de calidad',
+        body: 'Crea un documento Diseño nativo y abre Calidad en el inspector derecho. La auditoría revisa nombres, recortes, superposición, contraste y accesibilidad sin modificar el arte.',
+        action: [
+          { kind: 'createDesign', title: 'Diseño de Producción' },
+          { kind: 'openDesign', title: 'Diseño de Producción' },
+        ],
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Diseño de Producción' },
+      },
+      { id: 'inspect-quality-issues', title: 'Salta a la capa exacta', body: 'Cada problema identifica su gravedad y regla. Selecciónalo para enfocar la capa afectada, corrige la propiedad en el mismo editor y observa la actualización del informe.' },
+      { id: 'apply-design-template', title: 'Comienza con un template nativo completo', body: 'Elige Producto, Marketing, Mobile o Design system. El template crea capas, tokens y, cuando corresponde, flujos de prototipo o componentes editables mediante operaciones normales y versionadas.' },
+      { id: 'recover-design-document', title: 'Entiende la recuperación', body: 'Calidad también muestra el backup automático y el historial reciente limitado. Restaurar exige confirmación y crea una nueva revisión; los documentos grandes se renderizan de forma incremental conservando selección y jerarquía.' },
     ],
   },
   {

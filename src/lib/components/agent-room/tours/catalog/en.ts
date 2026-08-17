@@ -845,6 +845,11 @@ export const TOURS_EN: Tour[] = [
         check: { kind: 'nodeExists', nodeType: 'usage', titleIncludes: 'Provider usage' },
       },
       {
+        id: 'understand-provider-capabilities',
+        title: 'Read verified capacity only',
+        body: 'Claude, Codex, and Kimi report automatic percentages. Antigravity points to /usage or /quota; Cursor and Devin explain their administrative API requirement; OpenCode and Cline point to the selected model provider. Orkestrai never invents a quota.',
+      },
+      {
         id: 'set-policy',
         title: 'Adjust the policy',
         body: 'In the node, choose the source, a different fallback, the 5-hour, weekly, or monthly window, and the percentage that means "near the limit". If the provider does not report that period, the node asks for another window.',
@@ -1276,6 +1281,27 @@ export const TOURS_EN: Tour[] = [
         title: 'Choose the right decision path',
         body: 'Send uncertain proposals to Council or create an isolated Floor for parallel implementation. When sharing remotely, approve Design separately as View, Comment, Propose, or Edit and decide. Remote receives sanitized summaries, never the scene graph, assets, files, or local paths.',
       },
+    ],
+  },
+  {
+    id: 'design-quality',
+    icon: 'ShieldCheck',
+    title: 'Audit and protect a Design document',
+    tagline: 'Find visual defects, start from complete templates, and recover safely.',
+    steps: [
+      {
+        id: 'open-design-quality',
+        title: 'Open the quality inspector',
+        body: 'Create a native Design document and open Quality in the right inspector. The audit checks naming, clipping, overlap, contrast, and accessibility without changing the artwork.',
+        action: [
+          { kind: 'createDesign', title: 'Production Design' },
+          { kind: 'openDesign', title: 'Production Design' },
+        ],
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Production Design' },
+      },
+      { id: 'inspect-quality-issues', title: 'Jump to the exact layer', body: 'Each issue identifies its severity and rule. Select it to focus the affected layer, then fix its property in the same editor and watch the report update.' },
+      { id: 'apply-design-template', title: 'Start with a complete native template', body: 'Choose Product, Marketing, Mobile, or Design system. The template creates editable layers, tokens, and, where relevant, prototype flows or components through normal revisioned operations.' },
+      { id: 'recover-design-document', title: 'Understand recovery', body: 'Quality also shows the automatic backup and recent bounded history. Restore requires confirmation and creates a new revision; large documents render incrementally while keeping selections and hierarchy available.' },
     ],
   },
   {

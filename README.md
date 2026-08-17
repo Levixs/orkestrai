@@ -180,6 +180,8 @@ Download the latest installers from
   distribution and Linux project path. Provider discovery, sessions, resume,
   Council, recruited agents, and the bridge follow each terminal, so one team
   can combine tools installed across Windows, Ubuntu, Debian, or other distros.
+  Orkestrai validates the selected Linux environment before spawn and restores
+  only a conversation confirmed inside that distribution's own home.
 - **Git floors:** isolate work in Git worktrees, inspect conflicts, and land
   completed changes from the canvas.
 - **Local voice:** dictate into any text field or use the no-focus workspace
@@ -191,7 +193,14 @@ Download the latest installers from
 - **Quota-aware delegation:** pin Claude, Codex, and Kimi usage to the canvas,
   configure a source, fallback, 5-hour/weekly/monthly window, and threshold,
   and let the leader consult the same recommendation through the CLI or MCP
-  before assigning new work.
+  before assigning new work. The same panel inventories Antigravity, Cursor,
+  Devin, OpenCode, and Cline and explains their documented CLI, admin-API, or
+  model-provider usage source without inventing a percentage.
+- **Production Design quality:** audit naming, clipping, overlap, WCAG contrast,
+  and accessibility, jump to the affected layer, start from complete editable
+  product, marketing, mobile, and design-system templates, and rely on automatic
+  backups, recovery, schema migration, bounded history, and incremental rendering
+  for large documents. Agents use the same typed audit and template commands.
 - **Custom appearance:** start from a coherent graphite-and-gold dark system or
   a high-contrast light palette, choose the other built-in themes, or duplicate
   one and edit semantic tokens with live preview and JSON import/export.

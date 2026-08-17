@@ -9,6 +9,19 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Completed the quality, scale, and recovery phase of native Design Mode. A
+  live audit reports naming, clipping, overlap, WCAG contrast, and accessibility
+  issues and selects the affected layer. Four complete native templates create
+  editable product, marketing, mobile, or design-system foundations through the
+  revision-safe command bus. Automatic backups, corruption recovery, schema
+  migration, bounded history, explicit restore, and viewport-based incremental
+  rendering protect large documents. Connected agents use the same audit and
+  template operations through typed Orkestrai CLI and MCP commands.
+- Expanded provider Usage into one capability-driven inventory for all eight
+  supported agent CLIs. Claude, Codex, and Kimi retain verified automatic quota
+  windows and routing. Antigravity, Cursor, Devin, OpenCode, and Cline now show
+  their documented interactive CLI, administrative API, or underlying model-
+  provider limitations with official links instead of fabricated percentages.
 - Added live human-agent collaboration to native Design documents. The Design
   editor now shows participant presence, cursors, selections, short layer
   leases, follow mode, anchored comment threads with replies and resolution,
@@ -105,6 +118,13 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Fixed WSL terminal creation and restoration on Windows by preflighting the
+  exact distribution, Linux directory, login PATH, and CLI before PTY spawn,
+  then tracking provider transcripts inside that distribution's Linux home.
+  Only confirmed conversation ids are persisted or resumed; missing or invalid
+  ids start clean instead of invoking a speculative latest conversation.
+  Missing distributions, paths, and commands now produce distinct actionable
+  errors without falling back silently to native Windows.
 - Rebuilt Design Mode interaction around explicit layer and vector-edit states.
   Pen now previews its next segment and close target, continues existing open
   paths, bends segments directly, splits curves without changing their shape,

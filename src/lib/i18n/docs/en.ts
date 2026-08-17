@@ -18,7 +18,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'wsl-runtime',
       title: 'Windows workspaces with WSL',
-      body: `On Windows, the environment selected when creating or editing a workspace is the team default. Each terminal can inherit it or use Execution environment in the creation dialog and compact terminal menu to force native Windows or one specific WSL distribution. Select the exact Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian, or other installation and provide the Linux path for the same project folder. A single workspace can therefore combine Windows and WSL agents, including different distributions. A WIN or WSL badge identifies an override. Provider detection and models, PTY, generic resume, Council, recruited agents, and the orkestrai bridge follow each terminal's effective runtime. Changing it restarts only that terminal; invalid paths, missing distributions, and unavailable CLIs fail clearly without a silent fallback.`,
+      body: `On Windows, the environment selected when creating or editing a workspace is the team default. Each terminal can inherit it or use Execution environment in the creation dialog and compact terminal menu to force native Windows or one specific WSL distribution. Select the exact Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian, or other installation and provide the Linux path for the same project folder. A single workspace can therefore combine Windows and WSL agents, including different distributions. A WIN or WSL badge identifies an override. Provider detection and models, PTY, exact conversation resume, Council, recruited agents, and the orkestrai bridge follow each terminal's effective runtime. Orkestrai validates the CLI in that distribution and confirms the provider transcript inside its own Linux home before persisting or restoring an id; an empty agent starts clean instead of guessing the latest conversation. Changing runtime restarts only that terminal. Missing distributions, directories, or commands produce distinct actionable errors without a silent native-Windows fallback.`,
     },
     {
       id: 'agentes',
@@ -91,6 +91,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `Open Collaboration in the Design inspector to work on the same native document with people and agents. Live presence shows each participant's page, cursor, and selection; Follow keeps your viewport on one participant until you stop it. Selecting a layer claims a short renewable lease, so another participant receives a clear conflict instead of overwriting the same layer. Add a thread to the page or selected layer, mention teammates, reply, resolve, or reopen it; threads and authorship remain in the revision history even if a layer is removed. A visual proposal previews position, size, opacity, and fill changes without mutating the document, lists its structural diff, and applies all operations atomically only after an explicit approval. Send a proposal to Council for independent perspectives or create a parallel Git Floor for isolated implementation. Connected agents use the same versioned comment, propose, and decide operations through Orkestrai MCP and cannot simulate human approval. In encrypted workspace sharing, Design access is approved separately per device as None, View, Comment, Propose, or Edit and decide. Remote receives sanitized pages, activity, threads, and proposal summaries, never the full scene graph, assets, files, credentials, or local paths.`,
     },
     {
+      id: 'design-quality',
+      title: 'Design quality and recovery',
+      body: `Open Quality in the Design inspector to audit meaningful layer names, clipped text or content, accidental overlap, WCAG text contrast, and accessibility metadata. Selecting an issue focuses its exact layer. The same panel applies complete editable product, marketing, mobile, or design-system templates through the revision-safe command bus. Every valid write keeps an automatic backup; corrupted primary documents recover from it, large histories compact automatically, and manual restore creates a new revision instead of rewriting history. Documents above 500 layers render only the visible region plus selected layers and their hierarchy. Connected agents can run the same audit or apply a template through typed MCP and CLI commands.`,
+    },
+    {
       id: 'presets',
       title: 'Team presets',
       body: `The Preset library is available from the template icon in the sidebar and Presets in the bottom toolbar. Alongside Product, React, Next.js, SvelteKit, Svelar, and Laravel, it includes Campaign and launch, Brand and design, Content and SEO, and Orkestrai Contributing. Each recipe includes a lead, specialists, extensive operational roles, skills, a brief, board, initial task, and layout; the contributing team also requires Claude, Codex, and Kimi consensus. Preset agents start with autonomous full access and receive roles through the CLI's native instruction mechanism without leaving the terminal blocked by pasted text. The leader receives the complete initial task and must assign it before delegating. Use New workspace for another folder or + to add the team to the current canvas.`,
@@ -138,7 +143,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'usage-routing',
       title: 'Usage and quota-aware routing',
-      body: `Open Usage in the bottom toolbar and use Add to canvas to keep Claude, Codex, and Kimi consumption visible in the workspace. The node refreshes every five minutes and lets you choose a source provider, fallback, monitored 5-hour, weekly, or monthly window, and a threshold from 50% to 100%. The app shows only windows each provider actually reports and warns when the selected policy window is unavailable. The leader checks this policy through CLI or MCP before distributing new work. A task already in progress is never moved to another terminal silently.`,
+      body: `Open Usage in the bottom toolbar and use Add to canvas to keep provider capacity visible in the workspace. Claude, Codex, and Kimi expose machine-readable 5-hour, weekly, or monthly windows through the credentials already owned by their CLIs; only these verified percentages participate in automatic source/fallback routing. The same panel lists Antigravity, Cursor, Devin, OpenCode, and Cline with their real official capability: Antigravity exposes quota in its AI Credits and Model Quotas panels, Cursor and Devin require separate Team/Enterprise administrative credentials, and OpenCode/Cline expose usage through their own account console, settings, or the selected model provider. No unavailable provider receives a fabricated percentage. The node refreshes automatic sources every five minutes, links to official documentation, and warns when the selected policy window is unavailable. A task already in progress is never moved to another terminal silently.`,
     },
     {
       id: 'appearance',
@@ -297,6 +302,12 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['live presence', 'comments + proposals', 'Council + Floors'],
     },
     {
+      id: 'design-quality',
+      title: 'Audit and recover a production design',
+      body: 'Open Quality in a native Design document to find naming, clipping, overlap, contrast, and accessibility problems, then jump directly to each layer. Start a real product, marketing page, mobile flow, or design system from an editable native template. Automatic backups, schema migration, bounded history, explicit restore, and incremental viewport rendering protect large documents. A connected agent can run design_audit and apply the same templates without bypassing revisions.',
+      tags: ['quality audit', 'backup + recovery', 'large documents'],
+    },
+    {
       id: 'mcp-tools',
       title: 'Agents with external tools via MCP',
       body: 'Add MCP servers in the workspace editor (e.g.: filesystem, web, database) — agents get the tools natively, and Orkestrai itself appears as an MCP server with the canvas actions (orkestrai mcp). Presets can carry the MCPs along with the team.',
@@ -335,7 +346,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'quota-aware-delegation',
       title: 'Delegate work without exhausting a quota',
-      body: 'Add the Usage node to the canvas, set Claude as the source and Codex as the fallback, then choose the 5-hour, weekly, or monthly window and its percentage. Before delegating new work, the leader checks orkestrai usage and recommends the healthy agent when the source crosses that threshold; conversations and tasks already in progress stay on their current provider.',
+      body: 'Add the Usage node to the canvas, set Claude as the source and Codex as the fallback, then choose the 5-hour, weekly, or monthly window and its percentage. Before delegating new work, the leader checks orkestrai usage and recommends the healthy agent when the source crosses that threshold. The panel also explains why Antigravity, Cursor, Devin, OpenCode, or Cline cannot provide the same automatic percentage and links to each official source instead of guessing; conversations and tasks already in progress stay on their current provider.',
       tags: ['Canvas usage', 'fallback', 'delegation'],
     },
     {
@@ -409,6 +420,9 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'In development',
       items: [
+        'Design Studio quality and scale: a live audit finds naming, clipping, overlap, WCAG contrast, and accessibility issues and focuses the affected layer; four complete native templates create editable product, marketing, mobile, or design-system foundations; automatic backups, corruption recovery, schema migration, bounded history, explicit restore, and incremental viewport rendering protect large documents. Agents receive the same audit and template operations through typed CLI/MCP commands.',
+        'Windows WSL terminals now preflight the exact distribution, directory, login PATH, and CLI before spawning and track provider conversations inside that distribution\'s Linux home. Only confirmed transcripts are persisted or resumed; invalid ids start clean instead of invoking a speculative latest conversation, and missing distribution, path, or command errors are distinct and actionable.',
+        'Usage now inventories all eight agent providers from one capability catalog. Claude, Codex, and Kimi keep verified automatic quota windows and routing; Antigravity, Cursor, Devin, OpenCode, and Cline show their documented CLI, administrative API, or underlying model-provider limitations with official links instead of fabricated percentages.',
         'Native Design documents now support live human-agent collaboration with presence, cursors, selections, follow mode, short layer leases, anchored comment threads, revisioned visual proposals, structural diffs, and atomic approval. Proposals can be reviewed in Council or implemented in an isolated Floor. The encrypted Remote Companion uses independent per-device Design permissions and receives only sanitized activity, comment, and proposal summaries; connected agents use the same comment, propose, and decide operations through typed Orkestrai MCP tools.',
         'Design Studio now includes native interactive prototypes and motion in the same revisioned document. Create multiple starting flows; attach click, press, hover, and timed interactions for navigation, overlays, back, scrolling, or variable modes; preview transitions, fixed layers, overflow, hotspots, device framing, and fullscreen in a focused player; and share a self-contained read-only HTML prototype. Reusable motion tokens, per-layer tracks, keyframes, easing, CSS keyframes, and Motion.dev output are searchable and available to connected agents through the same MCP command bus.',
         'Native Design delivery now imports HTML/Tailwind, Svelte, React/JSX, and Vue structure into editable layers and generates Svelar/Svelte 5, React, Next.js, Vue 3, or HTML/Tailwind through a preview-before-write flow. Existing Code Connect mappings are reused first, generated artifacts stay linked to the Design document and open in Monaco, and a live Portal or attached mobile device can be compared with the selected frame through pixel diff and an adjustable overlay. The evidence becomes a traceable Kanban feedback task or a Review Center entry tied to the actual Git change.',

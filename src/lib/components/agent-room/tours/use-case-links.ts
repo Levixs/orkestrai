@@ -24,6 +24,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'design-delivery': 'design-delivery',
   'design-prototype': 'design-prototype',
   'design-collaboration': 'design-collaboration',
+  'design-quality': 'design-quality',
   'mcp-tools': 'mcp-tools',
   'managed-ports': 'managed-ports',
   'leader-dictation': 'leader-dictation',
