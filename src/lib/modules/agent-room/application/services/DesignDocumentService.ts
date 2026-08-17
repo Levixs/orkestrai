@@ -400,6 +400,58 @@ function validateDesignComponents(document: DesignDocument): void {
   }
 }
 
+function validateDesignPrototype(document: DesignDocument): void {
+  const elements = new Map(document.elements.map((element) => [element.id, element]));
+  const frames = new Set(document.elements.filter((element) => element.type === 'frame').map((element) => element.id));
+  const flows = new Map(document.prototypeFlows.map((flow) => [flow.id, flow]));
+  if (flows.size !== document.prototypeFlows.length) throw new Error('Prototype flow ids must be unique.');
+  for (const flow of document.prototypeFlows) {
+    if (!frames.has(flow.startFrameId)) throw new Error('Prototype start frame not found.');
+  }
+  if (document.presentation.defaultFlowId && !flows.has(document.presentation.defaultFlowId)) {
+    throw new Error('The default prototype flow is invalid.');
+  }
+
+  const interactionIds = new Set<string>();
+  for (const interaction of document.prototypeInteractions) {
+    const action = interaction.action;
+    if (interactionIds.has(interaction.id)) throw new Error('Prototype interaction ids must be unique.');
+    interactionIds.add(interaction.id);
+    if (!elements.has(interaction.sourceElementId)) throw new Error('Prototype interaction source not found.');
+    if (action.type === 'navigate' || action.type === 'open-overlay') {
+      if (!frames.has(action.targetFrameId)) throw new Error('Prototype target frame not found.');
+    } else if (action.type === 'scroll-to') {
+      if (!elements.has(action.targetElementId)) throw new Error('Prototype scroll target not found.');
+    } else if (action.type === 'set-variable-mode') {
+      const collection = document.variableCollections.find((candidate) => candidate.id === action.collectionId);
+      if (!collection?.modes.some((mode) => mode.id === action.modeId)) {
+        throw new Error('Prototype variable mode not found.');
+      }
+    }
+  }
+
+  const tokens = new Set<string>();
+  for (const token of document.motionTokens) {
+    if (tokens.has(token.id)) throw new Error('Motion token ids must be unique.');
+    tokens.add(token.id);
+  }
+  const trackIds = new Set<string>();
+  for (const track of document.motionTracks) {
+    if (trackIds.has(track.id)) throw new Error('Motion track ids must be unique.');
+    trackIds.add(track.id);
+    if (!elements.has(track.elementId)) throw new Error('Motion track layer not found.');
+    const token = track.tokenId ? document.motionTokens.find((candidate) => candidate.id === track.tokenId) : null;
+    if (track.tokenId && !token) throw new Error('Motion token not found.');
+    const duration = token?.durationMs ?? track.durationMs;
+    const times = new Set<number>();
+    for (const keyframe of track.keyframes) {
+      if (times.has(keyframe.timeMs)) throw new Error('Motion keyframe times must be unique.');
+      if (keyframe.timeMs > duration) throw new Error('Motion keyframes cannot exceed the track duration.');
+      times.add(keyframe.timeMs);
+    }
+  }
+}
+
 export function applyDesignOperations(document: DesignDocument, operations: DesignOperation[], now: string): DesignDocument {
   let next: DesignDocument = structuredClone(document);
   for (const operation of operations) {
@@ -486,6 +538,15 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       next.elements = next.elements.map((element) => element.maskId && descendants.has(element.maskId)
         ? { ...element, maskId: null }
         : element);
+      const removedFlowIds = new Set(next.prototypeFlows.filter((flow) => descendants.has(flow.startFrameId)).map((flow) => flow.id));
+      next.prototypeFlows = next.prototypeFlows.filter((flow) => !removedFlowIds.has(flow.id));
+      next.prototypeInteractions = next.prototypeInteractions.filter((interaction) => {
+        if (descendants.has(interaction.sourceElementId)) return false;
+        if ((interaction.action.type === 'navigate' || interaction.action.type === 'open-overlay') && descendants.has(interaction.action.targetFrameId)) return false;
+        return interaction.action.type !== 'scroll-to' || !descendants.has(interaction.action.targetElementId);
+      });
+      next.motionTracks = next.motionTracks.filter((track) => !descendants.has(track.elementId));
+      if (next.presentation.defaultFlowId && removedFlowIds.has(next.presentation.defaultFlowId)) next.presentation.defaultFlowId = null;
       continue;
     }
     if (operation.kind === 'reorder') {
@@ -563,6 +624,9 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       next.variableCollections = next.variableCollections.filter((collection) => collection.id !== operation.collectionId);
       next.variables = next.variables.filter((variable) => !removedIds.has(variable.id));
       delete next.activeVariableModes[operation.collectionId];
+      next.prototypeInteractions = next.prototypeInteractions.filter((interaction) =>
+        interaction.action.type !== 'set-variable-mode' || interaction.action.collectionId !== operation.collectionId
+      );
       next.elements = next.elements.map((element) => ({
         ...element,
         variableBindings: Object.fromEntries(Object.entries(element.variableBindings).filter(([, variableId]) => !removedIds.has(variableId))),
@@ -704,6 +768,77 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       next.codeArtifacts = next.codeArtifacts.filter((artifact) => artifact.id !== operation.artifactId);
       continue;
     }
+    if (operation.kind === 'add-prototype-flow') {
+      if (next.prototypeFlows.some((flow) => flow.id === operation.flow.id)) throw new Error('Prototype flow already exists.');
+      next.prototypeFlows.push(operation.flow);
+      if (!next.presentation.defaultFlowId) next.presentation.defaultFlowId = operation.flow.id;
+      continue;
+    }
+    if (operation.kind === 'update-prototype-flow') {
+      const flow = next.prototypeFlows.find((candidate) => candidate.id === operation.flowId);
+      if (!flow) throw new Error('Prototype flow not found.');
+      Object.assign(flow, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-prototype-flow') {
+      if (!next.prototypeFlows.some((flow) => flow.id === operation.flowId)) throw new Error('Prototype flow not found.');
+      next.prototypeFlows = next.prototypeFlows.filter((flow) => flow.id !== operation.flowId);
+      if (next.presentation.defaultFlowId === operation.flowId) next.presentation.defaultFlowId = next.prototypeFlows[0]?.id ?? null;
+      continue;
+    }
+    if (operation.kind === 'add-prototype-interaction') {
+      if (next.prototypeInteractions.some((interaction) => interaction.id === operation.interaction.id)) throw new Error('Prototype interaction already exists.');
+      next.prototypeInteractions.push(operation.interaction);
+      continue;
+    }
+    if (operation.kind === 'update-prototype-interaction') {
+      const interaction = next.prototypeInteractions.find((candidate) => candidate.id === operation.interactionId);
+      if (!interaction) throw new Error('Prototype interaction not found.');
+      Object.assign(interaction, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-prototype-interaction') {
+      if (!next.prototypeInteractions.some((interaction) => interaction.id === operation.interactionId)) throw new Error('Prototype interaction not found.');
+      next.prototypeInteractions = next.prototypeInteractions.filter((interaction) => interaction.id !== operation.interactionId);
+      continue;
+    }
+    if (operation.kind === 'add-motion-token') {
+      if (next.motionTokens.some((token) => token.id === operation.token.id)) throw new Error('Motion token already exists.');
+      next.motionTokens.push(operation.token);
+      continue;
+    }
+    if (operation.kind === 'update-motion-token') {
+      const token = next.motionTokens.find((candidate) => candidate.id === operation.tokenId);
+      if (!token) throw new Error('Motion token not found.');
+      Object.assign(token, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-motion-token') {
+      if (!next.motionTokens.some((token) => token.id === operation.tokenId)) throw new Error('Motion token not found.');
+      next.motionTokens = next.motionTokens.filter((token) => token.id !== operation.tokenId);
+      next.motionTracks = next.motionTracks.map((track) => track.tokenId === operation.tokenId ? { ...track, tokenId: null } : track);
+      continue;
+    }
+    if (operation.kind === 'add-motion-track') {
+      if (next.motionTracks.some((track) => track.id === operation.track.id)) throw new Error('Motion track already exists.');
+      next.motionTracks.push(operation.track);
+      continue;
+    }
+    if (operation.kind === 'update-motion-track') {
+      const track = next.motionTracks.find((candidate) => candidate.id === operation.trackId);
+      if (!track) throw new Error('Motion track not found.');
+      Object.assign(track, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-motion-track') {
+      if (!next.motionTracks.some((track) => track.id === operation.trackId)) throw new Error('Motion track not found.');
+      next.motionTracks = next.motionTracks.filter((track) => track.id !== operation.trackId);
+      continue;
+    }
+    if (operation.kind === 'update-presentation') {
+      Object.assign(next.presentation, operation.changes);
+      continue;
+    }
     if (operation.kind === 'create-component-instance') {
       if (next.elements.some((element) => element.id === operation.instanceId)) throw new Error('Component instance already exists.');
       const component = next.components.find((candidate) => candidate.id === operation.componentId);
@@ -780,6 +915,7 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
   syncComponentInstances(next);
   validateDesignVariables(next);
   validateDesignComponents(next);
+  validateDesignPrototype(next);
   next.elements = sortElements(next.elements);
   next.updatedAt = now;
   return designDocumentSchema.parse(next);
@@ -850,6 +986,17 @@ export class DesignDocumentService {
       libraryLinks: [],
       figmaLinks: [],
       codeArtifacts: [],
+      prototypeFlows: [],
+      prototypeInteractions: [],
+      motionTokens: [],
+      motionTracks: [],
+      presentation: {
+        defaultFlowId: null,
+        background: '#111111',
+        showDeviceFrame: true,
+        showHotspots: false,
+        showCursor: true,
+      },
       createdAt: now,
       updatedAt: now,
     };

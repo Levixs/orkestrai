@@ -235,6 +235,125 @@ export const designCodeArtifactSchema = z.object({
   generatedAt: z.string().datetime(),
 });
 
+export const designMotionEasingSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('preset'),
+    value: z.enum(['linear', 'ease', 'ease-in', 'ease-out', 'ease-in-out']).default('ease-out'),
+  }),
+  z.object({
+    type: z.literal('cubic-bezier'),
+    x1: z.number().finite().min(0).max(1),
+    y1: z.number().finite().min(-4).max(4),
+    x2: z.number().finite().min(0).max(1),
+    y2: z.number().finite().min(-4).max(4),
+  }),
+  z.object({
+    type: z.literal('spring'),
+    mass: z.number().finite().min(0.1).max(10).default(1),
+    stiffness: z.number().finite().min(1).max(1_000).default(170),
+    damping: z.number().finite().min(1).max(100).default(26),
+    velocity: z.number().finite().min(-100).max(100).default(0),
+  }),
+]);
+
+export const designPrototypeTransitionSchema = z.object({
+  type: z.enum(['instant', 'dissolve', 'slide', 'push', 'smart-animate']).default('dissolve'),
+  direction: z.enum(['left', 'right', 'up', 'down']).default('left'),
+  durationMs: z.number().int().min(0).max(10_000).default(300),
+  easing: designMotionEasingSchema.default({ type: 'preset', value: 'ease-out' }),
+});
+
+export const designPrototypeTriggerSchema = z.object({
+  type: z.enum(['click', 'hover', 'press', 'after-delay']).default('click'),
+  delayMs: z.number().int().min(0).max(60_000).default(0),
+});
+
+export const designPrototypeActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('navigate'), targetFrameId: z.string().uuid() }),
+  z.object({
+    type: z.literal('open-overlay'),
+    targetFrameId: z.string().uuid(),
+    position: z.enum(['center', 'top', 'right', 'bottom', 'left']).default('center'),
+    dismissOnOutside: z.boolean().default(true),
+    backgroundColor: designColorSchema.default('#000000'),
+    backgroundOpacity: z.number().finite().min(0).max(1).default(0.45),
+  }),
+  z.object({ type: z.literal('close-overlay') }),
+  z.object({ type: z.literal('back') }),
+  z.object({ type: z.literal('scroll-to'), targetElementId: z.string().uuid() }),
+  z.object({ type: z.literal('set-variable-mode'), collectionId: z.string().uuid(), modeId: z.string().uuid() }),
+]);
+
+export const designPrototypeInteractionSchema = z.object({
+  id: z.string().uuid(),
+  sourceElementId: z.string().uuid(),
+  trigger: designPrototypeTriggerSchema,
+  action: designPrototypeActionSchema,
+  transition: designPrototypeTransitionSchema.default({
+    type: 'dissolve',
+    direction: 'left',
+    durationMs: 300,
+    easing: { type: 'preset', value: 'ease-out' },
+  }),
+  order: z.number().int().min(0).max(100_000),
+});
+
+export const designPrototypeFlowSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().max(1_000).default(''),
+  startFrameId: z.string().uuid(),
+  order: z.number().int().min(0).max(10_000),
+});
+
+export const designMotionTokenSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  durationMs: z.number().int().min(1).max(60_000).default(300),
+  easing: designMotionEasingSchema.default({ type: 'preset', value: 'ease-out' }),
+  order: z.number().int().min(0).max(10_000),
+});
+
+export const designMotionKeyframeValuesSchema = z.object({
+  x: z.number().finite().min(-100_000).max(100_000).optional(),
+  y: z.number().finite().min(-100_000).max(100_000).optional(),
+  width: z.number().finite().min(1).max(100_000).optional(),
+  height: z.number().finite().min(1).max(100_000).optional(),
+  rotation: z.number().finite().min(-3_600).max(3_600).optional(),
+  opacity: z.number().finite().min(0).max(1).optional(),
+  cornerRadius: z.number().finite().min(0).max(10_000).optional(),
+  fill: designColorSchema.optional(),
+});
+
+export const designMotionKeyframeSchema = z.object({
+  id: z.string().uuid(),
+  timeMs: z.number().int().min(0).max(60_000),
+  values: designMotionKeyframeValuesSchema,
+});
+
+export const designMotionTrackSchema = z.object({
+  id: z.string().uuid(),
+  elementId: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  durationMs: z.number().int().min(1).max(60_000).default(300),
+  delayMs: z.number().int().min(0).max(60_000).default(0),
+  iterations: z.number().int().min(1).max(100).default(1),
+  direction: z.enum(['normal', 'reverse', 'alternate']).default('normal'),
+  fillMode: z.enum(['none', 'forwards', 'both']).default('forwards'),
+  tokenId: z.string().uuid().nullable().default(null),
+  easing: designMotionEasingSchema.default({ type: 'preset', value: 'ease-out' }),
+  keyframes: z.array(designMotionKeyframeSchema).min(2).max(200),
+  order: z.number().int().min(0).max(100_000),
+});
+
+export const designPresentationSettingsSchema = z.object({
+  defaultFlowId: z.string().uuid().nullable().default(null),
+  background: designColorSchema.default('#111111'),
+  showDeviceFrame: z.boolean().default(true),
+  showHotspots: z.boolean().default(false),
+  showCursor: z.boolean().default(true),
+});
+
 const designInstanceElementOverridesSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   x: z.number().finite().optional(),
@@ -333,6 +452,8 @@ export const designElementSchema = z.object({
   layoutGridColumns: z.number().int().min(1).max(64).default(2),
   layoutAlign: z.enum(['start', 'center', 'end', 'space-between']).default('start'),
   clipContent: z.boolean().default(false),
+  prototypeOverflow: z.enum(['none', 'horizontal', 'vertical', 'both']).default('none'),
+  prototypeFixed: z.boolean().default(false),
   constraintHorizontal: z.enum(['left', 'right', 'left-right', 'center', 'scale']).default('left'),
   constraintVertical: z.enum(['top', 'bottom', 'top-bottom', 'center', 'scale']).default('top'),
   variableBindings: z.record(designBindablePropertySchema, z.string().uuid()).default({}),
@@ -377,6 +498,17 @@ export const designDocumentSchema = z.object({
   libraryLinks: z.array(designLibraryLinkSchema).max(200).default([]),
   figmaLinks: z.array(designFigmaLinkSchema).max(100).default([]),
   codeArtifacts: z.array(designCodeArtifactSchema).max(1_000).default([]),
+  prototypeFlows: z.array(designPrototypeFlowSchema).max(500).default([]),
+  prototypeInteractions: z.array(designPrototypeInteractionSchema).max(5_000).default([]),
+  motionTokens: z.array(designMotionTokenSchema).max(500).default([]),
+  motionTracks: z.array(designMotionTrackSchema).max(5_000).default([]),
+  presentation: designPresentationSettingsSchema.default({
+    defaultFlowId: null,
+    background: '#111111',
+    showDeviceFrame: true,
+    showHotspots: false,
+    showCursor: true,
+  }),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -392,6 +524,10 @@ const designComponentSetChangesSchema = designComponentSetSchema.omit({ id: true
 const designLibraryLinkChangesSchema = designLibraryLinkSchema.omit({ id: true, sourceWorkspaceId: true, sourceNodeId: true }).partial();
 const designFigmaLinkChangesSchema = designFigmaLinkSchema.omit({ id: true, fileKey: true }).partial();
 const designCodeArtifactChangesSchema = designCodeArtifactSchema.omit({ id: true }).partial();
+const designPrototypeFlowChangesSchema = designPrototypeFlowSchema.omit({ id: true }).partial();
+const designPrototypeInteractionChangesSchema = designPrototypeInteractionSchema.omit({ id: true, sourceElementId: true }).partial();
+const designMotionTokenChangesSchema = designMotionTokenSchema.omit({ id: true }).partial();
+const designMotionTrackChangesSchema = designMotionTrackSchema.omit({ id: true, elementId: true }).partial();
 
 export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -433,6 +569,19 @@ export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('add-code-artifact'), artifact: designCodeArtifactSchema }),
   z.object({ kind: z.literal('update-code-artifact'), artifactId: z.string().uuid(), changes: designCodeArtifactChangesSchema }),
   z.object({ kind: z.literal('delete-code-artifact'), artifactId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-prototype-flow'), flow: designPrototypeFlowSchema }),
+  z.object({ kind: z.literal('update-prototype-flow'), flowId: z.string().uuid(), changes: designPrototypeFlowChangesSchema }),
+  z.object({ kind: z.literal('delete-prototype-flow'), flowId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-prototype-interaction'), interaction: designPrototypeInteractionSchema }),
+  z.object({ kind: z.literal('update-prototype-interaction'), interactionId: z.string().uuid(), changes: designPrototypeInteractionChangesSchema }),
+  z.object({ kind: z.literal('delete-prototype-interaction'), interactionId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-motion-token'), token: designMotionTokenSchema }),
+  z.object({ kind: z.literal('update-motion-token'), tokenId: z.string().uuid(), changes: designMotionTokenChangesSchema }),
+  z.object({ kind: z.literal('delete-motion-token'), tokenId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-motion-track'), track: designMotionTrackSchema }),
+  z.object({ kind: z.literal('update-motion-track'), trackId: z.string().uuid(), changes: designMotionTrackChangesSchema }),
+  z.object({ kind: z.literal('delete-motion-track'), trackId: z.string().uuid() }),
+  z.object({ kind: z.literal('update-presentation'), changes: designPresentationSettingsSchema.partial() }),
   z.object({
     kind: z.literal('create-component-instance'),
     componentId: z.string().uuid(),
@@ -522,6 +671,17 @@ export type DesignLibraryLink = z.infer<typeof designLibraryLinkSchema>;
 export type DesignFigmaSource = z.infer<typeof designFigmaSourceSchema>;
 export type DesignFigmaLink = z.infer<typeof designFigmaLinkSchema>;
 export type DesignCodeArtifact = z.infer<typeof designCodeArtifactSchema>;
+export type DesignMotionEasing = z.infer<typeof designMotionEasingSchema>;
+export type DesignPrototypeTransition = z.infer<typeof designPrototypeTransitionSchema>;
+export type DesignPrototypeTrigger = z.infer<typeof designPrototypeTriggerSchema>;
+export type DesignPrototypeAction = z.infer<typeof designPrototypeActionSchema>;
+export type DesignPrototypeInteraction = z.infer<typeof designPrototypeInteractionSchema>;
+export type DesignPrototypeFlow = z.infer<typeof designPrototypeFlowSchema>;
+export type DesignMotionToken = z.infer<typeof designMotionTokenSchema>;
+export type DesignMotionKeyframeValues = z.infer<typeof designMotionKeyframeValuesSchema>;
+export type DesignMotionKeyframe = z.infer<typeof designMotionKeyframeSchema>;
+export type DesignMotionTrack = z.infer<typeof designMotionTrackSchema>;
+export type DesignPresentationSettings = z.infer<typeof designPresentationSettingsSchema>;
 export type DesignDocument = z.infer<typeof designDocumentSchema>;
 export type DesignOperation = z.infer<typeof designOperationSchema>;
 export type ApplyDesignOperationsInput = z.infer<typeof applyDesignOperationsSchema>;

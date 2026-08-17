@@ -123,6 +123,15 @@ Download the latest installers from
   the same revision-safe import, preview, and protected-write flow through the
   bundled CLI or typed MCP tools.
 - **Council decisions:** open Council from the Canvas toolbar, the workspace in
+- **Interactive prototypes and native motion:** connect any layer to another
+  frame, overlay, scroll target, history action, or variable mode using click,
+  press, hover, and timed triggers. Preview flows in a focused player with
+  transitions, fixed layers, overflow, hotspots, and device framing, then
+  share a self-contained read-only HTML prototype. Reusable motion tokens,
+  per-layer tracks, keyframes, easing, CSS keyframes, and Motion.dev output all
+  remain inside the same revisioned Design document, editable by people and
+  connected agents without a parallel prototype file.
+- **Council decisions:** open Council from the Canvas toolbar, the workspace in
   Workbench, or `Cmd/Ctrl+K`, then ask two to five real agents for independent,
   budget-limited perspectives on one task or objective, compare the same
   evidence, risk, test, disagreement, and confidence contract, then record the

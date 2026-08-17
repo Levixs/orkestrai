@@ -22,6 +22,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'chained-flows': 'chained-flows',
   'design-figma': 'design-figma',
   'design-delivery': 'design-delivery',
+  'design-prototype': 'design-prototype',
   'mcp-tools': 'mcp-tools',
   'managed-ports': 'managed-ports',
   'leader-dictation': 'leader-dictation',

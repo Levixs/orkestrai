@@ -38,6 +38,7 @@
     MousePointer2,
     PenTool,
     Palette,
+    Play,
     Plus,
     Redo2,
     RectangleHorizontal,
@@ -50,6 +51,8 @@
     Ungroup,
     Unlink2,
     Unlock,
+    SlidersHorizontal,
+    Workflow,
     ZoomIn,
     ZoomOut,
   } from '@lucide/svelte';
@@ -88,10 +91,13 @@
   } from '$lib/modules/agent-room/domain/design-geometry.js';
   import { importSvgToDesign, SvgImportError } from '$lib/modules/agent-room/domain/design-svg-import.js';
   import { resolveDesignElements } from '$lib/modules/agent-room/domain/design-variables.js';
+  import { defaultPrototypeFlow, exportMotionCss, prototypeFrames } from '$lib/modules/agent-room/domain/design-prototype.js';
   import * as m from '$lib/paraglide/messages.js';
   import DesignColorTools from './DesignColorTools.svelte';
   import DesignComponentsPanel from './DesignComponentsPanel.svelte';
   import DesignPaintEditor from './DesignPaintEditor.svelte';
+  import DesignPrototypePanel from './DesignPrototypePanel.svelte';
+  import DesignPrototypePlayer from './DesignPrototypePlayer.svelte';
   import DesignRenderer from './DesignRenderer.svelte';
   import DesignToolbarButton from './DesignToolbarButton.svelte';
   import DesignVariableBindings from './DesignVariableBindings.svelte';
@@ -152,6 +158,9 @@
   let exporting = $state(false);
   let colorMenuOpen = $state(false);
   let leftPanel = $state<'layers' | 'variables' | 'components'>('layers');
+  let rightPanel = $state<'design' | 'prototype'>('design');
+  let prototypeOpen = $state(false);
+  let prototypeFlowId = $state<string | null>(null);
   let thumbnailRevision = $state(-1);
   let thumbnailTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -2012,6 +2021,108 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  async function serializedPrototypeFrame(frameId: string): Promise<{ svg: string; width: number; height: number; overflow: DesignElement['prototypeOverflow'] }> {
+    if (!pageSvg || !document) throw new Error(m['design.export_error']());
+    const frame = document.elements.find((element) => element.id === frameId && element.type === 'frame');
+    if (!frame) throw new Error(m['design.prototype_frame_missing']());
+    const ids = descendantIds([frameId]);
+    const elements = document.elements.filter((element) => ids.has(element.id) && element.visible);
+    const width = frame.prototypeOverflow === 'horizontal' || frame.prototypeOverflow === 'both'
+      ? Math.max(frame.width, ...elements.map((element) => element.x + element.width - frame.x))
+      : frame.width;
+    const height = frame.prototypeOverflow === 'vertical' || frame.prototypeOverflow === 'both'
+      ? Math.max(frame.height, ...elements.map((element) => element.y + element.height - frame.y))
+      : frame.height;
+    const clone = pageSvg.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('viewBox', `${frame.x} ${frame.y} ${width} ${height}`);
+    clone.setAttribute('width', String(width));
+    clone.setAttribute('height', String(height));
+    clone.querySelectorAll('[data-design-selection],[data-design-guide],[data-design-ruler],[data-design-snap],[data-design-ui],[data-design-hit]').forEach((element) => element.remove());
+    clone.querySelectorAll<SVGGElement>('[data-design-element]').forEach((element) => {
+      if (!ids.has(element.dataset.designElement || '')) element.remove();
+    });
+    for (const image of Array.from(clone.querySelectorAll('image'))) {
+      const href = image.getAttribute('href');
+      if (!href?.startsWith('/')) continue;
+      const response = await fetch(href);
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+      image.setAttribute('href', dataUrl);
+    }
+    return { svg: new XMLSerializer().serializeToString(clone), width: frame.width, height: frame.height, overflow: frame.prototypeOverflow };
+  }
+
+  function escapedHtml(value: string): string {
+    return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  }
+
+  async function presentationHtml(flowId: string): Promise<string> {
+    if (!document) throw new Error(m['design.export_error']());
+    const flow = document.prototypeFlows.find((candidate) => candidate.id === flowId);
+    if (!flow) throw new Error(m['design.prototype_flow_missing']());
+    const frames = Object.fromEntries(await Promise.all(prototypeFrames(document).map(async (frame) => [frame.id, {
+      id: frame.id,
+      name: frame.name,
+      ...(await serializedPrototypeFrame(frame.id)),
+    }])));
+    const payload = JSON.stringify({
+      flow,
+      frames,
+      interactions: document.prototypeInteractions,
+      background: document.presentation.background,
+      showDeviceFrame: document.presentation.showDeviceFrame,
+    }).replaceAll('<', '\\u003c');
+    const motionCss = exportMotionCss(document).replaceAll('</style', '<\\/style');
+    const title = escapedHtml(`${document.name} - ${flow.name}`);
+    const labels = JSON.stringify({
+      back: m['design.prototype_back'](),
+      restart: m['design.prototype_restart'](),
+      readonly: m['design.prototype_readonly'](),
+    }).replaceAll('<', '\\u003c');
+    return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+<style>:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#111;color:#fff}.bar{height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#18181b;border-bottom:1px solid #ffffff18}.bar strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.bar span{font-size:10px;color:#ffffff80}.bar button{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:#ffffff0a;color:#fff;cursor:pointer}.bar button:hover{background:#ffffff16}.spacer{flex:1}.stage{height:calc(100vh - 48px);display:grid;place-items:center;padding:28px}.viewport{position:relative;overflow:hidden;background:#fff;box-shadow:0 24px 80px #0009}.viewport.device{border-radius:18px;box-shadow:0 24px 80px #0009,0 0 0 1px #ffffff30}.viewport.scroll-y{overflow-y:auto}.viewport.scroll-x{overflow-x:auto}.viewport.scroll-both{overflow:auto}.viewport svg{display:block}.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px}.overlay svg{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 20px 60px #000a}${motionCss}</style></head>
+<body><header class="bar"><button id="back" aria-label="Back">&#8592;</button><button id="restart" aria-label="Restart">&#8635;</button><strong>${title}</strong><div class="spacer"></div><span id="readonly"></span></header><main class="stage" id="stage"></main>
+<script>const data=${payload};const labels=${labels};const stage=document.querySelector('#stage');const history=[];let current=data.flow.startFrameId;let timers=[];document.querySelector('#readonly').textContent=labels.readonly;document.querySelector('#back').title=labels.back;document.querySelector('#restart').title=labels.restart;
+function fit(el,frame){const scale=Math.min((innerWidth-56)/frame.width,(innerHeight-104)/frame.height,1.5);el.style.width=(frame.width*scale)+'px';el.style.height=(frame.height*scale)+'px';const svg=el.querySelector('svg');if(svg){svg.style.width=(Number(svg.getAttribute('width'))*scale)+'px';svg.style.height=(Number(svg.getAttribute('height'))*scale)+'px'}}
+function delayed(){timers.forEach(clearTimeout);timers=[];data.interactions.filter(i=>i.trigger.type==='after-delay'&&stage.querySelector('[data-design-element="'+i.sourceElementId+'"]')).forEach(i=>timers.push(setTimeout(()=>run(i),i.trigger.delayMs)))}
+function show(id,push=true){const frame=data.frames[id];if(!frame)return;if(push&&current!==id)history.push(current);current=id;stage.style.background=data.background;stage.innerHTML='<div class="viewport '+(data.showDeviceFrame?'device ':'')+(frame.overflow==='vertical'?'scroll-y':frame.overflow==='horizontal'?'scroll-x':frame.overflow==='both'?'scroll-both':'')+'">'+frame.svg+'</div>';fit(stage.firstElementChild,frame);delayed()}
+function overlay(i){const frame=data.frames[i.action.targetFrameId];if(!frame)return;const host=document.createElement('div');host.className='overlay';host.dataset.overlay='true';host.style.background=i.action.backgroundColor+Math.round(i.action.backgroundOpacity*255).toString(16).padStart(2,'0');host.innerHTML=frame.svg;host.addEventListener('click',e=>{if(e.target===host&&i.action.dismissOnOutside)host.remove()});stage.firstElementChild.append(host)}
+function run(i){const a=i.action;if(a.type==='navigate')show(a.targetFrameId);else if(a.type==='open-overlay')overlay(i);else if(a.type==='close-overlay')stage.querySelector('[data-overlay]:last-of-type')?.remove();else if(a.type==='back'){const id=history.pop();if(id)show(id,false)}else if(a.type==='scroll-to')stage.querySelector('[data-design-element="'+a.targetElementId+'"]')?.scrollIntoView({behavior:'smooth',block:'center'})}
+function interaction(e,type){const el=e.target.closest?.('[data-design-element]');if(!el)return;const i=data.interactions.find(x=>x.sourceElementId===el.dataset.designElement&&x.trigger.type===type);if(i){e.preventDefault();run(i)}}stage.addEventListener('click',e=>interaction(e,'click'));stage.addEventListener('pointerdown',e=>interaction(e,'press'));stage.addEventListener('pointerover',e=>interaction(e,'hover'));document.querySelector('#back').onclick=()=>{const overlay=stage.querySelector('[data-overlay]:last-of-type');if(overlay)overlay.remove();else{const id=history.pop();if(id)show(id,false)}};document.querySelector('#restart').onclick=()=>{history.length=0;show(data.flow.startFrameId,false)};addEventListener('resize',()=>show(current,false));show(current,false);<\/script></body></html>`;
+  }
+
+  async function sharePrototype(flowId: string) {
+    if (!document || exporting) return;
+    exporting = true;
+    try {
+      const file = new File([await presentationHtml(flowId)], `${exportName()}-prototype.html`, { type: 'text/html' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: document.name });
+      else downloadBlob(file, file.name);
+      toast.success(m['design.prototype_shared']());
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') toast.error(error instanceof Error ? error.message : m['design.export_error']());
+    } finally {
+      exporting = false;
+    }
+  }
+
+  function openPrototype(flowId: string | null = null) {
+    if (!document?.prototypeFlows.length) {
+      rightPanel = 'prototype';
+      toast.info(m['design.prototype_create_flow_first']());
+      return;
+    }
+    prototypeFlowId = flowId ?? defaultPrototypeFlow(document)?.id ?? null;
+    prototypeOpen = true;
+  }
+
   async function rasterBlob(format: 'png' | 'jpeg' | 'webp', maxDimension = Number.POSITIVE_INFINITY, ids: string[] | null = null): Promise<Blob> {
     const bounds = serializationBounds(ids);
     const svg = await serializedSvg(ids);
@@ -2313,7 +2424,7 @@
 <div class={`@container/design h-full min-h-0 ${className}`}>
   <div
     bind:this={editorRoot}
-    class="grid h-full min-h-0 grid-cols-[210px_minmax(0,1fr)_248px] grid-rows-[42px_minmax(0,1fr)] overflow-hidden bg-[var(--app-canvas)] text-[var(--app-text)] @max-[660px]:grid-cols-[1fr]"
+    class="grid h-full min-h-0 grid-cols-[210px_minmax(0,1fr)_300px] grid-rows-[42px_minmax(0,1fr)] overflow-hidden bg-[var(--app-canvas)] text-[var(--app-text)] @max-[660px]:grid-cols-[1fr]"
     aria-label={m['design.mode_aria']()}
     tabindex="-1"
     onpointerdowncapture={focusEditor}
@@ -2396,6 +2507,7 @@
       <span class="w-10 shrink-0 text-center text-[10px] tabular-nums text-[var(--app-text-muted)]">{Math.round(zoom * 100)}%</span>
       <DesignToolbarButton label={m['design.zoom_in']()} onclick={() => (zoom = Math.min(3, zoom + 0.1))}><ZoomIn size={16} /></DesignToolbarButton>
       <DesignToolbarButton label={m['design.fit']()} onclick={fitPage}><Maximize2 size={16} /></DesignToolbarButton>
+      <DesignToolbarButton label={m['design.prototype_play']()} disabled={!document?.prototypeFlows.length} onclick={() => openPrototype()}><Play size={16} fill="currentColor" /></DesignToolbarButton>
       <DropdownMenu.Root>
         <Tooltip.Root delayDuration={250}><Tooltip.Trigger>{#snippet child({ props })}<DropdownMenu.Trigger {...props} class="inline-flex h-8 w-10 shrink-0 items-center justify-center gap-0.5 rounded-md text-[var(--app-text-soft)] hover:bg-[var(--app-border)] data-[state=open]:bg-[var(--app-accent-soft)] data-[state=open]:text-[var(--app-text)]" disabled={exporting} aria-label={m['design.export']()}><Download size={15} /><ChevronDown size={10} /></DropdownMenu.Trigger>{/snippet}</Tooltip.Trigger><Tooltip.Content class="z-[120]" side="bottom" sideOffset={6}>{m['design.export']()}</Tooltip.Content></Tooltip.Root>
         <DropdownMenu.Content align="end" class="z-[120]">
@@ -2657,9 +2769,15 @@
       {/if}
     </main>
 
-    <aside class="min-h-0 overflow-y-auto border-l border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
-      <div class="sticky top-0 z-10 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">{m['design.properties']()}</div>
-      {#if selected && document}
+    <aside class="flex min-h-0 flex-col border-l border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
+      <div class="grid grid-cols-2 gap-1 border-b border-[var(--app-border)] p-1.5">
+        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'design' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'design'} onclick={() => (rightPanel = 'design')}><SlidersHorizontal size={12} />{m['design.properties']()}</button>
+        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'prototype' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'prototype'} onclick={() => (rightPanel = 'prototype')}><Workflow size={12} />{m['design.prototype']()}</button>
+      </div>
+      {#if rightPanel === 'prototype' && document}
+        <div class="min-h-0 flex-1"><DesignPrototypePanel {document} {selected} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onPreview={openPrototype} onShare={sharePrototype} /></div>
+      {:else if selected && document}
+        <div class="min-h-0 flex-1 overflow-y-auto">
         <div class="space-y-4 p-3 text-[11px]">
           <label class="block space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.name']()}</span><Input value={selected.name} onchange={(event: Event) => void updateSelected({ name: (event.currentTarget as HTMLInputElement).value })} /></label>
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.position']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">X</span><Input type="number" value={selected.x} onchange={(event: Event) => void updateSelected({ x: number(event) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">Y</span><Input type="number" value={selected.y} onchange={(event: Event) => void updateSelected({ y: number(event) })} /></label><label class="col-span-2 space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.rotation']()}</span><Input type="number" value={selected.rotation} onchange={(event: Event) => void updateSelected({ rotation: number(event) })} /></label></div></section>
@@ -2710,9 +2828,9 @@
           {#if selected.parentId}<section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.constraints']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.horizontal']()}</span><NativeSelect.Root value={selected.constraintHorizontal} onchange={(event: Event) => void updateSelected({ constraintHorizontal: (event.currentTarget as HTMLSelectElement).value as DesignElement['constraintHorizontal'] })}><NativeSelect.Option value="left">{m['design.align_left']()}</NativeSelect.Option><NativeSelect.Option value="right">{m['design.align_right']()}</NativeSelect.Option><NativeSelect.Option value="left-right">{m['design.constraint_left_right']()}</NativeSelect.Option><NativeSelect.Option value="center">{m['design.align_center']()}</NativeSelect.Option><NativeSelect.Option value="scale">{m['design.constraint_scale']()}</NativeSelect.Option></NativeSelect.Root></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.vertical']()}</span><NativeSelect.Root value={selected.constraintVertical} onchange={(event: Event) => void updateSelected({ constraintVertical: (event.currentTarget as HTMLSelectElement).value as DesignElement['constraintVertical'] })}><NativeSelect.Option value="top">{m['design.align_top']()}</NativeSelect.Option><NativeSelect.Option value="bottom">{m['design.align_bottom']()}</NativeSelect.Option><NativeSelect.Option value="top-bottom">{m['design.constraint_top_bottom']()}</NativeSelect.Option><NativeSelect.Option value="center">{m['design.align_center']()}</NativeSelect.Option><NativeSelect.Option value="scale">{m['design.constraint_scale']()}</NativeSelect.Option></NativeSelect.Root></label></div></section>{/if}
           {#if selected.type === 'group'}<Button class="w-full" variant="outline" size="sm" onclick={() => void ungroupSelection()}><Ungroup size={13} />{m['design.ungroup_selection']()}</Button>{/if}
           <div class="flex items-center gap-1 border-t border-[var(--app-border)] pt-3"><Button variant="outline" size="icon-sm" aria-label={m['design.move_down']()} onclick={() => void reorder(-1)}><ArrowDown /></Button><Button variant="outline" size="icon-sm" aria-label={m['design.move_up']()} onclick={() => void reorder(1)}><ArrowUp /></Button><div class="flex-1"></div><Button variant="destructive" size="icon-sm" disabled={selected.locked} aria-label={m['design.delete']()} onclick={() => void removeSelected()}><Trash2 /></Button></div>
-        </div>
+        </div></div>
       {:else if selectedElements.length > 1}
-        <div class="space-y-4 p-3">
+        <div class="min-h-0 flex-1 overflow-y-auto"><div class="space-y-4 p-3">
           <p class="text-xs font-medium">{m['design.multiple_selection']({ count: String(selectedElements.length) })}</p>
           <section class="space-y-2">
             <h3 class="text-[11px] font-semibold text-[var(--app-text-soft)]">{m['design.alignment']()}</h3>
@@ -2735,10 +2853,14 @@
           <Button variant="outline" size="sm" class="w-full" onclick={() => void groupSelection()}><Group size={13} />{m['design.group_selection']()}</Button>
           <p class="text-[10px] leading-4 text-[var(--app-text-muted)]">{m['design.boolean']()} · {m['design.mask']()}</p>
           <Button variant="destructive" size="sm" class="w-full" onclick={() => void removeSelected()}><Trash2 size={13} />{m['design.delete']()}</Button>
-        </div>
+        </div></div>
       {:else}
-        <div class="space-y-4 p-3"><p class="text-xs leading-5 text-[var(--app-text-muted)]">{m['design.no_selection']()}</p>{#if document?.guides.length}<section class="space-y-2"><h3 class="text-[11px] font-semibold">{m['design.rulers']()}</h3>{#each document.guides as guide}<div class="flex items-center gap-2"><span class="w-4 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">{guide.axis}</span><Input class="h-7 flex-1" type="number" value={guide.position} onchange={(event: Event) => void apply([{ kind: 'update-guide', guideId: guide.id, position: number(event) }], m['design.operation_guide'](), { inverse: [{ kind: 'update-guide', guideId: guide.id, position: guide.position }] })} /><Button variant="ghost" size="icon-sm" class="size-7" aria-label={m['design.remove_guide']()} onclick={() => void removeGuide(guide.id)}><Trash2 size={11} /></Button></div>{/each}</section>{/if}</div>
+        <div class="min-h-0 flex-1 overflow-y-auto"><div class="space-y-4 p-3"><p class="text-xs leading-5 text-[var(--app-text-muted)]">{m['design.no_selection']()}</p>{#if document?.guides.length}<section class="space-y-2"><h3 class="text-[11px] font-semibold">{m['design.rulers']()}</h3>{#each document.guides as guide}<div class="flex items-center gap-2"><span class="w-4 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">{guide.axis}</span><Input class="h-7 flex-1" type="number" value={guide.position} onchange={(event: Event) => void apply([{ kind: 'update-guide', guideId: guide.id, position: number(event) }], m['design.operation_guide'](), { inverse: [{ kind: 'update-guide', guideId: guide.id, position: guide.position }] })} /><Button variant="ghost" size="icon-sm" class="size-7" aria-label={m['design.remove_guide']()} onclick={() => void removeGuide(guide.id)}><Trash2 size={11} /></Button></div>{/each}</section>{/if}</div></div>
       {/if}
     </aside>
   </div>
 </div>
+
+{#if prototypeOpen && document}
+  <DesignPrototypePlayer {document} {workspaceId} flowId={prototypeFlowId} onClose={() => (prototypeOpen = false)} onShare={sharePrototype} />
+{/if}

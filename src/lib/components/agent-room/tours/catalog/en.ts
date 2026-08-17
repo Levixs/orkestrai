@@ -509,6 +509,42 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'design-prototype',
+    icon: 'PlaySquare',
+    title: 'Build an interactive prototype',
+    tagline: 'Connect screens, animate layers, and share one testable experience.',
+    steps: [
+      {
+        id: 'document',
+        title: 'Start from the native design source',
+        body: 'I create a Product Prototype Design node. Its frames, variables, components, interactions, and motion all share one revision history.',
+        action: { kind: 'createDesign', title: 'Product Prototype' },
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Product Prototype' },
+      },
+      {
+        id: 'open',
+        title: 'Open the Prototype inspector',
+        body: 'Open the document and select Prototype in the right inspector. Create a starting flow, then select a frame or layer to expose its interaction and scrolling controls.',
+        action: { kind: 'openDesign', title: 'Product Prototype' },
+      },
+      {
+        id: 'interactions',
+        title: 'Connect behavior to the selected layer',
+        body: 'Add click, press, hover, or timed triggers for frame navigation, overlays, back, scrolling, or variable modes. Play the flow to verify transitions, fixed layers, hotspots, and overflow in context.',
+      },
+      {
+        id: 'motion',
+        title: 'Animate with reusable tokens and keyframes',
+        body: 'Switch to Motion, create a duration and easing token, add a track to a selected layer, then edit its timeline and keyframes. Copy CSS keyframes or Motion.dev output when implementation needs the same behavior.',
+      },
+      {
+        id: 'share',
+        title: 'Present or share without exposing the workspace',
+        body: 'Use the focused player for device framing, hotspots, fullscreen, restart, and back. Share exports a self-contained read-only HTML prototype that keeps the approved interaction flow portable.',
+      },
+    ],
+  },
+  {
     id: 'managed-ports',
     icon: 'RadioTower',
     title: 'Release dev server ports',

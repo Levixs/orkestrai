@@ -74,6 +74,7 @@
 - Design-to-code supports Svelar/Svelte, React/Next, Vue, and HTML/Tailwind through `DesignDeliveryService`. Always preview before writing; preserve workspace path confinement, expected file hashes, document revisions, and Code Connect component mappings.
 - Generated files are workspace artifacts linked to the native Design document. Monaco, Review Center, global search, Portal/device capture, bridge CLI, and MCP tools must operate on the same artifact path and revision rather than maintain parallel state.
 - Visual comparison is evidence, not an automatic correctness claim: normalize explicit viewports, retain reference/actual/diff images, and create traceable review tasks for human or agent decisions.
+- Native prototypes, interactions, presentation settings, motion tokens, tracks, and keyframes live inside the versioned `DesignDocument`; the manual editor, player, global search, CLI, and MCP agents must use that same command bus and revision guard rather than maintain a parallel prototype store.
 
 ## Electron
 

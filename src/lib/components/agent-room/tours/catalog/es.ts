@@ -509,6 +509,42 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'design-prototype',
+    icon: 'PlaySquare',
+    title: 'Crea un prototipo interactivo',
+    tagline: 'Conecta pantallas, anima capas y comparte una experiencia comprobable.',
+    steps: [
+      {
+        id: 'document',
+        title: 'Empieza desde la fuente de diseño nativa',
+        body: 'Creo un nodo Diseño llamado Prototipo del Producto. Frames, variables, componentes, interacciones y motion comparten el mismo historial de revisiones.',
+        action: { kind: 'createDesign', title: 'Prototipo del Producto' },
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Prototipo del Producto' },
+      },
+      {
+        id: 'open',
+        title: 'Abre el inspector de Prototipo',
+        body: 'Abre el documento y selecciona Prototipo en el inspector derecho. Crea un flujo inicial y selecciona un frame o capa para acceder a sus interacciones y controles de desplazamiento.',
+        action: { kind: 'openDesign', title: 'Prototipo del Producto' },
+      },
+      {
+        id: 'interactions',
+        title: 'Vincula comportamiento a la capa seleccionada',
+        body: 'Agrega disparadores de clic, presión, hover o tiempo para navegar entre frames, abrir overlays, volver, desplazar o cambiar modos de variables. Ejecuta el flujo para validar transiciones, capas fijas, hotspots y overflow en contexto.',
+      },
+      {
+        id: 'motion',
+        title: 'Anima con tokens reutilizables y keyframes',
+        body: 'Cambia a Motion, crea un token de duración y easing, agrega un track a la capa seleccionada y edita timeline y keyframes. Copia keyframes CSS o salida Motion.dev cuando la implementación necesite el mismo comportamiento.',
+      },
+      {
+        id: 'share',
+        title: 'Presenta o comparte sin exponer el workspace',
+        body: 'Usa el player enfocado con marco de dispositivo, hotspots, pantalla completa, reinicio y volver. Compartir exporta un prototipo HTML autocontenido y de solo lectura con el flujo de interacción aprobado.',
+      },
+    ],
+  },
+  {
     id: 'managed-ports',
     icon: 'RadioTower',
     title: 'Liberar puertos de dev servers',

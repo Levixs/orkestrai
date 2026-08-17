@@ -250,6 +250,37 @@ export class WorkspaceSearchService {
           route,
         }, ['generated code codigo generado', artifact.framework, artifact.path, artifact.componentMappings]));
       }
+      for (const flow of document.prototypeFlows.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        const interactions = document.prototypeInteractions.filter((interaction) => interaction.sourceElementId === flow.startFrameId);
+        results.push(indexed({
+          id: `design-prototype:${node.id}:${flow.id}`,
+          kind: 'artifact',
+          title: flow.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(flow.description || `${interactions.length} interactions`),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['prototype prototipo prototipo flow fluxo flujo interaction interacao interaccion', interactions.map((interaction) => interaction.action.type)]));
+      }
+      for (const token of document.motionTokens.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-motion:${node.id}:${token.id}`,
+          kind: 'artifact',
+          title: token.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: `${token.durationMs} ms`,
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['motion animation animacao animacion easing timeline keyframe', token.easing]));
+      }
     }
 
     for (const task of tasks.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {

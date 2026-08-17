@@ -513,6 +513,42 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'design-prototype',
+    icon: 'PlaySquare',
+    title: 'Monte um protótipo interativo',
+    tagline: 'Conecte telas, anime layers e compartilhe uma experiência testável.',
+    steps: [
+      {
+        id: 'document',
+        title: 'Comece pela fonte de design nativa',
+        body: 'Crio um node Design chamado Protótipo do Produto. Frames, variáveis, componentes, interações e motion compartilham o mesmo histórico de revisões.',
+        action: { kind: 'createDesign', title: 'Protótipo do Produto' },
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Protótipo do Produto' },
+      },
+      {
+        id: 'open',
+        title: 'Abra o inspetor de Protótipo',
+        body: 'Abra o documento e selecione Protótipo no inspetor direito. Crie um fluxo inicial e selecione um frame ou layer para acessar interações e controles de rolagem.',
+        action: { kind: 'openDesign', title: 'Protótipo do Produto' },
+      },
+      {
+        id: 'interactions',
+        title: 'Vincule comportamento à layer selecionada',
+        body: 'Adicione gatilhos de clique, pressionar, hover ou tempo para navegar entre frames, abrir overlays, voltar, rolar ou trocar modos de variáveis. Execute o fluxo para validar transições, layers fixas, hotspots e overflow no contexto.',
+      },
+      {
+        id: 'motion',
+        title: 'Anime com tokens reutilizáveis e keyframes',
+        body: 'Troque para Motion, crie um token de duração e easing, adicione um track à layer selecionada e edite timeline e keyframes. Copie keyframes CSS ou saída Motion.dev quando a implementação precisar do mesmo comportamento.',
+      },
+      {
+        id: 'share',
+        title: 'Apresente ou compartilhe sem expor o workspace',
+        body: 'Use o player focado com moldura de dispositivo, hotspots, tela cheia, reiniciar e voltar. Compartilhar exporta um protótipo HTML autocontido e somente leitura com o fluxo de interação aprovado.',
+      },
+    ],
+  },
+  {
     id: 'managed-ports',
     icon: 'RadioTower',
     title: 'Liberar portas de dev servers',

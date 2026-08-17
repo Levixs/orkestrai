@@ -9,6 +9,15 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added native interactive prototyping and motion to Design Studio. Designers
+  and agents can define multiple starting flows, attach click, press, hover, or
+  timed interactions to any layer, navigate frames, open or close overlays,
+  return through history, scroll to content, and switch variable modes. The
+  focused player supports transitions, hotspots, fixed layers, overflow,
+  device framing, fullscreen, and self-contained read-only HTML sharing.
+  Reusable motion tokens, per-layer timelines, keyframes, easing, CSS keyframe
+  export, and Motion.dev output live in the same revision-safe Design document
+  and are indexed by universal search and available through the Orkestrai MCP.
 - Completed the native Design delivery phase with safe code-to-design import
   for HTML/Tailwind, Svelte, React/JSX, and Vue; design-to-code adapters for
   Svelar/Svelte 5, React, Next.js, Vue 3, and HTML/Tailwind; and preview-before-
