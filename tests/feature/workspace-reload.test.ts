@@ -81,7 +81,7 @@ describe('WorkspaceService.reloadNode', () => {
     expect(persisted.agentSessionId).toBe('conversa-real-123');
   });
 
-  it('recupera conversa Claude ausente como sessao nova com a role nativa', async () => {
+  it('inicia conversa Claude ausente sem fallback especulativo e com a role nativa', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'recovery', workingDir: '/tmp' });
     await roleService.save(workspace.id, { name: 'Lider', prompt: 'Coordene o time.' });
     const node = await workspaceRepository.createNode({
@@ -103,7 +103,7 @@ describe('WorkspaceService.reloadNode', () => {
 
     expect(payload.sessionId).toBeUndefined();
     expect(payload.agentSessionId).toBeUndefined();
-    expect(payload.resumeRecovery).toBe(true);
+    expect(payload.resumeRecovery).toBe(false);
     expect(payload.role).toBe('Lider');
     expect(payload.initialRoleArgs).toEqual(['--append-system-prompt', 'Coordene o time.']);
     expect(payload.roleConfiguredAtLaunch).toBe('Lider');
