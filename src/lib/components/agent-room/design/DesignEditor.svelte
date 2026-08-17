@@ -29,6 +29,7 @@
     EyeOff,
     Frame,
     Group,
+    Hand,
     ImagePlus,
     Lock,
     Layers3,
@@ -96,7 +97,12 @@
   } from '$lib/modules/agent-room/domain/design-geometry.js';
   import { importSvgToDesign, SvgImportError } from '$lib/modules/agent-room/domain/design-svg-import.js';
   import { resolveDesignElements } from '$lib/modules/agent-room/domain/design-variables.js';
-  import { visibleDesignElements, type DesignViewportBounds } from '$lib/modules/agent-room/domain/design-viewport.js';
+  import {
+    designContentBounds,
+    designSceneBounds,
+    visibleDesignElements,
+    type DesignViewportBounds,
+  } from '$lib/modules/agent-room/domain/design-viewport.js';
   import { defaultPrototypeFlow, exportMotionCss, prototypeFrames } from '$lib/modules/agent-room/domain/design-prototype.js';
   import * as m from '$lib/paraglide/messages.js';
   import DesignColorTools from './DesignColorTools.svelte';
@@ -123,8 +129,8 @@
     class?: string;
   } = $props();
 
-  type Tool = 'select' | 'frame' | 'rectangle' | 'ellipse' | 'text' | 'path';
-  type ShapeTool = Exclude<Tool, 'select' | 'path'>;
+  type Tool = 'select' | 'hand' | 'frame' | 'rectangle' | 'ellipse' | 'text' | 'path';
+  type ShapeTool = Exclude<Tool, 'select' | 'hand' | 'path'>;
   type HistoryEntry = { forward: DesignOperation[]; inverse: DesignOperation[]; summary: string };
   type AlignMode = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' | 'distribute-x' | 'distribute-y';
   type PathPointSelection = { elementId: string; subpathIndex: number; pointIndex: number };
@@ -140,6 +146,8 @@
   let saving = $state(false);
   let errorMessage = $state('');
   let zoom = $state(0.65);
+  let spacePressed = $state(false);
+  let panning = $state(false);
   let viewport = $state<HTMLElement>();
   let viewportBounds = $state<DesignViewportBounds | null>(null);
   let editorRoot = $state<HTMLElement>();
@@ -189,6 +197,8 @@
 
   const page = $derived(document?.pages.find((item) => item.id === document?.activePageId) ?? document?.pages[0] ?? null);
   const pageElements = $derived(document && page ? document.elements.filter((element) => element.pageId === page.id) : []);
+  const contentBounds = $derived(page ? designContentBounds(pageElements, page) : null);
+  const sceneBounds = $derived(page ? designSceneBounds(pageElements, page) : null);
   const renderedElements = $derived.by(() => {
     const draft = draftElement;
     let elements: DesignElement[] = draft
@@ -248,8 +258,8 @@
   const editingTextHeight = $derived(selected?.type === 'text' && editingTextId === selected.id
     ? Math.max(selected.height, Math.ceil(designTextHeight(editingTextDraft, selected.width, selected.fontSize, selected.fontWeight)))
     : 0);
-  const rulerXTicks = $derived(page ? Array.from({ length: Math.ceil(page.width / 100) + 1 }, (_, index) => index * 100) : []);
-  const rulerYTicks = $derived(page ? Array.from({ length: Math.ceil(page.height / 100) + 1 }, (_, index) => index * 100) : []);
+  const rulerXTicks = $derived(sceneBounds ? rulerTicks(sceneBounds.x, sceneBounds.x + sceneBounds.width) : []);
+  const rulerYTicks = $derived(sceneBounds ? rulerTicks(sceneBounds.y, sceneBounds.y + sceneBounds.height) : []);
 
   function uuidv7(): string {
     const timestamp = Date.now().toString(16).padStart(12, '0');
@@ -348,6 +358,7 @@
   }
 
   function toolLabel(value: Tool): string {
+    if (value === 'hand') return m['design.pan']();
     if (value === 'frame') return m['design.frame']();
     if (value === 'rectangle') return m['design.rectangle']();
     if (value === 'ellipse') return m['design.ellipse']();
@@ -394,12 +405,46 @@
   }
 
   function pagePoint(event: PointerEvent, svg = pageSvg): { x: number; y: number } {
-    if (!svg || !page) return { x: 0, y: 0 };
+    if (!svg || !sceneBounds) return { x: 0, y: 0 };
     const bounds = svg.getBoundingClientRect();
     return {
-      x: Math.max(0, Math.min(page.width, Math.round((event.clientX - bounds.left) * page.width / bounds.width))),
-      y: Math.max(0, Math.min(page.height, Math.round((event.clientY - bounds.top) * page.height / bounds.height))),
+      x: Math.round(sceneBounds.x + (event.clientX - bounds.left) * sceneBounds.width / bounds.width),
+      y: Math.round(sceneBounds.y + (event.clientY - bounds.top) * sceneBounds.height / bounds.height),
     };
+  }
+
+  function rulerTicks(start: number, end: number): number[] {
+    const first = Math.floor(start / 100) * 100;
+    const last = Math.ceil(end / 100) * 100;
+    return Array.from({ length: Math.max(0, Math.floor((last - first) / 100) + 1) }, (_, index) => first + index * 100);
+  }
+
+  function startViewportPan(event: PointerEvent): void {
+    if (!viewport || !(tool === 'hand' || spacePressed || event.button === 1)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const pointerId = event.pointerId;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startLeft = viewport.scrollLeft;
+    const startTop = viewport.scrollTop;
+    panning = true;
+    const move = (moveEvent: PointerEvent) => {
+      if (!viewport || moveEvent.pointerId !== pointerId) return;
+      viewport.scrollLeft = startLeft - (moveEvent.clientX - startX);
+      viewport.scrollTop = startTop - (moveEvent.clientY - startY);
+      updateViewportBounds();
+    };
+    const finish = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      panning = false;
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
   }
 
   function participantColor(id: string): string {
@@ -761,6 +806,7 @@
       if (!event.shiftKey && dragIds.includes(element.id)) startDrag(event, dragIds);
       return;
     }
+    if (tool === 'hand') return;
     startCreate(event, tool, event.currentTarget as SVGSVGElement);
   }
 
@@ -2085,7 +2131,13 @@
   }
 
   function serializationBounds(ids: string[] | null): { x: number; y: number; width: number; height: number; ids: Set<string> | null } {
-    if (!page || !ids?.length) return { x: 0, y: 0, width: page?.width ?? 1, height: page?.height ?? 1, ids: null };
+    if (!page || !ids?.length) return {
+      x: contentBounds?.x ?? 0,
+      y: contentBounds?.y ?? 0,
+      width: contentBounds?.width ?? page?.width ?? 1,
+      height: contentBounds?.height ?? page?.height ?? 1,
+      ids: null,
+    };
     const included = descendantIds(ids);
     const elements = pageElements.filter((element) => included.has(element.id) && element.visible && !element.isMask);
     if (!elements.length) return { x: 0, y: 0, width: page.width, height: page.height, ids: null };
@@ -2409,19 +2461,33 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     });
   }
 
-  function fitPage() {
-    if (!viewport || !page) return;
-    zoom = Math.max(0.1, Math.min(1.5, Math.min((viewport.clientWidth - 96) / page.width, (viewport.clientHeight - 96) / page.height)));
+  async function fitPage() {
+    if (!viewport || !contentBounds) return;
+    zoom = Math.max(0.02, Math.min(1.5, Math.min(
+      (viewport.clientWidth - 96) / contentBounds.width,
+      (viewport.clientHeight - 96) / contentBounds.height,
+    )));
+    await tick();
+    if (!viewport || !pageSvg || !sceneBounds) return;
+    const container = viewport.getBoundingClientRect();
+    const canvas = pageSvg.getBoundingClientRect();
+    const canvasLeft = canvas.left - container.left + viewport.scrollLeft;
+    const canvasTop = canvas.top - container.top + viewport.scrollTop;
+    viewport.scrollTo({
+      left: canvasLeft + (contentBounds.x + contentBounds.width / 2 - sceneBounds.x) * zoom - viewport.clientWidth / 2,
+      top: canvasTop + (contentBounds.y + contentBounds.height / 2 - sceneBounds.y) * zoom - viewport.clientHeight / 2,
+    });
+    updateViewportBounds();
   }
 
   function updateViewportBounds() {
-    if (!viewport || !pageSvg || !page) {
+    if (!viewport || !pageSvg || !sceneBounds) {
       viewportBounds = null;
       return;
     }
     const container = viewport.getBoundingClientRect();
     const canvas = pageSvg.getBoundingClientRect();
-    const scale = canvas.width / page.width;
+    const scale = canvas.width / sceneBounds.width;
     if (!Number.isFinite(scale) || scale <= 0) return;
     const left = Math.max(container.left, canvas.left);
     const top = Math.max(container.top, canvas.top);
@@ -2429,8 +2495,8 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     const bottom = Math.min(container.bottom, canvas.bottom);
     const overscan = 320 / Math.max(zoom, 0.1);
     viewportBounds = {
-      x: (left - canvas.left) / scale - overscan,
-      y: (top - canvas.top) / scale - overscan,
+      x: sceneBounds.x + (left - canvas.left) / scale - overscan,
+      y: sceneBounds.y + (top - canvas.top) / scale - overscan,
       width: Math.max(0, (right - left) / scale) + overscan * 2,
       height: Math.max(0, (bottom - top) / scale) + overscan * 2,
     };
@@ -2440,6 +2506,11 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     if (!editorRoot?.contains(globalThis.document?.activeElement ?? null)) return;
     const target = event.target as HTMLElement;
     if (target.closest('input, textarea, [contenteditable="true"]')) return;
+    if (event.code === 'Space') {
+      event.preventDefault();
+      spacePressed = true;
+      return;
+    }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -2519,6 +2590,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     }
     const shortcut = event.key.toLowerCase();
     if (shortcut === 'v') switchTool('select');
+    else if (shortcut === 'h') switchTool('hand');
     else if (shortcut === 'f') switchTool('frame');
     else if (shortcut === 'r') switchTool('rectangle');
     else if (shortcut === 'o') switchTool('ellipse');
@@ -2536,6 +2608,15 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     editorRoot?.focus({ preventScroll: true });
   }
 
+  function keyboardUp(event: KeyboardEvent) {
+    if (event.code === 'Space') spacePressed = false;
+  }
+
+  function resetTransientInput() {
+    spacePressed = false;
+    panning = false;
+  }
+
   onMount(() => {
     const storageKey = 'orkestrai.design.collaboration.participant';
     const storedId = sessionStorage.getItem(storageKey);
@@ -2546,16 +2627,20 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     if (viewport) resizeObserver.observe(viewport);
     void load().then(async () => {
       await tick();
-      fitPage();
+      await fitPage();
       await tick();
       updateViewportBounds();
       void syncCollaboration();
     });
     collaborationTimer = setInterval(() => void syncCollaboration(true), 3_000);
     window.addEventListener('keydown', keyboard, { capture: true });
+    window.addEventListener('keyup', keyboardUp, { capture: true });
+    window.addEventListener('blur', resetTransientInput);
     window.addEventListener('paste', handlePaste);
     return () => {
       window.removeEventListener('keydown', keyboard, { capture: true });
+      window.removeEventListener('keyup', keyboardUp, { capture: true });
+      window.removeEventListener('blur', resetTransientInput);
       window.removeEventListener('paste', handlePaste);
       resizeObserver.disconnect();
       cancelDrawing?.();
@@ -2580,6 +2665,10 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
   $effect(() => {
     zoom;
     page?.id;
+    sceneBounds?.x;
+    sceneBounds?.y;
+    sceneBounds?.width;
+    sceneBounds?.height;
     queueMicrotask(updateViewportBounds);
   });
 
@@ -2606,13 +2695,24 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     <header class="col-span-3 flex min-w-0 items-center gap-1 overflow-x-auto border-b border-[var(--app-border)] bg-[var(--app-surface)] px-2 @max-[660px]:col-span-1">
       {#each [
         { id: 'select' as const, icon: MousePointer2, shortcut: 'V' },
+        { id: 'hand' as const, icon: Hand, shortcut: 'H' },
         { id: 'frame' as const, icon: Frame, shortcut: 'F' },
         { id: 'rectangle' as const, icon: RectangleHorizontal, shortcut: 'R' },
         { id: 'ellipse' as const, icon: Circle, shortcut: 'O' },
         { id: 'text' as const, icon: Type, shortcut: 'T' },
         { id: 'path' as const, icon: PenTool, shortcut: 'P' },
       ] as item (item.id)}
-        <DesignToolbarButton label={toolLabel(item.id)} hint={item.id === 'path' ? `${item.shortcut} · ${m['design.pen_hint']()}` : item.shortcut} active={tool === item.id} pressed={tool === item.id} onclick={() => switchTool(item.id)}>
+        <DesignToolbarButton
+          label={toolLabel(item.id)}
+          hint={item.id === 'path'
+            ? `${item.shortcut} · ${m['design.pen_hint']()}`
+            : item.id === 'hand'
+              ? `${item.shortcut} · ${m['design.pan_hint']()}`
+              : item.shortcut}
+          active={tool === item.id}
+          pressed={tool === item.id}
+          onclick={() => switchTool(item.id)}
+        >
           <item.icon size={16} />
         </DesignToolbarButton>
       {/each}
@@ -2677,7 +2777,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
 
       <div class="min-w-0 flex-1"></div>
       {#if document}<span class="hidden text-[10px] text-[var(--app-text-muted)] xl:inline">{m['design.revision']({ revision: document.revision })}</span>{/if}
-      <DesignToolbarButton label={m['design.zoom_out']()} onclick={() => (zoom = Math.max(0.1, zoom - 0.1))}><ZoomOut size={16} /></DesignToolbarButton>
+      <DesignToolbarButton label={m['design.zoom_out']()} onclick={() => (zoom = Math.max(0.02, zoom - 0.1))}><ZoomOut size={16} /></DesignToolbarButton>
       <span class="w-10 shrink-0 text-center text-[10px] tabular-nums text-[var(--app-text-muted)]">{Math.round(zoom * 100)}%</span>
       <DesignToolbarButton label={m['design.zoom_in']()} onclick={() => (zoom = Math.min(3, zoom + 0.1))}><ZoomIn size={16} /></DesignToolbarButton>
       <DesignToolbarButton label={m['design.fit']()} onclick={fitPage}><Maximize2 size={16} /></DesignToolbarButton>
@@ -2741,7 +2841,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
       {/if}
     </aside>
 
-    <main class="relative min-h-0 min-w-0 overflow-auto bg-[var(--app-canvas)]" bind:this={viewport} onscroll={updateViewportBounds} ondragover={(event) => event.preventDefault()} ondrop={handleDrop}>
+    <main class={`relative min-h-0 min-w-0 overflow-auto bg-[var(--app-canvas)] ${panning ? 'cursor-grabbing select-none' : tool === 'hand' || spacePressed ? 'cursor-grab' : ''}`} bind:this={viewport} onpointerdowncapture={startViewportPan} onscroll={updateViewportBounds} ondragover={(event) => event.preventDefault()} ondrop={handleDrop}>
       {#if errorMessage}
         <div class="grid h-full place-items-center p-8 text-center"><div><p class="text-sm text-[var(--app-danger)]">{errorMessage}</p><Button class="mt-3" variant="outline" size="sm" onclick={() => void load()}>{m['workspace_access.retry']()}</Button></div></div>
       {:else if loading || !document || !page}
@@ -2784,13 +2884,13 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
             <DesignToolbarButton label={m['design.ungroup_selection']()} onclick={() => void ungroupSelection()}><Ungroup size={15} /></DesignToolbarButton>
           </div>
         {/if}
-        <div class="relative min-h-full min-w-full p-12" style:width={`${Math.max(viewport?.clientWidth ?? 0, page.width * zoom + 96)}px`} style:height={`${Math.max(viewport?.clientHeight ?? 0, page.height * zoom + 96)}px`}>
+        <div class="relative min-h-full min-w-full p-12" style:width={`${Math.max(viewport?.clientWidth ?? 0, (sceneBounds?.width ?? page.width) * zoom + 96)}px`} style:height={`${Math.max(viewport?.clientHeight ?? 0, (sceneBounds?.height ?? page.height) * zoom + 96)}px`}>
           <svg
             bind:this={pageSvg}
-            class={`mx-auto block shadow-[0_8px_30px_rgba(0,0,0,0.18)] ${tool === 'select' ? 'cursor-default [&_g[data-design-element]]:cursor-move' : 'cursor-crosshair'}`}
-            width={page.width * zoom}
-            height={page.height * zoom}
-            viewBox={`0 0 ${page.width} ${page.height}`}
+            class={`mx-auto block ${tool === 'select' ? 'cursor-default [&_g[data-design-element]]:cursor-move' : tool === 'hand' ? 'cursor-grab' : 'cursor-crosshair'}`}
+            width={(sceneBounds?.width ?? page.width) * zoom}
+            height={(sceneBounds?.height ?? page.height) * zoom}
+            viewBox={`${sceneBounds?.x ?? 0} ${sceneBounds?.y ?? 0} ${sceneBounds?.width ?? page.width} ${sceneBounds?.height ?? page.height}`}
             style:background={page.background}
             onpointerdown={canvasPointerDown}
             onpointermove={trackPresence}

@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { DESIGN_REFERENCE_TOPICS, designReference } from './design-reference.js';
 
 /** Porta livre de verdade: binda na efemera, le o numero e libera. */
 export async function findFreePort() {
@@ -44,7 +45,7 @@ Uso:
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
-  orkestrai design list | design read <nodeId> | design audit <nodeId> | design template <nodeId> <product|marketing|mobile|design-system> --revision <n>
+  orkestrai design list | design read <nodeId> | design reference [${DESIGN_REFERENCE_TOPICS.join('|')}] | design audit <nodeId> | design template <nodeId> <product|marketing|mobile|design-system> --revision <n>
   orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
   orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
   orkestrai design generate <nodeId> <elementIds-json> --framework svelar|svelte|react|next|vue|html --output <path> --name <nome> [--write --revision <n>]
@@ -211,6 +212,13 @@ export async function run(argv, options = {}) {
       return free ? 0 : 1;
     }
     out(String(await findFreePort()));
+    return 0;
+  }
+
+  // A referencia do Design e local e deve funcionar mesmo fora de um
+  // workspace provisionado, assim como o handshake do MCP.
+  if (command === 'design' && rest[0] === 'reference') {
+    out(JSON.stringify(designReference(rest[1] ?? 'quickstart'), null, 2));
     return 0;
   }
 

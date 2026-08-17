@@ -5,6 +5,7 @@
   import { createVirtualizer } from '@tanstack/svelte-virtual';
   import {
     Blocks,
+    BookOpen,
     Bot,
     File,
     Network,
@@ -34,14 +35,20 @@
   import { workbenchReviewCenterItemId } from './workbench-review-center.js';
   import { workbenchAutomationsItemId } from './workbench-automations.js';
   import * as m from '$lib/paraglide/messages.js';
+  import { localeState } from '$lib/i18n/locale.svelte.js';
+  import { DOCS_PT } from '$lib/i18n/docs/pt-BR.js';
+  import { DOCS_EN } from '$lib/i18n/docs/en.js';
+  import { DOCS_ES } from '$lib/i18n/docs/es.js';
+  import { searchDocsCatalog } from '$lib/i18n/docs/search.js';
 
-  type PaletteKind = WorkspaceSearchResultKind | 'command';
+  type PaletteKind = WorkspaceSearchResultKind | 'documentation' | 'command';
   type PaletteItem = Omit<WorkspaceSearchResult, 'kind'> & { kind: PaletteKind };
 
   const RECENTS_KEY = 'orkestrai.globalSearch.recents.v1';
   const FAVORITES_KEY = 'orkestrai.globalSearch.favorites.v1';
   const MAX_RECENTS = 8;
-  const GROUP_ORDER: WorkspaceSearchResultKind[] = [
+  const GROUP_ORDER: Exclude<PaletteKind, 'command'>[] = [
+    'documentation',
     'workspace',
     'agent',
     'task',
@@ -55,7 +62,10 @@
 
   let open = $state(false);
   let query = $state('');
-  let results = $state<WorkspaceSearchResult[]>([]);
+  const DOCS_CATALOGS = { 'pt-BR': DOCS_PT, en: DOCS_EN, es: DOCS_ES };
+  const docsCatalog = $derived(DOCS_CATALOGS[localeState.current] ?? DOCS_EN);
+
+  let results = $state<PaletteItem[]>([]);
   let recents = $state<PaletteItem[]>([]);
   let favorites = $state<PaletteItem[]>([]);
   let selectedId = $state('');
@@ -118,6 +128,26 @@
   });
   const virtualRows = $derived($virtualizer.getVirtualItems());
 
+  function documentationResults(term: string): PaletteItem[] {
+    return searchDocsCatalog(docsCatalog, term, {
+      quickstart: m['docs.quickstart_title'](),
+      changelog: m['docs.changelog_title'](),
+    }).map((entry) => ({
+      id: `documentation:${localeState.current}:${entry.id}`,
+      kind: 'documentation',
+      title: entry.title,
+      subtitle: m['global_search.kind_documentation'](),
+      preview: entry.preview,
+      workspaceId: '',
+      workspaceName: '',
+      nodeId: null,
+      taskId: null,
+      path: null,
+      route: `/docs#${entry.hash}`,
+      score: entry.score,
+    }));
+  }
+
   $effect(() => {
     get(virtualizer).setOptions({
       count: displayItems.length,
@@ -139,6 +169,9 @@
     const controller = new AbortController();
     const timer = setTimeout(() => {
       loading = true;
+      const documentation = documentationResults(term);
+      results = documentation;
+      selectedId = documentation[0]?.id ?? '';
       const params = new URLSearchParams({ q: term, includeFiles: 'true', limit: '80' });
       const workspaceId = activeWorkspaceId();
       if (workspaceId) params.set('workspaceId', workspaceId);
@@ -146,11 +179,13 @@
         .then((response) => response.json())
         .then((payload) => {
           if (controller.signal.aborted) return;
-          results = payload.data ?? [];
+          results = [...documentation, ...(payload.data ?? [])]
+            .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
+            .slice(0, 80);
           selectedId = results[0]?.id ?? '';
         })
         .catch(() => {
-          if (!controller.signal.aborted) results = [];
+          if (!controller.signal.aborted) results = documentation;
         })
         .finally(() => {
           if (!controller.signal.aborted) loading = false;
@@ -186,6 +221,7 @@
       skill: m['global_search.kind_skill'],
       automation: m['global_search.kind_automation'],
       file: m['global_search.kind_file'],
+      documentation: m['global_search.kind_documentation'],
       command: m['global_search.kind_command'],
     };
     return labels[kind]();
@@ -276,7 +312,7 @@
     await goto(item.route);
   }
 
-  function groupItems(kind: WorkspaceSearchResultKind): PaletteItem[] {
+  function groupItems(kind: Exclude<PaletteKind, 'command'>): PaletteItem[] {
     return displayItems.filter((item) => item.kind === kind);
   }
 
@@ -321,6 +357,7 @@
 
 {#snippet itemIcon(kind: PaletteKind)}
   {#if kind === 'workspace'}<Network size={15} aria-hidden="true" />
+  {:else if kind === 'documentation'}<BookOpen size={15} aria-hidden="true" />
   {:else if kind === 'agent'}<Bot size={15} aria-hidden="true" />
   {:else if kind === 'task'}<SquareKanban size={15} aria-hidden="true" />
   {:else if kind === 'note'}<StickyNote size={15} aria-hidden="true" />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PassThrough } from 'node:stream';
-import { runMcpServer } from '../../packages/orkestrai-cli/src/mcp.js';
+import { MCP_TOOLS, runMcpServer } from '../../packages/orkestrai-cli/src/mcp.js';
 import {
   bridgeAskSchema,
   bridgeDesignApplySchema,
@@ -54,6 +54,8 @@ const EXPECTED: Record<string, Expectation> = {
   design_audit: { method: 'GET', path: /\/bridge\/designs\/n1\/quality$/ },
   design_apply_template: { method: 'POST', path: /\/bridge\/designs\/n1\/quality$/ },
   design_apply_operations: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_create_elements: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_apply_blueprint: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_comment: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_propose: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_decide_proposal: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
@@ -108,6 +110,60 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
         order: 0,
       },
     }],
+  },
+  design_create_elements: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    pageId: '00000000-0000-7000-8000-000000000001',
+    summary: 'Create complete screen',
+    elements: [{
+      id: '00000000-0000-7000-8000-000000000002',
+      type: 'frame',
+      name: 'Desktop',
+      x: 80,
+      y: 80,
+      width: 1440,
+      height: 1024,
+    }],
+  },
+  design_apply_blueprint: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    pageId: '00000000-0000-7000-8000-000000000001',
+    summary: 'Create typed design foundation',
+    elements: [{
+      id: '00000000-0000-7000-8000-000000000002',
+      type: 'frame',
+      name: 'Desktop',
+      x: 80,
+      y: 80,
+      width: 1440,
+      height: 1024,
+    }],
+    variableCollections: [{
+      id: '00000000-0000-7000-8000-000000000010',
+      name: 'Brand',
+      modes: [{ id: '00000000-0000-7000-8000-000000000011', name: 'Light' }],
+    }],
+    variables: [{
+      id: '00000000-0000-7000-8000-000000000012',
+      collectionId: '00000000-0000-7000-8000-000000000010',
+      name: 'Surface/default',
+      type: 'color',
+      values: { '00000000-0000-7000-8000-000000000011': { kind: 'color', value: '#ffffff' } },
+    }],
+    bindings: [{ elementId: '00000000-0000-7000-8000-000000000002', property: 'fill', variableId: '00000000-0000-7000-8000-000000000012' }],
+    components: [{
+      id: '00000000-0000-7000-8000-000000000020',
+      name: 'Desktop shell',
+      rootElementId: '00000000-0000-7000-8000-000000000002',
+    }],
+    prototypeFlows: [{
+      id: '00000000-0000-7000-8000-000000000030',
+      name: 'Primary flow',
+      startFrameId: '00000000-0000-7000-8000-000000000002',
+    }],
+    presentation: { defaultFlowId: '00000000-0000-7000-8000-000000000030' },
   },
   design_comment: {
     nodeId: 'n1', baseRevision: 1,
@@ -185,6 +241,34 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
 };
 
 describe('contrato MCP x bridge (todas as tools)', () => {
+  it('publica referencia local e schemas de lote sem tocar a bridge', async () => {
+    const referenceTool = MCP_TOOLS.find((tool) => tool.name === 'design_reference') as any;
+    const elementBatchTool = MCP_TOOLS.find((tool) => tool.name === 'design_create_elements') as any;
+    const blueprintTool = MCP_TOOLS.find((tool) => tool.name === 'design_apply_blueprint') as any;
+    expect(referenceTool.inputSchema.properties.topic.enum).toContain('elements');
+    expect(elementBatchTool.inputSchema.properties.elements.items.required).toEqual(['type', 'name', 'x', 'y', 'width', 'height']);
+    expect(blueprintTool.inputSchema.properties.variables.items.required).toContain('values');
+
+    const input = new PassThrough();
+    const chunks: string[] = [];
+    let bridgeCalled = false;
+    const done = runMcpServer({
+      input,
+      write: (chunk: string) => chunks.push(chunk),
+      bridge: async () => {
+        bridgeCalled = true;
+        return {};
+      },
+      findFreePort: async () => 45678,
+    });
+    send(input, { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'design_reference', arguments: { topic: 'elements' } } });
+    const response = await waitFor(chunks, 1);
+    input.end();
+    await done;
+    expect(bridgeCalled).toBe(false);
+    expect(response.result?.content?.[0]?.text).toContain('design_create_elements');
+  });
+
   it('cada tool chama a rota certa com corpo que passa no schema', async () => {
     for (const [tool, expected] of Object.entries(EXPECTED)) {
       const input = new PassThrough();

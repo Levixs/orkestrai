@@ -434,7 +434,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'compare-directions',
         title: 'Compara alternativas completas',
-        body: 'Cada dirección debe contener estados responsivos, tokens tipados, componentes reutilizables, un prototipo navegable, evidencia de accesibilidad y una vista previa de código en el stack elegido. Compara UX, marca, esfuerzo y riesgo técnico.',
+        body: 'Cada dirección debe contener estados responsivos, tokens tipados, componentes reutilizables, un prototipo navegable, evidencia de accesibilidad y una vista previa de código en el stack elegido. Los agentes producen todo en pocos lotes transaccionales. En un documento grande, navega con trackpad, Mano (H), Espacio+arrastrar o el botón central y usa Ajustar para encuadrar todas las pantallas antes de comparar UX, marca, esfuerzo y riesgo técnico.',
       },
       {
         id: 'approve-deliver',

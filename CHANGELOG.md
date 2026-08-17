@@ -9,6 +9,14 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added an explicit agent-facing Design contract and high-throughput batch
+  tools. `design_reference` provides exact schemas and examples on demand,
+  `design_create_elements` creates complete screens in one revision, and
+  `design_apply_blueprint` atomically combines layers, tokens, bindings,
+  components, prototypes, and motion. Provisioned skills and guided UI
+  exploration briefs now require the read-once, batch, verify workflow and
+  prohibit schema probes, installation inspection, and scratch discovery
+  scripts.
 - Added a guided three-direction UI exploration to the Canvas Design menu. One
   transaction creates a linked specification, five traceable Kanban stages,
   and native Clarity, Expressive, and Efficient Design documents. Manual work
@@ -141,6 +149,16 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Restored documentation content to the universal Command/Ctrl+K search after
+  the workspace index had reduced it to an "Open documentation" command.
+  Localized topics, use cases, and changelog entries now appear alongside
+  workspace results with accent-insensitive matching and direct anchors, even
+  when the workspace search request fails.
+- Fixed Design documents clipping frames placed outside the nominal page.
+  The editor now derives a stable expandable scene from the actual artwork,
+  fits every frame, exports the complete content, and supports native
+  trackpad/scroll navigation plus Hand (`H`), Space-drag, and middle-button
+  panning at zoom levels down to 2%.
 - Fixed finished Git Floors accumulating their cloned or recruited nodes in the
   Workbench and Control Center. Nodes from landed or deleted floors are now
   archived, their obsolete edges are removed, and legacy records are repaired

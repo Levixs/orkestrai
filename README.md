@@ -111,6 +111,10 @@ Download the latest installers from
   reusable components, a navigable prototype, quality evidence, and framework
   code before a human approval gate. Work manually or delegate the first stage
   to a live workspace leader without losing task, note, Design, or Git context.
+  Agents receive an exact on-demand schema and create complete directions in
+  a few transactional batches instead of probing the API layer by layer. Large
+  directions expand the visual workspace automatically and remain navigable by
+  trackpad, Hand tool, Space-drag, fit-all, and zoom down to 2%.
 - **Live Design collaboration:** see human and agent presence, cursors, and
   selections; follow another participant; discuss a page or layer in anchored
   comment threads; and review visual proposals as structural diffs before an

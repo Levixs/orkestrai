@@ -13,7 +13,31 @@
  * tools/call) sobre a bridge HTTP existente (token do workspace).
  */
 
+import { DESIGN_REFERENCE_TOPICS, designReference } from './design-reference.js';
+
 const PROTOCOL_VERSION = '2024-11-05';
+
+const DESIGN_ELEMENT_PROPERTIES = {
+  id: { type: 'string', format: 'uuid' }, parentId: { type: ['string', 'null'], format: 'uuid' },
+  type: { type: 'string', enum: ['frame', 'group', 'rectangle', 'ellipse', 'text', 'path', 'image'] }, name: { type: 'string' },
+  x: { type: 'number' }, y: { type: 'number' }, width: { type: 'number', exclusiveMinimum: 0 }, height: { type: 'number', exclusiveMinimum: 0 }, order: { type: 'integer', minimum: 0 },
+  rotation: { type: 'number' }, opacity: { type: 'number', minimum: 0, maximum: 1 }, visible: { type: 'boolean' }, locked: { type: 'boolean' },
+  fill: { type: 'string' }, stroke: { type: 'string' }, strokeWidth: { type: 'number', minimum: 0 }, fills: { type: 'array', items: { type: 'object' } }, strokes: { type: 'array', items: { type: 'object' } }, effects: { type: 'array', items: { type: 'object' } },
+  blendMode: { type: 'string', enum: ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'] }, cornerRadius: { type: 'number', minimum: 0 },
+  text: { type: 'string' }, fontSize: { type: 'number' }, fontWeight: { type: 'integer' }, textAlign: { type: 'string', enum: ['left', 'center', 'right'] },
+  accessibilityRole: { type: 'string', enum: ['none', 'button', 'link', 'heading', 'image', 'text', 'input', 'navigation', 'region'] }, accessibilityLabel: { type: ['string', 'null'] }, decorative: { type: 'boolean' },
+  pathPoints: { type: 'array', items: { type: 'object' } }, pathSubpaths: { type: 'array', items: { type: 'array', items: { type: 'object' } } }, pathClosed: { type: 'boolean' }, fillRule: { type: 'string', enum: ['nonzero', 'evenodd'] },
+  assetId: { type: ['string', 'null'], format: 'uuid' }, imageFit: { type: 'string', enum: ['fill', 'contain', 'cover'] }, maskId: { type: ['string', 'null'], format: 'uuid' }, isMask: { type: 'boolean' },
+  layoutMode: { type: 'string', enum: ['none', 'horizontal', 'vertical', 'grid'] }, layoutWrap: { type: 'boolean' }, layoutGap: { type: 'number' }, layoutRowGap: { type: 'number' }, layoutColumnGap: { type: 'number' },
+  layoutPaddingTop: { type: 'number' }, layoutPaddingRight: { type: 'number' }, layoutPaddingBottom: { type: 'number' }, layoutPaddingLeft: { type: 'number' }, layoutGridColumns: { type: 'integer' }, layoutAlign: { type: 'string', enum: ['start', 'center', 'end', 'space-between'] }, clipContent: { type: 'boolean' },
+  prototypeOverflow: { type: 'string', enum: ['none', 'horizontal', 'vertical', 'both'] }, prototypeFixed: { type: 'boolean' }, constraintHorizontal: { type: 'string', enum: ['left', 'right', 'left-right', 'center', 'scale'] }, constraintVertical: { type: 'string', enum: ['top', 'bottom', 'top-bottom', 'center', 'scale'] }, slotName: { type: ['string', 'null'] },
+};
+
+const DESIGN_ELEMENT_INPUT = { type: 'object', properties: DESIGN_ELEMENT_PROPERTIES, required: ['type', 'name', 'x', 'y', 'width', 'height'] };
+const DESIGN_BATCH_BASE = {
+  nodeId: { type: 'string' }, baseRevision: { type: 'integer', minimum: 0 }, pageId: { type: 'string', format: 'uuid' },
+  summary: { type: 'string', minLength: 1, maxLength: 500 }, taskId: { type: 'string', format: 'uuid' },
+};
 
 /** Tools expostas (inputSchema JSON Schema). args -> bridge no callTool(). */
 const TOOLS = [
@@ -26,9 +50,25 @@ const TOOLS = [
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
   { name: 'design_list', description: 'Lista documentos de design nativos do workspace e suas revisoes.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'design_reference', description: 'Retorna o contrato exato e exemplos para criar Design nativo sem probes, scripts temporarios ou inspecao do app. Consulte uma vez e escreva em lotes.', inputSchema: { type: 'object', properties: { topic: { type: 'string', enum: DESIGN_REFERENCE_TOPICS, default: 'quickstart' } } } },
   { name: 'design_audit', description: 'Audita naming, clipping, overlap, contraste e acessibilidade sem alterar o documento.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'design_apply_template', description: 'Aplica um template nativo completo pelo command bus transacional.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, templateId: { type: 'string', enum: ['product', 'marketing', 'mobile', 'design-system'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'templateId'] } },
   { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: layers, vetores, design system, prototipo, motion, comentarios e propostas. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
+  { name: 'design_create_elements', description: 'Cria ate 2000 layers em uma unica revisao. Use para frames e telas completas; coordenadas de filhos continuam absolutas. Nao faca uma chamada por layer.', inputSchema: { type: 'object', properties: { ...DESIGN_BATCH_BASE, elements: { type: 'array', minItems: 1, maxItems: 2000, items: DESIGN_ELEMENT_INPUT } }, required: ['nodeId', 'baseRevision', 'pageId', 'elements', 'summary'] } },
+  { name: 'design_apply_blueprint', description: 'Aplica layers, tokens, bindings, componentes, prototipo e motion em um unico lote tipado. Prefira esta tool para uma direcao completa e use design_reference para exemplos.', inputSchema: { type: 'object', properties: {
+    ...DESIGN_BATCH_BASE,
+    elements: { type: 'array', maxItems: 2000, items: DESIGN_ELEMENT_INPUT },
+    variableCollections: { type: 'array', maxItems: 100, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, modes: { type: 'array', minItems: 1, maxItems: 16, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' } }, required: ['id', 'name'] } }, defaultModeId: { type: 'string', format: 'uuid' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name', 'modes'] } },
+    variables: { type: 'array', maxItems: 5000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, collectionId: { type: 'string', format: 'uuid' }, name: { type: 'string' }, type: { type: 'string', enum: ['color', 'spacing', 'radius', 'font-size', 'font-weight', 'line-height', 'opacity', 'effect', 'breakpoint', 'string', 'boolean'] }, description: { type: 'string' }, values: { type: 'object' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'collectionId', 'name', 'type', 'values'] } },
+    bindings: { type: 'array', maxItems: 10000, items: { type: 'object', properties: { elementId: { type: 'string', format: 'uuid' }, property: { type: 'string', enum: ['fill', 'stroke', 'opacity', 'cornerRadius', 'strokeWidth', 'fontSize', 'fontWeight', 'layoutGap', 'layoutRowGap', 'layoutColumnGap', 'layoutPaddingTop', 'layoutPaddingRight', 'layoutPaddingBottom', 'layoutPaddingLeft', 'effects'] }, variableId: { type: ['string', 'null'], format: 'uuid' } }, required: ['elementId', 'property', 'variableId'] } },
+    componentSets: { type: 'array', maxItems: 500, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, propertyNames: { type: 'array', items: { type: 'string' } }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name'] } },
+    components: { type: 'array', maxItems: 2000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, description: { type: 'string' }, rootElementId: { type: 'string', format: 'uuid' }, setId: { type: ['string', 'null'], format: 'uuid' }, variantValues: { type: 'object' }, properties: { type: 'array', items: { type: 'object' } }, key: { type: 'string' } }, required: ['id', 'name', 'rootElementId'] } },
+    prototypeFlows: { type: 'array', maxItems: 500, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, description: { type: 'string' }, startFrameId: { type: 'string', format: 'uuid' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name', 'startFrameId'] } },
+    prototypeInteractions: { type: 'array', maxItems: 5000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, sourceElementId: { type: 'string', format: 'uuid' }, trigger: { type: 'object' }, action: { type: 'object' }, transition: { type: 'object' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'sourceElementId', 'trigger', 'action'] } },
+    motionTokens: { type: 'array', maxItems: 500, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, durationMs: { type: 'integer' }, easing: { type: 'object' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name'] } },
+    motionTracks: { type: 'array', maxItems: 5000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, elementId: { type: 'string', format: 'uuid' }, name: { type: 'string' }, durationMs: { type: 'integer' }, delayMs: { type: 'integer' }, iterations: { type: 'integer' }, direction: { type: 'string' }, fillMode: { type: 'string' }, tokenId: { type: ['string', 'null'], format: 'uuid' }, easing: { type: 'object' }, keyframes: { type: 'array', minItems: 2, items: { type: 'object' } }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'elementId', 'name', 'keyframes'] } },
+    presentation: { type: 'object', properties: { defaultFlowId: { type: ['string', 'null'], format: 'uuid' }, background: { type: 'string' }, showDeviceFrame: { type: 'boolean' }, showHotspots: { type: 'boolean' }, showCursor: { type: 'boolean' } } },
+  }, required: ['nodeId', 'baseRevision', 'pageId', 'summary'] } },
   { name: 'design_comment', description: 'Cria um comentario rastreavel em uma pagina ou layer, com autoria do agente e suporte a mencoes no texto.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, elementId: { type: ['string', 'null'] }, body: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'pageId', 'body'] } },
   { name: 'design_propose', description: 'Submete operacoes visuais como proposta pendente para revisao humana, sem alterar o design aprovado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, title: { type: 'string' }, description: { type: 'string' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, floorId: { type: ['string', 'null'] }, councilId: { type: ['string', 'null'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'title', 'operations'] } },
   { name: 'design_decide_proposal', description: 'Aprova ou rejeita uma proposta visual pendente. A aprovacao aplica as operacoes validadas de forma transacional.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, proposalId: { type: 'string' }, status: { type: 'string', enum: ['approved', 'rejected'] }, note: { type: ['string', 'null'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'proposalId', 'status'] } },
@@ -108,6 +148,8 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', '/api/agent-room/bridge/designs');
     case 'design_read':
       return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`);
+    case 'design_reference':
+      return designReference(args.topic ?? 'quickstart');
     case 'design_audit':
       return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/quality`);
     case 'design_apply_template':
@@ -125,6 +167,38 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
         from: selfAgent,
         taskId: args.taskId,
       });
+    case 'design_create_elements':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: args.elements.map((element) => ({ kind: 'create', element: { ...element, pageId: args.pageId, parentId: element.parentId ?? null } })),
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_apply_blueprint': {
+      const now = new Date().toISOString();
+      const operations = [
+        ...(args.elements ?? []).map((element) => ({ kind: 'create', element: { ...element, pageId: args.pageId, parentId: element.parentId ?? null } })),
+        ...(args.variableCollections ?? []).map((collection, order) => ({ kind: 'add-variable-collection', collection: { ...collection, defaultModeId: collection.defaultModeId ?? collection.modes[0]?.id, order: collection.order ?? order } })),
+        ...(args.variables ?? []).map((variable, order) => ({ kind: 'add-variable', variable: { ...variable, description: variable.description ?? '', order: variable.order ?? order } })),
+        ...(args.bindings ?? []).map((binding) => ({ kind: 'bind-variable', ...binding })),
+        ...(args.componentSets ?? []).map((componentSet, order) => ({ kind: 'add-component-set', componentSet: { ...componentSet, propertyNames: componentSet.propertyNames ?? [], order: componentSet.order ?? order } })),
+        ...(args.components ?? []).map((component) => ({ kind: 'add-component', component: { ...component, description: component.description ?? '', setId: component.setId ?? null, variantValues: component.variantValues ?? {}, properties: component.properties ?? [], key: component.key ?? component.id, updatedAt: now } })),
+        ...(args.prototypeFlows ?? []).map((flow, order) => ({ kind: 'add-prototype-flow', flow: { ...flow, description: flow.description ?? '', order: flow.order ?? order } })),
+        ...(args.prototypeInteractions ?? []).map((interaction, order) => ({ kind: 'add-prototype-interaction', interaction: { ...interaction, order: interaction.order ?? order } })),
+        ...(args.motionTokens ?? []).map((token, order) => ({ kind: 'add-motion-token', token: { ...token, order: token.order ?? order } })),
+        ...(args.motionTracks ?? []).map((track, order) => ({ kind: 'add-motion-track', track: { ...track, order: track.order ?? order } })),
+        ...(args.presentation ? [{ kind: 'update-presentation', changes: args.presentation }] : []),
+      ];
+      if (!operations.length) throw new Error('design_apply_blueprint needs at least one element, token, component, prototype, motion item, binding, or presentation change.');
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    }
     case 'design_comment': {
       const now = new Date().toISOString();
       const author = { kind: 'agent', id: selfAgent || 'agent', name: selfAgent || 'Agent', color: '#059669' };
@@ -318,8 +392,18 @@ function writeMessage(write, message) {
  * Loop principal do servidor MCP. Io injetavel para testes:
  * input = stream legivel (stdin), write = funcao de escrita (stdout).
  * bridge = (method, path, body) => Promise<data> ja autenticada.
+ *
+ * @param {{
+ *   input: import('node:stream').Readable,
+ *   write: (chunk: string) => void,
+ *   bridge: (method: string, path: string, body?: any) => Promise<any>,
+ *   findFreePort: () => Promise<number>,
+ *   selfAgent?: string | null,
+ *   version?: string,
+ * }} options
  */
-export async function runMcpServer({ input, write, bridge, findFreePort, selfAgent = null, version = '0.0.1' }) {
+export async function runMcpServer(options) {
+  const { input, write, bridge, findFreePort, selfAgent = null, version = '0.0.1' } = options;
   let buffer = Buffer.alloc(0);
   const pending = [];
   let waiter = null;
