@@ -100,6 +100,18 @@ Download the latest installers from
   can edit the exact same revision through typed Orkestrai tools while the UI
   updates live. Documents, assets, thumbnails, and history stay under
   `.orkestrai/designs` in the workspace.
+- **Official Figma interoperability:** the managed official Figma MCP gives
+  compatible agents direct design context, while the native Figma tab inspects
+  links and imports selected pages or frames, vectors, assets, styles,
+  variables, components, variants, instances, and external-library identities
+  into the same Orkestrai document. Linked
+  sources compare remote and local hashes before selective synchronization, and
+  existing Code Connect mappings form a Figma node → Orkestrai layer → code
+  relationship. A bundled first-party, loopback-only plugin transfers live
+  selections, editable SVG or structural JSON, opens an Orkestrai document on a
+  new Figma page with native design resources, and sends only linked local
+  changes reviewed in Orkestrai back to the current file.
+  REST credentials stay encrypted in the operating-system vault.
 - **Council decisions:** open Council from the Canvas toolbar, the workspace in
   Workbench, or `Cmd/Ctrl+K`, then ask two to five real agents for independent,
   budget-limited perspectives on one task or objective, compare the same

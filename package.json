@@ -162,6 +162,7 @@
       "src/lib/modules/agent-room/infrastructure/WslRuntime.ts",
       "src/lib/modules/agent-room/domain/runtime.ts",
       "packages/orkestrai-cli/**",
+      "packages/orkestrai-figma-plugin/**",
       "LICENSE",
       "THIRD_PARTY_NOTICES.md",
       "package.json",

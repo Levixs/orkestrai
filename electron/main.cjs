@@ -642,6 +642,11 @@ ipcMain.handle('orkestrai:automation-secret-save', (_event, key, value) => saveA
 
 ipcMain.handle('orkestrai:automation-secret-delete', (_event, key) => deleteAutomationSecret(key));
 
+ipcMain.handle('orkestrai:figma-plugin-folder', async () => {
+  const pluginPath = path.join(app.getAppPath(), 'packages', 'orkestrai-figma-plugin');
+  return shell.openPath(pluginPath);
+});
+
 ipcMain.handle('orkestrai:open-external', (_event, url) => {
   // Só https — nunca abre esquema arbitrario vindo do renderer.
   if (typeof url === 'string' && url.startsWith('https://')) shell.openExternal(url);

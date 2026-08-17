@@ -28,13 +28,17 @@ describe('McpService', () => {
     expect(servers.map((server) => server.name)).toEqual(['filesystem']);
   });
 
-  it('orkestrai (da ponte) e marcado builtin; validacoes de entrada', async () => {
+  it('orkestrai e figma gerenciados sao builtin; validacoes de entrada', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-mcp-builtin-'));
-    writeFileSync(join(dir, '.mcp.json'), JSON.stringify({ mcpServers: { orkestrai: { command: 'orkestrai', args: ['mcp'] } } }));
+    writeFileSync(join(dir, '.mcp.json'), JSON.stringify({ mcpServers: {
+      orkestrai: { command: 'orkestrai', args: ['mcp'] },
+      figma: { type: 'http', url: 'https://mcp.figma.com/mcp' },
+    } }));
     const workspace = await workspaceRepository.createWorkspace({ name: 'builtin', workingDir: dir });
 
     const servers = await mcpService.list(workspace.id);
-    expect(servers[0].builtin).toBe(true);
+    expect(servers.every((server) => server.builtin)).toBe(true);
+    await expect(mcpService.remove(workspace.id, 'figma')).rejects.toThrow('gerenciado');
 
     await expect(mcpService.add(workspace.id, { name: '', command: 'x' })).rejects.toThrow('nome');
     await expect(mcpService.add(workspace.id, { name: 'x', command: '' })).rejects.toThrow('comando');

@@ -1,4 +1,17 @@
 import { z } from 'zod';
+
+export const bridgeFigmaSelectionSchema = z.object({
+  baseRevision: z.number().int().min(0),
+  fileKey: z.string().trim().regex(/^[A-Za-z0-9_-]{6,240}$/),
+  fileName: z.string().trim().min(1).max(240),
+  sourceNodes: z.array(z.record(z.string(), z.unknown())).min(1).max(100),
+  imageAssets: z.record(z.string().trim().min(1).max(500), z.object({
+    mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif']),
+    base64: z.string().regex(/^[A-Za-z0-9+/]+={0,2}$/).max(28 * 1024 * 1024),
+  })).default({}),
+  targetPageId: z.string().uuid(),
+  summary: z.string().trim().min(1).max(500).default('Import Figma plugin selection'),
+});
 import { applyDesignOperationsSchema } from './designSchemas.js';
 
 export const bridgeDesignApplySchema = applyDesignOperationsSchema.omit({ actor: true }).extend({

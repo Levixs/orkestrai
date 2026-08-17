@@ -220,6 +220,21 @@ export class WorkspaceSearchService {
           route,
         }, ['design token variável variable', variable.type, collection?.codeSource?.path]));
       }
+      for (const link of document.figmaLinks.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-figma:${node.id}:${link.id}`,
+          kind: 'artifact',
+          title: link.fileName,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(link.url),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['figma design source origem fuente linked sync', link.sourceNodeIds]));
+      }
     }
 
     for (const task of tasks.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {

@@ -61,6 +61,13 @@
 - Canvas page and `/terminal` are client-only (`ssr = false`) — avoids hydration races with xterm/xyflow.
 - e2e tests run against the production build (`npm run build && PORT=5199 node scripts/orkestrai-server.mjs`), serial workers. Clean up created workspaces via API at the end of each test.
 
+## Figma interoperability
+
+- The managed official remote MCP is `https://mcp.figma.com/mcp`. Provision it only in provider formats documented as compatible; do not replace it with community Figma MCP packages.
+- App-side structural reads use `FigmaApiClient` against the fixed official REST host. The optional read-only token is stored under `automation:figma:<workspaceId>` through Electron secure storage and must never enter workspace files, logs, URLs, or renderer persistence.
+- Figma imports remain native `DesignDocument` content with persistent `figmaLinks`, source mappings, and separate remote/local hashes. Synchronization must preview added, removed, remote, local, and conflicting states before applying explicit resolutions, while preserving Code Connect metadata.
+- REST does not write the Figma scene graph. Selection transfer and write-back use the first-party `packages/orkestrai-figma-plugin` bridge, authenticated with the workspace token and restricted in code to loopback Orkestrai origins. Do not add OpenPencil, Pen.dev, or another editor/bridge dependency.
+
 ## Electron
 
 - `electron/main.cjs` spawns the adapter-node server (`build/index.js`) as a child process with `ELECTRON_RUN_AS_NODE=1` and loads it in a BrowserWindow.

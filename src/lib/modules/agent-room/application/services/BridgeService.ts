@@ -14,7 +14,7 @@ import { floorService } from './FloorService.js';
 import { getAgentAdapter, hasAgentAdapter, listAgentAdapters } from '../adapters/registry.js';
 import { nativeNotificationService, type NativeNotificationKind } from './NativeNotificationService.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
-import { upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
+import { FIGMA_MCP_URL, upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
 import { controlCenterService } from './ControlCenterService.js';
 import { AutomationTriggerReceived } from '../../domain/events/AutomationTriggerReceived.js';
 
@@ -928,6 +928,7 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edição pontual.
 - \`orkestrai design list\` / \`design read <nodeId>\` — lista e lê o scene graph de documentos visuais nativos conectados ao trabalho. Leia sempre a revisão atual antes de alterar.
 - Tool MCP \`design_apply_operations\` — command bus completo para elementos, grupos, vetores, guias, tokens, modos, bindings, componentes, instâncias, propriedades, variantes, slots e links de bibliotecas. As tools \`design_create_element\`, \`design_update_element\` e \`design_delete_element\` são atalhos para operações simples. Passe \`taskId\` quando a alteração pertence a uma task. Trabalhe no ciclo ler → alterar usando \`baseRevision\` → ler e verificar; conflito exige reler, nunca sobrescrever o trabalho humano.
+- Tools MCP \`design_figma_inspect/import/sync_preview/sync_apply\` — inspecionam links do Figma, importam a seleção como scene graph nativo e exigem preview antes de resolver alterações remotas, locais ou conflitos. Combine-as com o MCP oficial \`figma\` quando ele estiver disponível; preserve mappings de Code Connect e nunca sobrescreva uma resolução humana.
 - \`orkestrai design apply <nodeId> '<operations-json>' --revision <n> [--task <taskId>]\` — fallback CLI para as mesmas operações transacionais. Nunca edite \`.orkestrai/designs/*.json\` diretamente.
 - \`orkestrai task list\` — quadro de tarefas do workspace. Tarefas podem ter IMAGENS DE REFERÊNCIA (paths relativos ao workspace, ex.: .orkestrai/images/x.png) — leia o arquivo se a referência for útil para a execução.
 - \`orkestrai task columns\` — lista as etapas configuradas pelo usuário neste quadro. Nunca suponha que todo workspace usa somente "a fazer / fazendo / feito".
@@ -1032,14 +1033,14 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       }
       // Cada CLI descobre MCP em um caminho proprio. Todos recebem o mesmo
       // launch absoluto (inclusive no Windows) e o merge preserva servidores.
-      for (const relativePath of [
-        '.mcp.json',
-        '.cursor/mcp.json',
-        '.cline/mcp.json',
-        '.devin/mcp_config.json',
-        '.agents/mcp_config.json',
-      ]) {
-        await this.provisionStandardMcp(resolve(workspace.workingDir, relativePath), wslRuntime);
+      for (const [relativePath, figmaFormat] of [
+        ['.mcp.json', 'http'],
+        ['.cursor/mcp.json', 'url'],
+        ['.cline/mcp.json', null],
+        ['.devin/mcp_config.json', null],
+        ['.agents/mcp_config.json', null],
+      ] as const) {
+        await this.provisionStandardMcp(resolve(workspace.workingDir, relativePath), wslRuntime, figmaFormat);
       }
       await this.provisionAgentsMd(workspace.workingDir);
       await this.provisionCodexMcp(workspace, wslRuntime);
@@ -1087,6 +1088,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
       '- `orkestrai design list/read/apply` — documentos visuais nativos com elementos, vetores, grupos, tokens, modos, bindings, componentes, instancias, variantes e slots; use preferencialmente a tool MCP design_apply_operations (ou os atalhos design_*) e sempre leia a revisao antes/depois de alterar.',
+      '- `design_figma_inspect/import/sync_preview/sync_apply` — interoperabilidade estrutural com Figma; combine com o MCP oficial `figma`, sempre revise conflitos antes de sincronizar e preserve Code Connect.',
       '- `orkestrai task list/columns/add/move/done` — quadro do time; consulte `task columns` e respeite as etapas personalizadas pelo usuário.',
       '- `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.',
       '- `orkestrai device list/attach/tap/swipe/pinch/type/permissions/tree/screenshot/stop` — device mobile visivel no Workbench; aparelhos Android fisicos so podem ser anexados pelo usuario apos confirmacao na UI.',
@@ -1139,6 +1141,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
   private async provisionStandardMcp(
     path: string,
     wslRuntime: Extract<WorkspaceExecutionRuntime, { kind: 'wsl' }> | null,
+    figmaFormat: 'http' | 'url' | null,
   ): Promise<void> {
     let config: { mcpServers?: Record<string, unknown> } & Record<string, unknown> = {};
     try {
@@ -1152,9 +1155,17 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       args: launch.args,
       ...(launch.electronRuntime ? { env: { ELECTRON_RUN_AS_NODE: '1' } } : {}),
     };
-    if (JSON.stringify(config.mcpServers?.orkestrai ?? null) === JSON.stringify(desired)) return;
+    const figma = figmaFormat === 'http' ? { type: 'http', url: FIGMA_MCP_URL } : { url: FIGMA_MCP_URL };
+    if (
+      JSON.stringify(config.mcpServers?.orkestrai ?? null) === JSON.stringify(desired)
+      && (!figmaFormat || JSON.stringify(config.mcpServers?.figma ?? null) === JSON.stringify(figma))
+    ) return;
     await mkdir(dirname(path), { recursive: true });
-    config.mcpServers = { ...(config.mcpServers ?? {}), orkestrai: desired };
+    config.mcpServers = {
+      ...(config.mcpServers ?? {}),
+      orkestrai: desired,
+      ...(figmaFormat ? { figma } : {}),
+    };
     await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
   }
 

@@ -87,6 +87,14 @@ export const designCodeSourceSchema = z.object({
   syncedAt: z.string().datetime(),
 });
 
+export const designFigmaSourceSchema = z.object({
+  linkId: z.string().uuid(),
+  nodeId: z.string().trim().min(1).max(240),
+  key: z.string().trim().min(1).max(240).nullable().default(null),
+  sourceHash: z.string().regex(/^[0-9a-f]{64}$/),
+  syncedAt: z.string().datetime(),
+});
+
 export const designVariableCollectionSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
@@ -96,6 +104,7 @@ export const designVariableCollectionSchema = z.object({
   libraryId: z.string().uuid().nullable().default(null),
   librarySourceId: z.string().uuid().nullable().default(null),
   codeSource: designCodeSourceSchema.nullable().default(null),
+  figmaSource: designFigmaSourceSchema.nullable().optional(),
 });
 
 export const designVariableSchema = z.object({
@@ -109,6 +118,7 @@ export const designVariableSchema = z.object({
   libraryId: z.string().uuid().nullable().default(null),
   librarySourceId: z.string().uuid().nullable().default(null),
   codeSourceKey: z.string().trim().min(1).max(800).nullable().default(null),
+  figmaSource: designFigmaSourceSchema.nullable().optional(),
 });
 
 export const designBindablePropertySchema = z.enum([
@@ -165,6 +175,7 @@ export const designComponentSchema = z.object({
     hash: z.string().regex(/^[0-9a-f]{64}$/),
     syncedAt: z.string().datetime(),
   }).nullable().default(null),
+  figmaSource: designFigmaSourceSchema.nullable().optional(),
   updatedAt: z.string().datetime(),
 });
 
@@ -175,6 +186,7 @@ export const designComponentSetSchema = z.object({
   order: z.number().int().min(0).max(10_000),
   libraryId: z.string().uuid().nullable().default(null),
   librarySourceId: z.string().uuid().nullable().default(null),
+  figmaSource: designFigmaSourceSchema.nullable().optional(),
 });
 
 export const designLibraryLinkSchema = z.object({
@@ -184,6 +196,25 @@ export const designLibraryLinkSchema = z.object({
   sourceNodeId: z.string().uuid(),
   sourceRevision: z.number().int().min(0),
   mappings: z.record(z.string().uuid(), z.string().uuid()),
+  importedAt: z.string().datetime(),
+  syncedAt: z.string().datetime(),
+});
+
+export const designFigmaLinkSchema = z.object({
+  id: z.string().uuid(),
+  fileKey: z.string().trim().regex(/^[A-Za-z0-9_-]{6,240}$/),
+  fileName: z.string().trim().min(1).max(240),
+  url: z.string().url().max(2_000),
+  sourceNodeIds: z.array(z.string().trim().min(1).max(240)).min(1).max(500),
+  sourceVersion: z.string().trim().max(240).nullable().default(null),
+  sourceLastModified: z.string().datetime().nullable().default(null),
+  originX: z.number().finite(),
+  originY: z.number().finite(),
+  mappings: z.record(z.string().min(1).max(240), z.string().uuid()),
+  baselineHashes: z.record(z.string().min(1).max(240), z.string().regex(/^[0-9a-f]{64}$/)),
+  localHashes: z.record(z.string().min(1).max(240), z.string().regex(/^[0-9a-f]{64}$/)),
+  imageRefs: z.record(z.string().min(1).max(240), z.string().min(1).max(500)).default({}),
+  pendingPushNodeIds: z.array(z.string().min(1).max(240)).max(2_000).default([]),
   importedAt: z.string().datetime(),
   syncedAt: z.string().datetime(),
 });
@@ -297,6 +328,7 @@ export const designElementSchema = z.object({
   instanceOverrides: z.record(z.string().uuid(), designInstanceElementOverridesSchema).default({}),
   slotAssignments: z.record(z.string().uuid(), z.array(z.string().uuid()).max(200)).default({}),
   slotName: z.string().trim().min(1).max(120).nullable().default(null),
+  figmaSource: designFigmaSourceSchema.nullable().optional(),
   order: z.number().int().min(0).max(1_000_000),
 });
 
@@ -327,6 +359,7 @@ export const designDocumentSchema = z.object({
   components: z.array(designComponentSchema).max(2_000).default([]),
   componentSets: z.array(designComponentSetSchema).max(500).default([]),
   libraryLinks: z.array(designLibraryLinkSchema).max(200).default([]),
+  figmaLinks: z.array(designFigmaLinkSchema).max(100).default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -340,6 +373,7 @@ const designVariableChangesSchema = designVariableSchema.omit({ id: true }).part
 const designComponentChangesSchema = designComponentSchema.omit({ id: true, rootElementId: true }).partial();
 const designComponentSetChangesSchema = designComponentSetSchema.omit({ id: true }).partial();
 const designLibraryLinkChangesSchema = designLibraryLinkSchema.omit({ id: true, sourceWorkspaceId: true, sourceNodeId: true }).partial();
+const designFigmaLinkChangesSchema = designFigmaLinkSchema.omit({ id: true, fileKey: true }).partial();
 
 export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -375,6 +409,9 @@ export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('add-library-link'), link: designLibraryLinkSchema }),
   z.object({ kind: z.literal('update-library-link'), libraryId: z.string().uuid(), changes: designLibraryLinkChangesSchema }),
   z.object({ kind: z.literal('delete-library-link'), libraryId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-figma-link'), link: designFigmaLinkSchema }),
+  z.object({ kind: z.literal('update-figma-link'), linkId: z.string().uuid(), changes: designFigmaLinkChangesSchema }),
+  z.object({ kind: z.literal('delete-figma-link'), linkId: z.string().uuid() }),
   z.object({
     kind: z.literal('create-component-instance'),
     componentId: z.string().uuid(),
@@ -461,6 +498,8 @@ export type DesignComponentProperty = z.infer<typeof designComponentPropertySche
 export type DesignComponent = z.infer<typeof designComponentSchema>;
 export type DesignComponentSet = z.infer<typeof designComponentSetSchema>;
 export type DesignLibraryLink = z.infer<typeof designLibraryLinkSchema>;
+export type DesignFigmaSource = z.infer<typeof designFigmaSourceSchema>;
+export type DesignFigmaLink = z.infer<typeof designFigmaLinkSchema>;
 export type DesignDocument = z.infer<typeof designDocumentSchema>;
 export type DesignOperation = z.infer<typeof designOperationSchema>;
 export type ApplyDesignOperationsInput = z.infer<typeof applyDesignOperationsSchema>;

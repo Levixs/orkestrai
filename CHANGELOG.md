@@ -9,6 +9,22 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added first-party Figma interoperability to native Design Mode. Orkestrai now
+  provisions the official remote Figma MCP for compatible providers, stores the
+  optional read-only REST credential in the operating-system vault, inspects
+  file, page, and frame links, and imports native layers, editable vectors,
+  raster assets, published styles, variables, components, variants, local
+  instances, and published identities from external libraries. Persistent
+  Figma node mappings and separate remote/local hashes
+  power a selective synchronization preview that distinguishes incoming
+  changes, local edits, removals, and conflicts. Figma sources are searchable,
+  preserve existing Code Connect links, and are exposed to agents through typed
+  inspect, import, preview, and sync tools in the Orkestrai MCP. The bundled
+  loopback-only Orkestrai Design Bridge plugin transfers live Figma selections,
+  copies editable SVG or structural JSON, creates a new Figma page with native
+  assets, variables, styles, components, and variants from an Orkestrai
+  document, and sends only reviewed linked changes back to the current Figma
+  file without third-party editor code.
 - Completed the Design Systems phase of native Design Mode. Designers can start
   from product, marketing, or mobile token presets; import DTCG JSON or CSS
   variables; export DTCG, CSS, or Tailwind tokens; and audit duplicate, unused,

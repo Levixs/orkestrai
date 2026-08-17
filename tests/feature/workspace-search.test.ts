@@ -56,7 +56,7 @@ describe('WorkspaceSearchService', () => {
     expect(elapsedMs).toBeLessThan(150);
   });
 
-  it('indexes design components and tokens as artifacts of the same document', async () => {
+  it('indexes design components, tokens, and Figma links as artifacts of the same document', async () => {
     const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-design-search-'));
     tempDirectories.push(workingDir);
     const workspace = await workspaceRepository.createWorkspace({ name: 'Design search', workingDir });
@@ -67,6 +67,7 @@ describe('WorkspaceSearchService', () => {
     const collectionId = uuidv7();
     const modeId = uuidv7();
     const variableId = uuidv7();
+    const figmaLinkId = uuidv7();
     await designDocumentService.apply(new ApplyDesignOperationsDto(
       workspace.id,
       node.id,
@@ -76,6 +77,7 @@ describe('WorkspaceSearchService', () => {
         { kind: 'add-component', component: { id: componentId, name: 'Checkout button', description: 'Primary purchase action', rootElementId: rootId, setId: null, variantValues: {}, properties: [], key: 'checkout-button', libraryId: null, librarySourceId: null, codeConnect: null, updatedAt: new Date().toISOString() } },
         { kind: 'add-variable-collection', collection: { id: collectionId, name: 'Commerce', modes: [{ id: modeId, name: 'Default' }], defaultModeId: modeId, order: 0, libraryId: null, librarySourceId: null, codeSource: null } },
         { kind: 'add-variable', variable: { id: variableId, collectionId, name: 'color/purchase', type: 'color', description: 'Purchase action color', values: { [modeId]: { kind: 'color', value: '#2255ff' } }, order: 0, libraryId: null, librarySourceId: null, codeSourceKey: null } },
+        { kind: 'add-figma-link', link: { id: figmaLinkId, fileKey: 'CheckoutFigma123', fileName: 'Checkout foundations', url: 'https://www.figma.com/design/CheckoutFigma123/Checkout', sourceNodeIds: ['10:1'], sourceVersion: null, sourceLastModified: null, originX: 120, originY: 120, mappings: {}, baselineHashes: {}, localHashes: {}, imageRefs: {}, pendingPushNodeIds: [], importedAt: new Date().toISOString(), syncedAt: new Date().toISOString() } },
       ],
       { kind: 'user', id: null, name: null, taskId: null },
       'Seed searchable design system',
@@ -84,8 +86,10 @@ describe('WorkspaceSearchService', () => {
     const service = new WorkspaceSearchService();
     const componentResults = await service.search(new WorkspaceSearchDto('checkout button', workspace.id, false, 20));
     const tokenResults = await service.search(new WorkspaceSearchDto('color/purchase', workspace.id, false, 20));
+    const figmaResults = await service.search(new WorkspaceSearchDto('Checkout foundations', workspace.id, false, 20));
 
     expect(componentResults).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'artifact', title: 'Checkout button', nodeId: node.id })]));
     expect(tokenResults).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'artifact', title: 'color/purchase', nodeId: node.id })]));
+    expect(figmaResults).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'artifact', title: 'Checkout foundations', nodeId: node.id })]));
   });
 });

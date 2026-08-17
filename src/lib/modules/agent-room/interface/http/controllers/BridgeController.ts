@@ -6,7 +6,7 @@ import { boardColumnService } from '$lib/modules/agent-room/application/services
 import { floorService } from '$lib/modules/agent-room/application/services/FloorService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { filesystemService } from '$lib/modules/agent-room/application/services/FilesystemService.js';
-import { bridgeDesignApplySchema, bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
+import { bridgeDesignApplySchema, bridgeFigmaSelectionSchema, bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { portalService } from '$lib/modules/agent-room/application/services/PortalService.js';
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
@@ -28,6 +28,9 @@ import {
 import { DeviceCommandRequest } from '$lib/modules/agent-room/interface/http/requests/DeviceCommandRequest.js';
 import { ApplyDesignOperationsDto } from '$lib/modules/agent-room/application/dto/DesignDtos.js';
 import { DesignRevisionConflictError, designDocumentService } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
+import { designFigmaService } from '$lib/modules/agent-room/application/services/DesignFigmaService.js';
+import { ApplyDesignFigmaSyncDto, ImportDesignFigmaDto, InspectDesignFigmaDto, PreviewDesignFigmaSyncDto } from '$lib/modules/agent-room/application/dto/DesignFigmaDtos.js';
+import { acknowledgeDesignFigmaPushSchema, applyDesignFigmaSyncSchema, importDesignFigmaSchema, inspectDesignFigmaSchema, previewDesignFigmaSyncSchema } from '$lib/modules/agent-room/contracts/schemas/designFigmaSchemas.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -133,6 +136,99 @@ export class BridgeController extends Controller {
         return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
       }
       return this.errorResponse(error, 'Falha ao alterar documento de design.');
+    }
+  }
+
+  async importFigmaSelection(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const contentLength = Number(event.request.headers.get('content-length') ?? 0);
+      if (contentLength > 60 * 1024 * 1024) throw new Error('Figma plugin payload exceeds the 60 MB limit.');
+      const input = bridgeFigmaSelectionSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.importPluginSelection({
+        workspaceId: workspace.id,
+        nodeId: event.params.nodeId,
+        ...input,
+      }) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to import the Figma plugin selection.');
+    }
+  }
+
+  async inspectFigma(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = inspectDesignFigmaSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.inspect(InspectDesignFigmaDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      return this.errorResponse(error, 'Failed to inspect the Figma file.');
+    }
+  }
+
+  async importFigma(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = importDesignFigmaSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.import(ImportDesignFigmaDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to import the Figma selection.');
+    }
+  }
+
+  async previewFigmaSync(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = previewDesignFigmaSyncSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.preview(PreviewDesignFigmaSyncDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      return this.errorResponse(error, 'Failed to preview Figma synchronization.');
+    }
+  }
+
+  async applyFigmaSync(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = applyDesignFigmaSyncSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.applySync(ApplyDesignFigmaSyncDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to synchronize the Figma source.');
+    }
+  }
+
+  async acknowledgeFigmaPush(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = acknowledgeDesignFigmaPushSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.acknowledgePush(
+        workspace.id,
+        event.params.nodeId,
+        input.linkId,
+        input.baseRevision,
+        input.nodeIds,
+      ) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to acknowledge Figma plugin updates.');
+    }
+  }
+
+  async readFigmaAsset(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const asset = await designDocumentService.readAsset(workspace.id, event.params.nodeId, event.params.assetId);
+      return new Response(Uint8Array.from(asset.bytes).buffer, {
+        headers: {
+          'Content-Type': asset.mimeType,
+          'Content-Length': String(asset.bytes.byteLength),
+          'Cache-Control': 'private, max-age=300',
+          'Content-Disposition': `inline; filename="${asset.name.replace(/["\\]/g, '_')}"`,
+        },
+      });
+    } catch (error) {
+      return this.errorResponse(error, 'Design asset not found.', 404);
     }
   }
 

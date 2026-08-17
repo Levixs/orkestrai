@@ -230,7 +230,13 @@ function commandSubpaths(commands: SVGCommand[]): Array<{ points: DesignPathPoin
   const subpaths: Array<{ points: DesignPathPoint[]; closed: boolean }> = [];
   let current: DesignPathPoint[] = [];
   const finish = (closed = false) => {
-    if (current.length >= 2) subpaths.push({ points: current, closed });
+    if (current.length >= 2) {
+      const first = current[0];
+      const last = current.at(-1)!;
+      const inferredClosed = closed || (current.length > 2 && Math.abs(first.x - last.x) < 0.0001 && Math.abs(first.y - last.y) < 0.0001);
+      if (inferredClosed && current.length > 2 && Math.abs(first.x - last.x) < 0.0001 && Math.abs(first.y - last.y) < 0.0001) current.pop();
+      subpaths.push({ points: current, closed: inferredClosed });
+    }
     current = [];
   };
   for (const command of commands) {
@@ -267,6 +273,26 @@ function normalizeSubpaths(subpaths: DesignPathPoint[][], closed: boolean): { x:
       outY: pathPoint.outY === null ? null : pathPoint.outY - bounds.y,
     }))),
   };
+}
+
+export function parseSvgPathData(path: string): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  subpaths: DesignPathPoint[][];
+  closed: boolean;
+} | null {
+  try {
+    const commands = new SVGPathData(path).toAbs().normalizeHVZ().normalizeST().qtToC().aToC().sanitize().commands;
+    const parsed = commandSubpaths(commands);
+    if (!parsed.length) return null;
+    const closed = parsed.every((subpath) => subpath.closed);
+    const normalized = normalizeSubpaths(parsed.map((subpath) => subpath.points), closed);
+    return normalized ? { ...normalized, closed } : null;
+  } catch {
+    return null;
+  }
 }
 
 function label(element: Element, fallback: string): string {

@@ -249,6 +249,7 @@ function cloneComponentElements(
       order: isRoot ? placement.order ?? source.order : source.order,
       name: isRoot ? `${component.name} instance` : source.name,
       componentId: null,
+      figmaSource: null,
       instanceOf: isRoot ? component.id : null,
       instanceRootId: placement.instanceId,
       instanceSourceId: source.id,
@@ -288,6 +289,7 @@ function syncComponentInstance(document: DesignDocument, root: DesignElement): v
       order: isRoot ? root.order : source.order,
       name: isRoot ? root.name : source.name,
       componentId: null,
+      figmaSource: isRoot ? root.figmaSource ?? null : null,
       instanceOf: isRoot ? component.id : null,
       instanceRootId: root.id,
       instanceSourceId: source.id,
@@ -340,14 +342,35 @@ function validateDesignComponents(document: DesignDocument): void {
   if (sets.size !== document.componentSets.length) throw new Error('Design component set ids must be unique.');
   const libraryLinks = new Set(document.libraryLinks.map((link) => link.id));
   if (libraryLinks.size !== document.libraryLinks.length) throw new Error('Design library links must be unique.');
+  const figmaLinks = new Set(document.figmaLinks.map((link) => link.id));
+  if (figmaLinks.size !== document.figmaLinks.length) throw new Error('Figma design links must be unique.');
+  for (const link of document.figmaLinks) {
+    const mappedElements = new Set<string>();
+    for (const [sourceNodeId, elementId] of Object.entries(link.mappings)) {
+      const element = document.elements.find((candidate) => candidate.id === elementId);
+      if (!element || element.figmaSource?.linkId !== link.id || element.figmaSource.nodeId !== sourceNodeId) {
+        throw new Error('Invalid Figma layer mapping.');
+      }
+      if (mappedElements.has(elementId)) throw new Error('Figma layer mappings must be unique.');
+      mappedElements.add(elementId);
+    }
+    const mappedSourceIds = new Set(Object.keys(link.mappings));
+    if ([...Object.keys(link.baselineHashes), ...Object.keys(link.localHashes), ...Object.keys(link.imageRefs), ...link.pendingPushNodeIds].some((sourceNodeId) => !mappedSourceIds.has(sourceNodeId))) {
+      throw new Error('Invalid Figma synchronization state.');
+    }
+  }
+  const validateFigmaReference = (source: { linkId: string } | null | undefined) => {
+    if (source && !figmaLinks.has(source.linkId)) throw new Error('Invalid Figma design reference.');
+  };
   const validateLibraryReference = (libraryId: string | null, sourceId: string | null) => {
     if (Boolean(libraryId) !== Boolean(sourceId) || (libraryId && !libraryLinks.has(libraryId))) throw new Error('Invalid design library reference.');
   };
-  for (const collection of document.variableCollections) validateLibraryReference(collection.libraryId, collection.librarySourceId);
-  for (const variable of document.variables) validateLibraryReference(variable.libraryId, variable.librarySourceId);
-  for (const set of document.componentSets) validateLibraryReference(set.libraryId, set.librarySourceId);
+  for (const collection of document.variableCollections) { validateLibraryReference(collection.libraryId, collection.librarySourceId); validateFigmaReference(collection.figmaSource); }
+  for (const variable of document.variables) { validateLibraryReference(variable.libraryId, variable.librarySourceId); validateFigmaReference(variable.figmaSource); }
+  for (const set of document.componentSets) { validateLibraryReference(set.libraryId, set.librarySourceId); validateFigmaReference(set.figmaSource); }
   for (const component of document.components) {
     validateLibraryReference(component.libraryId, component.librarySourceId);
+    validateFigmaReference(component.figmaSource);
     if (keys.has(component.key)) throw new Error('Design component keys must be unique.');
     keys.add(component.key);
     const root = document.elements.find((element) => element.id === component.rootElementId);
@@ -364,6 +387,7 @@ function validateDesignComponents(document: DesignDocument): void {
     }
   }
   for (const element of document.elements) {
+    validateFigmaReference(element.figmaSource);
     if (element.componentId && components.get(element.componentId)?.rootElementId !== element.id) throw new Error('Invalid component layer reference.');
     if (!element.instanceRootId && !element.instanceOf && !element.instanceSourceId) continue;
     if (!element.instanceRootId || !element.instanceSourceId) throw new Error('Invalid component instance.');
@@ -638,6 +662,27 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       next.libraryLinks = next.libraryLinks.filter((link) => link.id !== operation.libraryId);
       continue;
     }
+    if (operation.kind === 'add-figma-link') {
+      if (next.figmaLinks.some((link) => link.id === operation.link.id)) throw new Error('Figma file is already linked.');
+      next.figmaLinks.push(operation.link);
+      continue;
+    }
+    if (operation.kind === 'update-figma-link') {
+      const link = next.figmaLinks.find((candidate) => candidate.id === operation.linkId);
+      if (!link) throw new Error('Figma design link not found.');
+      Object.assign(link, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-figma-link') {
+      if (!next.figmaLinks.some((link) => link.id === operation.linkId)) throw new Error('Figma design link not found.');
+      next.figmaLinks = next.figmaLinks.filter((link) => link.id !== operation.linkId);
+      for (const element of next.elements) if (element.figmaSource?.linkId === operation.linkId) element.figmaSource = null;
+      for (const collection of next.variableCollections) if (collection.figmaSource?.linkId === operation.linkId) collection.figmaSource = null;
+      for (const variable of next.variables) if (variable.figmaSource?.linkId === operation.linkId) variable.figmaSource = null;
+      for (const set of next.componentSets) if (set.figmaSource?.linkId === operation.linkId) set.figmaSource = null;
+      for (const component of next.components) if (component.figmaSource?.linkId === operation.linkId) component.figmaSource = null;
+      continue;
+    }
     if (operation.kind === 'create-component-instance') {
       if (next.elements.some((element) => element.id === operation.instanceId)) throw new Error('Component instance already exists.');
       const component = next.components.find((candidate) => candidate.id === operation.componentId);
@@ -782,6 +827,7 @@ export class DesignDocumentService {
       components: [],
       componentSets: [],
       libraryLinks: [],
+      figmaLinks: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -895,6 +941,16 @@ export class DesignDocumentService {
         throw error;
       }
     });
+  }
+
+  async readAsset(workspaceId: string, nodeId: string, assetId: string): Promise<{ bytes: Uint8Array; mimeType: DesignAsset['mimeType']; name: string }> {
+    const document = await this.get(workspaceId, nodeId);
+    const asset = document.assets.find((candidate) => candidate.id === assetId);
+    if (!asset) throw new Error('Design asset not found.');
+    const context = await this.context(workspaceId, nodeId);
+    const absolutePath = resolve(context.root, asset.path);
+    if (!absolutePath.startsWith(context.root + sep)) throw new Error('Invalid design asset path.');
+    return { bytes: await readFile(absolutePath), mimeType: asset.mimeType, name: asset.name };
   }
 
   async renameDocument(workspaceId: string, nodeId: string, name: string): Promise<DesignDocument> {

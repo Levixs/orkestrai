@@ -27,6 +27,10 @@ const TOOLS = [
   { name: 'design_list', description: 'Lista documentos de design nativos do workspace e suas revisoes.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: elementos, vetores, assets, guias, tokens, modos, bindings, componentes, instancias, propriedades, variantes, slots e links de bibliotecas. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
+  { name: 'design_figma_inspect', description: 'Inspeciona um link oficial do Figma e lista paginas/frames importaveis sem alterar o documento.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' } }, required: ['nodeId', 'url'] } },
+  { name: 'design_figma_import', description: 'Importa frames do Figma como scene graph nativo, preservando o vinculo para sincronizacao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' }, sourceNodeIds: { type: 'array', items: { type: 'string' }, minItems: 1 }, baseRevision: { type: 'number' }, targetPageId: { type: 'string' } }, required: ['nodeId', 'url', 'sourceNodeIds', 'baseRevision', 'targetPageId'] } },
+  { name: 'design_figma_sync_preview', description: 'Compara Figma e Orkestrai e classifica alteracoes remotas, locais e conflitos antes de escrever.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, linkId: { type: 'string' } }, required: ['nodeId', 'linkId'] } },
+  { name: 'design_figma_sync_apply', description: 'Aplica resolucoes seletivas de sincronizacao Figma apos revisar o preview.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, linkId: { type: 'string' }, baseRevision: { type: 'number' }, changes: { type: 'array', items: { type: 'object', properties: { nodeId: { type: 'string' }, resolution: { type: 'string', enum: ['figma', 'local', 'delete'] } }, required: ['nodeId', 'resolution'] } } }, required: ['nodeId', 'linkId', 'baseRevision', 'changes'] } },
   { name: 'design_create_element', description: 'Cria frame, grupo, retangulo, elipse, texto, vetor ou imagem no documento. A operacao falha em revisao antiga, sem sobrescrever trabalho humano.', inputSchema: { type: 'object', properties: {
     nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, parentId: { type: ['string', 'null'] },
     type: { type: 'string', enum: ['frame', 'group', 'rectangle', 'ellipse', 'text', 'path', 'image'] }, name: { type: 'string' },
@@ -104,6 +108,14 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
         from: selfAgent,
         taskId: args.taskId,
       });
+    case 'design_figma_inspect':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/inspect`, { url: args.url });
+    case 'design_figma_import':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/import`, { url: args.url, sourceNodeIds: args.sourceNodeIds, baseRevision: args.baseRevision, targetPageId: args.targetPageId });
+    case 'design_figma_sync_preview':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/sync`, { linkId: args.linkId });
+    case 'design_figma_sync_apply':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/sync`, { linkId: args.linkId, baseRevision: args.baseRevision, changes: args.changes });
     case 'design_create_element': {
       const { nodeId, baseRevision, summary, taskId, ...element } = args;
       return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`, {

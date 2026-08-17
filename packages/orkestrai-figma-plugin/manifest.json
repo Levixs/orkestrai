@@ -1,0 +1,13 @@
+{
+  "name": "Orkestrai Design Bridge",
+  "id": "1538472910642853172",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["*"],
+    "reasoning": "The user supplies the dynamic loopback URL of their locally installed Orkestrai app. The plugin code rejects non-loopback hosts."
+  }
+}

@@ -39,29 +39,59 @@ const svelar = createSvelarApp({
  */
 const normalizeLoopbackOrigin: Handle = async ({ event, resolve }) => {
   const origin = event.request.headers.get('origin');
-  if (origin && !['GET', 'HEAD', 'OPTIONS'].includes(event.request.method)) {
+  const figmaPluginRoute = /^\/api\/agent-room\/bridge\/designs\/[^/]+\/figma\//.test(event.url.pathname);
+  const figmaPluginOrigin = figmaPluginRoute && Boolean(origin) && (origin === 'null' || (() => {
     try {
-      const originUrl = new URL(origin);
-      const requestHost = event.request.headers.get('host');
-      const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(originUrl.hostname);
-      if (loopback && originUrl.host === requestHost && originUrl.origin !== event.url.origin) {
-        const headers = new Headers(event.request.headers);
-        headers.set('origin', event.url.origin);
-        const request = new Request(event.request, { headers });
-        Object.defineProperty(event, 'request', { value: request, writable: true });
-      }
+      const hostname = new URL(origin ?? '').hostname.toLowerCase();
+      return hostname === 'figma.com' || hostname === 'www.figma.com';
     } catch {
-      // origin invalido segue o fluxo normal (sera bloqueado se for cross-site)
+      return false;
+    }
+  })());
+  if (figmaPluginOrigin && event.request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: {
+      'Access-Control-Allow-Origin': origin!,
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      'Access-Control-Max-Age': '600',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      Vary: 'Origin',
+    } });
+  }
+  if (origin && !['GET', 'HEAD', 'OPTIONS'].includes(event.request.method)) {
+    let normalizeOrigin = figmaPluginOrigin;
+    if (!normalizeOrigin) {
+      try {
+        const originUrl = new URL(origin);
+        const requestHost = event.request.headers.get('host');
+        const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(originUrl.hostname);
+        normalizeOrigin = loopback && originUrl.host === requestHost && originUrl.origin !== event.url.origin;
+      } catch {
+        // origin invalido segue o fluxo normal (sera bloqueado se for cross-site)
+      }
+    }
+    if (normalizeOrigin) {
+      const headers = new Headers(event.request.headers);
+      headers.set('origin', event.url.origin);
+      const request = new Request(event.request, { headers });
+      Object.defineProperty(event, 'request', { value: request, writable: true });
     }
   }
   return svelar.handle({
     event,
-    resolve: async (event, options) => {
-      const response = await resolve(event, options);
+    resolve: async (requestEvent: typeof event, options?: Parameters<typeof resolve>[1]) => {
+      const response = await resolve(requestEvent, options);
       response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
       response.headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
       response.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
       response.headers.set('Origin-Agent-Cluster', '?1');
+      if (figmaPluginOrigin) {
+        response.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+        response.headers.set('Access-Control-Allow-Origin', origin!);
+        response.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+        response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+        response.headers.append('Vary', 'Origin');
+      }
       return response;
     },
   });

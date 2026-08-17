@@ -39,6 +39,7 @@ export class DesktopSecretService {
     if (!/^automation:[a-z0-9:_-]{1,240}$/i.test(key)) throw new Error('Invalid automation secret key.');
     if (typeof process.send !== 'function') {
       if (key.includes(':github:')) return process.env.ORKESTRAI_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? null;
+      if (key.includes(':figma:')) return process.env.ORKESTRAI_FIGMA_TOKEN ?? process.env.FIGMA_ACCESS_TOKEN ?? null;
       return null;
     }
     const requestId = randomUUID();

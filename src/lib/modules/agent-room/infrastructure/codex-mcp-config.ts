@@ -4,6 +4,8 @@ export type CodexMcpLaunch = {
   electronRuntime: boolean;
 };
 
+export const FIGMA_MCP_URL = 'https://mcp.figma.com/mcp';
+
 type SectionRange = { bodyStart: number; bodyEnd: number };
 
 function escapeRegExp(value: string): string {
@@ -57,5 +59,8 @@ export function upsertCodexMcpConfig(current: string, launch: CodexMcpLaunch): s
       ELECTRON_RUN_AS_NODE: '"1"',
     });
   }
+  next = replaceSectionKeys(next, 'mcp_servers.figma', {
+    url: JSON.stringify(FIGMA_MCP_URL),
+  });
   return next;
 }

@@ -447,6 +447,11 @@ export const TOURS_ES: Tour[] = [
         body: 'Abre Variables junto a Capas. Empieza con un preset de producto, marketing o mobile, importa DTCG/CSS o exporta DTCG/CSS/Tailwind; crea modos, aliases y bindings y audita repeticiones. En Componentes, convierte frames en fuentes reutilizables y crea instancias, propiedades, variantes y slots. En Bibliotecas, comparte versiones solo con workspaces autorizados. En Código, extrae CSS variables, Tailwind y contratos Svelte, React o Vue sin ejecutar archivos y conecta la fuente visual con su implementación. Los agentes usan el mismo command bus protegido por revisión.',
       },
       {
+        id: 'figma-bridge',
+        title: 'Vincula el mismo trabajo con Figma',
+        body: 'Abre Componentes → Figma. El MCP oficial ya está administrado para agentes compatibles. Guarda un token REST de solo lectura en la bóveda del sistema operativo, pega el enlace de una página o frame, inspecciona, elige qué entra al documento nativo y revisa cambios remotos, locales o en conflicto antes de sincronizar. Mantener la versión local agrega solo esa capa revisada a la cola de Figma. Instala el plugin propio desde su carpeta, pega la conexión loopback restringida al workspace copiada por Orkestrai y después transfiere una selección en vivo o envía únicamente las capas en cola.',
+      },
+      {
         id: 'designer',
         title: 'Agrega un diseñador al mismo documento',
         body: 'Creo un agente Diseñador. Puede inspeccionar y editar el documento estructurado exacto con tools tipadas de Orkestrai, sin adivinar desde una captura.',

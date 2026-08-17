@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Orkestrai Design Bridge</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:var(--figma-color-bg);color:var(--figma-color-text);font:11px/1.45 Inter,system-ui,sans-serif}button,input,textarea,select{font:inherit;color:inherit}button{height:30px;border:1px solid var(--figma-color-border);border-radius:5px;background:var(--figma-color-bg-secondary);padding:0 10px;cursor:pointer}button:hover{background:var(--figma-color-bg-hover)}button.primary{border-color:var(--figma-color-bg-brand);background:var(--figma-color-bg-brand);color:var(--figma-color-text-onbrand)}button:disabled{cursor:not-allowed;opacity:.45}input,textarea,select{width:100%;border:1px solid var(--figma-color-border);border-radius:4px;background:var(--figma-color-bg);padding:7px 8px;outline:none}input:focus,textarea:focus,select:focus{border-color:var(--figma-color-border-brand)}textarea{min-height:80px;resize:vertical}.shell{min-height:620px;display:flex;flex-direction:column}.header{display:flex;align-items:center;gap:9px;padding:12px;border-bottom:1px solid var(--figma-color-border)}.mark{display:grid;width:26px;height:26px;place-items:center;border-radius:6px;background:var(--figma-color-bg-brand);color:var(--figma-color-text-onbrand);font-weight:700}.title{font-weight:600}.muted{color:var(--figma-color-text-secondary)}.header-tools{margin-left:auto;display:flex;align-items:center;gap:8px}.language{width:auto;height:26px;padding:2px 22px 2px 6px}.status{width:7px;height:7px;border-radius:50%;background:var(--figma-color-icon-disabled)}.status.on{background:var(--figma-color-icon-success)}.body{flex:1;overflow:auto}.section{padding:12px;border-bottom:1px solid var(--figma-color-border)}.label{display:block;margin-bottom:5px;font-size:9px;font-weight:600;text-transform:uppercase;color:var(--figma-color-text-secondary)}.stack{display:grid;gap:8px}.row{display:flex;gap:6px}.row>*{min-width:0;flex:1}.row button.icon{flex:0 0 30px;padding:0}.notice{padding:8px;border:1px solid var(--figma-color-border);border-radius:4px;background:var(--figma-color-bg-secondary);color:var(--figma-color-text-secondary)}.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.toast{min-height:38px;padding:10px 12px;border-top:1px solid var(--figma-color-border);color:var(--figma-color-text-secondary)}.toast.error{color:var(--figma-color-text-danger)}.hidden{display:none}.file{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.badge{display:inline-block;padding:1px 5px;border-radius:3px;background:var(--figma-color-bg-tertiary);font-size:9px}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="header"><span class="mark">O</span><div><div class="title">Orkestrai Design Bridge</div><div id="file" class="muted file">Figma</div></div><div class="header-tools"><select id="language" class="language" aria-label="Language"><option value="en">EN</option><option value="pt-BR">PT</option><option value="es">ES</option></select><span id="status" class="status"></span></div></header>
+    <div class="body">
+      <section class="section stack">
+        <div><span class="label" data-i18n="connection_code"></span><textarea id="connection" spellcheck="false" data-i18n-placeholder="connection_placeholder"></textarea></div>
+        <button id="connect" class="primary" data-i18n="connect"></button>
+        <div class="notice" data-i18n="security_notice"></div>
+      </section>
+      <section id="workspace" class="section stack hidden">
+        <div><span class="label" data-i18n="design_document"></span><div class="row"><select id="design"></select><button id="refresh" class="icon" data-i18n-title="refresh" aria-label="Refresh">↻</button></div></div>
+        <div class="actions"><button id="push" class="primary" data-i18n="push"></button><button id="sync" data-i18n="sync"></button><button id="pull" data-i18n="pull"></button><button id="copy-json" data-i18n="copy_json"></button></div>
+      </section>
+      <section class="section stack">
+        <span class="label" data-i18n="svg_interop"></span>
+        <div class="actions"><button id="copy-svg" data-i18n="copy_svg"></button><button id="paste-svg" data-i18n="paste_svg"></button></div>
+        <textarea id="svg" spellcheck="false" data-i18n-placeholder="svg_placeholder"></textarea>
+      </section>
+      <section class="section"><span class="badge" data-i18n="first_party"></span> <span class="muted" data-i18n="first_party_notice"></span></section>
+    </div>
+    <div id="toast" class="toast"></div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const copy = {
+      en: { connection_code:'Connection code',connection_placeholder:'Paste the connection JSON copied from Orkestrai',connect:'Connect securely',security_notice:'The bridge only accepts a loopback Orkestrai URL. Your workspace token stays in this local Figma plugin storage.',design_document:'Native design document',refresh:'Refresh',push:'Selection to Orkestrai',sync:'Reviewed changes to current file',pull:'Open as new Figma page',copy_json:'Copy selection JSON',svg_interop:'SVG interoperability',copy_svg:'Copy selection as SVG',paste_svg:'Paste editable SVG',svg_placeholder:'Paste SVG markup here, then choose Paste editable SVG',first_party:'First-party plugin',first_party_notice:'No third-party editor or bridge code is used.',waiting:'Waiting for Figma...',connecting:'Connecting...',invalid_json:'Paste valid connection JSON.',paste_code:'Paste the connection code from Orkestrai.',connected:'Connected to the local Orkestrai workspace.',refreshed:'Design documents refreshed.',copied:'Selection copied as {format}.',clipboard_error:'Figma could not write to the clipboard.',unsaved:'save the file before linking',created_layers:'Created {count} native Figma layers on a new page.',created_layers_without_resources:'Created {count} layers. Some variables or styles require additional Figma permissions and were skipped.',updated_layers:'Updated {count} reviewed Figma layers from Orkestrai.',no_pending:'No reviewed local changes are waiting to be pushed.',imported_layers:'Imported {count} native Orkestrai layers.',svg_imported:'SVG imported as editable Figma vectors.' },
+      'pt-BR': { connection_code:'Código de conexão',connection_placeholder:'Cole o JSON de conexão copiado no Orkestrai',connect:'Conectar com segurança',security_notice:'A ponte aceita apenas o endereço local do Orkestrai. O token do workspace fica no armazenamento local deste plugin do Figma.',design_document:'Documento de design nativo',refresh:'Atualizar',push:'Seleção para o Orkestrai',sync:'Alterações revisadas para este arquivo',pull:'Abrir em uma nova página do Figma',copy_json:'Copiar seleção como JSON',svg_interop:'Interoperabilidade SVG',copy_svg:'Copiar seleção como SVG',paste_svg:'Colar SVG editável',svg_placeholder:'Cole o SVG aqui e escolha Colar SVG editável',first_party:'Plugin oficial do Orkestrai',first_party_notice:'Nenhum código de editor ou ponte de terceiros é usado.',waiting:'Aguardando o Figma...',connecting:'Conectando...',invalid_json:'Cole um JSON de conexão válido.',paste_code:'Cole o código de conexão do Orkestrai.',connected:'Conectado ao workspace local do Orkestrai.',refreshed:'Documentos de design atualizados.',copied:'Seleção copiada como {format}.',clipboard_error:'O Figma não conseguiu escrever na área de transferência.',unsaved:'salve o arquivo antes de vincular',created_layers:'{count} layers nativas criadas em uma nova página do Figma.',created_layers_without_resources:'{count} layers foram criadas. Algumas variáveis ou estilos exigem permissões adicionais do Figma e foram ignorados.',updated_layers:'{count} layers revisadas atualizadas no Figma.',no_pending:'Não há alterações locais revisadas aguardando envio.',imported_layers:'{count} layers nativas importadas no Orkestrai.',svg_imported:'SVG importado como vetores editáveis no Figma.' },
+      es: { connection_code:'Código de conexión',connection_placeholder:'Pega el JSON de conexión copiado desde Orkestrai',connect:'Conectar de forma segura',security_notice:'El puente solo acepta la dirección local de Orkestrai. El token del workspace permanece en el almacenamiento local de este plugin de Figma.',design_document:'Documento de diseño nativo',refresh:'Actualizar',push:'Selección a Orkestrai',sync:'Cambios revisados al archivo actual',pull:'Abrir en una página nueva de Figma',copy_json:'Copiar selección como JSON',svg_interop:'Interoperabilidad SVG',copy_svg:'Copiar selección como SVG',paste_svg:'Pegar SVG editable',svg_placeholder:'Pega el SVG aquí y elige Pegar SVG editable',first_party:'Plugin oficial de Orkestrai',first_party_notice:'No se utiliza código de editores o puentes de terceros.',waiting:'Esperando a Figma...',connecting:'Conectando...',invalid_json:'Pega un JSON de conexión válido.',paste_code:'Pega el código de conexión de Orkestrai.',connected:'Conectado al workspace local de Orkestrai.',refreshed:'Documentos de diseño actualizados.',copied:'Selección copiada como {format}.',clipboard_error:'Figma no pudo escribir en el portapapeles.',unsaved:'guarda el archivo antes de vincularlo',created_layers:'Se crearon {count} capas nativas en una página nueva de Figma.',created_layers_without_resources:'Se crearon {count} capas. Algunas variables o estilos requieren permisos adicionales de Figma y se omitieron.',updated_layers:'Se actualizaron {count} capas revisadas en Figma.',no_pending:'No hay cambios locales revisados pendientes de envío.',imported_layers:'Se importaron {count} capas nativas en Orkestrai.',svg_imported:'SVG importado como vectores editables de Figma.' }
+    };
+    let locale = localStorage.getItem('orkestrai.locale') || (navigator.language.toLowerCase().startsWith('pt') ? 'pt-BR' : navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en');
+    function tr(key, values = {}) { return Object.entries(values).reduce((text, [name, value]) => text.replace(`{${name}}`, String(value)), (copy[locale] || copy.en)[key] || copy.en[key] || key); }
+    function translate() { document.documentElement.lang = locale; $('language').value = locale; document.querySelectorAll('[data-i18n]').forEach((node) => { node.textContent = tr(node.dataset.i18n); }); document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => { node.placeholder = tr(node.dataset.i18nPlaceholder); }); document.querySelectorAll('[data-i18n-title]').forEach((node) => { node.title = tr(node.dataset.i18nTitle); node.setAttribute('aria-label', node.title); }); }
+    const send = (type, payload = {}) => parent.postMessage({ pluginMessage: { type, ...payload } }, '*');
+    function notify(text, error = false) { $('toast').textContent = text; $('toast').className = `toast${error ? ' error' : ''}`; }
+    function setConnected(value) { connected = value; $('status').className = `status${value ? ' on' : ''}`; $('workspace').classList.toggle('hidden', !value); }
+    function selectedDesign() { return $('design').value; }
+    function renderDesigns(designs) { $('design').replaceChildren(...(designs || []).map((design) => { const option = document.createElement('option'); option.value = design.nodeId; option.textContent = `${design.title} · r${design.revision}`; return option; })); }
+    $('language').onchange = () => { locale = $('language').value; localStorage.setItem('orkestrai.locale', locale); translate(); notify(tr('waiting')); };
+    $('connect').onclick = () => { try { send('connect', { connection: JSON.parse($('connection').value) }); notify(tr('connecting')); } catch { notify(tr('invalid_json'), true); } };
+    $('refresh').onclick = () => send('refresh');
+    $('push').onclick = () => selectedDesign() && send('push-selection', { nodeId: selectedDesign() });
+    $('sync').onclick = () => selectedDesign() && send('sync', { nodeId: selectedDesign() });
+    $('pull').onclick = () => selectedDesign() && send('pull', { nodeId: selectedDesign() });
+    $('copy-svg').onclick = () => send('copy-svg');
+    $('copy-json').onclick = () => send('copy-json');
+    $('paste-svg').onclick = () => send('import-svg', { svg: $('svg').value });
+    onmessage = async ({ data }) => {
+      const event = data.pluginMessage;
+      if (!event) return;
+      if (event.type === 'ready') {
+        $('file').textContent = `${event.fileName || 'Figma'}${event.fileKey ? ` · ${event.fileKey}` : ` · ${tr('unsaved')}`}`;
+        if (event.connection) { $('connection').value = JSON.stringify(event.connection, null, 2); send('connect', { connection: event.connection }); }
+        else notify(tr('paste_code'));
+      }
+      if (event.type === 'connected') { setConnected(true); renderDesigns(event.designs); notify(tr('connected')); }
+      if (event.type === 'designs') { renderDesigns(event.designs); notify(tr('refreshed')); }
+      if (event.type === 'done') notify(event.key ? tr(event.key, { count: event.count }) : event.text);
+      if (event.type === 'error') notify(event.error, true);
+      if (event.type === 'clipboard') {
+        try { await navigator.clipboard.writeText(event.text); notify(tr('copied', { format: event.format.toUpperCase() })); }
+        catch { $('svg').value = event.text; $('svg').select(); const copied = document.execCommand('copy'); notify(copied ? tr('copied', { format: event.format.toUpperCase() }) : tr('clipboard_error'), !copied); }
+      }
+    };
+    translate();
+    notify(tr('waiting'));
+  </script>
+</body>
+</html>

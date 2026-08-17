@@ -1,4 +1,5 @@
 import { mcpService } from './McpService.js';
+import { FIGMA_MCP_URL } from '../../infrastructure/codex-mcp-config.js';
 
 const REGISTRY_BASE = 'https://registry.modelcontextprotocol.io';
 const FETCH_TIMEOUT_MS = 12_000;
@@ -158,14 +159,12 @@ const CURATED: McpMarketEntry[] = [
   {
     key: 'figma',
     title: 'Figma',
-    description: 'Ler layouts, componentes e estilos de arquivos Figma para gerar código fiel.',
+    description: 'Official remote Figma MCP',
     source: 'curadoria',
     category: 'Design',
-    official: false,
-    homepage: 'https://www.figma.com/developers/api',
-    command: 'npx',
-    args: ['-y', 'figma-developer-mcp', '--stdio'],
-    envs: [{ key: 'FIGMA_API_KEY', label: 'Token de acesso pessoal do Figma', help: 'Perfil do Figma → Settings → Personal access tokens', required: true }],
+    official: true,
+    homepage: 'https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/',
+    url: FIGMA_MCP_URL,
   },
   {
     key: 'slack',

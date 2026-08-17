@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BookOpen, Boxes, Code2, Component, CopyPlus, Diamond, Eye, Link2, Plus, Search, Trash2, Unlink2 } from '@lucide/svelte';
+  import { BookOpen, Boxes, Code2, Component, CopyPlus, Diamond, Eye, Link2, Plus, Search, Shapes, Trash2, Unlink2 } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Switch } from '$lib/components/ui/switch';
@@ -16,6 +16,7 @@
   import * as m from '$lib/paraglide/messages.js';
   import DesignLibrariesPanel from './DesignLibrariesPanel.svelte';
   import DesignCodebasePanel from './DesignCodebasePanel.svelte';
+  import DesignFigmaPanel from './DesignFigmaPanel.svelte';
 
   let {
     document,
@@ -37,7 +38,7 @@
 
   let search = $state('');
   let selectedComponentId = $state('');
-  let view = $state<'components' | 'libraries' | 'code'>('components');
+  let view = $state<'components' | 'libraries' | 'code' | 'figma'>('components');
 
   const selectedElements = $derived(document.elements.filter((element) => selectedIds.includes(element.id)));
   const selectedElement = $derived(selectedElements.length === 1 ? selectedElements[0] : null);
@@ -291,10 +292,11 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-col text-[11px]">
-  <div class="grid grid-cols-3 border-b border-[var(--app-border)] p-1">
+  <div class="grid grid-cols-2 gap-0.5 border-b border-[var(--app-border)] p-1">
     <button class={`flex h-7 items-center justify-center gap-1 rounded text-[9px] font-medium ${view === 'components' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)]' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={view === 'components'} onclick={() => (view = 'components')}><Diamond size={11} />{m['design.components']()}</button>
     <button class={`flex h-7 items-center justify-center gap-1 rounded text-[9px] font-medium ${view === 'libraries' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)]' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={view === 'libraries'} onclick={() => (view = 'libraries')}><BookOpen size={11} />{m['design.libraries']()}</button>
     <button class={`flex h-7 items-center justify-center gap-1 rounded text-[9px] font-medium ${view === 'code' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)]' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={view === 'code'} onclick={() => (view = 'code')}><Code2 size={11} />{m['design.code']()}</button>
+    <button class={`flex h-7 items-center justify-center gap-1 rounded text-[9px] font-medium ${view === 'figma' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)]' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={view === 'figma'} onclick={() => (view = 'figma')}><Shapes size={11} />Figma</button>
   </div>
   {#if view === 'components'}
   <div class="space-y-2 border-b border-[var(--app-border)] p-2">
@@ -348,7 +350,9 @@
   </div>
   {:else if view === 'libraries'}
     <div class="min-h-0 flex-1"><DesignLibrariesPanel {document} {onApply} {onDocumentChange} /></div>
-  {:else}
+  {:else if view === 'code'}
     <div class="min-h-0 flex-1"><DesignCodebasePanel {document} {activeComponent} {saving} {makeId} {onApply} /></div>
+  {:else}
+    <div class="min-h-0 flex-1"><DesignFigmaPanel {document} {onDocumentChange} {onSelectElements} /></div>
   {/if}
 </div>

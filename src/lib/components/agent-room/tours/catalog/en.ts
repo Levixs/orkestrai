@@ -447,6 +447,11 @@ export const TOURS_EN: Tour[] = [
         body: 'Open Variables beside Layers. Start from a product, marketing, or mobile preset, import DTCG/CSS or export DTCG/CSS/Tailwind; create modes, aliases, and bindings, then audit repetition. Under Components, turn frames into reusable sources and create instances, properties, variants, and slots. Under Libraries, share versions only with authorized workspaces. Under Code, extract CSS variables, Tailwind, and Svelte, React, or Vue contracts without executing files and connect the visual source to its implementation. Agents use the same revision-safe command bus.',
       },
       {
+        id: 'figma-bridge',
+        title: 'Link the same work to Figma',
+        body: 'Open Components → Figma. The official MCP is already managed for compatible agents. Store a read-only REST token in the operating-system vault, paste a Figma page or frame link, inspect it, select what enters the native document, and review remote, local, or conflicting changes before synchronization. Keeping the local version queues only that reviewed layer for Figma. Install the first-party plugin from its folder, paste the workspace-scoped loopback connection copied by Orkestrai, then transfer a live selection or send only the queued layers back.',
+      },
+      {
         id: 'designer',
         title: 'Add a designer to the same document',
         body: 'I create a Designer agent. It can inspect and edit the exact structured document with typed Orkestrai tools instead of guessing from a screenshot.',

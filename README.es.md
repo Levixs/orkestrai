@@ -77,6 +77,19 @@ Descarga los instaladores más recientes desde
   tipadas mientras la UI se actualiza en vivo. Componentes y tokens están en la
   búsqueda; documentos, assets, miniaturas e historial quedan en
   `.orkestrai/designs` dentro del workspace.
+- **Interoperabilidad oficial con Figma:** el MCP oficial administrado ofrece
+  contexto de diseño a los agentes compatibles, mientras la pestaña Figma
+  nativa inspecciona enlaces e importa páginas o frames, vectores, assets,
+  estilos, variables, componentes, variantes, instancias e identidades de
+  bibliotecas externas seleccionadas al mismo
+  documento Orkestrai. Los orígenes vinculados comparan hashes remotos y locales
+  antes de una sincronización selectiva, y los mappings de Code Connect forman
+  la relación nodo Figma → capa Orkestrai → código. Un plugin propio incluido en
+  la app y restringido al loopback transfiere selecciones en vivo, SVG editable
+  o JSON estructural, abre un documento Orkestrai con recursos nativos en una
+  nueva página de Figma y envía solo cambios locales vinculados y revisados de
+  vuelta al archivo actual. La credencial
+  REST queda cifrada en la bóveda del sistema operativo.
 - **Decisiones con Council:** abre Consejo desde la barra del Canvas, el workspace
   en Workbench o `Cmd/Ctrl+K` y pide perspectivas independientes y limitadas por
   presupuesto a entre dos y cinco agentes reales sobre una tarea u objetivo,
