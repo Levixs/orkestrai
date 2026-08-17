@@ -141,6 +141,13 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Fixed finished Git Floors accumulating their cloned or recruited nodes in the
+  Workbench and Control Center. Nodes from landed or deleted floors are now
+  archived, their obsolete edges are removed, and legacy records are repaired
+  during migration. Active floor agents show their floor name, cloned terminals
+  never inherit PTY or provider conversation ids, and bridge recruitment now
+  honors and validates its existing floor target instead of silently placing
+  the agent elsewhere.
 - Fixed WSL terminal creation and restoration on Windows by preflighting the
   exact distribution, Linux directory, login PATH, and CLI before PTY spawn,
   then tracking provider transcripts inside that distribution's Linux home.

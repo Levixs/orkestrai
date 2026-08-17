@@ -81,7 +81,7 @@ const TOOLS = [
   { name: 'notify', description: 'Notificacao nativa de atencao ou conclusao do projeto. task_done ja notifica tarefas.', inputSchema: { type: 'object', properties: { message: { type: 'string' }, kind: { type: 'string', enum: ['info', 'attention', 'project', 'task'] }, title: { type: 'string' } }, required: ['message'] } },
   { name: 'status', description: 'Registra o estado semantico e a acao atual deste agente no Control Center.', inputSchema: { type: 'object', properties: { state: { type: 'string', enum: ['starting', 'working', 'waiting_input', 'waiting_permission', 'blocked', 'idle', 'done', 'error', 'disconnected'] }, action: { type: 'string' }, taskId: { type: 'string' } }, required: ['state'] } },
   { name: 'port', description: 'Devolve uma porta livre para subir servidores.', inputSchema: { type: 'object', properties: {} } },
-  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', description: 'Id de um provider registrado no Orkestrai.' }, role: { type: 'string' } }, required: ['title'] } },
+  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', description: 'Id de um provider registrado no Orkestrai.' }, role: { type: 'string' }, floorId: { type: 'string', description: 'Andar ativo onde o agente deve trabalhar.' } }, required: ['title'] } },
   { name: 'dismiss', description: '(maestro) Dispensa um agente.', inputSchema: { type: 'object', properties: { agent: { type: 'string' } }, required: ['agent'] } },
 ];
 
@@ -298,7 +298,7 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return { port: await findFreePort() };
     case 'recruit': {
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — recruit so funciona dentro do terminal do maestro.');
-      return bridge('POST', '/api/agent-room/bridge/recruit', { title: args.title, provider: args.provider, role: args.role, from: selfAgent });
+      return bridge('POST', '/api/agent-room/bridge/recruit', { title: args.title, provider: args.provider, role: args.role, floorId: args.floorId, from: selfAgent });
     }
     case 'dismiss': {
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — dismiss so funciona dentro do terminal do maestro.');

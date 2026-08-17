@@ -52,7 +52,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'control-center',
       title: 'Central de controle e comunicações verificadas',
-      body: `Abra a Central de controle no topo de cada workspace expandido no explorer do Workbench. Ela reconstrói o estado de cada agente a partir de um histórico append-only: iniciando, trabalhando, aguardando resposta ou permissão, bloqueado, ocioso, concluído, erro ou desconectado. Cada linha mostra tarefa atual, última ação relevante, tempo no estado, provider, role e uso disponível. A caixa de Comunicações registra as transições na fila, enviada, entregue, recebida, respondida e falhou sob um único id de mensagem; orkestrai ask só termina com sucesso após resposta confirmada. Esses estados sobrevivem à troca de tela e ao reinício do app sem acordar terminais ociosos. As edges continuam como histórico visual de conversas reais, mas a entrega usa a ponte e não depende de uma edge. Notificações nativas ficam reservadas para atenção explícita, conclusão de tarefa ou conclusão do projeto, sem ruído de atividade comum.`,
+      body: `Abra a Central de controle no topo de cada workspace expandido no explorer do Workbench. Ela reconstrói o estado de cada agente do térreo e dos andares atualmente ativos a partir de um histórico append-only; agentes de andares encerrados permanecem no histórico, mas não entram nas contagens. Os badges de andar distinguem worktrees ativas. Os estados incluem iniciando, trabalhando, aguardando resposta ou permissão, bloqueado, ocioso, concluído, erro ou desconectado. Cada linha mostra tarefa atual, última ação relevante, tempo no estado, provider, role e uso disponível. A caixa de Comunicações registra as transições na fila, enviada, entregue, recebida, respondida e falhou sob um único id de mensagem; orkestrai ask só termina com sucesso após resposta confirmada. Esses estados sobrevivem à troca de tela e ao reinício do app sem acordar terminais ociosos. As edges continuam como histórico visual de conversas reais, mas a entrega usa a ponte e não depende de uma edge. Notificações nativas ficam reservadas para atenção explícita, conclusão de tarefa ou conclusão do projeto, sem ruído de atividade comum.`,
     },
     {
       id: 'review-center',
@@ -122,7 +122,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'andares',
       title: 'Andares (worktrees)',
-      body: `Um andar é um git worktree do repo do workspace com branch própria. O painel Andares mostra, para o térreo e cada worktree, os agentes ativos e uma lista das tarefas com título, etapa e responsável, além de arquivos alterados, sincronização da branch e último commit. Assim você sabe exatamente quem está fazendo o quê antes de abrir a camada. Crie pelo painel ou pela CLI: orkestrai floor create/list/preview/land/remove. Aterrissar faz merge da branch depois da prévia de diff e conflitos. Conflitos nunca são escondidos: o erro lista os arquivos e a resolução vira tarefa explícita.`,
+      body: `Um andar é um git worktree do repo do workspace com branch própria. O painel Andares mostra, para o térreo e cada worktree ativa, os agentes e uma lista das tarefas com título, etapa e responsável, além de arquivos alterados, sincronização da branch e último commit. Workbench e Central de controle identificam o andar dos agentes ativos. Ao aterrissar ou excluir, terminais, cópias de layout e edges daquele andar são arquivados automaticamente: continuam disponíveis para atribuição histórica, mas não inflam as contagens nem aparecem como agentes atuais. Clonar o layout nunca reutiliza a sessão PTY ou a conversa do provider. Crie pelo painel ou pela CLI: orkestrai floor create/list/preview/land/remove; recruit --floor posiciona um novo agente no andar ativo escolhido. Aterrissar faz merge da branch depois da prévia de diff e conflitos. Conflitos nunca são escondidos: o erro lista os arquivos e a resolução vira tarefa explícita.`,
     },
     {
       id: 'rotinas',
@@ -380,7 +380,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'monitor-team-control-center',
       title: 'Ver o que o time realmente está fazendo',
-      body: 'Abra a Central de controle de um workspace expandido no Workbench para comparar quem está trabalhando, ocioso, bloqueado, aguardando resposta ou offline. O explorer compacto mostra tarefa e estado de cada agente; a caixa de comunicações comprova se um handoff entrou na fila, foi entregue, recebido, respondido ou falhou sob um id persistente. Troque de workspace ou reinicie o app sem acordar terminais ociosos: o histórico reconstrói a mesma visão operacional.',
+      body: 'Abra a Central de controle de um workspace expandido no Workbench para comparar quem está trabalhando, ocioso, bloqueado, aguardando resposta ou offline. O explorer compacto mostra tarefa, estado e andar de cada agente ativo; agentes e nodes de andares aterrissados ou excluídos ficam no histórico sem inflar as contagens atuais. A caixa de comunicações comprova se um handoff entrou na fila, foi entregue, recebido, respondido ou falhou sob um id persistente. Troque de workspace ou reinicie o app sem acordar terminais ociosos: o histórico reconstrói a mesma visão operacional.',
       tags: ['Central de controle', 'entrega verificada', 'atividade dos agentes'],
     },
     {
@@ -436,6 +436,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       date: 'Em desenvolvimento',
       items: [
+        'Workbench e Central de controle não acumulam mais agentes, quadros e outros nodes de andares já aterrissados ou excluídos. O upgrade arquiva o legado, a finalização do andar remove edges obsoletas, agentes ativos recebem o nome do andar e clones de layout iniciam sem reutilizar sessão PTY ou conversa do provider. O recrutamento pela ponte agora respeita e valida o andar solicitado.',
         'O menu Design do Canvas agora oferece uma exploração guiada com três direções de UI. Uma transação cria spec vinculada, cinco etapas rastreáveis no Kanban e documentos nativos de Clareza, Expressiva e Eficiente; a execução manual ou pelo líder ativo compartilha o contrato completo de brief, referências, tokens, componentes, protótipo, qualidade e código, com aprovação humana explícita antes da implementação. Notas vinculadas às tarefas agora entram integralmente no despacho.',
         'A geometria das conexões do Canvas agora reutiliza índices de nodes e adjacências de cada snapshot imutável, sem varrer o grafo inteiro para cada edge e handle. Mudanças feitas por agentes atualizam snapshots brutos de nodes, edges e andares sem verificar todos os providers novamente.',
         'As configurações de áudio agora selecionam e testam o microfone usado por todo ditado local e a saída usada por prévias e respostas faladas. Dispositivos removidos voltam ao padrão do sistema, e falhas distinguem permissão, hardware ausente, captura interrompida e provável disputa pela única entrada.',

@@ -704,6 +704,10 @@ export class BridgeService {
     const inheritedRuntime = (originNode?.payload as { executionRuntime?: unknown } | undefined)?.executionRuntime;
 
     const command = this.commandForProvider(input.provider);
+    if (input.floorId) {
+      const floor = (await floorService.list(workspaceId)).find((candidate) => candidate.id === input.floorId);
+      if (!floor) throw new Error('Andar ativo não encontrado neste workspace.');
+    }
 
     if (input.replace) {
       const agents = await this.listAgents(workspaceId);

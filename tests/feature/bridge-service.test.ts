@@ -8,6 +8,8 @@ import { controlCenterService } from '$lib/modules/agent-room/application/servic
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { AgentFloor } from '$lib/modules/agent-room/domain/models/AgentFloor.js';
+import { uuidv7 } from '@beeblock/svelar/support';
 
 async function createWorkspaceWithTerminal() {
   const workspace = await workspaceRepository.createWorkspace({ name: 'bridge', workingDir: '/tmp' });
@@ -205,6 +207,35 @@ describe('Modo Maestro', () => {
     expect(dismissed.dismissed).toBe('Recruta');
     expect(await workspaceRepository.listNodes(workspace.id)).toHaveLength(1);
     leader.id && expect((await workspaceRepository.listNodes(workspace.id))[0].id).toBe(leader.id);
+  });
+
+  it('recruta no andar ativo solicitado e rejeita andar encerrado', async () => {
+    const { workspace } = await setupMaestro(true);
+    const floor = await AgentFloor.create({
+      id: uuidv7(),
+      workspace_id: workspace.id,
+      name: 'Checkout',
+      branch: 'orkestrai/checkout',
+      path: '/tmp/checkout',
+      status: 'active',
+    });
+    const floorId = String(floor.getAttribute('id'));
+
+    const recruited = await bridgeService.recruit(workspace.id, {
+      from: 'Lider',
+      title: 'Frontend',
+      provider: 'codex',
+      floorId,
+    });
+    expect((await workspaceRepository.getNode(recruited.nodeId))?.floorId).toBe(floorId);
+
+    await AgentFloor.query().where('id', floorId).update({ status: 'landed' });
+    await expect(bridgeService.recruit(workspace.id, {
+      from: 'Lider',
+      title: 'QA',
+      provider: 'kimi',
+      floorId,
+    })).rejects.toThrow('Andar ativo');
   });
 
   it('bloqueia acoes sem Modo Maestro ativo', async () => {

@@ -255,6 +255,8 @@ export type AgentActivitySnapshot = {
   title: string;
   provider: string | null;
   role: string | null;
+  floorId: string | null;
+  floorName: string | null;
   state: AgentActivityState;
   stateSince: string;
   lastAction: string | null;

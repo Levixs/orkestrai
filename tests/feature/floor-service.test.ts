@@ -48,14 +48,43 @@ describe('FloorService', () => {
     const dir = makeRepo();
     const workspace = await workspaceRepository.createWorkspace({ name: 'ws', workingDir: dir });
     await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'note', title: 'Nota terreo' });
+    const terminal = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Agente terreo',
+      payload: { provider: 'codex', sessionId: 'pty-ground', agentSessionId: 'conversation-ground' },
+    });
 
     const floor = await floorService.create(workspace.id, { name: 'andar', cloneLayout: true });
     const floorNodes = await workspaceRepository.listNodes(workspace.id, floor.id);
-    expect(floorNodes).toHaveLength(1);
-    expect(floorNodes[0].title).toBe('Nota terreo');
-    expect(floorNodes[0].floorId).toBe(floor.id);
+    expect(floorNodes).toHaveLength(2);
+    expect(floorNodes.every((node) => node.floorId === floor.id)).toBe(true);
+    const terminalClone = floorNodes.find((node) => node.type === 'terminal')!;
+    expect(terminalClone.payload).toMatchObject({ provider: 'codex', floorCloneOfNodeId: terminal.id, resumeRecovery: false });
+    expect(terminalClone.payload).not.toHaveProperty('sessionId');
+    expect(terminalClone.payload).not.toHaveProperty('agentSessionId');
 
     await floorService.remove(floor.id, true);
+  });
+
+  it('retira nos e edges do andar ao excluir sem apagar o historico', async () => {
+    const dir = makeRepo();
+    const workspace = await workspaceRepository.createWorkspace({ name: 'ws', workingDir: dir });
+    const ground = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'Lider' });
+    const floor = await floorService.create(workspace.id, { name: 'temporario' });
+    const worker = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      floorId: floor.id,
+      type: 'terminal',
+      title: 'Worker temporario',
+    });
+    await workspaceRepository.createEdge({ workspaceId: workspace.id, sourceNodeId: ground.id, targetNodeId: worker.id });
+
+    await floorService.remove(floor.id, true);
+
+    expect((await workspaceRepository.listNodes(workspace.id)).map((node) => node.id)).toEqual([ground.id]);
+    expect(await workspaceRepository.listEdges(workspace.id)).toEqual([]);
+    expect((await workspaceRepository.listNodes(workspace.id, floor.id, true, true)).map((node) => node.id)).toEqual([worker.id]);
   });
 
   it('aterrissa mudancas do andar na branch principal', async () => {

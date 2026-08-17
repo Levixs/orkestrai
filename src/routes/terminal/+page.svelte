@@ -254,6 +254,11 @@
       });
   }
 
+  function agentFloorLabel(workspaceId: string, node: CanvasNode): string | null {
+    if (!node.floorId) return null;
+    return floorsByWorkspace[workspaceId]?.find((floor) => floor.id === node.floorId)?.name ?? null;
+  }
+
   const visibleWorkspaces = $derived.by(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return workspaces;
@@ -1191,6 +1196,7 @@
                             <span class="min-w-0 flex-1 py-1.5">
                               <span data-testid="workbench-agent-name" class="block break-words font-medium leading-[14px]">{item.title || nodeTypeLabel(item)}</span>
                               <span data-testid="workbench-agent-role" class="mt-0.5 block break-words text-[9px] leading-[13px] text-[var(--app-text-muted)]">{(item.payload as TerminalNodePayload).role ?? nodeTypeLabel(item)}</span>
+                              {#if agentFloorLabel(workspace.id, item)}<span class="mt-0.5 block truncate text-[9px] leading-[13px] text-[var(--app-accent)]">{agentFloorLabel(workspace.id, item)}</span>{/if}
                               <span class="mt-1 block truncate text-[9px] text-[var(--app-text-soft)]">{agentActivityLabel(workspace.id, item.id) ?? nodeTypeLabel(item)}</span>
                             </span>
                           {:else}

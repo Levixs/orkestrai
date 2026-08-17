@@ -30,7 +30,9 @@ Download the latest installers from
   tabs, then arrange up to eight live artifacts in resizable right/down splits.
   Tabs move between panes by drag and drop or an accessible menu. The Workbench
   references canvas artifacts without duplicating sessions, while workspace
-  files remain local editor tabs, and the global
+  files remain local editor tabs. Finished Floors retire their nodes instead of
+  inflating the explorer, while active floor agents retain an explicit floor
+  label. The global
   voice orb follows its active workspace and leader. Its footer keeps every
   reported Claude, Codex, and Kimi quota window visible without opening a panel.
 - **Integrated mobile devices:** add a persistent Mobile Device node from the
@@ -46,6 +48,8 @@ Download the latest installers from
   state duration, provider, role, and usage. Its persistent communications inbox
   proves whether each handoff was queued, delivered, acknowledged, replied to,
   or failed under one message id, without waking idle terminals after restart.
+  Counts include only the Ground floor and currently active Floors; historical
+  floor nodes stay archived for task attribution instead of appearing as agents.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
   session, choose a browser/mobile or installed-app invite, approve the device
   fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator

@@ -430,6 +430,7 @@ export class BridgeController extends Controller {
         x: input.x,
         y: input.y,
         replace: input.replace,
+        floorId: input.floorId,
       });
       return this.json({ data: result }, 201);
     } catch (error) {

@@ -310,9 +310,10 @@ describe('orkestrai CLI', () => {
 
   it('recruit usa ORKESTRAI_NODE_ID como --from padrao', async () => {
     const { out } = capture();
-    await run(['recruit', 'Dev Frontend', '--provider', 'claude'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
+    await run(['recruit', 'Dev Frontend', '--provider', 'claude', '--floor', 'floor-1'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
     const request = requests.find((entry) => entry.url === '/api/agent-room/bridge/recruit');
     expect(request.body.from).toBe('n1');
+    expect(request.body.floorId).toBe('floor-1');
   });
 
   it('flag --from explicito tem precedencia sobre o env', async () => {

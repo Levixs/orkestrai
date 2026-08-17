@@ -48,7 +48,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'control-center',
       title: 'Control Center and verified communications',
-      body: `Open Control Center at the top of each expanded workspace in the Workbench explorer. It reconstructs every agent's state from an append-only event history: starting, working, waiting for input or permission, blocked, idle, done, error, or disconnected. Each row shows the current task, last significant action, time in state, provider, role, and available usage. The Communications inbox records queued, sent, delivered, acknowledged, replied, and failed transitions under one message id; orkestrai ask succeeds only after a confirmed reply. These states survive view changes and app restarts without waking idle terminals. Canvas edges remain a visual history of real conversations, while delivery itself uses the bridge and does not depend on an edge. Native notifications are reserved for explicit attention, task completion, or project completion instead of routine activity.`,
+      body: `Open Control Center at the top of each expanded workspace in the Workbench explorer. It reconstructs the state of every Ground and currently active Floor agent from an append-only history; agents from finished Floors remain historical but do not enter current counts. Floor badges distinguish active worktrees. States include starting, working, waiting for input or permission, blocked, idle, done, error, or disconnected. Each row shows the current task, latest relevant action, time in state, provider, role, and available usage. The Communications inbox records queued, sent, delivered, acknowledged, replied, and failed transitions under one message id; orkestrai ask succeeds only after a confirmed reply. These states survive navigation and app restarts without waking idle terminals. Canvas edges remain the visual history of real conversations, while delivery uses the bridge and does not depend on an edge. Native notifications are reserved for explicit attention, task completion, or true project completion rather than routine activity.`,
     },
     {
       id: 'review-center',
@@ -118,7 +118,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'andares',
       title: 'Floors (worktrees)',
-      body: `A floor is a git worktree of the workspace repository with its own branch. For ground and every worktree, the Floors panel shows active agents and a list of tasks with title, stage, and assignee, alongside changed files, branch synchronization, and the latest commit. You can see exactly who is doing what before opening a layer. Create from the panel or CLI with orkestrai floor create/list/preview/land/remove. Landing merges after a diff and conflict preview. Conflicts are never hidden: the error lists files and resolution becomes an explicit task.`,
+      body: `A floor is a git worktree of the workspace repository with its own branch. For Ground and every active worktree, the Floors panel shows agents and a list of tasks with title, stage, and assignee, alongside changed files, branch synchronization, and the latest commit. Workbench and Control Center identify the floor of active agents. Landing or deleting automatically archives that floor's terminals, layout copies, and edges: they remain available for historical attribution but do not inflate counts or appear as current agents. Cloning a layout never reuses a PTY session or provider conversation. Create from the panel or CLI with orkestrai floor create/list/preview/land/remove; recruit --floor places a new agent on the selected active floor. Landing merges after a diff and conflict preview. Conflicts are never hidden: the error lists files and resolution becomes an explicit task.`,
     },
     {
       id: 'rotinas',
@@ -376,7 +376,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'monitor-team-control-center',
       title: 'See what the team is really doing',
-      body: 'Open Control Center from an expanded workspace in Workbench to compare who is working, idle, blocked, waiting for input, or offline. The compact explorer shows each agent\'s current task and state; the communications inbox proves whether a handoff was queued, delivered, acknowledged, replied to, or failed under one persistent message id. Switch workspaces or restart the app without waking idle terminals; the history reconstructs the same operational view.',
+      body: 'Open Control Center from an expanded workspace in Workbench to compare who is working, idle, blocked, waiting for input, or offline. The compact explorer shows each active agent\'s current task, state, and Floor; agents and nodes from landed or deleted Floors remain historical without inflating current counts. The communications inbox proves whether a handoff was queued, delivered, acknowledged, replied to, or failed under one persistent message id. Switch workspaces or restart the app without waking idle terminals; the history reconstructs the same operational view.',
       tags: ['Control Center', 'verified delivery', 'agent activity'],
     },
     {
@@ -432,6 +432,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'In development',
       items: [
+        'Workbench and Control Center no longer accumulate agents, boards, and other nodes from landed or deleted Floors. The upgrade archives legacy records, floor retirement removes obsolete edges, active agents show their floor name, and layout clones start without reusing a PTY session or provider conversation. Bridge recruitment now honors and validates the requested Floor.',
         'Canvas Design now offers a guided three-direction UI exploration. One transaction creates a linked spec, five traceable Kanban stages, and native Clarity, Expressive, and Efficient documents; manual or live-leader execution shares the complete brief, references, tokens, components, prototype, quality, and code contract, with explicit human approval before implementation. Linked task notes are now included in full when work is dispatched.',
         'Canvas connection geometry now reuses node and adjacency indexes for each immutable snapshot instead of scanning the entire graph per edge and handle. Agent-driven graph changes refresh raw node, edge, and floor snapshots without rechecking every provider.',
         'Audio settings now select and test the microphone used by every local dictation surface and the speaker used by voice previews and spoken replies. Removed devices fall back to the system default, and capture failures distinguish permission, missing hardware, interruption, and likely contention for the only input.',

@@ -6,6 +6,7 @@ import { uuidv7 } from '@beeblock/svelar/support';
 import type { Floor, HookCommand, Workspace, WorkspaceHooks } from '../../domain/types.js';
 import { AgentFloor } from '../../domain/models/AgentFloor.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
+import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { agentEnv, IS_WIN } from '../../infrastructure/agent-path.js';
 
 const execFileAsync = promisify(execFile);
@@ -133,6 +134,15 @@ export class FloorService {
     if (input.cloneLayout) {
       const groundNodes = await workspaceRepository.listNodes(workspaceId, null);
       for (const node of groundNodes) {
+        const payload: Record<string, unknown> = {
+          ...(node.payload as Record<string, unknown>),
+          floorCloneOfNodeId: node.id,
+        };
+        if (node.type === 'terminal') {
+          delete payload.sessionId;
+          delete payload.agentSessionId;
+          payload.resumeRecovery = false;
+        }
         await workspaceRepository.createNode({
           workspaceId,
           type: node.type,
@@ -142,7 +152,7 @@ export class FloorService {
           width: node.width,
           height: node.height,
           zIndex: node.zIndex,
-          payload: node.payload,
+          payload,
           floorId: floor.id,
         });
       }
@@ -232,6 +242,7 @@ export class FloorService {
       await this.runHooks(floor, workspace, hooks.teardown).catch(() => {});
     }
 
+    await this.retireFloorNodes(floor);
     await this.removeWorktree(floor, false);
     notifyWorkspaceChanged(floor.workspaceId);
     return { merged: true, branch: floor.branch, into: target };
@@ -248,6 +259,7 @@ export class FloorService {
       await this.runHooks(floor, workspace, hooks.teardown).catch(() => {});
     }
 
+    await this.retireFloorNodes(floor);
     await this.removeWorktree(floor, deleteBranch);
     await AgentFloor.query().where('id', id).update({ status: 'deleted' });
     notifyWorkspaceChanged(floor.workspaceId);
@@ -308,6 +320,28 @@ export class FloorService {
     if (deleteBranch) {
       await this.git(workspace.workingDir, ['branch', '-D', floor.branch]).catch(() => {});
     }
+  }
+
+  private async retireFloorNodes(floor: Floor): Promise<void> {
+    const [floorNodes, workspaceNodes] = await Promise.all([
+      workspaceRepository.listNodes(floor.workspaceId, floor.id, true, true),
+      workspaceRepository.listNodes(floor.workspaceId, undefined, true, true),
+    ]);
+    const sharedSessionIds = new Set(
+      workspaceNodes
+        .filter((node) => node.floorId !== floor.id)
+        .flatMap((node) => {
+          const sessionId = (node.payload as { sessionId?: unknown }).sessionId;
+          return typeof sessionId === 'string' ? [sessionId] : [];
+        }),
+    );
+    for (const node of floorNodes) {
+      const sessionId = (node.payload as { sessionId?: unknown }).sessionId;
+      if (typeof sessionId === 'string' && !sharedSessionIds.has(sessionId)) {
+        ptySessionManager.kill(sessionId);
+      }
+    }
+    await workspaceRepository.archiveFloorNodes(floor.workspaceId, floor.id);
   }
 }
 

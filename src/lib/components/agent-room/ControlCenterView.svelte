@@ -7,6 +7,7 @@
     CircleDashed,
     Clock3,
     Inbox,
+    Layers,
     MessageSquareMore,
     RefreshCw,
     ShieldAlert,
@@ -188,6 +189,7 @@
                   <div class="flex min-w-0 items-center gap-2">
                     <h4 class="truncate text-xs font-semibold text-[var(--app-text)]">{agent.title}</h4>
                     <span class="shrink-0 rounded-[3px] bg-[var(--app-surface-raised)] px-1.5 py-0.5 text-[9px] text-[var(--app-text-muted)]">{agent.provider ?? m['control_center.shell']()}</span>
+                    {#if agent.floorName}<span class="inline-flex min-w-0 items-center gap-1 rounded-[3px] bg-[var(--app-surface-raised)] px-1.5 py-0.5 text-[9px] text-[var(--app-text-muted)]"><Layers size={9} class="shrink-0" /><span class="truncate">{agent.floorName}</span></span>{/if}
                     {#if agent.role}<span class="min-w-0 truncate text-[9px] text-[var(--app-text-muted)]">{agent.role}</span>{/if}
                   </div>
                   <p class="mt-1 truncate text-[11px] text-[var(--app-text-soft)]">{agent.currentTask?.title ?? actionLabel(agent)}</p>

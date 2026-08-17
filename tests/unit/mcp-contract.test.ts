@@ -180,7 +180,7 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   floor_preview: { floorId: 'f1' },
   floor_land: { floorId: 'f1' },
   notify: { message: 'oi', kind: 'project', title: 'Projeto Atlas' },
-  recruit: { title: 'Novo' },
+  recruit: { title: 'Novo', floorId: 'f1' },
   dismiss: { agent: 'Velho' },
 };
 
