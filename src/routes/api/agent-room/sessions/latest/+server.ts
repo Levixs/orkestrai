@@ -1,8 +1,9 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { agentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.ts';
+import { posix } from 'node:path';
+import { agentSessionTracker, agentSessionTrackerForRuntime } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.ts';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { getAgentAdapter, hasAgentAdapter } from '$lib/modules/agent-room/application/adapters/registry.js';
-import { terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/infrastructure/WslRuntime.js';
+import { resolveWslTrackingContext, terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/infrastructure/WslRuntime.js';
 
 /**
  * Session-id mais recente de um provider num diretorio que NENHUM outro
@@ -20,6 +21,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
   // Ids ja atribuidos a outros nos do workspace nao podem ser reusados.
   const exclude = new Set<string>();
+  let tracker = agentSessionTracker;
+  let trackingCwd = cwd;
   if (workspaceId) {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     const node = nodeId ? await workspaceRepository.getNode(nodeId) : null;
@@ -28,20 +31,24 @@ export const GET: RequestHandler = async ({ url }) => {
       : workspace
         ? workspaceExecutionRuntime(workspace)
         : { kind: 'native' as const };
-    if (runtime.kind === 'wsl') {
-      // Session metadata lives in the distro's home. Resume through the
-      // provider's generic WSL command instead of inspecting Windows storage.
-      return json({ data: { agentSessionId: null } });
-    }
     const nodes = await workspaceRepository.listNodes(workspaceId);
     for (const node of nodes) {
       const payload = (node.payload ?? {}) as { agentSessionId?: string };
       if (payload.agentSessionId) exclude.add(payload.agentSessionId);
     }
+    if (runtime.kind === 'wsl' && workspace) {
+      const context = await resolveWslTrackingContext({ runtime, hostCwd: cwd, workspaceRoot: workspace.workingDir });
+      tracker = agentSessionTrackerForRuntime(
+        `${runtime.distribution}:${context.homeHostPath}`,
+        context.homeHostPath,
+        (candidate) => posix.normalize(candidate),
+      );
+      trackingCwd = context.linuxWorkingDir;
+    }
   }
 
   const storage = hasAgentAdapter(provider) ? getAgentAdapter(provider).sessionStorage : undefined;
-  const agentSessionId = agentSessionTracker.findLatestUnclaimedSessionId(storage, cwd, exclude);
-  if (agentSessionId) agentSessionTracker.claim(agentSessionId);
+  const agentSessionId = tracker.findLatestUnclaimedSessionId(storage, trackingCwd, exclude);
+  if (agentSessionId) tracker.claim(agentSessionId);
   return json({ data: { agentSessionId } });
 };

@@ -105,7 +105,8 @@
         respawnAgentSessionId = result.data?.agentSessionId ?? null;
         if (respawnAgentSessionId) data.onAgentSessionFound?.(id, respawnAgentSessionId);
       } catch {
-        // sem id: cai no resume generico do provider
+        // Sem um id confirmado, WSL inicia limpo em vez de adivinhar a
+        // conversa mais recente de outra distribuicao ou terminal.
       }
     }
     forceRespawn = true;
@@ -387,7 +388,7 @@
         workspaceRoot: data.workspaceRoot,
       };
     }
-    const genericArgs = data.resumeArgsFor?.() ?? null;
+    const genericArgs = data.executionRuntime.kind === 'wsl' ? null : (data.resumeArgsFor?.() ?? null);
     return {
       command: data.payload.command ?? '',
       args:

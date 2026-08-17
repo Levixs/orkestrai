@@ -21,10 +21,12 @@
  */
 import { existsSync, statSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { posix } from 'node:path';
 import type { WebSocket } from 'ws';
 import { ptySessionManager } from './PtySessionManager.ts';
-import { agentSessionTracker } from './AgentSessionTracker.ts';
+import { agentSessionTracker, agentSessionTrackerForRuntime, type AgentSessionTracker } from './AgentSessionTracker.ts';
 import type { WorkspaceExecutionRuntime } from '../../domain/types.ts';
+import { preflightWslLaunch, WslLaunchError, type WslTrackingContext } from '../WslRuntime.ts';
 
 export const PTY_WS_PATH = '/ws/agent-room/pty';
 
@@ -84,6 +86,7 @@ function resolveCwd(cwd: unknown): string {
 
 export function handlePtyConnection(socket: WebSocket): void {
   const detachers = new Map<string, () => void>();
+  const sessionTrackers = new Map<string, AgentSessionTracker>();
   allSockets.add(socket);
   socket.on('close', () => allSockets.delete(socket));
 
@@ -103,7 +106,7 @@ export function handlePtyConnection(socket: WebSocket): void {
     return scrollback;
   };
 
-  socket.on('message', (raw) => {
+  socket.on('message', async (raw) => {
     let message: ClientMessage;
     try {
       message = JSON.parse(String(raw));
@@ -119,20 +122,36 @@ export function handlePtyConnection(socket: WebSocket): void {
             throw new Error('Informe o comando da sessão PTY.');
           }
           const trackingStartedAt = Date.now();
+          const resolvedCwd = resolveCwd(message.cwd);
+          const wslContext: WslTrackingContext | null = message.runtime?.kind === 'wsl'
+            ? await preflightWslLaunch({
+                runtime: message.runtime,
+                command: message.command.trim(),
+                hostCwd: resolvedCwd,
+                workspaceRoot: typeof message.workspaceRoot === 'string' ? message.workspaceRoot : undefined,
+              })
+            : null;
+          const tracker = wslContext && message.runtime?.kind === 'wsl'
+            ? agentSessionTrackerForRuntime(
+                `${message.runtime.distribution}:${wslContext.homeHostPath}`,
+                wslContext.homeHostPath,
+                (cwd) => posix.normalize(cwd),
+              )
+            : agentSessionTracker;
           const freshSessionId = Array.isArray(message.freshSessionArgs) && message.freshSessionArgs.length
             ? randomUUID()
             : null;
           const freshSessionArgs = freshSessionId
             ? message.freshSessionArgs!.map((arg) => String(arg).replace('__ORKESTRAI_SESSION_ID__', freshSessionId))
             : [];
-          if (freshSessionId) agentSessionTracker.claim(freshSessionId);
+          if (freshSessionId) tracker.claim(freshSessionId);
           const session = ptySessionManager.create({
             command: message.command.trim(),
             args: [
               ...(Array.isArray(message.args) ? message.args.map(String) : []),
               ...freshSessionArgs,
             ],
-            cwd: resolveCwd(message.cwd),
+            cwd: resolvedCwd,
             cols: message.cols,
             rows: message.rows,
             env: message.env,
@@ -144,6 +163,7 @@ export function handlePtyConnection(socket: WebSocket): void {
             runtime: message.runtime,
             workspaceRoot: typeof message.workspaceRoot === 'string' ? message.workspaceRoot : undefined,
           });
+          sessionTrackers.set(session.id, tracker);
           const scrollback = attachSession(session.id);
           send({ type: 'created', session, scrollback });
 
@@ -168,7 +188,7 @@ export function handlePtyConnection(socket: WebSocket): void {
           const provider = typeof message.provider === 'string' && message.provider.trim() ? message.provider : null;
           if (provider) {
             const reportAgentSession = (agentSessionId: string) => {
-              agentSessionTracker.bind(session.id, agentSessionId);
+              tracker.bind(session.id, agentSessionId);
               // Broadcast global: o socket criador pode já ter sido fechado
               // (o no remonta em modo attach ao receber o sessionId).
               wsGlobal.__orkestraiBroadcast?.({
@@ -180,23 +200,20 @@ export function handlePtyConnection(socket: WebSocket): void {
               });
               send({ type: 'agentSession', sessionId: session.id, agentSessionId, provider });
             };
-            if (message.runtime?.kind === 'wsl' && freshSessionId) {
-              // The CLI runs in the selected distro, so Windows-side storage
-              // watchers cannot inspect its home. Reserved IDs remain exact.
-              reportAgentSession(freshSessionId);
-            } else if (freshSessionId) {
-              const watchingExpected = agentSessionTracker.watchExpected(
+            const trackingCwd = wslContext?.linuxWorkingDir ?? session.cwd;
+            if (freshSessionId) {
+              const watchingExpected = tracker.watchExpected(
                 session.id,
                 message.sessionStorage,
-                session.cwd,
+                trackingCwd,
                 freshSessionId,
                 reportAgentSession
               );
               // So Claude reserva um id antes de criar a conversa. Providers
               // sem validacao exata mantem o contrato anterior.
               if (!watchingExpected) reportAgentSession(freshSessionId);
-            } else if (message.runtime?.kind !== 'wsl') {
-              agentSessionTracker.watch(session.id, message.sessionStorage, session.cwd, trackingStartedAt, reportAgentSession);
+            } else {
+              tracker.watch(session.id, message.sessionStorage, trackingCwd, trackingStartedAt, reportAgentSession);
             }
           }
           break;
@@ -233,7 +250,8 @@ export function handlePtyConnection(socket: WebSocket): void {
         }
         case 'kill': {
           const killed = ptySessionManager.kill(message.sessionId);
-          agentSessionTracker.forget(message.sessionId);
+          (sessionTrackers.get(message.sessionId) ?? agentSessionTracker).forget(message.sessionId);
+          sessionTrackers.delete(message.sessionId);
           detachers.get(message.sessionId)?.();
           detachers.delete(message.sessionId);
           send({ type: 'killed', sessionId: message.sessionId, killed });
@@ -247,7 +265,11 @@ export function handlePtyConnection(socket: WebSocket): void {
           send({ type: 'error', message: `Tipo de mensagem desconhecido: ${(message as { type?: string }).type}` });
       }
     } catch (error) {
-      send({ type: 'error', message: error instanceof Error ? error.message : 'Erro na sessão PTY.' });
+      send({
+        type: 'error',
+        ...(error instanceof WslLaunchError ? { code: error.code } : {}),
+        message: error instanceof Error ? error.message : 'Erro na sessão PTY.',
+      });
     }
   });
 

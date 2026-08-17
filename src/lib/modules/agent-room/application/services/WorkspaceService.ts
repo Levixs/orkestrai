@@ -1,15 +1,16 @@
 import { constants as fsConstants, existsSync, statSync, writeFileSync } from 'node:fs';
 import { access, readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { posix, resolve } from 'node:path';
 import type { CanvasNodePayload, Workspace } from '../../domain/types.js';
 import { executionRuntimeKey } from '../../domain/runtime.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
-import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.ts';
+import { agentSessionTracker, agentSessionTrackerForRuntime } from '../../infrastructure/pty/AgentSessionTracker.ts';
 import { bridgeService } from './BridgeService.js';
 import { designDocumentService } from './DesignDocumentService.js';
 import { roleService } from './RoleService.js';
+import { floorService } from './FloorService.js';
 import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
 import type {
   CreateCanvasEdgeDto,
@@ -23,6 +24,7 @@ import type {
 import { getAgentAdapter, materializeInteractiveAgentCommand } from '../adapters/registry.js';
 import {
   resolveTerminalRuntimeOverride,
+  resolveWslTrackingContext,
   resolveWorkspaceRuntime,
   terminalExecutionRuntime,
   withWorkspaceExecutionRuntime,
@@ -228,19 +230,38 @@ export class WorkspaceService {
       const storedPty = storedSessionId ? ptySessionManager.get(storedSessionId) : null;
       if (storedSessionId && (!storedPty || storedPty.exited)) {
         delete payload.sessionId;
-        if (executionRuntime.kind === 'wsl' && typeof payload.provider === 'string') {
-          payload.resumeRecovery = true;
-        }
+        // A PTY e efemera. Sem um agentSessionId confirmado no storage da CLI,
+        // tentar --last/--continue e especulativo e falha em conversas vazias.
+        // O renderer inicia uma conversa limpa; ids confirmados seguem pelo
+        // resume exato, tanto no Windows quanto dentro do WSL.
+        payload.resumeRecovery = false;
         changed = true;
       }
       const agentSessionId = typeof payload.agentSessionId === 'string' ? payload.agentSessionId : null;
       const provider = typeof payload.provider === 'string' ? payload.provider : null;
-      if (executionRuntime.kind !== 'wsl' && agentSessionId && provider && (!storedPty || storedPty.exited)) {
+      if (executionRuntime.kind === 'wsl' && (!storedPty || storedPty.exited) && payload.resumeRecovery && !agentSessionId) {
+        payload.resumeRecovery = false;
+        changed = true;
+      }
+      if (agentSessionId && provider && (!storedPty || storedPty.exited)) {
         let resumable: boolean | null = null;
         try {
-          resumable = agentSessionTracker.isAgentSessionResumable(
+          let tracker = agentSessionTracker;
+          let trackingCwd = workspace.workingDir;
+          if (executionRuntime.kind === 'wsl') {
+            const floor = node.floorId ? await floorService.get(node.floorId) : null;
+            const hostCwd = floor?.path ?? workspace.workingDir;
+            const context = await resolveWslTrackingContext({ runtime: executionRuntime, hostCwd, workspaceRoot: workspace.workingDir });
+            tracker = agentSessionTrackerForRuntime(
+              `${executionRuntime.distribution}:${context.homeHostPath}`,
+              context.homeHostPath,
+              (candidate) => posix.normalize(candidate),
+            );
+            trackingCwd = context.linuxWorkingDir;
+          }
+          resumable = tracker.isAgentSessionResumable(
             getAgentAdapter(provider).sessionStorage,
-            workspace.workingDir,
+            trackingCwd,
             agentSessionId,
           );
         } catch {
@@ -248,7 +269,7 @@ export class WorkspaceService {
         }
         if (resumable === false) {
           delete payload.agentSessionId;
-          payload.resumeRecovery = true;
+          payload.resumeRecovery = false;
           changed = true;
         }
       }
@@ -310,7 +331,7 @@ export class WorkspaceService {
     const node = await workspaceRepository.updateNode(dto.nodeId, changes);
     if (!node) throw new Error('No nao encontrado.');
     if (existing.type === 'design' && typeof changes.title === 'string' && node.title !== existing.title) {
-      await designDocumentService.renameDocument(node.workspaceId, node.id, node.title);
+      await designDocumentService.renameDocument(node.workspaceId, node.id, changes.title);
     }
     return node;
   }

@@ -134,6 +134,14 @@
   let captureBuf = '';
   let speakTimer: ReturnType<typeof setTimeout> | null = null;
 
+  function terminalErrorMessage(code: unknown, fallback: unknown): string {
+    if (code === 'WSL_DISTRIBUTION_UNAVAILABLE') return m['term.wsl_distribution_unavailable']();
+    if (code === 'WSL_DIRECTORY_NOT_FOUND') return m['term.wsl_directory_missing']();
+    if (code === 'WSL_COMMAND_NOT_FOUND') return m['term.wsl_command_missing']({ provider: provider ?? m['term.provider_fallback']() });
+    if (code === 'WSL_SPAWN_FAILED') return m['term.wsl_start_failed']();
+    return String(fallback ?? m['term.ws_error']());
+  }
+
 
   function scheduleSpeakFromCapture() {
     if (speakTimer) clearTimeout(speakTimer);
@@ -511,7 +519,7 @@
             statusMessage = '';
             onRespawn();
           } else {
-            statusMessage = message.message;
+            statusMessage = terminalErrorMessage(message.code, message.message);
           }
           break;
       }
