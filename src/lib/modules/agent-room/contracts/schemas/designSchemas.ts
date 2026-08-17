@@ -219,6 +219,22 @@ export const designFigmaLinkSchema = z.object({
   syncedAt: z.string().datetime(),
 });
 
+export const designCodeArtifactSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(180),
+  path: z.string().trim().min(1).max(1_024),
+  framework: z.enum(['svelar', 'svelte', 'react', 'next', 'vue', 'html']),
+  elementIds: z.array(z.string().uuid()).min(1).max(500),
+  sourceRevision: z.number().int().min(0),
+  contentHash: z.string().regex(/^[0-9a-f]{64}$/),
+  componentMappings: z.array(z.object({
+    componentId: z.string().uuid(),
+    path: z.string().trim().min(1).max(512),
+    exportName: z.string().trim().min(1).max(160),
+  })).max(500).default([]),
+  generatedAt: z.string().datetime(),
+});
+
 const designInstanceElementOverridesSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   x: z.number().finite().optional(),
@@ -360,6 +376,7 @@ export const designDocumentSchema = z.object({
   componentSets: z.array(designComponentSetSchema).max(500).default([]),
   libraryLinks: z.array(designLibraryLinkSchema).max(200).default([]),
   figmaLinks: z.array(designFigmaLinkSchema).max(100).default([]),
+  codeArtifacts: z.array(designCodeArtifactSchema).max(1_000).default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -374,6 +391,7 @@ const designComponentChangesSchema = designComponentSchema.omit({ id: true, root
 const designComponentSetChangesSchema = designComponentSetSchema.omit({ id: true }).partial();
 const designLibraryLinkChangesSchema = designLibraryLinkSchema.omit({ id: true, sourceWorkspaceId: true, sourceNodeId: true }).partial();
 const designFigmaLinkChangesSchema = designFigmaLinkSchema.omit({ id: true, fileKey: true }).partial();
+const designCodeArtifactChangesSchema = designCodeArtifactSchema.omit({ id: true }).partial();
 
 export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -412,6 +430,9 @@ export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('add-figma-link'), link: designFigmaLinkSchema }),
   z.object({ kind: z.literal('update-figma-link'), linkId: z.string().uuid(), changes: designFigmaLinkChangesSchema }),
   z.object({ kind: z.literal('delete-figma-link'), linkId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-code-artifact'), artifact: designCodeArtifactSchema }),
+  z.object({ kind: z.literal('update-code-artifact'), artifactId: z.string().uuid(), changes: designCodeArtifactChangesSchema }),
+  z.object({ kind: z.literal('delete-code-artifact'), artifactId: z.string().uuid() }),
   z.object({
     kind: z.literal('create-component-instance'),
     componentId: z.string().uuid(),
@@ -500,6 +521,7 @@ export type DesignComponentSet = z.infer<typeof designComponentSetSchema>;
 export type DesignLibraryLink = z.infer<typeof designLibraryLinkSchema>;
 export type DesignFigmaSource = z.infer<typeof designFigmaSourceSchema>;
 export type DesignFigmaLink = z.infer<typeof designFigmaLinkSchema>;
+export type DesignCodeArtifact = z.infer<typeof designCodeArtifactSchema>;
 export type DesignDocument = z.infer<typeof designDocumentSchema>;
 export type DesignOperation = z.infer<typeof designOperationSchema>;
 export type ApplyDesignOperationsInput = z.infer<typeof applyDesignOperationsSchema>;

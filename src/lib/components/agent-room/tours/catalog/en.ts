@@ -468,6 +468,47 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'design-delivery',
+    icon: 'Code2',
+    title: 'Deliver a design as working code',
+    tagline: 'Import, generate, compare, and review without breaking the visual source.',
+    steps: [
+      {
+        id: 'document',
+        title: 'Start from one native document',
+        body: 'I create a Design Delivery node. The same structured document remains the source for manual editing, agents, generated code, and visual evidence.',
+        action: { kind: 'createDesign', title: 'Design Delivery' },
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Design Delivery' },
+      },
+      {
+        id: 'open-code',
+        title: 'Open the Code delivery area',
+        body: 'Open the Design document, choose Components, then Code. Connect scans tokens and real components; Import code, Generate, and Validate are adjacent workflow steps instead of separate tools.',
+        action: { kind: 'openDesign', title: 'Design Delivery' },
+      },
+      {
+        id: 'import',
+        title: 'Bring an existing interface into the scene graph',
+        body: 'Under Import code, choose HTML/Tailwind, Svelte, React/JSX, or Vue and paste markup plus optional CSS. Review compatibility notes, then create editable native layers. Project scripts and configuration are never executed.',
+      },
+      {
+        id: 'generate',
+        title: 'Preview before writing implementation code',
+        body: 'Select a frame or group, choose Svelar/Svelte 5, React, Next.js, Vue 3, or HTML/Tailwind, and set the workspace path. Preview the full file first. Compatible Code Connect mappings reuse real components; writing is blocked if the file changed after preview, and the result opens directly in Monaco. Agents use the same revision-safe flow through typed Orkestrai MCP tools or the bundled CLI.',
+      },
+      {
+        id: 'validate',
+        title: 'Compare with a live implementation',
+        body: 'Keep a Portal visible or attach an iOS/Android device, choose a frame or responsive viewport, and capture. Inspect the normalized design, implementation, adjustable overlay, and pixel diff rather than relying on memory.',
+      },
+      {
+        id: 'trace',
+        title: 'Keep feedback tied to the work',
+        body: 'Create a Kanban feedback task with reference, implementation, and diff screenshots, or create a Review Center entry tied to the generated Git file. The leader can assign it and the reviewer can approve the actual change.',
+      },
+    ],
+  },
+  {
     id: 'managed-ports',
     icon: 'RadioTower',
     title: 'Release dev server ports',

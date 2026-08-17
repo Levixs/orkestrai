@@ -31,6 +31,8 @@ import { DesignRevisionConflictError, designDocumentService } from '$lib/modules
 import { designFigmaService } from '$lib/modules/agent-room/application/services/DesignFigmaService.js';
 import { ApplyDesignFigmaSyncDto, ImportDesignFigmaDto, InspectDesignFigmaDto, PreviewDesignFigmaSyncDto } from '$lib/modules/agent-room/application/dto/DesignFigmaDtos.js';
 import { acknowledgeDesignFigmaPushSchema, applyDesignFigmaSyncSchema, importDesignFigmaSchema, inspectDesignFigmaSchema, previewDesignFigmaSyncSchema } from '$lib/modules/agent-room/contracts/schemas/designFigmaSchemas.js';
+import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
+import { designDeliveryService } from '$lib/modules/agent-room/application/services/DesignDeliveryService.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -136,6 +138,63 @@ export class BridgeController extends Controller {
         return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
       }
       return this.errorResponse(error, 'Falha ao alterar documento de design.');
+    }
+  }
+
+  async previewDesignCode(event: any) {
+    try {
+      const input = previewDesignDeliverySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await designDeliveryService.preview(workspace.id, event.params.nodeId, input) });
+    } catch (error) {
+      return this.errorResponse(error, 'Failed to preview generated design code.');
+    }
+  }
+
+  async applyDesignCode(event: any) {
+    try {
+      const input = bridgeApplyDesignDeliverySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const current = await designDocumentService.get(workspace.id, event.params.nodeId);
+      if (current.revision !== input.baseRevision) throw new DesignRevisionConflictError(current);
+      const applied = await designDeliveryService.apply(workspace.id, event.params.nodeId, input);
+      const existing = current.codeArtifacts.find((artifact) => artifact.path === applied.artifact.path);
+      const { id: _generatedId, ...artifactChanges } = applied.artifact;
+      const operation = existing
+        ? { kind: 'update-code-artifact' as const, artifactId: existing.id, changes: artifactChanges }
+        : { kind: 'add-code-artifact' as const, artifact: applied.artifact };
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        [operation],
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        input.summary ?? `Generate ${input.framework} code at ${applied.path}`,
+      ));
+      return this.json({ data: { ...applied, revision: document.revision } });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to write generated design code.');
+    }
+  }
+
+  async importDesignCode(event: any) {
+    try {
+      const input = bridgeImportDesignMarkupSchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const imported = await designDeliveryService.import(workspace.id, event.params.nodeId, input);
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        imported.operations,
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        input.summary ?? `Import ${input.format} as ${input.name}`,
+      ));
+      return this.json({ data: { ...imported, revision: document.revision } });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to import code into the design.');
     }
   }
 

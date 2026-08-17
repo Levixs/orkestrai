@@ -2040,6 +2040,16 @@
     }
   }
 
+  async function captureDesignDataUrl(ids: string[], width: number, height: number): Promise<string> {
+    const blob = await rasterBlob('png', Math.max(width, height), ids);
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error ?? new Error(m['design.export_error']()));
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async function copyDesign(format: 'svg' | 'png') {
     if (!selectedIds.length || exporting) return;
     exporting = true;
@@ -2441,7 +2451,7 @@
       {:else if leftPanel === 'variables' && document}
         <div class="min-h-0 flex-1"><DesignVariablesPanel {document} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onSelectElements={(elementIds) => { selectedIds = elementIds; vectorEditId = null; pathPointSelections = []; }} /></div>
       {:else if document}
-        <div class="min-h-0 flex-1"><DesignComponentsPanel {document} {selectedIds} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onSelectElements={(elementIds) => { selectedIds = elementIds; vectorEditId = null; pathPointSelections = []; }} onDocumentChange={(nextDocument) => { document = nextDocument; selectedIds = []; undoStack = []; redoStack = []; }} /></div>
+        <div class="min-h-0 flex-1"><DesignComponentsPanel {document} {selectedIds} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onSelectElements={(elementIds) => { selectedIds = elementIds; vectorEditId = null; pathPointSelections = []; }} onDocumentChange={(nextDocument) => { document = nextDocument; selectedIds = []; undoStack = []; redoStack = []; }} onCaptureDesign={captureDesignDataUrl} /></div>
       {/if}
     </aside>
 

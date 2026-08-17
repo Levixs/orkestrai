@@ -26,6 +26,7 @@
     onApply,
     onSelectElements,
     onDocumentChange,
+    onCaptureDesign,
   }: {
     document: DesignDocument;
     selectedIds: string[];
@@ -34,6 +35,7 @@
     onApply: (operations: DesignOperation[], summary: string, inverse: DesignOperation[]) => Promise<boolean>;
     onSelectElements: (elementIds: string[]) => void;
     onDocumentChange: (document: DesignDocument) => void;
+    onCaptureDesign: (elementIds: string[], width: number, height: number) => Promise<string>;
   } = $props();
 
   let search = $state('');
@@ -351,7 +353,7 @@
   {:else if view === 'libraries'}
     <div class="min-h-0 flex-1"><DesignLibrariesPanel {document} {onApply} {onDocumentChange} /></div>
   {:else if view === 'code'}
-    <div class="min-h-0 flex-1"><DesignCodebasePanel {document} {activeComponent} {saving} {makeId} {onApply} /></div>
+    <div class="min-h-0 flex-1"><DesignCodebasePanel {document} {activeComponent} {selectedIds} {saving} {makeId} {onApply} {onSelectElements} {onCaptureDesign} /></div>
   {:else}
     <div class="min-h-0 flex-1"><DesignFigmaPanel {document} {onDocumentChange} {onSelectElements} /></div>
   {/if}

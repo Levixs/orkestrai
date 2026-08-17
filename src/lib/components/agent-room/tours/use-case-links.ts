@@ -21,6 +21,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'approval-pipeline': 'pipeline-aprovacao',
   'chained-flows': 'chained-flows',
   'design-figma': 'design-figma',
+  'design-delivery': 'design-delivery',
   'mcp-tools': 'mcp-tools',
   'managed-ports': 'managed-ports',
   'leader-dictation': 'leader-dictation',

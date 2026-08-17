@@ -9,6 +9,19 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Completed the native Design delivery phase with safe code-to-design import
+  for HTML/Tailwind, Svelte, React/JSX, and Vue; design-to-code adapters for
+  Svelar/Svelte 5, React, Next.js, Vue 3, and HTML/Tailwind; and preview-before-
+  write generation protected against concurrent design/file changes and
+  symlink escapes outside the workspace. Generated code
+  prioritizes existing Code Connect component mappings, records the linked
+  artifact on the Design document, and opens directly in the Workbench Monaco
+  editor. Visual validation captures a live Portal or attached iOS/Android
+  device, compares it with the selected frame through normalized pixel diff
+  and an adjustable overlay, and converts the evidence into a traceable Kanban
+  task or a Review Center entry tied to the real Git change. Agents use the
+  same import, preview, and protected-write flow through typed Orkestrai MCP
+  tools or the bundled CLI, with revision and task attribution preserved.
 - Added first-party Figma interoperability to native Design Mode. Orkestrai now
   provisions the official remote Figma MCP for compatible providers, stores the
   optional read-only REST credential in the operating-system vault, inspects

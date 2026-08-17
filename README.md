@@ -112,6 +112,16 @@ Download the latest installers from
   new Figma page with native design resources, and sends only linked local
   changes reviewed in Orkestrai back to the current file.
   REST credentials stay encrypted in the operating-system vault.
+- **Design delivery and visual validation:** import HTML/Tailwind, Svelte,
+  React/JSX, or Vue structure as editable native layers, then generate
+  Svelar/Svelte 5, React, Next.js, Vue 3, or HTML/Tailwind from a selected frame
+  with a complete preview before writing. Existing component mappings are
+  reused first, generated files open in Monaco, and the live implementation can
+  be captured from a Portal or attached iOS/Android device. Pixel diff and an
+  adjustable overlay link the visual result to a Kanban feedback task or the
+  Review Center Git diff. Claude, Codex, Kimi, and other connected agents use
+  the same revision-safe import, preview, and protected-write flow through the
+  bundled CLI or typed MCP tools.
 - **Council decisions:** open Council from the Canvas toolbar, the workspace in
   Workbench, or `Cmd/Ctrl+K`, then ask two to five real agents for independent,
   budget-limited perspectives on one task or objective, compare the same

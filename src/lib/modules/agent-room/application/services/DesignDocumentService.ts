@@ -683,6 +683,27 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       for (const component of next.components) if (component.figmaSource?.linkId === operation.linkId) component.figmaSource = null;
       continue;
     }
+    if (operation.kind === 'add-code-artifact') {
+      if (next.codeArtifacts.some((artifact) => artifact.id === operation.artifact.id || artifact.path === operation.artifact.path)) {
+        throw new Error('A generated code artifact already exists for this path.');
+      }
+      next.codeArtifacts.push(operation.artifact);
+      continue;
+    }
+    if (operation.kind === 'update-code-artifact') {
+      const artifact = next.codeArtifacts.find((candidate) => candidate.id === operation.artifactId);
+      if (!artifact) throw new Error('Generated code artifact not found.');
+      if (operation.changes.path && next.codeArtifacts.some((candidate) => candidate.id !== artifact.id && candidate.path === operation.changes.path)) {
+        throw new Error('A generated code artifact already exists for this path.');
+      }
+      Object.assign(artifact, operation.changes);
+      continue;
+    }
+    if (operation.kind === 'delete-code-artifact') {
+      if (!next.codeArtifacts.some((artifact) => artifact.id === operation.artifactId)) throw new Error('Generated code artifact not found.');
+      next.codeArtifacts = next.codeArtifacts.filter((artifact) => artifact.id !== operation.artifactId);
+      continue;
+    }
     if (operation.kind === 'create-component-instance') {
       if (next.elements.some((element) => element.id === operation.instanceId)) throw new Error('Component instance already exists.');
       const component = next.components.find((candidate) => candidate.id === operation.componentId);
@@ -828,6 +849,7 @@ export class DesignDocumentService {
       componentSets: [],
       libraryLinks: [],
       figmaLinks: [],
+      codeArtifacts: [],
       createdAt: now,
       updatedAt: now,
     };

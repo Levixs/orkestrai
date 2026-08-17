@@ -27,6 +27,9 @@ const TOOLS = [
   { name: 'design_list', description: 'Lista documentos de design nativos do workspace e suas revisoes.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: elementos, vetores, assets, guias, tokens, modos, bindings, componentes, instancias, propriedades, variantes, slots e links de bibliotecas. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
+  { name: 'design_import_code', description: 'Importa HTML, Svelte, React/JSX ou Vue como elementos nativos editaveis no Design Studio e registra a alteracao no historico.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, format: { type: 'string', enum: ['html', 'svelte', 'react', 'vue'] }, name: { type: 'string' }, markup: { type: 'string' }, css: { type: 'string' }, x: { type: 'number' }, y: { type: 'number' }, parentId: { type: ['string', 'null'] }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'format', 'name', 'markup'] } },
+  { name: 'design_generate_code_preview', description: 'Gera uma previa sem escrita para Svelar/Svelte, React/Next, Vue ou HTML/Tailwind. Retorna status, conteudo, mappings e hash esperado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, framework: { type: 'string', enum: ['svelar', 'svelte', 'react', 'next', 'vue', 'html'] }, elementIds: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string' } }, outputPath: { type: 'string' }, componentName: { type: 'string' } }, required: ['nodeId', 'framework', 'elementIds', 'outputPath', 'componentName'] } },
+  { name: 'design_generate_code_apply', description: 'Escreve codigo previamente revisado dentro do workspace, rejeita arquivo alterado e vincula o artefato ao documento de design.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, framework: { type: 'string', enum: ['svelar', 'svelte', 'react', 'next', 'vue', 'html'] }, elementIds: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string' } }, outputPath: { type: 'string' }, componentName: { type: 'string' }, expectedExistingHash: { type: ['string', 'null'] }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'framework', 'elementIds', 'outputPath', 'componentName', 'expectedExistingHash'] } },
   { name: 'design_figma_inspect', description: 'Inspeciona um link oficial do Figma e lista paginas/frames importaveis sem alterar o documento.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' } }, required: ['nodeId', 'url'] } },
   { name: 'design_figma_import', description: 'Importa frames do Figma como scene graph nativo, preservando o vinculo para sincronizacao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' }, sourceNodeIds: { type: 'array', items: { type: 'string' }, minItems: 1 }, baseRevision: { type: 'number' }, targetPageId: { type: 'string' } }, required: ['nodeId', 'url', 'sourceNodeIds', 'baseRevision', 'targetPageId'] } },
   { name: 'design_figma_sync_preview', description: 'Compara Figma e Orkestrai e classifica alteracoes remotas, locais e conflitos antes de escrever.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, linkId: { type: 'string' } }, required: ['nodeId', 'linkId'] } },
@@ -104,6 +107,39 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
         baseRevision: args.baseRevision,
         operations: args.operations,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_import_code':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/delivery/import`, {
+        baseRevision: args.baseRevision,
+        format: args.format,
+        name: args.name,
+        markup: args.markup,
+        css: args.css ?? '',
+        x: args.x ?? 80,
+        y: args.y ?? 80,
+        parentId: args.parentId ?? null,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_generate_code_preview':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/delivery/preview`, {
+        framework: args.framework,
+        elementIds: args.elementIds,
+        outputPath: args.outputPath,
+        componentName: args.componentName,
+      });
+    case 'design_generate_code_apply':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/delivery/apply`, {
+        baseRevision: args.baseRevision,
+        framework: args.framework,
+        elementIds: args.elementIds,
+        outputPath: args.outputPath,
+        componentName: args.componentName,
+        expectedExistingHash: args.expectedExistingHash,
         summary: args.summary,
         from: selfAgent,
         taskId: args.taskId,

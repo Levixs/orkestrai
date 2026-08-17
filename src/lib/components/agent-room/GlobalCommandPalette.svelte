@@ -252,7 +252,7 @@
       await goto(`/canvas?workspace=${item.workspaceId}`);
       return;
     }
-    if (item.kind === 'file' && item.path) {
+    if ((item.kind === 'file' || item.id.startsWith('design-code:')) && item.path) {
       if (location.pathname === '/terminal') {
         window.dispatchEvent(new CustomEvent('orkestrai:open-file', {
           detail: { workspaceId: item.workspaceId, path: item.path },

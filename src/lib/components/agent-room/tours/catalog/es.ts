@@ -468,6 +468,47 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'design-delivery',
+    icon: 'Code2',
+    title: 'Entrega un diseño como código funcional',
+    tagline: 'Importa, genera, compara y revisa sin romper la fuente visual.',
+    steps: [
+      {
+        id: 'document',
+        title: 'Empieza con un único documento nativo',
+        body: 'Creo un nodo Entrega de Diseño. El mismo documento estructurado sigue siendo la fuente para edición manual, agentes, código generado y evidencia visual.',
+        action: { kind: 'createDesign', title: 'Entrega de Diseño' },
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Entrega de Diseño' },
+      },
+      {
+        id: 'open-code',
+        title: 'Abre el área de entrega de Código',
+        body: 'Abre el documento Diseño, elige Componentes y después Código. Conectar escanea tokens y componentes reales; Importar código, Generar y Validar son pasos contiguos del mismo flujo.',
+        action: { kind: 'openDesign', title: 'Entrega de Diseño' },
+      },
+      {
+        id: 'import',
+        title: 'Lleva una interfaz existente al scene graph',
+        body: 'En Importar código, elige HTML/Tailwind, Svelte, React/JSX o Vue y pega markup más CSS opcional. Revisa las notas de compatibilidad y crea capas nativas editables. Los scripts y configuraciones del proyecto nunca se ejecutan.',
+      },
+      {
+        id: 'generate',
+        title: 'Revisa antes de escribir el código de implementación',
+        body: 'Selecciona un frame o grupo, elige Svelar/Svelte 5, React, Next.js, Vue 3 o HTML/Tailwind e indica la ruta del workspace. Primero revisa el archivo completo. Los mappings compatibles de Code Connect reutilizan componentes reales; la escritura se bloquea si el archivo cambia después de la vista previa y el resultado se abre directamente en Monaco. Los agentes usan el mismo flujo protegido por revisión mediante las tools MCP tipadas de Orkestrai o la CLI incluida.',
+      },
+      {
+        id: 'validate',
+        title: 'Compara con una implementación en vivo',
+        body: 'Mantén visible un Portal o conecta un dispositivo iOS/Android, elige el frame o viewport responsivo y captura. Inspecciona diseño normalizado, implementación, overlay ajustable y pixel diff en vez de depender de la memoria.',
+      },
+      {
+        id: 'trace',
+        title: 'Mantén el feedback vinculado al trabajo',
+        body: 'Crea una tarea de Kanban con capturas de referencia, implementación y diff o una entrada del Centro de Review vinculada al archivo Git generado. El líder puede asignarla y el revisor aprueba el cambio real.',
+      },
+    ],
+  },
+  {
     id: 'managed-ports',
     icon: 'RadioTower',
     title: 'Liberar puertos de dev servers',

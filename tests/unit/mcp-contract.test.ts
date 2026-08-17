@@ -14,6 +14,7 @@ import {
   bridgeFloorLandSchema,
 } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
+import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
 import { z } from 'zod';
 
 /**
@@ -51,6 +52,9 @@ const EXPECTED: Record<string, Expectation> = {
   design_list: { method: 'GET', path: /\/bridge\/designs$/ },
   design_read: { method: 'GET', path: /\/bridge\/designs\/n1$/ },
   design_apply_operations: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_import_code: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/import$/, schema: bridgeImportDesignMarkupSchema },
+  design_generate_code_preview: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/preview$/, schema: previewDesignDeliverySchema },
+  design_generate_code_apply: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/apply$/, schema: bridgeApplyDesignDeliverySchema },
   design_create_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_update_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_delete_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
@@ -93,6 +97,29 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
         order: 0,
       },
     }],
+  },
+  design_import_code: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    format: 'html',
+    name: 'Account card',
+    markup: '<article class="p-4"><h2>Account</h2></article>',
+  },
+  design_generate_code_preview: {
+    nodeId: 'n1',
+    framework: 'svelar',
+    elementIds: ['00000000-0000-7000-8000-000000000001'],
+    outputPath: 'src/lib/AccountCard.svelte',
+    componentName: 'AccountCard',
+  },
+  design_generate_code_apply: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    framework: 'svelar',
+    elementIds: ['00000000-0000-7000-8000-000000000001'],
+    outputPath: 'src/lib/AccountCard.svelte',
+    componentName: 'AccountCard',
+    expectedExistingHash: null,
   },
   design_create_element: {
     nodeId: 'n1',

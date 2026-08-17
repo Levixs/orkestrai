@@ -114,7 +114,7 @@
         </svg>
       {/if}
       <span class="absolute right-2 bottom-2 left-2 truncate rounded bg-[var(--app-surface)]/90 px-1.5 py-1 text-[9px] text-[var(--app-text-muted)] shadow-sm">
-        {m['design.layers_count']({ count: elements.length })} · {document.components.length} {m['design.components']()} · {document.variables.length} {m['design.tokens']()} · {m['design.revision']({ revision: document.revision })}
+        {m['design.layers_count']({ count: elements.length })} · {document.components.length} {m['design.components']()} · {document.variables.length} {m['design.tokens']()} · {document.codeArtifacts.length} {m['design.delivery_artifacts']()} · {m['design.revision']({ revision: document.revision })}
       </span>
     {/if}
   </button>

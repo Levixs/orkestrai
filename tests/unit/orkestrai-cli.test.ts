@@ -52,6 +52,12 @@ describe('orkestrai CLI', () => {
           res.end(JSON.stringify({ data: { ok: false, error: 'Portal indisponível: servidor ainda não respondeu.' } }));
         } else if (req.url === '/api/agent-room/bridge/notes/n9' && req.method === 'GET') {
           res.end(JSON.stringify({ data: { nodeId: 'n9', title: 'nota', content: 'conteudo da nota' } }));
+        } else if (req.url?.endsWith('/delivery/preview')) {
+          res.end(JSON.stringify({ data: { path: 'src/lib/Card.svelte', content: '<article>Card</article>', status: 'create', existingHash: null } }));
+        } else if (req.url?.endsWith('/delivery/apply')) {
+          res.end(JSON.stringify({ data: { path: 'src/lib/Card.svelte', status: 'create', revision: 5 } }));
+        } else if (req.url?.endsWith('/delivery/import')) {
+          res.end(JSON.stringify({ data: { elements: [{ id: 'e1' }], rootIds: ['e1'], revision: 5 } }));
         } else {
           res.end(JSON.stringify({ data: { ok: true } }));
         }
@@ -190,6 +196,41 @@ describe('orkestrai CLI', () => {
       from: 'designer-1',
       taskId: '00000000-0000-7000-8000-000000000003',
       operations: [{ kind: 'update', elementId: 'element-1', changes: { x: 80 } }],
+    });
+  });
+
+  it('design import-code le arquivos e registra a importacao pela bridge', async () => {
+    writeFileSync(join(cwd, 'card.html'), '<article class="p-4">Card</article>');
+    writeFileSync(join(cwd, 'card.css'), 'article { color: red; }');
+    const { out } = capture();
+    await run([
+      'design', 'import-code', 'design-1', 'card.html', '--format', 'html', '--name', 'Card',
+      '--revision', '4', '--css', 'card.css', '--task', '00000000-0000-7000-8000-000000000003',
+    ], { env: { ORKESTRAI_NODE_ID: 'designer-1' }, cwd, out });
+    const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/designs/design-1/delivery/import').at(-1);
+    expect(request.body).toMatchObject({
+      baseRevision: 4,
+      format: 'html',
+      name: 'Card',
+      markup: '<article class="p-4">Card</article>',
+      css: 'article { color: red; }',
+      from: 'designer-1',
+    });
+  });
+
+  it('design generate sempre faz preview e so escreve com hash e revisao', async () => {
+    const { out } = capture();
+    const elementIds = JSON.stringify(['00000000-0000-7000-8000-000000000001']);
+    await run([
+      'design', 'generate', 'design-1', elementIds, '--framework', 'svelar', '--output', 'src/lib/Card.svelte',
+      '--name', 'Card', '--write', '--revision', '4',
+    ], { env: { ORKESTRAI_NODE_ID: 'designer-1' }, cwd, out });
+    const calls = requests.filter((entry) => entry.url?.includes('/api/agent-room/bridge/designs/design-1/delivery/'));
+    expect(calls.at(-2)).toMatchObject({ method: 'POST', url: '/api/agent-room/bridge/designs/design-1/delivery/preview' });
+    expect(calls.at(-1)).toMatchObject({
+      method: 'POST',
+      url: '/api/agent-room/bridge/designs/design-1/delivery/apply',
+      body: { baseRevision: 4, expectedExistingHash: null, from: 'designer-1' },
     });
   });
 

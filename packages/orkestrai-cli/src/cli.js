@@ -45,6 +45,8 @@ Uso:
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
   orkestrai design list | design read <nodeId> | design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
+  orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
+  orkestrai design generate <nodeId> <elementIds-json> --framework svelar|svelte|react|next|vue|html --output <path> --name <nome> [--write --revision <n>]
   orkestrai role show [nome] | role write <nome> <prompt> | role edit <nome> <antigo> <novo>
   orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]
   orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
@@ -397,7 +399,68 @@ export async function run(argv, options = {}) {
         else out(`Design atualizado para a revisao ${data.revision}.`);
         return 0;
       }
-      throw new Error('Uso: orkestrai design <list|read|apply> ...');
+      if (action === 'import-code' && nodeId && values[0]) {
+        const baseRevision = Number(flags.revision);
+        const format = String(flags.format ?? 'html');
+        if (!Number.isInteger(baseRevision) || baseRevision < 0 || !flags.name) {
+          throw new Error('Uso: orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]');
+        }
+        const markup = readFileSync(resolve(cwd, values[0]), 'utf8');
+        const css = flags.css ? readFileSync(resolve(cwd, String(flags.css)), 'utf8') : '';
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/delivery/import`, {
+          baseRevision,
+          format,
+          name: flags.name,
+          markup,
+          css,
+          x: flags.x === undefined ? 80 : Number(flags.x),
+          y: flags.y === undefined ? 80 : Number(flags.y),
+          parentId: flags.parent ?? null,
+          summary: flags.summary,
+          from: flags.from,
+          taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Codigo importado: ${data.elements.length} elementos, revisao ${data.revision}.`);
+        return 0;
+      }
+      if (action === 'generate' && nodeId && values.length) {
+        const framework = String(flags.framework ?? 'svelar');
+        const outputPath = String(flags.output ?? '');
+        const componentName = String(flags.name ?? '');
+        const elementIds = JSON.parse(values.join(' '));
+        if (!Array.isArray(elementIds) || !outputPath || !componentName) {
+          throw new Error('Uso: orkestrai design generate <nodeId> <elementIds-json> --framework <id> --output <path> --name <nome> [--write --revision <n>]');
+        }
+        const preview = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/delivery/preview`, {
+          framework,
+          elementIds,
+          outputPath,
+          componentName,
+        });
+        if (!flags.write) {
+          if (flags.json) out(JSON.stringify(preview, null, 2));
+          else out(preview.content);
+          return 0;
+        }
+        const baseRevision = Number(flags.revision);
+        if (!Number.isInteger(baseRevision) || baseRevision < 0) throw new Error('--write exige --revision <n>.');
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/delivery/apply`, {
+          baseRevision,
+          framework,
+          elementIds,
+          outputPath,
+          componentName,
+          expectedExistingHash: preview.existingHash,
+          summary: flags.summary,
+          from: flags.from,
+          taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Codigo ${data.status === 'unchanged' ? 'validado' : 'escrito'} em ${data.path}; design na revisao ${data.revision}.`);
+        return 0;
+      }
+      throw new Error('Uso: orkestrai design <list|read|apply|import-code|generate> ...');
     }
     case 'recruit': {
       const [title] = rest;

@@ -235,6 +235,21 @@ export class WorkspaceSearchService {
           route,
         }, ['figma design source origem fuente linked sync', link.sourceNodeIds]));
       }
+      for (const artifact of document.codeArtifacts.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-code:${node.id}:${artifact.id}`,
+          kind: 'artifact',
+          title: artifact.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(artifact.path),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: artifact.path,
+          route,
+        }, ['generated code codigo generado', artifact.framework, artifact.path, artifact.componentMappings]));
+      }
     }
 
     for (const task of tasks.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {

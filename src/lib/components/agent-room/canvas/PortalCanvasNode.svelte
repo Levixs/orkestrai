@@ -207,7 +207,9 @@
         case 'screenshot': {
           await waitUntilReady();
           const image = await webview.capturePage();
-          await postResult(command.id, true, { dataUrl: image.toDataURL().slice(0, 200_000) });
+          const dataUrl = image.toDataURL();
+          if (dataUrl.length > 28_000_000) throw new Error('Portal screenshot exceeds the 20 MB capture limit.');
+          await postResult(command.id, true, { dataUrl });
           break;
         }
         default:
