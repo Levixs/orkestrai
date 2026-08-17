@@ -8,6 +8,16 @@ import { ApplyDesignOperationsRequest, ImportDesignAssetRequest, UploadDesignThu
 import { ExportDesignPdfRequest } from '$lib/modules/agent-room/interface/http/requests/DesignRequests.js';
 import { designExportService } from '$lib/modules/agent-room/application/services/DesignExportService.js';
 import { DesignLeaseConflictError } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
+import { auditDesignDocument } from '$lib/modules/agent-room/domain/design-quality.js';
+import { createDesignTemplate, designTemplateIds } from '$lib/modules/agent-room/domain/design-templates.js';
+import { uuidv7 } from '@beeblock/svelar/support';
+import { z } from 'zod';
+
+const designMaintenanceActionSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('restore-backup') }),
+  z.object({ action: z.literal('compact-history') }),
+  z.object({ action: z.literal('apply-template'), templateId: z.enum(designTemplateIds as [typeof designTemplateIds[number], ...typeof designTemplateIds[number][]]), baseRevision: z.number().int().min(0) }),
+]);
 
 export class DesignDocumentController extends Controller {
   async show(event: any) {
@@ -30,6 +40,43 @@ export class DesignDocumentController extends Controller {
         return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
       }
       return this.json({ error: error instanceof Error ? error.message : 'Failed to update design document.' }, 400);
+    }
+  }
+
+  async quality(event: any) {
+    try {
+      const document = await designDocumentService.get(event.params.id, event.params.nodeId);
+      const maintenance = await designDocumentService.maintenance(event.params.id, event.params.nodeId);
+      return this.json({ data: { report: auditDesignDocument(document), maintenance } });
+    } catch (error) {
+      return this.json({ error: error instanceof Error ? error.message : 'Failed to audit design document.' }, 404);
+    }
+  }
+
+  async maintain(event: any) {
+    try {
+      const input = designMaintenanceActionSchema.parse(await event.request.json());
+      if (input.action === 'restore-backup') {
+        return this.json({ data: { document: await designDocumentService.restoreBackup(event.params.id, event.params.nodeId) } });
+      }
+      if (input.action === 'compact-history') {
+        return this.json({ data: { maintenance: await designDocumentService.compactHistory(event.params.id, event.params.nodeId) } });
+      }
+      const current = await designDocumentService.get(event.params.id, event.params.nodeId);
+      if (current.revision !== input.baseRevision) throw new DesignRevisionConflictError(current);
+      const operations = createDesignTemplate(input.templateId, current, uuidv7);
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        event.params.id,
+        event.params.nodeId,
+        input.baseRevision,
+        operations,
+        { kind: 'user', id: null, name: null, taskId: null },
+        `Apply ${input.templateId} design template`,
+      ));
+      return this.json({ data: { document } });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.json({ error: error instanceof Error ? error.message : 'Failed to maintain design document.' }, 422);
     }
   }
 

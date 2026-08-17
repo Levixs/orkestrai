@@ -5,6 +5,69 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 test.describe('Native Design Mode', () => {
+  test('audits quality, confirms templates, and keeps an automatic backup', async ({ page, request }) => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-design-quality-e2e-'));
+    const originalSettings = (await (await request.get('/api/agent-room/settings')).json()).data as Record<string, string>;
+    const workspace = (await (await request.post('/api/agent-room/workspaces', {
+      data: { name: `E2E design quality ${Date.now()}`, workingDir: dir },
+    })).json()).data as { id: string };
+    const node = (await (await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: { type: 'design', title: 'Quality review', x: 120, y: 120, width: 720, height: 520, payload: {} },
+    })).json()).data as { id: string };
+    const initial = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as {
+      revision: number;
+      activePageId: string;
+    };
+    const imageId = randomUUID();
+    await request.patch(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`, {
+      data: {
+        baseRevision: initial.revision,
+        operations: [{
+          kind: 'create',
+          element: { id: imageId, pageId: initial.activePageId, parentId: null, type: 'image', name: 'Hero image', x: 80, y: 80, width: 320, height: 200 },
+        }],
+        summary: 'Seed unlabeled image',
+        actor: { kind: 'user', id: null, name: null, taskId: null },
+      },
+    });
+
+    try {
+      const quality = (await (await request.get(
+        `/api/agent-room/workspaces/${workspace.id}/designs/${node.id}/quality`,
+      )).json()).data as { report: { issues: Array<{ rule: string; elementId: string }> } };
+      expect(quality.report.issues).toContainEqual(expect.objectContaining({ rule: 'accessibility', elementId: imageId }));
+
+      await request.put('/api/agent-room/settings', { data: { ...originalSettings, uiLanguage: 'en' } });
+      await page.goto(`/canvas?workspace=${workspace.id}&node=${node.id}&design=1`);
+      const editor = page.locator('[data-testid="canvas-design-mode"]');
+      await editor.getByRole('button', { name: 'Quality', exact: true }).click();
+      await expect(editor.getByRole('heading', { name: 'Design quality' })).toBeVisible();
+      await expect(editor.getByText('Accessibility metadata', { exact: true })).toBeVisible();
+
+      await editor.getByRole('button', { name: 'Product dashboard', exact: true }).click();
+      const dialog = page.getByRole('alertdialog');
+      await expect(dialog.getByRole('heading', { name: 'Apply template' })).toBeVisible();
+      const applied = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith(`/designs/${node.id}/quality`));
+      await dialog.getByRole('button', { name: 'Apply template', exact: true }).click();
+      await applied;
+
+      const current = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/designs/${node.id}`)).json()).data as {
+        elements: Array<{ id: string }>;
+      };
+      expect(current.elements.some((element) => element.id === imageId)).toBe(true);
+      expect(current.elements.length).toBeGreaterThan(10);
+      const maintenance = (await (await request.get(
+        `/api/agent-room/workspaces/${workspace.id}/designs/${node.id}/quality`,
+      )).json()).data as { maintenance: { backupRevision: number | null } };
+      expect(maintenance.maintenance.backupRevision).toBe(1);
+    } finally {
+      await page.goto('about:blank');
+      await request.put('/api/agent-room/settings', { data: originalSettings });
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test('draws freely and keeps layer deletion isolated from Canvas', async ({ page, request }) => {
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-design-e2e-'));
     const originalSettings = (await (await request.get('/api/agent-room/settings')).json()).data as Record<string, string>;

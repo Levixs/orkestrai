@@ -26,6 +26,8 @@ const TOOLS = [
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
   { name: 'design_list', description: 'Lista documentos de design nativos do workspace e suas revisoes.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'design_audit', description: 'Audita naming, clipping, overlap, contraste e acessibilidade sem alterar o documento.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'design_apply_template', description: 'Aplica um template nativo completo pelo command bus transacional.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, templateId: { type: 'string', enum: ['product', 'marketing', 'mobile', 'design-system'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'templateId'] } },
   { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: layers, vetores, design system, prototipo, motion, comentarios e propostas. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
   { name: 'design_comment', description: 'Cria um comentario rastreavel em uma pagina ou layer, com autoria do agente e suporte a mencoes no texto.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, elementId: { type: ['string', 'null'] }, body: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'pageId', 'body'] } },
   { name: 'design_propose', description: 'Submete operacoes visuais como proposta pendente para revisao humana, sem alterar o design aprovado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, title: { type: 'string' }, description: { type: 'string' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, floorId: { type: ['string', 'null'] }, councilId: { type: ['string', 'null'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'title', 'operations'] } },
@@ -106,6 +108,15 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', '/api/agent-room/bridge/designs');
     case 'design_read':
       return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`);
+    case 'design_audit':
+      return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/quality`);
+    case 'design_apply_template':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/quality`, {
+        baseRevision: args.baseRevision,
+        templateId: args.templateId,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
     case 'design_apply_operations':
       return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
         baseRevision: args.baseRevision,

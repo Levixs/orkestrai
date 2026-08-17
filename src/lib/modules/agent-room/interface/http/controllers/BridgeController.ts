@@ -34,6 +34,9 @@ import { acknowledgeDesignFigmaPushSchema, applyDesignFigmaSyncSchema, importDes
 import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
 import { designDeliveryService } from '$lib/modules/agent-room/application/services/DesignDeliveryService.js';
 import { DesignLeaseConflictError } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
+import { auditDesignDocument } from '$lib/modules/agent-room/domain/design-quality.js';
+import { createDesignTemplate, designTemplateIds } from '$lib/modules/agent-room/domain/design-templates.js';
+import { uuidv7 } from '@beeblock/svelar/support';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -118,6 +121,44 @@ export class BridgeController extends Controller {
       return this.json({ data: await designDocumentService.get(workspace.id, event.params.nodeId) });
     } catch (error) {
       return this.errorResponse(error, 'Documento de design nao encontrado.', 404);
+    }
+  }
+
+  async auditDesign(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const document = await designDocumentService.get(workspace.id, event.params.nodeId);
+      return this.json({ data: auditDesignDocument(document) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao auditar documento de design.', 404);
+    }
+  }
+
+  async applyDesignTemplate(event: any) {
+    try {
+      const input = z.object({
+        templateId: z.enum(designTemplateIds as [typeof designTemplateIds[number], ...typeof designTemplateIds[number][]]),
+        baseRevision: z.number().int().min(0),
+        token: z.string().optional(),
+        from: z.string().trim().max(120).optional(),
+        taskId: z.string().uuid().nullable().optional(),
+      }).parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
+      const current = await designDocumentService.get(workspace.id, event.params.nodeId);
+      if (current.revision !== input.baseRevision) throw new DesignRevisionConflictError(current);
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        createDesignTemplate(input.templateId, current, uuidv7),
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        `Apply ${input.templateId} design template`,
+        input.from ?? null,
+      ));
+      return this.json({ data: document });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Falha ao aplicar template de design.');
     }
   }
 

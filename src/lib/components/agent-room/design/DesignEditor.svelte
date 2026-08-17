@@ -43,6 +43,7 @@
     Redo2,
     RectangleHorizontal,
     Ruler,
+    ShieldCheck,
     Sparkles,
     Spline,
     Trash2,
@@ -95,6 +96,7 @@
   } from '$lib/modules/agent-room/domain/design-geometry.js';
   import { importSvgToDesign, SvgImportError } from '$lib/modules/agent-room/domain/design-svg-import.js';
   import { resolveDesignElements } from '$lib/modules/agent-room/domain/design-variables.js';
+  import { visibleDesignElements, type DesignViewportBounds } from '$lib/modules/agent-room/domain/design-viewport.js';
   import { defaultPrototypeFlow, exportMotionCss, prototypeFrames } from '$lib/modules/agent-room/domain/design-prototype.js';
   import * as m from '$lib/paraglide/messages.js';
   import DesignColorTools from './DesignColorTools.svelte';
@@ -102,6 +104,7 @@
   import DesignComponentsPanel from './DesignComponentsPanel.svelte';
   import DesignPaintEditor from './DesignPaintEditor.svelte';
   import DesignPrototypePanel from './DesignPrototypePanel.svelte';
+  import DesignQualityPanel from './DesignQualityPanel.svelte';
   import DesignPrototypePlayer from './DesignPrototypePlayer.svelte';
   import DesignRenderer from './DesignRenderer.svelte';
   import DesignToolbarButton from './DesignToolbarButton.svelte';
@@ -138,6 +141,7 @@
   let errorMessage = $state('');
   let zoom = $state(0.65);
   let viewport = $state<HTMLElement>();
+  let viewportBounds = $state<DesignViewportBounds | null>(null);
   let editorRoot = $state<HTMLElement>();
   let pageSvg = $state<SVGSVGElement>();
   let assetInput = $state<HTMLInputElement>();
@@ -163,7 +167,7 @@
   let exporting = $state(false);
   let colorMenuOpen = $state(false);
   let leftPanel = $state<'layers' | 'variables' | 'components'>('layers');
-  let rightPanel = $state<'design' | 'prototype' | 'collaboration'>('design');
+  let rightPanel = $state<'design' | 'prototype' | 'collaboration' | 'quality'>('design');
   let prototypeOpen = $state(false);
   let prototypeFlowId = $state<string | null>(null);
   let thumbnailRevision = $state(-1);
@@ -196,6 +200,15 @@
     if (editingTextId) elements = elements.map((element) => element.id === editingTextId ? { ...element, text: '' } : element);
     return document ? resolveDesignElements(document, elements) : elements;
   });
+  const viewportRenderedElements = $derived(visibleDesignElements(
+    renderedElements,
+    viewportBounds,
+    [
+      ...selectedIds,
+      ...(draftElement ? [draftElement.id] : []),
+      ...(collaboration?.presences.flatMap((presence) => presence.elementIds) ?? []),
+    ],
+  ));
   const selectedElements = $derived(pageElements.filter((element) => selectedIds.includes(element.id)));
   const selected = $derived(selectedElements.length === 1 ? selectedElements[0] : null);
   const primaryPathPointSelection = $derived(pathPointSelections.at(-1) ?? null);
@@ -2401,6 +2414,28 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     zoom = Math.max(0.1, Math.min(1.5, Math.min((viewport.clientWidth - 96) / page.width, (viewport.clientHeight - 96) / page.height)));
   }
 
+  function updateViewportBounds() {
+    if (!viewport || !pageSvg || !page) {
+      viewportBounds = null;
+      return;
+    }
+    const container = viewport.getBoundingClientRect();
+    const canvas = pageSvg.getBoundingClientRect();
+    const scale = canvas.width / page.width;
+    if (!Number.isFinite(scale) || scale <= 0) return;
+    const left = Math.max(container.left, canvas.left);
+    const top = Math.max(container.top, canvas.top);
+    const right = Math.min(container.right, canvas.right);
+    const bottom = Math.min(container.bottom, canvas.bottom);
+    const overscan = 320 / Math.max(zoom, 0.1);
+    viewportBounds = {
+      x: (left - canvas.left) / scale - overscan,
+      y: (top - canvas.top) / scale - overscan,
+      width: Math.max(0, (right - left) / scale) + overscan * 2,
+      height: Math.max(0, (bottom - top) / scale) + overscan * 2,
+    };
+  }
+
   function keyboard(event: KeyboardEvent) {
     if (!editorRoot?.contains(globalThis.document?.activeElement ?? null)) return;
     const target = event.target as HTMLElement;
@@ -2507,8 +2542,13 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     const id = storedId && storedId.length >= 8 ? storedId : participant.id;
     sessionStorage.setItem(storageKey, id);
     participant = { ...participant, id, color: participantColor(id) };
-    void load().then(() => {
+    const resizeObserver = new ResizeObserver(() => updateViewportBounds());
+    if (viewport) resizeObserver.observe(viewport);
+    void load().then(async () => {
+      await tick();
       fitPage();
+      await tick();
+      updateViewportBounds();
       void syncCollaboration();
     });
     collaborationTimer = setInterval(() => void syncCollaboration(true), 3_000);
@@ -2517,6 +2557,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     return () => {
       window.removeEventListener('keydown', keyboard, { capture: true });
       window.removeEventListener('paste', handlePaste);
+      resizeObserver.disconnect();
       cancelDrawing?.();
       if (thumbnailTimer) clearTimeout(thumbnailTimer);
       if (collaborationTimer) clearInterval(collaborationTimer);
@@ -2534,6 +2575,12 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     const revision = externalRevision;
     if (!revision || saving || loading || !document || revision <= document.revision) return;
     void load(true);
+  });
+
+  $effect(() => {
+    zoom;
+    page?.id;
+    queueMicrotask(updateViewportBounds);
   });
 
   $effect(() => {
@@ -2694,7 +2741,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
       {/if}
     </aside>
 
-    <main class="relative min-h-0 min-w-0 overflow-auto bg-[var(--app-canvas)]" bind:this={viewport} ondragover={(event) => event.preventDefault()} ondrop={handleDrop}>
+    <main class="relative min-h-0 min-w-0 overflow-auto bg-[var(--app-canvas)]" bind:this={viewport} onscroll={updateViewportBounds} ondragover={(event) => event.preventDefault()} ondrop={handleDrop}>
       {#if errorMessage}
         <div class="grid h-full place-items-center p-8 text-center"><div><p class="text-sm text-[var(--app-danger)]">{errorMessage}</p><Button class="mt-3" variant="outline" size="sm" onclick={() => void load()}>{m['workspace_access.retry']()}</Button></div></div>
       {:else if loading || !document || !page}
@@ -2752,7 +2799,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
             role="application"
             aria-label={page.name}
           >
-            <DesignRenderer elements={renderedElements} assets={document.assets} {workspaceId} selectedIds={rendererSelectionIds} showFrameLabels />
+            <DesignRenderer elements={viewportRenderedElements} assets={document.assets} {workspaceId} selectedIds={rendererSelectionIds} showFrameLabels />
             {#each (collaboration?.presences ?? []).filter((presence) => presence.participant.id !== participant.id && presence.pageId === page.id) as presence (presence.participant.id)}
               <g data-design-ui pointer-events="none">
                 {#each presence.elementIds as elementId}
@@ -2912,12 +2959,15 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     </main>
 
     <aside class="flex min-h-0 flex-col border-l border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
-      <div class="grid grid-cols-3 gap-1 border-b border-[var(--app-border)] p-1.5">
-        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'design' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'design'} onclick={() => (rightPanel = 'design')}><SlidersHorizontal size={12} />{m['design.properties']()}</button>
-        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'prototype' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'prototype'} onclick={() => (rightPanel = 'prototype')}><Workflow size={12} />{m['design.prototype']()}</button>
-        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'collaboration' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'collaboration'} onclick={() => (rightPanel = 'collaboration')}><UsersRound size={12} />{m['design.collaboration']()}</button>
+      <div class="grid grid-cols-4 gap-1 border-b border-[var(--app-border)] p-1.5">
+        <button title={m['design.properties']()} class={`grid h-8 place-items-center rounded ${rightPanel === 'design' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-label={m['design.properties']()} aria-pressed={rightPanel === 'design'} onclick={() => (rightPanel = 'design')}><SlidersHorizontal size={14} /></button>
+        <button title={m['design.prototype']()} class={`grid h-8 place-items-center rounded ${rightPanel === 'prototype' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-label={m['design.prototype']()} aria-pressed={rightPanel === 'prototype'} onclick={() => (rightPanel = 'prototype')}><Workflow size={14} /></button>
+        <button title={m['design.collaboration']()} class={`grid h-8 place-items-center rounded ${rightPanel === 'collaboration' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-label={m['design.collaboration']()} aria-pressed={rightPanel === 'collaboration'} onclick={() => (rightPanel = 'collaboration')}><UsersRound size={14} /></button>
+        <button title={m['design.quality']()} class={`grid h-8 place-items-center rounded ${rightPanel === 'quality' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-label={m['design.quality']()} aria-pressed={rightPanel === 'quality'} onclick={() => (rightPanel = 'quality')}><ShieldCheck size={14} /></button>
       </div>
-      {#if rightPanel === 'collaboration' && document}
+      {#if rightPanel === 'quality' && document}
+        <div class="min-h-0 flex-1"><DesignQualityPanel {workspaceId} {nodeId} {document} {saving} onSelect={(elementId) => { selectedIds = [elementId]; vectorEditId = null; pathPointSelections = []; }} onDocumentChange={(nextDocument) => { document = nextDocument; selectedIds = []; undoStack = []; redoStack = []; }} /></div>
+      {:else if rightPanel === 'collaboration' && document}
         <div class="min-h-0 flex-1"><DesignCollaborationPanel {document} {selected} {participant} {collaboration} {followParticipantId} {saving} makeId={uuidv7} onApply={(operations, summary) => apply(operations, summary)} onFollow={followParticipant} onPreview={previewProposal} onOpenCouncil={openProposalCouncil} onCreateFloor={createProposalFloor} /></div>
       {:else if rightPanel === 'prototype' && document}
         <div class="min-h-0 flex-1"><DesignPrototypePanel {document} {selected} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onPreview={openPrototype} onShare={sharePrototype} /></div>
@@ -2929,6 +2979,12 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.size']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">W</span><Input type="number" min="1" value={selected.width} onchange={(event: Event) => void updateSelected({ width: Math.max(1, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">H</span><Input type="number" min="1" value={selected.height} onchange={(event: Event) => void updateSelected({ height: Math.max(1, number(event)) })} /></label></div></section>
           <section class="space-y-2"><h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.appearance']()}</h3><div class="grid grid-cols-2 gap-2"><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.stroke_width']()}</span><Input type="number" min="0" value={selected.strokeWidth} onchange={(event: Event) => void updateSelected({ strokeWidth: Math.max(0, number(event)) })} /></label><label class="space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.radius']()}</span><Input type="number" min="0" value={selected.cornerRadius} onchange={(event: Event) => void updateSelected({ cornerRadius: Math.max(0, number(event)) })} /></label><label class="col-span-2 space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.opacity']()}</span><Input type="number" min="0" max="100" value={Math.round(selected.opacity * 100)} onchange={(event: Event) => void updateSelected({ opacity: Math.max(0, Math.min(1, number(event) / 100)) })} /></label></div><label class="block space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.blend_mode']()}</span><NativeSelect.Root class="w-full" value={selected.blendMode} onchange={(event: Event) => void updateSelected({ blendMode: (event.currentTarget as HTMLSelectElement).value as DesignElement['blendMode'] })}><NativeSelect.Option value="normal">{m['design.blend_normal']()}</NativeSelect.Option><NativeSelect.Option value="multiply">{m['design.blend_multiply']()}</NativeSelect.Option><NativeSelect.Option value="screen">{m['design.blend_screen']()}</NativeSelect.Option><NativeSelect.Option value="overlay">{m['design.blend_overlay']()}</NativeSelect.Option><NativeSelect.Option value="darken">{m['design.blend_darken']()}</NativeSelect.Option><NativeSelect.Option value="lighten">{m['design.blend_lighten']()}</NativeSelect.Option></NativeSelect.Root></label></section>
           <DesignVariableBindings document={document} element={selected} onBind={(property, variableId) => void bindSelectedVariable(property, variableId)} onOpenVariables={() => (leftPanel = 'variables')} />
+          <section class="space-y-2 border-y border-[var(--app-border)] py-3">
+            <h3 class="font-semibold text-[var(--app-text-soft)]">{m['design.accessibility']()}</h3>
+            <label class="block space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.accessibility_role']()}</span><NativeSelect.Root class="w-full" value={selected.accessibilityRole} onchange={(event: Event) => void updateSelected({ accessibilityRole: (event.currentTarget as HTMLSelectElement).value as DesignElement['accessibilityRole'] })}><NativeSelect.Option value="none">{m['design.accessibility_role_none']()}</NativeSelect.Option><NativeSelect.Option value="button">{m['design.accessibility_role_button']()}</NativeSelect.Option><NativeSelect.Option value="link">{m['design.accessibility_role_link']()}</NativeSelect.Option><NativeSelect.Option value="heading">{m['design.accessibility_role_heading']()}</NativeSelect.Option><NativeSelect.Option value="image">{m['design.accessibility_role_image']()}</NativeSelect.Option><NativeSelect.Option value="text">{m['design.accessibility_role_text']()}</NativeSelect.Option><NativeSelect.Option value="input">{m['design.accessibility_role_input']()}</NativeSelect.Option><NativeSelect.Option value="navigation">{m['design.accessibility_role_navigation']()}</NativeSelect.Option><NativeSelect.Option value="region">{m['design.accessibility_role_region']()}</NativeSelect.Option></NativeSelect.Root></label>
+            <label class="block space-y-1"><span class="text-[var(--app-text-muted)]">{m['design.accessibility_label']()}</span><Input value={selected.accessibilityLabel ?? ''} placeholder={m['design.accessibility_label_placeholder']()} onchange={(event: Event) => void updateSelected({ accessibilityLabel: (event.currentTarget as HTMLInputElement).value.trim() || null })} /></label>
+            <label class="flex items-center justify-between gap-3"><span class="text-[var(--app-text-muted)]">{m['design.decorative']()}</span><Switch checked={selected.decorative} onCheckedChange={(checked: boolean) => void updateSelected({ decorative: checked })} /></label>
+          </section>
           {#if selected.type !== 'image' && selected.type !== 'group'}
             <DesignPaintEditor title={m['design.fill']()} paints={selected.fills} fallbackColor={selected.fill} onChange={(fills: DesignPaint[]) => void updateSelected({ fills, fill: fills.length ? 'transparent' : selected.fill })} />
             <DesignColorTools role="fill" color={primaryColor(selected, 'fill')} matches={matchingColorLayers('fill', primaryColor(selected, 'fill'))} selectionCount={selectedElements.length} onSelectMatches={() => { const color = primaryColor(selected, 'fill'); if (color) selectMatchingColor('fill', color); }} onSelectLayer={(id) => (selectedIds = [id])} onApplySelection={(color) => void applyColorToSelection('fill', color)} onReplaceMatches={(color) => { const from = primaryColor(selected, 'fill'); if (from) void replaceMatchingColor('fill', from, color); }} />

@@ -44,7 +44,8 @@ Uso:
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
-  orkestrai design list | design read <nodeId> | design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
+  orkestrai design list | design read <nodeId> | design audit <nodeId> | design template <nodeId> <product|marketing|mobile|design-system> --revision <n>
+  orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
   orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
   orkestrai design generate <nodeId> <elementIds-json> --framework svelar|svelte|react|next|vue|html --output <path> --name <nome> [--write --revision <n>]
   orkestrai role show [nome] | role write <nome> <prompt> | role edit <nome> <antigo> <novo>
@@ -382,6 +383,22 @@ export async function run(argv, options = {}) {
         out(JSON.stringify(data, null, 2));
         return 0;
       }
+      if (action === 'audit' && nodeId) {
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/quality`);
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Auditados ${data.auditedElements} elementos: ${data.counts.error} erros, ${data.counts.warning} alertas, ${data.counts.info} informativos.`);
+        return 0;
+      }
+      if (action === 'template' && nodeId && values[0]) {
+        const baseRevision = Number(flags.revision);
+        if (!Number.isInteger(baseRevision) || baseRevision < 0) throw new Error('Uso: orkestrai design template <nodeId> <product|marketing|mobile|design-system> --revision <n>');
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/quality`, {
+          templateId: values[0], baseRevision, from: flags.from, taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Template aplicado; design atualizado para a revisao ${data.revision}.`);
+        return 0;
+      }
       if (action === 'apply' && nodeId) {
         const baseRevision = Number(flags.revision);
         if (!Number.isInteger(baseRevision) || baseRevision < 0 || !values.length) {
@@ -460,7 +477,7 @@ export async function run(argv, options = {}) {
         else out(`Codigo ${data.status === 'unchanged' ? 'validado' : 'escrito'} em ${data.path}; design na revisao ${data.revision}.`);
         return 0;
       }
-      throw new Error('Uso: orkestrai design <list|read|apply|import-code|generate> ...');
+      throw new Error('Uso: orkestrai design <list|read|audit|template|apply|import-code|generate> ...');
     }
     case 'recruit': {
       const [title] = rest;

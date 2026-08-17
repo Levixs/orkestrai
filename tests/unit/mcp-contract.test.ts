@@ -51,6 +51,8 @@ const EXPECTED: Record<string, Expectation> = {
   note_create: { method: 'POST', path: /\/bridge\/notes$/, schema: bridgeNoteCreateSchema },
   design_list: { method: 'GET', path: /\/bridge\/designs$/ },
   design_read: { method: 'GET', path: /\/bridge\/designs\/n1$/ },
+  design_audit: { method: 'GET', path: /\/bridge\/designs\/n1\/quality$/ },
+  design_apply_template: { method: 'POST', path: /\/bridge\/designs\/n1\/quality$/ },
   design_apply_operations: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_comment: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_propose: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
@@ -86,6 +88,12 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   note_edit: { nodeId: 'n1', oldText: 'a', newText: 'b' },
   note_create: { title: 'T', content: 'c' },
   design_read: { nodeId: 'n1' },
+  design_audit: { nodeId: 'n1' },
+  design_apply_template: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    templateId: 'product',
+  },
   design_apply_operations: {
     nodeId: 'n1',
     baseRevision: 0,

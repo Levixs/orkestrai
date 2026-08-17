@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, copyFile, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import { uuidv7 } from '@beeblock/svelar/support';
 import {
@@ -29,7 +29,33 @@ export class DesignRevisionConflictError extends Error {
 
 type DesignServiceGlobals = typeof globalThis & {
   __orkestraiDesignMutationQueues?: Map<string, Promise<void>>;
+  __orkestraiDesignRecoveries?: Map<string, { recoveredAt: string; revision: number }>;
 };
+
+export type DesignHistoryEntry = {
+  revision: number;
+  baseRevision: number;
+  summary: string;
+  createdAt: string;
+  actor?: { kind?: string; name?: string | null };
+};
+
+export type DesignMaintenanceStatus = {
+  backupRevision: number | null;
+  historyBytes: number;
+  historyEntries: DesignHistoryEntry[];
+  recoveredAt: string | null;
+  recoveredRevision: number | null;
+};
+
+export function migrateDesignDocument(value: unknown): DesignDocument {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid design document.');
+  const candidate = structuredClone(value) as Record<string, unknown>;
+  const version = candidate.schemaVersion === undefined ? 0 : Number(candidate.schemaVersion);
+  if (!Number.isInteger(version) || version < 0 || version > 1) throw new Error(`Unsupported design schema version: ${String(candidate.schemaVersion)}.`);
+  candidate.schemaVersion = 1;
+  return designDocumentSchema.parse(candidate);
+}
 
 function mutationQueues(): Map<string, Promise<void>> {
   const globals = globalThis as DesignServiceGlobals;
@@ -1077,6 +1103,7 @@ export class DesignDocumentService {
       root,
       directory,
       path: join(directory, `${nodeId}.orkestrai-design.json`),
+      backupPath: join(directory, `${nodeId}.backup.orkestrai-design.json`),
       historyPath: join(directory, `${nodeId}.history.jsonl`),
       thumbnailPath: join(directory, 'thumbnails', `${nodeId}.png`),
       thumbnailRevisionPath: join(directory, 'thumbnails', `${nodeId}.revision`),
@@ -1124,20 +1151,48 @@ export class DesignDocumentService {
     };
   }
 
-  private async writeAtomic(path: string, document: DesignDocument): Promise<void> {
+  private async writeAtomic(path: string, document: DesignDocument, backupPath?: string): Promise<void> {
     await mkdir(dirname(path), { recursive: true });
+    if (backupPath) await copyFile(path, backupPath).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== 'ENOENT') throw error;
+    });
     const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
     await writeFile(temporary, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
+    await rename(temporary, path);
+  }
+
+  private async appendHistory(path: string, entry: Record<string, unknown>): Promise<void> {
+    await mkdir(dirname(path), { recursive: true });
+    await appendFile(path, `${JSON.stringify(entry)}\n`, 'utf8');
+    const info = await stat(path).catch(() => null);
+    if (!info || info.size <= 5 * 1024 * 1024) return;
+    const lines = (await readFile(path, 'utf8')).split(/\r?\n/).filter(Boolean);
+    const retained = lines.slice(-250);
+    retained.unshift(JSON.stringify({ kind: 'history-compacted', removed: Math.max(0, lines.length - retained.length), createdAt: new Date().toISOString() }));
+    const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(temporary, `${retained.join('\n')}\n`, 'utf8');
     await rename(temporary, path);
   }
 
   private async getUnlocked(workspaceId: string, nodeId: string): Promise<DesignDocument> {
     const context = await this.context(workspaceId, nodeId);
     try {
-      return designDocumentSchema.parse(JSON.parse(await readFile(context.path, 'utf8')));
+      return migrateDesignDocument(JSON.parse(await readFile(context.path, 'utf8')));
     } catch (error) {
       const candidate = error as NodeJS.ErrnoException;
-      if (candidate.code !== 'ENOENT') throw error;
+      if (candidate.code !== 'ENOENT') {
+        try {
+          const recovered = migrateDesignDocument(JSON.parse(await readFile(context.backupPath, 'utf8')));
+          await rename(context.path, `${context.path}.corrupt-${Date.now()}`).catch(() => undefined);
+          await this.writeAtomic(context.path, recovered);
+          const recoveredAt = new Date().toISOString();
+          const recoveries = (globalThis as DesignServiceGlobals).__orkestraiDesignRecoveries ??= new Map();
+          recoveries.set(`${workspaceId}:${nodeId}`, { recoveredAt, revision: recovered.revision });
+          return recovered;
+        } catch {
+          throw error;
+        }
+      }
       const document = designDocumentSchema.parse(this.createDefault(workspaceId, nodeId, context.node.title ?? 'Untitled design'));
       await this.writeAtomic(context.path, document);
       return document;
@@ -1162,15 +1217,15 @@ export class DesignDocumentService {
         .filter((path): path is string => Boolean(path));
       next.revision = current.revision + 1;
       const validated = designDocumentSchema.parse(next);
-      await this.writeAtomic(context.path, validated);
-      await appendFile(context.historyPath, `${JSON.stringify({
+      await this.writeAtomic(context.path, validated, context.backupPath);
+      await this.appendHistory(context.historyPath, {
         revision: validated.revision,
         baseRevision: dto.baseRevision,
         actor: dto.actor,
         summary: dto.summary,
         operations: dto.operations,
         createdAt: now,
-      })}\n`, 'utf8').catch((error) => {
+      }).catch((error) => {
         console.error('[design] Failed to append document history.', error);
       });
       broadcastDesignChanged(dto.workspaceId, dto.nodeId, validated.revision);
@@ -1217,15 +1272,15 @@ export class DesignDocumentService {
         const next = applyDesignOperations(current, [{ kind: 'add-asset', asset }], now);
         next.revision = current.revision + 1;
         const validated = designDocumentSchema.parse(next);
-        await this.writeAtomic(context.path, validated);
-        await appendFile(context.historyPath, `${JSON.stringify({
+        await this.writeAtomic(context.path, validated, context.backupPath);
+        await this.appendHistory(context.historyPath, {
           revision: validated.revision,
           baseRevision,
           actor: { kind: 'user', id: null, name: null, taskId: null },
           summary: `Import design asset ${asset.name}`,
           operations: [{ kind: 'add-asset', asset }],
           createdAt: now,
-        })}\n`, 'utf8');
+        });
         broadcastDesignChanged(workspaceId, nodeId, validated.revision);
         return validated;
       } catch (error) {
@@ -1255,19 +1310,77 @@ export class DesignDocumentService {
       const next = applyDesignOperations(current, [{ kind: 'rename-document', name: normalizedName }], now);
       next.revision = current.revision + 1;
       const validated = designDocumentSchema.parse(next);
-      await this.writeAtomic(context.path, validated);
-      await appendFile(context.historyPath, `${JSON.stringify({
+      await this.writeAtomic(context.path, validated, context.backupPath);
+      await this.appendHistory(context.historyPath, {
         revision: validated.revision,
         baseRevision: current.revision,
         actor: { kind: 'system', id: null, name: 'Orkestrai', taskId: null },
         summary: `Rename design to ${normalizedName}`,
         operations: [{ kind: 'rename-document', name: normalizedName }],
         createdAt: now,
-      })}\n`, 'utf8').catch((error) => {
+      }).catch((error) => {
         console.error('[design] Failed to append document history.', error);
       });
       broadcastDesignChanged(workspaceId, nodeId, validated.revision);
       return validated;
+    });
+  }
+
+  async maintenance(workspaceId: string, nodeId: string): Promise<DesignMaintenanceStatus> {
+    const context = await this.context(workspaceId, nodeId);
+    const backupRevision = await readFile(context.backupPath, 'utf8')
+      .then((contents) => migrateDesignDocument(JSON.parse(contents)).revision)
+      .catch(() => null);
+    const historyText = await readFile(context.historyPath, 'utf8').catch(() => '');
+    const entries = historyText.split(/\r?\n/).filter(Boolean).flatMap((line) => {
+      try {
+        const parsed = JSON.parse(line) as DesignHistoryEntry;
+        return Number.isInteger(parsed.revision) && typeof parsed.summary === 'string' ? [parsed] : [];
+      } catch {
+        return [];
+      }
+    }).slice(-50).reverse();
+    const recovery = (globalThis as DesignServiceGlobals).__orkestraiDesignRecoveries?.get(`${workspaceId}:${nodeId}`) ?? null;
+    return {
+      backupRevision,
+      historyBytes: Buffer.byteLength(historyText),
+      historyEntries: entries,
+      recoveredAt: recovery?.recoveredAt ?? null,
+      recoveredRevision: recovery?.revision ?? null,
+    };
+  }
+
+  async restoreBackup(workspaceId: string, nodeId: string): Promise<DesignDocument> {
+    return this.serialized(workspaceId, nodeId, async () => {
+      const context = await this.context(workspaceId, nodeId);
+      const current = await this.getUnlocked(workspaceId, nodeId);
+      const backup = migrateDesignDocument(JSON.parse(await readFile(context.backupPath, 'utf8')));
+      const now = new Date().toISOString();
+      const restored = designDocumentSchema.parse({ ...backup, revision: current.revision + 1, updatedAt: now });
+      await this.writeAtomic(context.path, restored, context.backupPath);
+      await this.appendHistory(context.historyPath, {
+        revision: restored.revision,
+        baseRevision: current.revision,
+        actor: { kind: 'system', id: null, name: 'Orkestrai', taskId: null },
+        summary: `Restore automatic backup from revision ${backup.revision}`,
+        operations: [],
+        createdAt: now,
+      });
+      broadcastDesignChanged(workspaceId, nodeId, restored.revision);
+      return restored;
+    });
+  }
+
+  async compactHistory(workspaceId: string, nodeId: string): Promise<DesignMaintenanceStatus> {
+    return this.serialized(workspaceId, nodeId, async () => {
+      const context = await this.context(workspaceId, nodeId);
+      const lines = (await readFile(context.historyPath, 'utf8').catch(() => '')).split(/\r?\n/).filter(Boolean);
+      if (lines.length > 100) {
+        const retained = lines.slice(-100);
+        retained.unshift(JSON.stringify({ kind: 'history-compacted', removed: lines.length - retained.length, createdAt: new Date().toISOString() }));
+        await writeFile(context.historyPath, `${retained.join('\n')}\n`, 'utf8');
+      }
+      return this.maintenance(workspaceId, nodeId);
     });
   }
 
