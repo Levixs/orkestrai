@@ -1246,6 +1246,39 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'design-collaboration',
+    icon: 'MessagesSquare',
+    title: 'Colabora en un documento Diseño',
+    tagline: 'Conversa, propón y aprueba trabajo visual sin perder autoría ni revisiones.',
+    steps: [
+      {
+        id: 'open-design-collaboration',
+        title: 'Abre un documento Diseño compartido',
+        body: 'Crea un documento Diseño nativo y ábrelo. En el inspector derecho, elige Colaboración para ver personas, comentarios, propuestas y conflictos de edición en un solo lugar.',
+        action: [
+          { kind: 'createDesign', title: 'Diseño Colaborativo' },
+          { kind: 'openDesign', title: 'Diseño Colaborativo' },
+        ],
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Diseño Colaborativo' },
+      },
+      {
+        id: 'follow-and-comment',
+        title: 'Sigue el trabajo y ancla el feedback',
+        body: 'Los participantes en vivo muestran página, cursor y selección. Sigue a una persona durante la revisión, selecciona una capa y agrega un comentario. Respuestas, menciones, resolución y autoría permanecen versionadas en el documento.',
+      },
+      {
+        id: 'review-proposal',
+        title: 'Revisa antes de aplicar',
+        body: 'Crea o solicita una propuesta visual. La vista previa y el diff estructural no cambian el documento hasta que una persona la aprueba explícitamente. La aprobación aplica todas las operaciones de forma atómica; un conflicto bloquea la escritura en vez de sobrescribir a otro participante.',
+      },
+      {
+        id: 'route-and-share',
+        title: 'Elige el camino de decisión',
+        body: 'Envía propuestas inciertas a Council o crea un Piso aislado para una implementación paralela. Al compartir de forma remota, aprueba Diseño por separado como Ver, Comentar, Proponer o Editar y decidir. Remote recibe resúmenes sanitizados, nunca el scene graph, assets, archivos ni rutas locales.',
+      },
+    ],
+  },
+  {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
     title: 'Combinar agentes Windows y WSL',

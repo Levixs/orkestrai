@@ -52,6 +52,7 @@
     Unlink2,
     Unlock,
     SlidersHorizontal,
+    UsersRound,
     Workflow,
     ZoomIn,
     ZoomOut,
@@ -67,13 +68,16 @@
     designElementSchema,
     type DesignAsset,
     type DesignBindableProperty,
+    type DesignCollaborator,
     type DesignDocument,
     type DesignEffect,
     type DesignElement,
     type DesignOperation,
     type DesignPaint,
     type DesignPathPoint,
+    type DesignProposal,
   } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
+  import type { DesignCollaborationSnapshot } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
   import {
     autoLayoutChanges,
     bendDesignPathSegment,
@@ -94,6 +98,7 @@
   import { defaultPrototypeFlow, exportMotionCss, prototypeFrames } from '$lib/modules/agent-room/domain/design-prototype.js';
   import * as m from '$lib/paraglide/messages.js';
   import DesignColorTools from './DesignColorTools.svelte';
+  import DesignCollaborationPanel from './DesignCollaborationPanel.svelte';
   import DesignComponentsPanel from './DesignComponentsPanel.svelte';
   import DesignPaintEditor from './DesignPaintEditor.svelte';
   import DesignPrototypePanel from './DesignPrototypePanel.svelte';
@@ -158,11 +163,25 @@
   let exporting = $state(false);
   let colorMenuOpen = $state(false);
   let leftPanel = $state<'layers' | 'variables' | 'components'>('layers');
-  let rightPanel = $state<'design' | 'prototype'>('design');
+  let rightPanel = $state<'design' | 'prototype' | 'collaboration'>('design');
   let prototypeOpen = $state(false);
   let prototypeFlowId = $state<string | null>(null);
   let thumbnailRevision = $state(-1);
   let thumbnailTimer: ReturnType<typeof setTimeout> | null = null;
+  let collaboration = $state<DesignCollaborationSnapshot | null>(null);
+  let collaborationTimer: ReturnType<typeof setInterval> | null = null;
+  let collaborationRequest: Promise<DesignCollaborationSnapshot | null> | null = null;
+  let collaborationErrorShown = false;
+  let cursorPoint = $state<{ x: number; y: number } | null>(null);
+  let lastPresenceSentAt = 0;
+  let followParticipantId = $state<string | null>(null);
+  let proposalPreview = $state<{ elementId: string; changes: Partial<DesignElement> } | null>(null);
+  let participant = $state<DesignCollaborator>({
+    kind: 'user',
+    id: `local_${uuidv7().replaceAll('-', '_')}`,
+    name: m['design.collaboration_you'](),
+    color: '#2563eb',
+  });
 
   const page = $derived(document?.pages.find((item) => item.id === document?.activePageId) ?? document?.pages[0] ?? null);
   const pageElements = $derived(document && page ? document.elements.filter((element) => element.pageId === page.id) : []);
@@ -173,6 +192,7 @@
         ? pageElements.map((element) => element.id === draft.id ? draft : element)
         : [...pageElements, draft]
       : pageElements;
+    if (proposalPreview) elements = elements.map((element) => element.id === proposalPreview?.elementId ? { ...element, ...proposalPreview.changes } : element);
     if (editingTextId) elements = elements.map((element) => element.id === editingTextId ? { ...element, text: '' } : element);
     return document ? resolveDesignElements(document, elements) : elements;
   });
@@ -272,6 +292,11 @@
     options: { inverse?: DesignOperation[]; record?: boolean } = {},
   ): Promise<boolean> {
     if (!document || saving || !operations.length) return false;
+    const live = await syncCollaboration(true);
+    if (live?.leaseConflict) {
+      toast.error(m['design.collaboration_editing_by']({ name: live.leaseConflict.participantName }));
+      return false;
+    }
     saving = true;
     try {
       document = await api<DesignDocument>(`/api/agent-room/workspaces/${workspaceId}/designs/${nodeId}`, {
@@ -281,6 +306,7 @@
           operations,
           summary,
           actor: { kind: 'user', id: null, name: null, taskId: null },
+          collaborationParticipantId: participant.id,
         }),
       });
       if (options.record !== false && options.inverse) {
@@ -296,6 +322,9 @@
         undoStack = [];
         redoStack = [];
         toast.error(m['design.conflict']());
+      } else if (candidate.status === 423) {
+        const lease = candidate.data as unknown as { participantName?: string };
+        toast.error(lease.participantName ? m['design.collaboration_editing_by']({ name: lease.participantName }) : m['design.collaboration_error']());
       } else {
         toast.error(candidate.message || m['design.error_save']());
       }
@@ -358,6 +387,87 @@
       x: Math.max(0, Math.min(page.width, Math.round((event.clientX - bounds.left) * page.width / bounds.width))),
       y: Math.max(0, Math.min(page.height, Math.round((event.clientY - bounds.top) * page.height / bounds.height))),
     };
+  }
+
+  function participantColor(id: string): string {
+    const palette = ['#2563eb', '#c026d3', '#ea580c', '#059669', '#dc2626', '#7c3aed', '#0891b2', '#4d7c0f'];
+    let hash = 0;
+    for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+    return palette[hash % palette.length];
+  }
+
+  async function syncCollaboration(silent = false): Promise<DesignCollaborationSnapshot | null> {
+    if (!document || !page) return null;
+    if (collaborationRequest) return collaborationRequest;
+    collaborationRequest = api<DesignCollaborationSnapshot>(`/api/agent-room/workspaces/${workspaceId}/designs/${nodeId}/collaboration`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        participant,
+        pageId: page.id,
+        elementIds: selectedIds,
+        cursor: cursorPoint,
+        viewport: viewport ? { x: viewport.scrollLeft, y: viewport.scrollTop, zoom } : null,
+        followParticipantId,
+      }),
+    }).then((snapshot) => {
+      collaboration = snapshot;
+      collaborationErrorShown = false;
+      lastPresenceSentAt = Date.now();
+      const followed = followParticipantId ? snapshot.presences.find((presence) => presence.participant.id === followParticipantId) : null;
+      if (followParticipantId && !followed) followParticipantId = null;
+      if (followed) {
+        if (document && document.pages.some((candidate) => candidate.id === followed.pageId)) document.activePageId = followed.pageId;
+        selectedIds = followed.elementIds.filter((id) => document?.elements.some((element) => element.id === id));
+        if (viewport && followed.viewport) viewport.scrollTo({ left: followed.viewport.x, top: followed.viewport.y, behavior: 'smooth' });
+      }
+      return snapshot;
+    }).catch(() => {
+      if (!silent && !collaborationErrorShown) {
+        collaborationErrorShown = true;
+        toast.error(m['design.collaboration_error']());
+      }
+      return null;
+    }).finally(() => {
+      collaborationRequest = null;
+    });
+    return collaborationRequest;
+  }
+
+  function trackPresence(event: PointerEvent): void {
+    cursorPoint = pagePoint(event);
+    if (tool === 'path') penPointer = cursorPoint;
+    if (Date.now() - lastPresenceSentAt >= 700) void syncCollaboration(true);
+  }
+
+  function followParticipant(id: string | null): void {
+    followParticipantId = id;
+    void syncCollaboration(true);
+  }
+
+  function previewProposal(elementId: string | null, changes: Partial<DesignElement> | null): void {
+    proposalPreview = elementId && changes ? { elementId, changes } : null;
+  }
+
+  function openProposalCouncil(proposal: DesignProposal): void {
+    window.dispatchEvent(new CustomEvent('orkestrai:open-council', {
+      detail: {
+        workspaceId,
+        source: { taskTitle: proposal.title, taskDescription: proposal.description || proposal.operations.map((operation) => String(operation.kind ?? '')).join(', ') },
+      },
+    }));
+  }
+
+  async function createProposalFloor(proposal: DesignProposal): Promise<void> {
+    try {
+      const floor = await api<{ id: string }>(`/api/agent-room/workspaces/${workspaceId}/floors`, {
+        method: 'POST',
+        body: JSON.stringify({ name: proposal.title.slice(0, 80), existingBranch: false, cloneLayout: true }),
+      });
+      const linked = await apply([{ kind: 'link-design-proposal', proposalId: proposal.id, floorId: floor.id }], m['design.proposal_parallel_floor']());
+      if (linked) toast.success(m['design.proposal_floor_created']());
+    } catch {
+      toast.error(m['design.proposal_floor_error']());
+    }
   }
 
   function startCreate(event: PointerEvent, kind: ShapeTool, svg: SVGSVGElement) {
@@ -2392,7 +2502,16 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
   }
 
   onMount(() => {
-    void load().then(fitPage);
+    const storageKey = 'orkestrai.design.collaboration.participant';
+    const storedId = sessionStorage.getItem(storageKey);
+    const id = storedId && storedId.length >= 8 ? storedId : participant.id;
+    sessionStorage.setItem(storageKey, id);
+    participant = { ...participant, id, color: participantColor(id) };
+    void load().then(() => {
+      fitPage();
+      void syncCollaboration();
+    });
+    collaborationTimer = setInterval(() => void syncCollaboration(true), 3_000);
     window.addEventListener('keydown', keyboard, { capture: true });
     window.addEventListener('paste', handlePaste);
     return () => {
@@ -2400,6 +2519,14 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
       window.removeEventListener('paste', handlePaste);
       cancelDrawing?.();
       if (thumbnailTimer) clearTimeout(thumbnailTimer);
+      if (collaborationTimer) clearInterval(collaborationTimer);
+      const csrf = getCsrfToken();
+      void fetch(`/api/agent-room/workspaces/${workspaceId}/designs/${nodeId}/collaboration`, {
+        method: 'DELETE',
+        keepalive: true,
+        headers: { 'content-type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
+        body: JSON.stringify({ participantId: participant.id }),
+      }).catch(() => undefined);
     };
   });
 
@@ -2619,13 +2746,28 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
             viewBox={`0 0 ${page.width} ${page.height}`}
             style:background={page.background}
             onpointerdown={canvasPointerDown}
-            onpointermove={(event) => { if (tool === 'path') penPointer = pagePoint(event); }}
-            onpointerleave={() => { if (tool === 'path') penPointer = null; }}
+            onpointermove={trackPresence}
+            onpointerleave={() => { cursorPoint = null; if (tool === 'path') penPointer = null; void syncCollaboration(true); }}
             ondblclick={canvasDoubleClick}
             role="application"
             aria-label={page.name}
           >
             <DesignRenderer elements={renderedElements} assets={document.assets} {workspaceId} selectedIds={rendererSelectionIds} showFrameLabels />
+            {#each (collaboration?.presences ?? []).filter((presence) => presence.participant.id !== participant.id && presence.pageId === page.id) as presence (presence.participant.id)}
+              <g data-design-ui pointer-events="none">
+                {#each presence.elementIds as elementId}
+                  {@const remoteElement = pageElements.find((element) => element.id === elementId)}
+                  {#if remoteElement}<rect x={remoteElement.x} y={remoteElement.y} width={remoteElement.width} height={remoteElement.height} fill="none" stroke={presence.participant.color} stroke-width={1.5 / zoom} stroke-dasharray={`${5 / zoom} ${3 / zoom}`} vector-effect="non-scaling-stroke" />{/if}
+                {/each}
+                {#if presence.cursor}
+                  <path d={`M ${presence.cursor.x} ${presence.cursor.y} l ${10 / zoom} ${18 / zoom} l ${4 / zoom} ${-7 / zoom} l ${7 / zoom} ${7 / zoom}`} fill={presence.participant.color} stroke="#ffffff" stroke-width={1 / zoom} vector-effect="non-scaling-stroke" />
+                  <g transform={`translate(${presence.cursor.x + 12 / zoom} ${presence.cursor.y + 16 / zoom})`}><rect width={Math.max(48, presence.participant.name.length * 6) / zoom} height={18 / zoom} rx={3 / zoom} fill={presence.participant.color} /><text x={5 / zoom} y={12 / zoom} fill="#ffffff" font-size={9 / zoom} font-weight="600">{presence.participant.name}</text></g>
+                {/if}
+              </g>
+            {/each}
+            {#each document.comments.filter((comment) => comment.pageId === page.id && comment.status === 'open' && comment.x !== null && comment.y !== null) as comment, index (comment.id)}
+              <g data-design-ui pointer-events="none" transform={`translate(${comment.x} ${comment.y})`}><circle r={10 / zoom} fill="var(--app-accent)" stroke="#ffffff" stroke-width={2 / zoom} vector-effect="non-scaling-stroke" /><text x="0" y={3 / zoom} text-anchor="middle" fill="#ffffff" font-size={8 / zoom} font-weight="700">{index + 1}</text></g>
+            {/each}
             {#if rulersVisible}
               <g data-design-ruler pointer-events="none" opacity="0.65">
                 <rect x="0" y="0" width={page.width} height="18" fill="var(--app-surface)" />
@@ -2770,11 +2912,14 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
     </main>
 
     <aside class="flex min-h-0 flex-col border-l border-[var(--app-border)] bg-[var(--app-surface)] @max-[660px]:hidden">
-      <div class="grid grid-cols-2 gap-1 border-b border-[var(--app-border)] p-1.5">
+      <div class="grid grid-cols-3 gap-1 border-b border-[var(--app-border)] p-1.5">
         <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'design' ? 'bg-[var(--app-surface-raised)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'design'} onclick={() => (rightPanel = 'design')}><SlidersHorizontal size={12} />{m['design.properties']()}</button>
         <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'prototype' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'prototype'} onclick={() => (rightPanel = 'prototype')}><Workflow size={12} />{m['design.prototype']()}</button>
+        <button class={`flex h-8 items-center justify-center gap-1.5 rounded text-[10px] font-medium ${rightPanel === 'collaboration' ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)] shadow-sm' : 'text-[var(--app-text-muted)] hover:text-[var(--app-text)]'}`} aria-pressed={rightPanel === 'collaboration'} onclick={() => (rightPanel = 'collaboration')}><UsersRound size={12} />{m['design.collaboration']()}</button>
       </div>
-      {#if rightPanel === 'prototype' && document}
+      {#if rightPanel === 'collaboration' && document}
+        <div class="min-h-0 flex-1"><DesignCollaborationPanel {document} {selected} {participant} {collaboration} {followParticipantId} {saving} makeId={uuidv7} onApply={(operations, summary) => apply(operations, summary)} onFollow={followParticipant} onPreview={previewProposal} onOpenCouncil={openProposalCouncil} onCreateFloor={createProposalFloor} /></div>
+      {:else if rightPanel === 'prototype' && document}
         <div class="min-h-0 flex-1"><DesignPrototypePanel {document} {selected} {saving} makeId={uuidv7} onApply={(operations, summary, inverse) => apply(operations, summary, { inverse })} onPreview={openPrototype} onShare={sharePrototype} /></div>
       {:else if selected && document}
         <div class="min-h-0 flex-1 overflow-y-auto">

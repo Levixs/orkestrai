@@ -7,6 +7,11 @@ export type CollaborationScope =
   | 'tasks.write'
   | 'approvals.view'
   | 'approvals.decide'
+  | 'design.view'
+  | 'design.comment'
+  | 'design.propose'
+  | 'design.decide'
+  | 'design.edit'
   | 'leader.message'
   | 'voice.transcribe'
   | 'agents.message'
@@ -60,7 +65,7 @@ export type CollaborationAuditData = {
 
 export type SharedCanvasNodeDto = {
   id: string;
-  type: 'agent' | 'tasks' | 'group' | 'shape' | 'control' | 'review' | 'automation';
+  type: 'agent' | 'tasks' | 'group' | 'shape' | 'control' | 'review' | 'automation' | 'design';
   title: string | null;
   x: number;
   y: number;
@@ -104,6 +109,28 @@ export type SharedWorkspaceDto = {
     assigneeTitle: string | null; evidenceCount: number; testCount: number; riskCount: number;
     decidedAt: string | null; createdAt: string; updatedAt: string;
   }>;
+  designs: Array<{
+    nodeId: string;
+    name: string;
+    revision: number;
+    pages: Array<{ id: string; name: string }>;
+    elements: Array<{
+      id: string; pageId: string; name: string; type: string;
+      x: number; y: number; width: number; height: number; opacity: number; fill: string;
+    }>;
+    pageCount: number;
+    elementCount: number;
+    presences: Array<{ participantId: string; name: string; color: string; pageId: string; elementCount: number }>;
+    comments: Array<{
+      id: string; pageId: string; pageName: string; elementId: string | null; elementName: string | null;
+      status: 'open' | 'resolved'; authorName: string; body: string; replyCount: number; updatedAt: string;
+    }>;
+    proposals: Array<{
+      id: string; title: string; description: string; authorName: string;
+      status: 'pending' | 'approved' | 'rejected'; operationCount: number;
+      floorId: string | null; councilId: string | null; updatedAt: string;
+    }>;
+  }>;
   usage: Array<{
     provider: 'claude' | 'codex' | 'kimi';
     plan: string | null;
@@ -126,6 +153,12 @@ export type CollaborationCommand =
   | { type: 'task.create'; title: string; description?: string | null; status?: string; assigneeNodeId?: string | null }
   | { type: 'task.update'; taskId: string; title?: string; description?: string | null; status?: string; assigneeNodeId?: string | null }
   | { type: 'review.decide'; reviewId: string; status: 'approved' | 'changes_requested' | 'rejected'; note?: string | null }
+  | { type: 'design.comment.create'; nodeId: string; pageId: string; elementId?: string | null; body: string }
+  | { type: 'design.comment.reply'; nodeId: string; commentId: string; body: string }
+  | { type: 'design.comment.resolve'; nodeId: string; commentId: string; status: 'open' | 'resolved' }
+  | { type: 'design.proposal.create'; nodeId: string; elementId: string; title: string; description?: string | null; changes: { x: number; y: number; width: number; height: number; opacity: number; fill: string } }
+  | { type: 'design.proposal.decide'; nodeId: string; proposalId: string; status: 'approved' | 'rejected'; note?: string | null }
+  | { type: 'design.element.update'; nodeId: string; elementId: string; changes: { x: number; y: number; width: number; height: number; opacity: number; fill: string } }
   | { type: 'leader.message'; message: string }
   | { type: 'agent.message'; agentNodeId: string; message: string }
   | { type: 'agent.invoke'; agentNodeId: string };

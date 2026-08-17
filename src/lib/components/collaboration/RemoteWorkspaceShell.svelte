@@ -10,6 +10,7 @@
     KanbanSquare,
     LogOut,
     MessageSquareText,
+    Palette,
     Plus,
     RefreshCw,
     ShieldCheck,
@@ -19,13 +20,14 @@
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
   import { Textarea } from '$lib/components/ui/textarea';
+  import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { localeState } from '$lib/i18n/locale.svelte.js';
   import type { SharedWorkspaceDto } from '$lib/modules/collaboration/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
 
-  type RemoteTab = 'overview' | 'team' | 'tasks' | 'reviews' | 'activity';
+  type RemoteTab = 'overview' | 'team' | 'tasks' | 'designs' | 'reviews' | 'activity';
 
   let {
     snapshot,
@@ -40,6 +42,12 @@
     onCreateTask,
     onUpdateTask,
     onDecideReview,
+    onCreateDesignComment,
+    onReplyDesignComment,
+    onResolveDesignComment,
+    onCreateDesignProposal,
+    onDecideDesignProposal,
+    onUpdateDesignElement,
     onSendLeaderMessage,
   }: {
     snapshot: SharedWorkspaceDto;
@@ -54,21 +62,51 @@
     onCreateTask: () => void;
     onUpdateTask: (taskId: string, status: string) => void | Promise<void>;
     onDecideReview: (reviewId: string, status: 'approved' | 'changes_requested' | 'rejected') => void | Promise<void>;
+    onCreateDesignComment: (nodeId: string, pageId: string, elementId: string | null, body: string) => Promise<void>;
+    onReplyDesignComment: (nodeId: string, commentId: string, body: string) => Promise<void>;
+    onResolveDesignComment: (nodeId: string, commentId: string, status: 'open' | 'resolved') => Promise<void>;
+    onCreateDesignProposal: (nodeId: string, elementId: string, title: string, description: string, changes: RemoteDesignChanges) => Promise<void>;
+    onDecideDesignProposal: (nodeId: string, proposalId: string, status: 'approved' | 'rejected') => Promise<void>;
+    onUpdateDesignElement: (nodeId: string, elementId: string, changes: RemoteDesignChanges) => Promise<void>;
     onSendLeaderMessage: () => Promise<void>;
   } = $props();
 
   const canWriteTasks = $derived(scopes.includes('tasks.write'));
   const canDecideReviews = $derived(scopes.includes('approvals.decide'));
   const canMessageLeader = $derived(scopes.includes('leader.message'));
+  const canCommentDesign = $derived(scopes.includes('design.comment'));
+  const canProposeDesign = $derived(scopes.includes('design.propose'));
+  const canDecideDesign = $derived(scopes.includes('design.decide'));
+  const canEditDesign = $derived(scopes.includes('design.edit'));
   const workingAgents = $derived(snapshot.agents.filter((agent) => agent.state === 'working'));
   const attentionAgents = $derived(snapshot.agents.filter((agent) => ['waiting_input', 'waiting_permission', 'blocked', 'error'].includes(agent.state)));
   const openTasks = $derived(snapshot.tasks.filter((task) => task.status !== 'done'));
   const pendingReviews = $derived(snapshot.reviews.filter((review) => review.status === 'pending'));
+  const pendingDesignProposals = $derived(snapshot.designs.reduce((total, design) => total + design.proposals.filter((proposal) => proposal.status === 'pending').length, 0));
+  let selectedDesignId = $state('');
+  let selectedDesignPageId = $state('');
+  let selectedDesignElementId = $state('');
+  let designComment = $state('');
+  let designReplies = $state<Record<string, string>>({});
+  let designProposalTitle = $state('');
+  let designProposalDescription = $state('');
+  let designX = $state(0);
+  let designY = $state(0);
+  let designWidth = $state(1);
+  let designHeight = $state(1);
+  let designOpacity = $state(100);
+  let designFill = $state('#ffffff');
+  const selectedDesign = $derived(snapshot.designs.find((design) => design.nodeId === selectedDesignId) ?? snapshot.designs[0] ?? null);
+  const selectedDesignElements = $derived(selectedDesign?.elements.filter((element) => element.pageId === selectedDesignPageId) ?? []);
+  const selectedDesignElement = $derived(selectedDesignElements.find((element) => element.id === selectedDesignElementId) ?? selectedDesignElements[0] ?? null);
+
+  type RemoteDesignChanges = { x: number; y: number; width: number; height: number; opacity: number; fill: string };
 
   const tabs = $derived([
     { id: 'overview' as const, label: m['remote.overview'](), icon: Activity },
     { id: 'team' as const, label: m['remote.team'](), icon: UsersRound, count: attentionAgents.length || undefined },
     { id: 'tasks' as const, label: m['remote.tasks'](), icon: KanbanSquare, count: openTasks.length || undefined },
+    ...(scopes.includes('design.view') ? [{ id: 'designs' as const, label: m['remote.designs'](), icon: Palette, count: pendingDesignProposals || undefined }] : []),
     { id: 'reviews' as const, label: m['remote.approvals'](), icon: CheckCircle2, count: pendingReviews.length || undefined },
     { id: 'activity' as const, label: m['remote.activity'](), icon: Clock3 },
   ]);
@@ -77,6 +115,7 @@
     overview: { title: m['remote.overview_title'](), body: m['remote.overview_body']() },
     team: { title: m['remote.team_title'](), body: m['remote.team_body']() },
     tasks: { title: m['remote.tasks'](), body: m['remote.tasks_body']() },
+    designs: { title: m['remote.designs_title'](), body: m['remote.designs_body']() },
     reviews: { title: m['remote.approvals'](), body: m['remote.reviews_body']() },
     activity: { title: m['remote.activity'](), body: m['remote.activity_body']() },
   })[activeTab]);
@@ -165,6 +204,60 @@
     const width = Math.max(1, maxX - minX);
     const height = Math.max(1, maxY - minY);
     return `left:${((node.x - minX) / width) * 100}%;top:${((node.y - minY) / height) * 100}%;width:${Math.max(5, (node.width / width) * 100)}%;height:${Math.max(7, (node.height / height) * 100)}%`;
+  }
+
+  $effect(() => {
+    if (!snapshot.designs.some((design) => design.nodeId === selectedDesignId)) selectedDesignId = snapshot.designs[0]?.nodeId ?? '';
+  });
+
+  $effect(() => {
+    if (!selectedDesign?.pages.some((page) => page.id === selectedDesignPageId)) selectedDesignPageId = selectedDesign?.pages[0]?.id ?? '';
+  });
+
+  $effect(() => {
+    if (!selectedDesignElements.some((element) => element.id === selectedDesignElementId)) selectedDesignElementId = selectedDesignElements[0]?.id ?? '';
+  });
+
+  $effect(() => {
+    if (!selectedDesignElement) return;
+    designX = selectedDesignElement.x;
+    designY = selectedDesignElement.y;
+    designWidth = selectedDesignElement.width;
+    designHeight = selectedDesignElement.height;
+    designOpacity = Math.round(selectedDesignElement.opacity * 100);
+    designFill = selectedDesignElement.fill;
+  });
+
+  function remoteDesignChanges(): RemoteDesignChanges {
+    return {
+      x: Number(designX), y: Number(designY),
+      width: Math.max(1, Number(designWidth)), height: Math.max(1, Number(designHeight)),
+      opacity: Math.max(0, Math.min(1, Number(designOpacity) / 100)), fill: designFill,
+    };
+  }
+
+  async function submitDesignComment(): Promise<void> {
+    if (!selectedDesign || !designComment.trim()) return;
+    await onCreateDesignComment(selectedDesign.nodeId, selectedDesignPageId, selectedDesignElement?.id ?? null, designComment.trim());
+    designComment = '';
+  }
+
+  async function submitDesignProposal(): Promise<void> {
+    if (!selectedDesign || !selectedDesignElement || !designProposalTitle.trim()) return;
+    await onCreateDesignProposal(selectedDesign.nodeId, selectedDesignElement.id, designProposalTitle.trim(), designProposalDescription.trim(), remoteDesignChanges());
+    designProposalTitle = '';
+    designProposalDescription = '';
+  }
+
+  async function applyDirectDesignEdit(): Promise<void> {
+    if (!selectedDesign || !selectedDesignElement) return;
+    await onUpdateDesignElement(selectedDesign.nodeId, selectedDesignElement.id, remoteDesignChanges());
+  }
+
+  async function submitDesignReply(commentId: string): Promise<void> {
+    if (!selectedDesign || !(designReplies[commentId] ?? '').trim()) return;
+    await onReplyDesignComment(selectedDesign.nodeId, commentId, designReplies[commentId].trim());
+    designReplies = { ...designReplies, [commentId]: '' };
   }
 </script>
 
@@ -327,6 +420,42 @@
             </section>
           {/each}
         </div>
+      {:else if activeTab === 'designs'}
+        {#if snapshot.designs.length}
+          <div class="grid min-w-0 gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+            <aside class="min-w-0 space-y-1 border-r border-[var(--app-border)] pr-4">
+              {#each snapshot.designs as design (design.nodeId)}
+                <button type="button" class={`w-full rounded-[5px] px-3 py-2.5 text-left ${selectedDesign?.nodeId === design.nodeId ? 'bg-[var(--app-accent-soft)]' : 'hover:bg-[var(--app-surface-raised)]'}`} onclick={() => (selectedDesignId = design.nodeId)}>
+                  <span class="block truncate text-xs font-semibold">{design.name}</span>
+                  <span class="mt-1 block text-[9px] text-[var(--app-text-muted)]">{m['remote.design_pages_layers']({ pages: String(design.pageCount), layers: String(design.elementCount) })}</span>
+                  {#if design.presences.length}<span class="mt-1.5 flex items-center gap-1 text-[9px] text-[var(--app-success)]"><span class="size-1.5 rounded-full bg-[var(--app-success)]"></span>{m['remote.design_live_people']({ count: String(design.presences.length) })}</span>{/if}
+                </button>
+              {/each}
+            </aside>
+            {#if selectedDesign}
+              <div class="min-w-0 space-y-7">
+                <header class="flex flex-wrap items-start gap-3 border-b border-[var(--app-border)] pb-4"><div class="min-w-0 flex-1"><h3 class="truncate text-base font-semibold">{selectedDesign.name}</h3><p class="mt-1 text-[10px] text-[var(--app-text-muted)]">{m['remote.revision']({ revision: selectedDesign.revision })} · {m['remote.design_pages_layers']({ pages: String(selectedDesign.pageCount), layers: String(selectedDesign.elementCount) })}</p></div><div class="flex -space-x-1">{#each selectedDesign.presences.slice(0, 6) as presence}<span class="grid size-7 place-items-center rounded-full border-2 border-[var(--app-canvas)] text-[9px] font-bold text-white" style:background={presence.color} title={presence.name}>{presence.name.slice(0, 1).toUpperCase()}</span>{/each}</div></header>
+                <section class="grid gap-3 rounded-[6px] border border-[var(--app-border)] bg-[var(--app-surface)] p-3">
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="grid gap-1.5 text-[10px] font-medium">{m['remote.design_page']()}<Select.Root type="single" value={selectedDesignPageId} onValueChange={(value: string) => (selectedDesignPageId = value)}><Select.Trigger class="w-full"><span class="truncate">{selectedDesign.pages.find((page) => page.id === selectedDesignPageId)?.name ?? m['remote.design_page']()}</span></Select.Trigger><Select.Content>{#each selectedDesign.pages as page}<Select.Item value={page.id}>{page.name}</Select.Item>{/each}</Select.Content></Select.Root></label>
+                    <label class="grid gap-1.5 text-[10px] font-medium">{m['remote.design_layer']()}<Select.Root type="single" value={selectedDesignElement?.id ?? ''} onValueChange={(value: string) => (selectedDesignElementId = value)}><Select.Trigger class="w-full"><span class="truncate">{selectedDesignElement?.name ?? m['remote.design_no_layer']()}</span></Select.Trigger><Select.Content>{#each selectedDesignElements as element}<Select.Item value={element.id}>{element.name} · {element.type}</Select.Item>{/each}</Select.Content></Select.Root></label>
+                  </div>
+                  {#if (canProposeDesign || canEditDesign) && selectedDesignElement}
+                    <div class="border-t border-[var(--app-border)] pt-3">
+                      <div class="grid grid-cols-2 gap-2 sm:grid-cols-3"><label class="grid gap-1 text-[9px] text-[var(--app-text-muted)]">X<Input type="number" bind:value={designX} /></label><label class="grid gap-1 text-[9px] text-[var(--app-text-muted)]">Y<Input type="number" bind:value={designY} /></label><label class="grid gap-1 text-[9px] text-[var(--app-text-muted)]">W<Input type="number" min="1" bind:value={designWidth} /></label><label class="grid gap-1 text-[9px] text-[var(--app-text-muted)]">H<Input type="number" min="1" bind:value={designHeight} /></label><label class="grid gap-1 text-[9px] text-[var(--app-text-muted)]">{m['design.proposal_opacity']()}<Input type="number" min="0" max="100" bind:value={designOpacity} /></label><label class="grid gap-1 text-[9px] text-[var(--app-text-muted)]">{m['design.proposal_fill']()}<Input type="color" bind:value={designFill} /></label></div>
+                      {#if canProposeDesign}<div class="mt-3 grid gap-2"><Input bind:value={designProposalTitle} maxlength="180" placeholder={m['design.proposal_title_placeholder']()} /><Textarea class="min-h-16 resize-y text-[10px]" bind:value={designProposalDescription} maxlength="4000" placeholder={m['design.proposal_description_placeholder']()} /><div class="flex flex-wrap justify-end gap-2">{#if canEditDesign}<Button variant="outline" size="sm" disabled={busy} onclick={applyDirectDesignEdit}>{m['remote.design_apply_direct']()}</Button>{/if}<Button size="sm" disabled={busy || !designProposalTitle.trim()} onclick={submitDesignProposal}>{m['design.proposal_submit']()}</Button></div></div>{:else if canEditDesign}<div class="mt-3 flex justify-end"><Button size="sm" disabled={busy} onclick={applyDirectDesignEdit}>{m['remote.design_apply_direct']()}</Button></div>{/if}
+                    </div>
+                  {/if}
+                </section>
+                {#if canCommentDesign}
+                  <section><h4 class="mb-2 text-xs font-semibold">{m['remote.design_add_comment']()}</h4><div class="rounded-[6px] border border-[var(--app-border)] bg-[var(--app-surface)] p-2"><p class="px-1 pt-1 text-[9px] text-[var(--app-text-muted)]">{selectedDesignElement ? m['design.comment_layer']({ name: selectedDesignElement.name }) : m['design.comment_page']()}</p><Textarea class="min-h-20 resize-y border-0 bg-transparent text-xs shadow-none focus-visible:ring-0" bind:value={designComment} placeholder={m['remote.design_comment_placeholder']()} /><div class="mt-2 flex justify-end border-t border-[var(--app-border)] pt-2"><Button size="sm" disabled={busy || !designComment.trim() || !selectedDesignPageId} onclick={submitDesignComment}><MessageSquareText size={13} />{m['design.comment_add']()}</Button></div></div></section>
+                {/if}
+                <section><div class="mb-2 flex items-center gap-2"><h4 class="text-xs font-semibold">{m['remote.design_open_comments']()}</h4><Badge variant="outline" class="h-5 text-[9px]">{selectedDesign.comments.filter((comment) => comment.status === 'open').length}</Badge></div><div class="space-y-2">{#each selectedDesign.comments as comment (comment.id)}<article class={`rounded-[6px] border bg-[var(--app-surface)] p-3 ${comment.status === 'resolved' ? 'border-[var(--app-success)]/40 opacity-70' : 'border-[var(--app-border)]'}`}><div class="flex items-center gap-2 text-[9px] text-[var(--app-text-muted)]"><strong class="text-[var(--app-text-soft)]">{comment.authorName}</strong><span>·</span><span>{comment.elementName ?? comment.pageName}</span>{#if comment.replyCount}<span class="ml-auto">{comment.replyCount} {m['design.comment_reply']()}</span>{/if}</div><p class="mt-2 whitespace-pre-wrap text-xs leading-5">{comment.body}</p>{#if canCommentDesign}<div class="mt-3 flex gap-1.5"><Input class="h-8 min-w-0 text-[10px]" value={designReplies[comment.id] ?? ''} placeholder={m['design.comment_reply_placeholder']()} oninput={(event) => designReplies = { ...designReplies, [comment.id]: event.currentTarget.value }} /><Button variant="outline" size="sm" disabled={busy || !(designReplies[comment.id] ?? '').trim()} onclick={() => submitDesignReply(comment.id)}>{m['design.comment_reply']()}</Button><Button variant="ghost" size="sm" onclick={() => onResolveDesignComment(selectedDesign.nodeId, comment.id, comment.status === 'open' ? 'resolved' : 'open')}>{comment.status === 'open' ? m['design.comment_resolve']() : m['design.comment_reopen']()}</Button></div>{/if}</article>{:else}<p class="rounded-[6px] border border-dashed border-[var(--app-border)] p-8 text-center text-xs text-[var(--app-text-muted)]">{m['design.comments_empty']()}</p>{/each}</div></section>
+                <section><div class="mb-2 flex items-center gap-2"><h4 class="text-xs font-semibold">{m['remote.design_pending_proposals']()}</h4><Badge variant="outline" class="h-5 text-[9px]">{selectedDesign.proposals.filter((proposal) => proposal.status === 'pending').length}</Badge></div><div class="space-y-2">{#each selectedDesign.proposals as proposal (proposal.id)}<article class="rounded-[6px] border border-[var(--app-border)] bg-[var(--app-surface)] p-3"><div class="flex items-start gap-2"><div class="min-w-0 flex-1"><h5 class="text-xs font-semibold">{proposal.title}</h5><p class="mt-0.5 text-[9px] text-[var(--app-text-muted)]">{proposal.authorName} · {m['design.proposal_changes']({ count: String(proposal.operationCount) })}</p></div><Badge variant="outline" class="h-5 text-[8px]">{proposal.status === 'pending' ? m['design.proposal_pending']() : proposal.status === 'approved' ? m['design.proposal_approved']() : m['design.proposal_rejected']()}</Badge></div>{#if proposal.description}<p class="mt-2 text-[10px] leading-4 text-[var(--app-text-soft)]">{proposal.description}</p>{/if}{#if canDecideDesign && proposal.status === 'pending'}<div class="mt-3 flex gap-2"><Button size="sm" onclick={() => onDecideDesignProposal(selectedDesign.nodeId, proposal.id, 'approved')}><CheckCircle2 size={12} />{m['design.proposal_approve']()}</Button><Button variant="outline" size="sm" onclick={() => onDecideDesignProposal(selectedDesign.nodeId, proposal.id, 'rejected')}><XCircle size={12} />{m['design.proposal_reject']()}</Button></div>{/if}</article>{:else}<p class="rounded-[6px] border border-dashed border-[var(--app-border)] p-8 text-center text-xs text-[var(--app-text-muted)]">{m['design.proposals_empty']()}</p>{/each}</div></section>
+              </div>
+            {/if}
+          </div>
+        {:else}<p class="rounded-[6px] border border-dashed border-[var(--app-border)] p-10 text-center text-xs text-[var(--app-text-muted)]">{m['remote.design_empty']()}</p>{/if}
       {:else if activeTab === 'reviews'}
         <div class="mx-auto max-w-4xl space-y-3">
           {#each snapshot.reviews as review (review.id)}
@@ -345,7 +474,7 @@
     </div>
   </section>
 
-  <nav class="grid grid-cols-5 border-t border-[var(--app-border)] bg-[var(--app-sidebar)] px-1 pb-[env(safe-area-inset-bottom)] md:hidden" aria-label={m['remote.navigation']()}>
+  <nav class="grid grid-flow-col auto-cols-fr border-t border-[var(--app-border)] bg-[var(--app-sidebar)] px-1 pb-[env(safe-area-inset-bottom)] md:hidden" aria-label={m['remote.navigation']()}>
     {#each tabs as tab}
       <button type="button" class={`relative grid min-w-0 place-items-center content-center gap-1 text-[8px] font-medium transition-colors ${activeTab === tab.id ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'}`} aria-current={activeTab === tab.id ? 'page' : undefined} onclick={() => (activeTab = tab.id)}><tab.icon size={17} /><span class="max-w-full truncate">{tab.label}</span>{#if tab.count}<span class="absolute right-[calc(50%-16px)] top-1.5 grid size-4 place-items-center rounded-full bg-[var(--app-warning)] text-[8px] font-bold text-black">{tab.count > 9 ? '9+' : tab.count}</span>{/if}</button>
     {/each}

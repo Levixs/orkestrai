@@ -33,6 +33,7 @@ import { ApplyDesignFigmaSyncDto, ImportDesignFigmaDto, InspectDesignFigmaDto, P
 import { acknowledgeDesignFigmaPushSchema, applyDesignFigmaSyncSchema, importDesignFigmaSchema, inspectDesignFigmaSchema, previewDesignFigmaSyncSchema } from '$lib/modules/agent-room/contracts/schemas/designFigmaSchemas.js';
 import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
 import { designDeliveryService } from '$lib/modules/agent-room/application/services/DesignDeliveryService.js';
+import { DesignLeaseConflictError } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -131,12 +132,14 @@ export class BridgeController extends Controller {
         input.operations,
         { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
         input.summary,
+        input.from ?? null,
       ));
       return this.json({ data: document });
     } catch (error) {
       if (error instanceof DesignRevisionConflictError) {
         return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
       }
+      if (error instanceof DesignLeaseConflictError) return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
       return this.errorResponse(error, 'Falha ao alterar documento de design.');
     }
   }
@@ -170,10 +173,12 @@ export class BridgeController extends Controller {
         [operation],
         { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
         input.summary ?? `Generate ${input.framework} code at ${applied.path}`,
+        input.from ?? null,
       ));
       return this.json({ data: { ...applied, revision: document.revision } });
     } catch (error) {
       if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      if (error instanceof DesignLeaseConflictError) return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
       return this.errorResponse(error, 'Failed to write generated design code.');
     }
   }
@@ -190,10 +195,12 @@ export class BridgeController extends Controller {
         imported.operations,
         { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
         input.summary ?? `Import ${input.format} as ${input.name}`,
+        input.from ?? null,
       ));
       return this.json({ data: { ...imported, revision: document.revision } });
     } catch (error) {
       if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      if (error instanceof DesignLeaseConflictError) return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
       return this.errorResponse(error, 'Failed to import code into the design.');
     }
   }

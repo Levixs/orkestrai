@@ -146,6 +146,7 @@
   let showOnboarding = $state(false);
   let requestedTourId = $state<string | null>(null);
   let councilOpen = $state(false);
+  let councilSource = $state<{ taskId?: string; taskTitle?: string; taskDescription?: string | null; leaderNodeId?: string } | null>(null);
   let sharingOpen = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
@@ -444,7 +445,9 @@
   onMount(() => {
     const listener = (event: Event) => handleDesktopMenuAction(String((event as CustomEvent).detail ?? ''));
     const openCouncilListener = (event: Event) => {
-      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      const detail = (event as CustomEvent<{ workspaceId?: string; source?: typeof councilSource }>).detail;
+      const workspaceId = detail?.workspaceId;
+      councilSource = detail?.source ?? null;
       if (workspaceId && workspaceId !== activeWorkspace?.id) {
         void selectWorkspace(workspaceId).then(() => (councilOpen = true));
         return;
@@ -2095,7 +2098,7 @@
       activeWorkspaceId={activeWorkspace?.id ?? null}
     />
     {#if activeWorkspace}
-      <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} />
+      <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} source={councilSource} />
     {/if}
     {#if sharingOpen && activeWorkspace}
       <WorkspaceSharingDialog workspaceId={activeWorkspace.id} onClose={() => (sharingOpen = false)} />

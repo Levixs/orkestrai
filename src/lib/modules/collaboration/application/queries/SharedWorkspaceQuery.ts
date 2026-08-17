@@ -6,13 +6,30 @@ import { reviewCenterService } from '$lib/modules/agent-room/application/service
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import { workspaceService } from '$lib/modules/agent-room/application/services/WorkspaceService.js';
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
-import type { SharedCanvasNodeDto, SharedWorkspaceDto } from '../../domain/types.js';
+import { designDocumentService } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
+import { designCollaborationService } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
+import type { CollaborationScope, SharedCanvasNodeDto, SharedWorkspaceDto } from '../../domain/types.js';
 import { MAX_PLAINTEXT_BYTES } from '@orkestrai/collaboration-protocol';
 import { collaborationRepository } from '../../infrastructure/repositories/CollaborationRepository.js';
 import { assertSharedProjectionSafe, sanitizeSharedText } from '../projections/sanitize-shared-data.js';
 
-const SHARED_NODE_TYPES = new Set(['terminal', 'tasks', 'group', 'shape', 'controlCenter', 'reviewCenter', 'automation']);
+const SHARED_NODE_TYPES = new Set(['terminal', 'tasks', 'group', 'shape', 'controlCenter', 'reviewCenter', 'automation', 'design']);
 export const MAX_SHARED_SNAPSHOT_BYTES = MAX_PLAINTEXT_BYTES - 16 * 1024;
+
+export function scopeSharedWorkspaceSnapshot(
+  snapshot: SharedWorkspaceDto,
+  scopes: readonly CollaborationScope[],
+): SharedWorkspaceDto {
+  if (scopes.includes('design.view')) return snapshot;
+  const nodes = snapshot.nodes.filter((node) => node.type !== 'design');
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  return {
+    ...snapshot,
+    nodes,
+    edges: snapshot.edges.filter((edge) => nodeIds.has(edge.sourceNodeId) && nodeIds.has(edge.targetNodeId)),
+    designs: [],
+  };
+}
 
 function snapshotBytes(snapshot: SharedWorkspaceDto): number {
   return Buffer.byteLength(JSON.stringify(snapshot));
@@ -42,6 +59,14 @@ export function fitSharedWorkspaceSnapshot(snapshot: SharedWorkspaceDto): Shared
       floors: snapshot.floors.slice(0, 50),
       roles: snapshot.roles.slice(0, 100),
       reviews: snapshot.reviews.slice(0, 100).map((review) => ({ ...review, summary: review.summary?.slice(0, descriptionLimit) ?? null })),
+      designs: (snapshot.designs ?? []).slice(0, 50).map((design) => ({
+        ...design,
+        pages: design.pages.slice(0, 100),
+        elements: design.elements.slice(0, Math.max(20, nodeLimit)),
+        presences: design.presences.slice(0, 20),
+        comments: design.comments.slice(0, 80).map((comment) => ({ ...comment, body: comment.body.slice(0, descriptionLimit) })),
+        proposals: design.proposals.slice(0, 80).map((proposal) => ({ ...proposal, description: proposal.description.slice(0, descriptionLimit) })),
+      })),
       usage: snapshot.usage.slice(0, 3),
       activity: snapshot.activity.slice(0, 40),
     };
@@ -57,6 +82,7 @@ function sharedNodeType(type: CanvasNode['type']): SharedCanvasNodeDto['type'] |
   return ({
     terminal: 'agent', tasks: 'tasks', group: 'group', shape: 'shape',
     controlCenter: 'control', reviewCenter: 'review', automation: 'automation',
+    design: 'design',
   } as Partial<Record<CanvasNode['type'], SharedCanvasNodeDto['type']>>)[type] ?? null;
 }
 
@@ -111,6 +137,11 @@ export class SharedWorkspaceQuery {
       reviewCenterService.snapshot(share.workspaceId).catch(() => ({ reviews: [] } as unknown as Awaited<ReturnType<typeof reviewCenterService.snapshot>>)),
     ]);
     const nodes = rawNodes.map(projectNode).filter((node): node is SharedCanvasNodeDto => Boolean(node));
+    const designDocuments = await Promise.all(rawNodes.filter((node) => node.type === 'design').map(async (node) => {
+      const document = await designDocumentService.get(share.workspaceId, node.id);
+      const live = designCollaborationService.snapshot(share.workspaceId, node.id, null, document);
+      return { node, document, live };
+    }));
     const sharedNodeIds = new Set(nodes.map((node) => node.id));
     const roleCounts = new Map<string, number>();
     for (const agent of control.agents) {
@@ -192,6 +223,62 @@ export class SharedWorkspaceQuery {
         decidedAt: review.decidedAt,
         createdAt: review.createdAt,
         updatedAt: review.updatedAt,
+      })),
+      designs: designDocuments.map(({ node, document, live }) => ({
+        nodeId: node.id,
+        name: sanitizeSharedText(document.name),
+        revision: document.revision,
+        pages: document.pages.map((page) => ({ id: page.id, name: sanitizeSharedText(page.name).slice(0, 120) })),
+        elements: document.elements.map((element) => {
+          const solid = element.fills.find((paint) => paint.type === 'solid');
+          return {
+            id: element.id,
+            pageId: element.pageId,
+            name: sanitizeSharedText(element.name).slice(0, 120),
+            type: element.type,
+            x: finite(element.x, 0),
+            y: finite(element.y, 0),
+            width: Math.max(1, finite(element.width, 1)),
+            height: Math.max(1, finite(element.height, 1)),
+            opacity: Math.max(0, Math.min(1, finite(element.opacity, 1))),
+            fill: solid?.type === 'solid' && /^#[0-9a-f]{6}$/i.test(solid.color) ? solid.color : '#ffffff',
+          };
+        }),
+        pageCount: document.pages.length,
+        elementCount: document.elements.length,
+        presences: live.presences.map((presence) => ({
+          participantId: presence.participant.id,
+          name: sanitizeSharedText(presence.participant.name).slice(0, 120),
+          color: presence.participant.color,
+          pageId: presence.pageId,
+          elementCount: presence.elementIds.length,
+        })),
+        comments: document.comments.map((comment) => {
+          const first = comment.messages[0];
+          return {
+            id: comment.id,
+            pageId: comment.pageId,
+            pageName: sanitizeSharedText(document.pages.find((page) => page.id === comment.pageId)?.name ?? ''),
+            elementId: comment.elementId,
+            elementName: comment.elementId ? sanitizeSharedText(document.elements.find((element) => element.id === comment.elementId)?.name ?? '') || null : null,
+            status: comment.status,
+            authorName: sanitizeSharedText(first.author.name).slice(0, 120),
+            body: sanitizeSharedText(first.body),
+            replyCount: Math.max(0, comment.messages.length - 1),
+            updatedAt: comment.updatedAt,
+          };
+        }),
+        proposals: document.proposals.map((proposal) => ({
+          id: proposal.id,
+          title: sanitizeSharedText(proposal.title),
+          description: sanitizeSharedText(proposal.description),
+          authorName: sanitizeSharedText(proposal.author.name).slice(0, 120),
+          status: proposal.status,
+          operationCount: proposal.operations.length,
+          floorId: proposal.floorId,
+          councilId: proposal.councilId,
+          updatedAt: proposal.updatedAt,
+        })),
       })),
       usage: usageService.cached().map((usage) => ({
         provider: usage.provider,

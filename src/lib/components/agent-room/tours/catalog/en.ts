@@ -1246,6 +1246,39 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'design-collaboration',
+    icon: 'MessagesSquare',
+    title: 'Collaborate on a Design document',
+    tagline: 'Discuss, propose, and approve visual work without losing authorship or revisions.',
+    steps: [
+      {
+        id: 'open-design-collaboration',
+        title: 'Open one shared Design document',
+        body: 'Create a native Design document and open it. In the right inspector, choose Collaboration to see people, comments, proposals, and edit conflicts in one place.',
+        action: [
+          { kind: 'createDesign', title: 'Collaborative Design' },
+          { kind: 'openDesign', title: 'Collaborative Design' },
+        ],
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Collaborative Design' },
+      },
+      {
+        id: 'follow-and-comment',
+        title: 'Follow the work and anchor feedback',
+        body: 'Live participants expose their page, cursor, and selection. Follow one person when reviewing together, select a layer, and add a comment. Replies, mentions, resolution, and authorship stay versioned with the document.',
+      },
+      {
+        id: 'review-proposal',
+        title: 'Review before applying',
+        body: 'Create or request a visual proposal. Its preview and structural diff do not change the document until a person explicitly approves it. Approval applies every operation atomically; a conflict blocks the write instead of overwriting another participant.',
+      },
+      {
+        id: 'route-and-share',
+        title: 'Choose the right decision path',
+        body: 'Send uncertain proposals to Council or create an isolated Floor for parallel implementation. When sharing remotely, approve Design separately as View, Comment, Propose, or Edit and decide. Remote receives sanitized summaries, never the scene graph, assets, files, or local paths.',
+      },
+    ],
+  },
+  {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
     title: 'Combine Windows and WSL agents',

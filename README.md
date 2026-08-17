@@ -100,6 +100,13 @@ Download the latest installers from
   can edit the exact same revision through typed Orkestrai tools while the UI
   updates live. Documents, assets, thumbnails, and history stay under
   `.orkestrai/designs` in the workspace.
+- **Live Design collaboration:** see human and agent presence, cursors, and
+  selections; follow another participant; discuss a page or layer in anchored
+  comment threads; and review visual proposals as structural diffs before an
+  explicit approval applies them atomically. Short layer leases prevent
+  conflicting edits. Proposals can move into Council or an isolated Git Floor,
+  while the encrypted Remote Companion receives only sanitized summaries and
+  separately granted View, Comment, Propose, Edit, and Decide permissions.
 - **Official Figma interoperability:** the managed official Figma MCP gives
   compatible agents direct design context, while the native Figma tab inspects
   links and imports selected pages or frames, vectors, assets, styles,
@@ -122,7 +129,6 @@ Download the latest installers from
   Review Center Git diff. Claude, Codex, Kimi, and other connected agents use
   the same revision-safe import, preview, and protected-write flow through the
   bundled CLI or typed MCP tools.
-- **Council decisions:** open Council from the Canvas toolbar, the workspace in
 - **Interactive prototypes and native motion:** connect any layer to another
   frame, overlay, scroll target, history action, or variable mode using click,
   press, hover, and timed triggers. Preview flows in a focused player with

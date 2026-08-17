@@ -3,6 +3,9 @@ import { reviewCenterService } from '$lib/modules/agent-room/application/service
 import { taskBoardService } from '$lib/modules/agent-room/application/services/TaskBoardService.js';
 import { DecideAgentReviewDto } from '$lib/modules/agent-room/application/dto/AgentReviewDto.js';
 import { agentSessionService } from '$lib/modules/agent-room/application/services/AgentSessionService.js';
+import { designDocumentService } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
+import { ApplyDesignOperationsDto } from '$lib/modules/agent-room/application/dto/DesignDtos.js';
+import type { DesignCollaborator, DesignOperation } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
 import { uuidv7 } from '@beeblock/svelar/support';
 import type { ExecuteCollaborationCommandDto } from '../dto/CollaborationDto.js';
 import type { CollaborationCommand, CollaborationCommandResult } from '../../domain/types.js';
@@ -65,7 +68,7 @@ export class SharedWorkspaceCommandBus {
     if (dto.revision !== share.revision) return reject('REVISION_CONFLICT', { currentRevision: share.revision });
 
     try {
-      const result = await this.perform(share.workspaceId, share.id, device.deviceId, dto.command);
+      const result = await this.perform(share.workspaceId, share.id, device.deviceId, device.displayName, dto.command);
       const revision = await collaborationRepository.incrementRevision(share.id);
       const safeResult = sanitizeAuditMetadata(result) as Record<string, unknown>;
       const row = await collaborationRepository.finishCommand(dto.commandId, {
@@ -86,6 +89,7 @@ export class SharedWorkspaceCommandBus {
     workspaceId: string,
     shareId: string,
     deviceId: string,
+    deviceName: string,
     command: CollaborationCommand,
   ): Promise<Record<string, unknown>> {
     if (command.type === 'task.create') {
@@ -114,6 +118,83 @@ export class SharedWorkspaceCommandBus {
         new DecideAgentReviewDto(command.status, command.note ?? null),
       );
       return { reviewId: decision.review.id, status: decision.review.status, feedbackDelivered: decision.feedback?.delivered ?? null };
+    }
+    if (command.type === 'design.comment.create'
+      || command.type === 'design.comment.reply'
+      || command.type === 'design.comment.resolve'
+      || command.type === 'design.proposal.create'
+      || command.type === 'design.proposal.decide'
+      || command.type === 'design.element.update') {
+      const document = await designDocumentService.get(workspaceId, command.nodeId);
+      const now = new Date().toISOString();
+      const actor: DesignCollaborator = { kind: 'remote', id: deviceId, name: deviceName, color: '#7c3aed' };
+      let operations: DesignOperation[];
+      let summary: string;
+      if (command.type === 'design.comment.create') {
+        operations = [{
+          kind: 'add-design-comment',
+          comment: {
+            id: uuidv7(), pageId: command.pageId, elementId: command.elementId ?? null,
+            x: null, y: null, status: 'open',
+            messages: [{ id: uuidv7(), author: actor, body: command.body, mentions: [], createdAt: now }],
+            createdAt: now, updatedAt: now, resolvedAt: null, resolvedBy: null,
+          },
+        }];
+        summary = 'Remote design comment';
+      } else if (command.type === 'design.comment.reply') {
+        operations = [{
+          kind: 'add-design-comment-message', commentId: command.commentId,
+          message: { id: uuidv7(), author: actor, body: command.body, mentions: [], createdAt: now },
+        }];
+        summary = 'Remote design comment reply';
+      } else if (command.type === 'design.comment.resolve') {
+        operations = [{ kind: 'set-design-comment-status', commentId: command.commentId, status: command.status, actor }];
+        summary = 'Remote design comment status';
+      } else if (command.type === 'design.proposal.create') {
+        if (!document.elements.some((element) => element.id === command.elementId)) throw new Error('DESIGN_ELEMENT_NOT_FOUND');
+        const proposed: DesignOperation = {
+          kind: 'update',
+          elementId: command.elementId,
+          changes: {
+            ...command.changes,
+            fills: [{ type: 'solid', color: command.changes.fill, opacity: 1, visible: true }],
+            fill: 'transparent',
+          },
+        };
+        operations = [{
+          kind: 'add-design-proposal',
+          proposal: {
+            id: uuidv7(), title: command.title, description: command.description ?? '', author: actor,
+            baseRevision: document.revision, operations: [proposed], status: 'pending',
+            floorId: null, councilId: null, createdAt: now, updatedAt: now,
+            decidedAt: null, decidedBy: null, decisionNote: null,
+          },
+        }];
+        summary = 'Remote design proposal';
+      } else if (command.type === 'design.proposal.decide') {
+        operations = [{
+          kind: 'decide-design-proposal', proposalId: command.proposalId,
+          status: command.status, actor, note: command.note ?? null,
+        }];
+        summary = 'Remote design proposal decision';
+      } else {
+        if (!document.elements.some((element) => element.id === command.elementId)) throw new Error('DESIGN_ELEMENT_NOT_FOUND');
+        operations = [{
+          kind: 'update',
+          elementId: command.elementId,
+          changes: {
+            ...command.changes,
+            fills: [{ type: 'solid', color: command.changes.fill, opacity: 1, visible: true }],
+            fill: 'transparent',
+          },
+        }];
+        summary = 'Remote direct design edit';
+      }
+      const updated = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspaceId, command.nodeId, document.revision, operations,
+        { kind: 'user', id: deviceId, name: deviceName, taskId: null }, summary, deviceId,
+      ));
+      return { nodeId: command.nodeId, revision: updated.revision };
     }
     if (command.type === 'agent.invoke') {
       const session = await agentSessionService.ensure(workspaceId, command.agentNodeId);

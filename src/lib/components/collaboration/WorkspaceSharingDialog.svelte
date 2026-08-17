@@ -67,6 +67,26 @@
   let pendingRevoke = $state<CollaborationDeviceData | null>(null);
   let roleDrafts = $state<Record<string, CollaborationRole>>({});
   let terminalDrafts = $state<Record<string, boolean>>({});
+  type DesignAccess = "inherited" | "none" | "view" | "comment" | "propose" | "edit";
+  let designDrafts = $state<Record<string, DesignAccess>>({});
+
+  const inheritedDesignScopes: Record<CollaborationRole, string[]> = {
+    viewer: ["design.view"],
+    collaborator: ["design.view", "design.comment", "design.propose"],
+    operator: ["design.view", "design.comment", "design.propose", "design.decide"],
+    administrator: ["design.view", "design.comment", "design.propose", "design.decide", "design.edit"],
+  };
+
+  function savedDesignAccess(device: CollaborationDeviceData): DesignAccess {
+    const actual = device.scopes.filter((scope) => scope.startsWith("design.")).sort();
+    const inherited = [...inheritedDesignScopes[device.role]].sort();
+    if (actual.length === inherited.length && actual.every((scope, index) => scope === inherited[index])) return "inherited";
+    if (actual.includes("design.edit")) return "edit";
+    if (actual.includes("design.propose")) return "propose";
+    if (actual.includes("design.comment")) return "comment";
+    if (actual.includes("design.view")) return "view";
+    return "none";
+  }
 
   const schema = createCollaborationShareSchema as unknown as Parameters<
     typeof zod
@@ -156,6 +176,9 @@
           device.id,
           terminalDrafts[device.id] ?? device.scopes.includes("terminal.control"),
         ]),
+      );
+      designDrafts = Object.fromEntries(
+        (status.devices ?? []).map((device) => [device.id, designDrafts[device.id] ?? savedDesignAccess(device)]),
       );
     } catch (error) {
       if (!silent)
@@ -272,6 +295,7 @@
             terminalAccess:
               terminalDrafts[device.id] ??
               device.scopes.includes("terminal.control"),
+            designAccess: designDrafts[device.id] ?? "inherited",
           }),
         },
       );
@@ -339,6 +363,10 @@
         administrator: m["collaboration.role_administrator_desc"],
       } as const
     )[role]();
+  }
+
+  function designAccessLabel(access: DesignAccess): string {
+    return m[`collaboration.design_access_${access}`]();
   }
 
   function transportLabel(
@@ -731,6 +759,13 @@
                           >{/each}</Select.Content
                       >
                     </Select.Root>
+                    <label class="grid min-w-40 gap-1 text-[9px] text-[var(--app-text-muted)]">
+                      <span>{m["collaboration.design_access"]()}</span>
+                      <Select.Root type="single" value={designDrafts[device.id] ?? "inherited"} onValueChange={(value: string) => designDrafts = { ...designDrafts, [device.id]: value as DesignAccess }}>
+                        <Select.Trigger size="sm"><span>{designAccessLabel(designDrafts[device.id] ?? "inherited")}</span></Select.Trigger>
+                        <Select.Content>{#each ["inherited", "none", "view", "comment", "propose", "edit"] as access}<Select.Item value={access}>{designAccessLabel(access as DesignAccess)}</Select.Item>{/each}</Select.Content>
+                      </Select.Root>
+                    </label>
                     <label
                       class="flex min-w-40 items-center gap-2 text-[10px] text-[var(--app-text-muted)]"
                       title={m["collaboration.terminal_access_help"]()}

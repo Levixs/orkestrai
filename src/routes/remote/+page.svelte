@@ -52,7 +52,7 @@
     consumeCollaborationInvite?: () => Promise<string | null>;
     onCollaborationInvite?: (callback: () => void) => () => void;
   };
-  type RemoteTab = "overview" | "team" | "tasks" | "reviews" | "activity";
+  type RemoteTab = "overview" | "team" | "tasks" | "designs" | "reviews" | "activity";
 
   let remoteState = $state<RemoteState>({
     status: "idle",
@@ -205,6 +205,35 @@
     status: "approved" | "changes_requested" | "rejected",
   ): Promise<void> {
     await command({ type: "review.decide", reviewId, status });
+  }
+
+  async function createDesignComment(nodeId: string, pageId: string, elementId: string | null, body: string): Promise<void> {
+    const result = await command({ type: "design.comment.create", nodeId, pageId, elementId, body });
+    if (result?.accepted) toast.success(m["remote.design_comment_sent"]());
+  }
+
+  async function replyDesignComment(nodeId: string, commentId: string, body: string): Promise<void> {
+    await command({ type: "design.comment.reply", nodeId, commentId, body });
+  }
+
+  async function resolveDesignComment(nodeId: string, commentId: string, status: "open" | "resolved"): Promise<void> {
+    await command({ type: "design.comment.resolve", nodeId, commentId, status });
+  }
+
+  type RemoteDesignChanges = { x: number; y: number; width: number; height: number; opacity: number; fill: string };
+
+  async function createDesignProposal(nodeId: string, elementId: string, title: string, description: string, changes: RemoteDesignChanges): Promise<void> {
+    const result = await command({ type: "design.proposal.create", nodeId, elementId, title, description, changes });
+    if (result?.accepted) toast.success(m["remote.design_proposal_sent"]());
+  }
+
+  async function decideDesignProposal(nodeId: string, proposalId: string, status: "approved" | "rejected"): Promise<void> {
+    await command({ type: "design.proposal.decide", nodeId, proposalId, status });
+  }
+
+  async function updateDesignElement(nodeId: string, elementId: string, changes: RemoteDesignChanges): Promise<void> {
+    const result = await command({ type: "design.element.update", nodeId, elementId, changes });
+    if (result?.accepted) toast.success(m["remote.design_edit_applied"]());
   }
 
   async function sendLeaderMessage(): Promise<void> {
@@ -423,6 +452,12 @@
     onCreateTask={() => (taskDialogOpen = true)}
     onUpdateTask={updateTask}
     onDecideReview={decideReview}
+    onCreateDesignComment={createDesignComment}
+    onReplyDesignComment={replyDesignComment}
+    onResolveDesignComment={resolveDesignComment}
+    onCreateDesignProposal={createDesignProposal}
+    onDecideDesignProposal={decideDesignProposal}
+    onUpdateDesignElement={updateDesignElement}
     onSendLeaderMessage={sendLeaderMessage}
   />
 {/if}

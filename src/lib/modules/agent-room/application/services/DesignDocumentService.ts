@@ -3,6 +3,7 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { uuidv7 } from '@beeblock/svelar/support';
 import {
   designDocumentSchema,
+  designOperationSchema,
   type DesignAsset,
   type DesignBindableProperty,
   type DesignComponent,
@@ -17,6 +18,7 @@ import {
 import type { ApplyDesignOperationsDto } from '../dto/DesignDtos.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { resolveDesignVariableValue } from '../../domain/design-variables.js';
+import { designCollaborationService } from './DesignCollaborationService.js';
 
 export class DesignRevisionConflictError extends Error {
   constructor(public readonly current: DesignDocument) {
@@ -452,6 +454,45 @@ function validateDesignPrototype(document: DesignDocument): void {
   }
 }
 
+const collaborationOperationKinds = new Set([
+  'add-design-comment',
+  'add-design-comment-message',
+  'set-design-comment-status',
+  'delete-design-comment',
+  'add-design-proposal',
+  'link-design-proposal',
+  'decide-design-proposal',
+  'delete-design-proposal',
+]);
+
+function validateDesignCollaboration(document: DesignDocument): void {
+  const pages = new Set(document.pages.map((page) => page.id));
+  const elements = new Map(document.elements.map((element) => [element.id, element]));
+  const commentIds = new Set<string>();
+  const messageIds = new Set<string>();
+  for (const comment of document.comments) {
+    if (commentIds.has(comment.id)) throw new Error('Design comment ids must be unique.');
+    commentIds.add(comment.id);
+    if (!pages.has(comment.pageId)) throw new Error('Design comment page not found.');
+    if (comment.elementId && elements.get(comment.elementId)?.pageId !== comment.pageId) {
+      throw new Error('Design comment layer not found.');
+    }
+    for (const message of comment.messages) {
+      if (messageIds.has(message.id)) throw new Error('Design comment message ids must be unique.');
+      messageIds.add(message.id);
+    }
+  }
+  const proposalIds = new Set<string>();
+  for (const proposal of document.proposals) {
+    if (proposalIds.has(proposal.id)) throw new Error('Design proposal ids must be unique.');
+    proposalIds.add(proposal.id);
+    for (const candidate of proposal.operations) {
+      const parsed = designOperationSchema.parse(candidate);
+      if (collaborationOperationKinds.has(parsed.kind)) throw new Error('Design proposals cannot contain collaboration operations.');
+    }
+  }
+}
+
 export function applyDesignOperations(document: DesignDocument, operations: DesignOperation[], now: string): DesignDocument {
   let next: DesignDocument = structuredClone(document);
   for (const operation of operations) {
@@ -546,6 +587,9 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
         return interaction.action.type !== 'scroll-to' || !descendants.has(interaction.action.targetElementId);
       });
       next.motionTracks = next.motionTracks.filter((track) => !descendants.has(track.elementId));
+      next.comments = next.comments.map((comment) => comment.elementId && descendants.has(comment.elementId)
+        ? { ...comment, elementId: null }
+        : comment);
       if (next.presentation.defaultFlowId && removedFlowIds.has(next.presentation.defaultFlowId)) next.presentation.defaultFlowId = null;
       continue;
     }
@@ -839,6 +883,81 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
       Object.assign(next.presentation, operation.changes);
       continue;
     }
+    if (operation.kind === 'add-design-comment') {
+      if (next.comments.some((comment) => comment.id === operation.comment.id)) throw new Error('Design comment already exists.');
+      if (!next.pages.some((page) => page.id === operation.comment.pageId)) throw new Error('Design comment page not found.');
+      if (operation.comment.elementId && !next.elements.some((element) => element.id === operation.comment.elementId && element.pageId === operation.comment.pageId)) {
+        throw new Error('Design comment layer not found.');
+      }
+      next.comments.push(operation.comment);
+      continue;
+    }
+    if (operation.kind === 'add-design-comment-message') {
+      const comment = next.comments.find((candidate) => candidate.id === operation.commentId);
+      if (!comment) throw new Error('Design comment not found.');
+      if (comment.messages.some((message) => message.id === operation.message.id)) throw new Error('Design comment message already exists.');
+      comment.messages.push(operation.message);
+      comment.updatedAt = now;
+      continue;
+    }
+    if (operation.kind === 'set-design-comment-status') {
+      const comment = next.comments.find((candidate) => candidate.id === operation.commentId);
+      if (!comment) throw new Error('Design comment not found.');
+      comment.status = operation.status;
+      comment.updatedAt = now;
+      comment.resolvedAt = operation.status === 'resolved' ? now : null;
+      comment.resolvedBy = operation.status === 'resolved' ? operation.actor : null;
+      continue;
+    }
+    if (operation.kind === 'delete-design-comment') {
+      if (!next.comments.some((comment) => comment.id === operation.commentId)) throw new Error('Design comment not found.');
+      next.comments = next.comments.filter((comment) => comment.id !== operation.commentId);
+      continue;
+    }
+    if (operation.kind === 'add-design-proposal') {
+      if (next.proposals.some((proposal) => proposal.id === operation.proposal.id)) throw new Error('Design proposal already exists.');
+      for (const candidate of operation.proposal.operations) {
+        const parsed = designOperationSchema.parse(candidate);
+        if (collaborationOperationKinds.has(parsed.kind)) throw new Error('Design proposals cannot contain collaboration operations.');
+      }
+      next.proposals.push(operation.proposal);
+      continue;
+    }
+    if (operation.kind === 'link-design-proposal') {
+      const proposal = next.proposals.find((candidate) => candidate.id === operation.proposalId);
+      if (!proposal) throw new Error('Design proposal not found.');
+      if (operation.floorId !== undefined) proposal.floorId = operation.floorId;
+      if (operation.councilId !== undefined) proposal.councilId = operation.councilId;
+      proposal.updatedAt = now;
+      continue;
+    }
+    if (operation.kind === 'decide-design-proposal') {
+      const proposal = next.proposals.find((candidate) => candidate.id === operation.proposalId);
+      if (!proposal) throw new Error('Design proposal not found.');
+      if (proposal.status !== 'pending') throw new Error('Design proposal was already decided.');
+      if (operation.status === 'approved') {
+        const proposedOperations = proposal.operations.map((candidate) => designOperationSchema.parse(candidate));
+        if (proposedOperations.some((candidate) => collaborationOperationKinds.has(candidate.kind))) {
+          throw new Error('Design proposals cannot contain collaboration operations.');
+        }
+        next = applyDesignOperations(next, proposedOperations, now);
+      }
+      const decided = next.proposals.find((candidate) => candidate.id === operation.proposalId);
+      if (!decided) throw new Error('Design proposal not found after applying its changes.');
+      decided.status = operation.status;
+      decided.decidedAt = now;
+      decided.decidedBy = operation.actor;
+      decided.decisionNote = operation.note;
+      decided.updatedAt = now;
+      continue;
+    }
+    if (operation.kind === 'delete-design-proposal') {
+      const proposal = next.proposals.find((candidate) => candidate.id === operation.proposalId);
+      if (!proposal) throw new Error('Design proposal not found.');
+      if (proposal.status === 'pending') throw new Error('Pending design proposals must be decided before deletion.');
+      next.proposals = next.proposals.filter((candidate) => candidate.id !== operation.proposalId);
+      continue;
+    }
     if (operation.kind === 'create-component-instance') {
       if (next.elements.some((element) => element.id === operation.instanceId)) throw new Error('Component instance already exists.');
       const component = next.components.find((candidate) => candidate.id === operation.componentId);
@@ -916,6 +1035,7 @@ export function applyDesignOperations(document: DesignDocument, operations: Desi
   validateDesignVariables(next);
   validateDesignComponents(next);
   validateDesignPrototype(next);
+  validateDesignCollaboration(next);
   next.elements = sortElements(next.elements);
   next.updatedAt = now;
   return designDocumentSchema.parse(next);
@@ -990,6 +1110,8 @@ export class DesignDocumentService {
       prototypeInteractions: [],
       motionTokens: [],
       motionTracks: [],
+      comments: [],
+      proposals: [],
       presentation: {
         defaultFlowId: null,
         background: '#111111',
@@ -1031,6 +1153,7 @@ export class DesignDocumentService {
       const context = await this.context(dto.workspaceId, dto.nodeId);
       const current = await this.getUnlocked(dto.workspaceId, dto.nodeId);
       if (current.revision !== dto.baseRevision) throw new DesignRevisionConflictError(current);
+      designCollaborationService.assertWritable(dto.workspaceId, dto.nodeId, dto.collaborationParticipantId, dto.operations, current);
       const now = new Date().toISOString();
       const next = applyDesignOperations(current, dto.operations, now);
       const deletedAssetPaths = dto.operations

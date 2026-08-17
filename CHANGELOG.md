@@ -9,6 +9,17 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added live human-agent collaboration to native Design documents. The Design
+  editor now shows participant presence, cursors, selections, short layer
+  leases, follow mode, anchored comment threads with replies and resolution,
+  and revisioned visual proposals with structural diffs and explicit human
+  approval or rejection. Approved proposals apply atomically; conflicting
+  edits are blocked before mutation. Proposals can open an existing Council or
+  create a parallel Git Floor without creating a second design system. The
+  encrypted Remote Companion exposes only sanitized page, activity, comment,
+  and proposal summaries, with independent per-device View, Comment, Propose,
+  Edit, and Decide permissions. Connected agents use the same versioned
+  comments and proposals through typed Orkestrai MCP tools.
 - Added native interactive prototyping and motion to Design Studio. Designers
   and agents can define multiple starting flows, attach click, press, hover, or
   timed interactions to any layer, navigate frames, open or close overlays,

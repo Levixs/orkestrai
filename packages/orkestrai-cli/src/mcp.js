@@ -26,7 +26,10 @@ const TOOLS = [
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
   { name: 'design_list', description: 'Lista documentos de design nativos do workspace e suas revisoes.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
-  { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: elementos, vetores, assets, guias, tokens, modos, bindings, componentes, instancias, variantes, prototipos, interacoes, apresentacao, motion tokens, tracks e keyframes. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
+  { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: layers, vetores, design system, prototipo, motion, comentarios e propostas. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
+  { name: 'design_comment', description: 'Cria um comentario rastreavel em uma pagina ou layer, com autoria do agente e suporte a mencoes no texto.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, elementId: { type: ['string', 'null'] }, body: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'pageId', 'body'] } },
+  { name: 'design_propose', description: 'Submete operacoes visuais como proposta pendente para revisao humana, sem alterar o design aprovado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, title: { type: 'string' }, description: { type: 'string' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, floorId: { type: ['string', 'null'] }, councilId: { type: ['string', 'null'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'title', 'operations'] } },
+  { name: 'design_decide_proposal', description: 'Aprova ou rejeita uma proposta visual pendente. A aprovacao aplica as operacoes validadas de forma transacional.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, proposalId: { type: 'string' }, status: { type: 'string', enum: ['approved', 'rejected'] }, note: { type: ['string', 'null'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'proposalId', 'status'] } },
   { name: 'design_import_code', description: 'Importa HTML, Svelte, React/JSX ou Vue como elementos nativos editaveis no Design Studio e registra a alteracao no historico.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, format: { type: 'string', enum: ['html', 'svelte', 'react', 'vue'] }, name: { type: 'string' }, markup: { type: 'string' }, css: { type: 'string' }, x: { type: 'number' }, y: { type: 'number' }, parentId: { type: ['string', 'null'] }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'format', 'name', 'markup'] } },
   { name: 'design_generate_code_preview', description: 'Gera uma previa sem escrita para Svelar/Svelte, React/Next, Vue ou HTML/Tailwind. Retorna status, conteudo, mappings e hash esperado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, framework: { type: 'string', enum: ['svelar', 'svelte', 'react', 'next', 'vue', 'html'] }, elementIds: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string' } }, outputPath: { type: 'string' }, componentName: { type: 'string' } }, required: ['nodeId', 'framework', 'elementIds', 'outputPath', 'componentName'] } },
   { name: 'design_generate_code_apply', description: 'Escreve codigo previamente revisado dentro do workspace, rejeita arquivo alterado e vincula o artefato ao documento de design.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, framework: { type: 'string', enum: ['svelar', 'svelte', 'react', 'next', 'vue', 'html'] }, elementIds: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string' } }, outputPath: { type: 'string' }, componentName: { type: 'string' }, expectedExistingHash: { type: ['string', 'null'] }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'framework', 'elementIds', 'outputPath', 'componentName', 'expectedExistingHash'] } },
@@ -110,6 +113,40 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
         summary: args.summary,
         from: selfAgent,
         taskId: args.taskId,
+      });
+    case 'design_comment': {
+      const now = new Date().toISOString();
+      const author = { kind: 'agent', id: selfAgent || 'agent', name: selfAgent || 'Agent', color: '#059669' };
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'add-design-comment', comment: {
+          id: crypto.randomUUID(), pageId: args.pageId, elementId: args.elementId ?? null,
+          x: null, y: null, status: 'open', messages: [{ id: crypto.randomUUID(), author, body: args.body, mentions: [], createdAt: now }],
+          createdAt: now, updatedAt: now, resolvedAt: null, resolvedBy: null,
+        } }],
+        summary: 'Agent design comment', from: selfAgent, taskId: args.taskId,
+      });
+    }
+    case 'design_propose': {
+      const now = new Date().toISOString();
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'add-design-proposal', proposal: {
+          id: crypto.randomUUID(), title: args.title, description: args.description ?? '',
+          author: { kind: 'agent', id: selfAgent || 'agent', name: selfAgent || 'Agent', color: '#059669' },
+          baseRevision: args.baseRevision, operations: args.operations, status: 'pending',
+          floorId: args.floorId ?? null, councilId: args.councilId ?? null,
+          createdAt: now, updatedAt: now, decidedAt: null, decidedBy: null, decisionNote: null,
+        } }],
+        summary: `Agent design proposal: ${args.title}`, from: selfAgent, taskId: args.taskId,
+      });
+    }
+    case 'design_decide_proposal':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'decide-design-proposal', proposalId: args.proposalId, status: args.status,
+          actor: { kind: 'agent', id: selfAgent || 'agent', name: selfAgent || 'Agent', color: '#059669' }, note: args.note ?? null }],
+        summary: `Agent design proposal ${args.status}`, from: selfAgent, taskId: args.taskId,
       });
     case 'design_import_code':
       return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/delivery/import`, {

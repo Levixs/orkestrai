@@ -1250,6 +1250,39 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'design-collaboration',
+    icon: 'MessagesSquare',
+    title: 'Colabore em um documento Design',
+    tagline: 'Converse, proponha e aprove trabalho visual sem perder autoria nem revisões.',
+    steps: [
+      {
+        id: 'open-design-collaboration',
+        title: 'Abra um documento Design compartilhado',
+        body: 'Crie um documento Design nativo e abra-o. No inspector direito, escolha Colaboração para ver pessoas, comentários, propostas e conflitos de edição no mesmo lugar.',
+        action: [
+          { kind: 'createDesign', title: 'Design Colaborativo' },
+          { kind: 'openDesign', title: 'Design Colaborativo' },
+        ],
+        check: { kind: 'nodeExists', nodeType: 'design', titleIncludes: 'Design Colaborativo' },
+      },
+      {
+        id: 'follow-and-comment',
+        title: 'Siga o trabalho e ancore o feedback',
+        body: 'Participantes ao vivo mostram página, cursor e seleção. Siga uma pessoa durante a revisão, selecione uma layer e adicione um comentário. Respostas, menções, resolução e autoria ficam versionadas no documento.',
+      },
+      {
+        id: 'review-proposal',
+        title: 'Revise antes de aplicar',
+        body: 'Crie ou solicite uma proposta visual. A prévia e o diff estrutural não alteram o documento até uma pessoa aprovar explicitamente. A aprovação aplica todas as operações de forma atômica; um conflito bloqueia a gravação em vez de sobrescrever outro participante.',
+      },
+      {
+        id: 'route-and-share',
+        title: 'Escolha o caminho de decisão',
+        body: 'Envie propostas incertas ao Council ou crie um Andar isolado para implementação paralela. Ao compartilhar remotamente, aprove o Design separadamente como Visualizar, Comentar, Propor ou Editar e decidir. O Remote recebe resumos sanitizados, nunca o scene graph, assets, arquivos ou caminhos locais.',
+      },
+    ],
+  },
+  {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
     title: 'Combinar agentes Windows e WSL',

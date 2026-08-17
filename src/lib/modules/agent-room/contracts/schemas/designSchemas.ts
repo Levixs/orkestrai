@@ -478,6 +478,52 @@ export const designPageSchema = z.object({
   order: z.number().int().min(0).max(10_000),
 });
 
+export const designCollaboratorSchema = z.object({
+  kind: z.enum(['user', 'agent', 'remote']),
+  id: z.string().trim().min(1).max(128),
+  name: z.string().trim().min(1).max(120),
+  color: designColorSchema,
+});
+
+export const designCommentMessageSchema = z.object({
+  id: z.string().uuid(),
+  author: designCollaboratorSchema,
+  body: z.string().trim().min(1).max(20_000),
+  mentions: z.array(z.string().trim().min(1).max(128)).max(100).default([]),
+  createdAt: z.string().datetime(),
+});
+
+export const designCommentSchema = z.object({
+  id: z.string().uuid(),
+  pageId: z.string().uuid(),
+  elementId: z.string().uuid().nullable().default(null),
+  x: z.number().finite().min(-100_000).max(100_000).nullable().default(null),
+  y: z.number().finite().min(-100_000).max(100_000).nullable().default(null),
+  status: z.enum(['open', 'resolved']).default('open'),
+  messages: z.array(designCommentMessageSchema).min(1).max(500),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  resolvedAt: z.string().datetime().nullable().default(null),
+  resolvedBy: designCollaboratorSchema.nullable().default(null),
+});
+
+export const designProposalSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1).max(180),
+  description: z.string().trim().max(4_000).default(''),
+  author: designCollaboratorSchema,
+  baseRevision: z.number().int().min(0),
+  operations: z.array(z.record(z.string(), z.unknown())).min(1).max(2_000),
+  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+  floorId: z.string().uuid().nullable().default(null),
+  councilId: z.string().uuid().nullable().default(null),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  decidedAt: z.string().datetime().nullable().default(null),
+  decidedBy: designCollaboratorSchema.nullable().default(null),
+  decisionNote: z.string().trim().max(4_000).nullable().default(null),
+});
+
 export const designDocumentSchema = z.object({
   schemaVersion: z.literal(1),
   id: z.string().uuid(),
@@ -502,6 +548,8 @@ export const designDocumentSchema = z.object({
   prototypeInteractions: z.array(designPrototypeInteractionSchema).max(5_000).default([]),
   motionTokens: z.array(designMotionTokenSchema).max(500).default([]),
   motionTracks: z.array(designMotionTrackSchema).max(5_000).default([]),
+  comments: z.array(designCommentSchema).max(10_000).default([]),
+  proposals: z.array(designProposalSchema).max(2_000).default([]),
   presentation: designPresentationSettingsSchema.default({
     defaultFlowId: null,
     background: '#111111',
@@ -582,6 +630,30 @@ export const designOperationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('update-motion-track'), trackId: z.string().uuid(), changes: designMotionTrackChangesSchema }),
   z.object({ kind: z.literal('delete-motion-track'), trackId: z.string().uuid() }),
   z.object({ kind: z.literal('update-presentation'), changes: designPresentationSettingsSchema.partial() }),
+  z.object({ kind: z.literal('add-design-comment'), comment: designCommentSchema }),
+  z.object({ kind: z.literal('add-design-comment-message'), commentId: z.string().uuid(), message: designCommentMessageSchema }),
+  z.object({
+    kind: z.literal('set-design-comment-status'),
+    commentId: z.string().uuid(),
+    status: z.enum(['open', 'resolved']),
+    actor: designCollaboratorSchema,
+  }),
+  z.object({ kind: z.literal('delete-design-comment'), commentId: z.string().uuid() }),
+  z.object({ kind: z.literal('add-design-proposal'), proposal: designProposalSchema }),
+  z.object({
+    kind: z.literal('link-design-proposal'),
+    proposalId: z.string().uuid(),
+    floorId: z.string().uuid().nullable().optional(),
+    councilId: z.string().uuid().nullable().optional(),
+  }),
+  z.object({
+    kind: z.literal('decide-design-proposal'),
+    proposalId: z.string().uuid(),
+    status: z.enum(['approved', 'rejected']),
+    actor: designCollaboratorSchema,
+    note: z.string().trim().max(4_000).nullable().default(null),
+  }),
+  z.object({ kind: z.literal('delete-design-proposal'), proposalId: z.string().uuid() }),
   z.object({
     kind: z.literal('create-component-instance'),
     componentId: z.string().uuid(),
@@ -610,7 +682,28 @@ export const applyDesignOperationsSchema = z.object({
     taskId: z.string().uuid().nullable().default(null),
   }).default({ kind: 'user', id: null, name: null, taskId: null }),
   summary: z.string().trim().min(1).max(500),
+  collaborationParticipantId: z.string().trim().min(8).max(128).nullable().default(null),
 });
+
+export const designPresenceHeartbeatSchema = z.object({
+  participant: designCollaboratorSchema,
+  pageId: z.string().uuid(),
+  elementIds: z.array(z.string().uuid()).max(200).default([]),
+  cursor: z.object({
+    x: z.number().finite().min(-100_000).max(100_000),
+    y: z.number().finite().min(-100_000).max(100_000),
+  }).nullable().default(null),
+  viewport: z.object({
+    x: z.number().finite().min(-1_000_000).max(1_000_000),
+    y: z.number().finite().min(-1_000_000).max(1_000_000),
+    zoom: z.number().finite().min(0.01).max(10),
+  }).nullable().default(null),
+  followParticipantId: z.string().trim().min(1).max(128).nullable().default(null),
+}).strict();
+
+export const leaveDesignPresenceSchema = z.object({
+  participantId: z.string().trim().min(8).max(128),
+}).strict();
 
 const nullableDimensionSchema = z.preprocess(
   (value) => value === '' || value === undefined ? null : value,
@@ -682,9 +775,15 @@ export type DesignMotionKeyframeValues = z.infer<typeof designMotionKeyframeValu
 export type DesignMotionKeyframe = z.infer<typeof designMotionKeyframeSchema>;
 export type DesignMotionTrack = z.infer<typeof designMotionTrackSchema>;
 export type DesignPresentationSettings = z.infer<typeof designPresentationSettingsSchema>;
+export type DesignCollaborator = z.infer<typeof designCollaboratorSchema>;
+export type DesignCommentMessage = z.infer<typeof designCommentMessageSchema>;
+export type DesignComment = z.infer<typeof designCommentSchema>;
+export type DesignProposal = z.infer<typeof designProposalSchema>;
 export type DesignDocument = z.infer<typeof designDocumentSchema>;
 export type DesignOperation = z.infer<typeof designOperationSchema>;
 export type ApplyDesignOperationsInput = z.infer<typeof applyDesignOperationsSchema>;
+export type DesignPresenceHeartbeatInput = z.infer<typeof designPresenceHeartbeatSchema>;
+export type LeaveDesignPresenceInput = z.infer<typeof leaveDesignPresenceSchema>;
 export type ImportDesignAssetInput = z.infer<typeof importDesignAssetSchema>;
 export type ExportDesignPdfInput = z.infer<typeof exportDesignPdfSchema>;
 export type UploadDesignThumbnailInput = z.infer<typeof uploadDesignThumbnailSchema>;

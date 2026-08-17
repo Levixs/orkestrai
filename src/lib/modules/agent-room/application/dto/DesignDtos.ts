@@ -8,6 +8,7 @@ export class ApplyDesignOperationsDto {
     public readonly operations: DesignOperation[],
     public readonly actor: ApplyDesignOperationsInput['actor'],
     public readonly summary: string,
+    public readonly collaborationParticipantId: string | null = null,
   ) {}
 
   static from(workspaceId: string, nodeId: string, input: ApplyDesignOperationsInput): ApplyDesignOperationsDto {
@@ -18,6 +19,7 @@ export class ApplyDesignOperationsDto {
       input.operations,
       input.actor,
       input.summary,
+      input.collaborationParticipantId,
     );
   }
 }

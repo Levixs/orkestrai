@@ -52,6 +52,9 @@ const EXPECTED: Record<string, Expectation> = {
   design_list: { method: 'GET', path: /\/bridge\/designs$/ },
   design_read: { method: 'GET', path: /\/bridge\/designs\/n1$/ },
   design_apply_operations: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_comment: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_propose: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_decide_proposal: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   design_import_code: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/import$/, schema: bridgeImportDesignMarkupSchema },
   design_generate_code_preview: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/preview$/, schema: previewDesignDeliverySchema },
   design_generate_code_apply: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/apply$/, schema: bridgeApplyDesignDeliverySchema },
@@ -97,6 +100,20 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
         order: 0,
       },
     }],
+  },
+  design_comment: {
+    nodeId: 'n1', baseRevision: 1,
+    pageId: '00000000-0000-7000-8000-000000000001',
+    elementId: '00000000-0000-7000-8000-000000000002',
+    body: 'Review this layer.',
+  },
+  design_propose: {
+    nodeId: 'n1', baseRevision: 2, title: 'Increase emphasis', description: 'Refine hierarchy.',
+    operations: [{ kind: 'update', elementId: '00000000-0000-7000-8000-000000000002', changes: { opacity: 0.9 } }],
+  },
+  design_decide_proposal: {
+    nodeId: 'n1', baseRevision: 3,
+    proposalId: '00000000-0000-7000-8000-000000000003', status: 'approved', note: 'Reviewed.',
   },
   design_import_code: {
     nodeId: 'n1',

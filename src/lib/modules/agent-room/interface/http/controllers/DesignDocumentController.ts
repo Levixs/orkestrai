@@ -7,6 +7,7 @@ import {
 import { ApplyDesignOperationsRequest, ImportDesignAssetRequest, UploadDesignThumbnailRequest } from '$lib/modules/agent-room/interface/http/requests/DesignRequests.js';
 import { ExportDesignPdfRequest } from '$lib/modules/agent-room/interface/http/requests/DesignRequests.js';
 import { designExportService } from '$lib/modules/agent-room/application/services/DesignExportService.js';
+import { DesignLeaseConflictError } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
 
 export class DesignDocumentController extends Controller {
   async show(event: any) {
@@ -24,6 +25,9 @@ export class DesignDocumentController extends Controller {
     } catch (error) {
       if (error instanceof DesignRevisionConflictError) {
         return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      }
+      if (error instanceof DesignLeaseConflictError) {
+        return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
       }
       return this.json({ error: error instanceof Error ? error.message : 'Failed to update design document.' }, 400);
     }
