@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { Gauge, RefreshCw, Route, TriangleAlert, X } from '@lucide/svelte';
+  import { Bot, ExternalLink, Gauge, RefreshCw, Route, TriangleAlert, X } from '@lucide/svelte';
   import * as Select from '$lib/components/ui/select';
   import { Switch } from '$lib/components/ui/switch';
   import NodeShell from './NodeShell.svelte';
@@ -15,6 +15,7 @@
     type ProviderUsageStatus,
   } from '$lib/modules/agent-room/domain/usage-routing.js';
   import type { UsageWindow, UsageWindowKind } from '$lib/modules/agent-room/application/services/UsageService.js';
+  import { ROUTABLE_USAGE_PROVIDERS, usageProviderDefinition, type UsageDiagnostic } from '$lib/modules/agent-room/domain/usage-providers.js';
   import type { UsageNodePayload } from '$lib/modules/agent-room/domain/types.js';
   import { refreshUsage, retainUsageFeed, usageStore } from '../usage-store.svelte.js';
 
@@ -32,11 +33,7 @@
 
   let { id, data, selected } = $props<NodeProps & { data: UsageNodeData }>();
 
-  const PROVIDERS = [
-    { id: 'claude', name: 'Claude', icon: '/images/claude.svg' },
-    { id: 'codex', name: 'Codex', icon: '/images/codex.svg' },
-    { id: 'kimi', name: 'Kimi', icon: '/images/kimi.svg' },
-  ];
+  const PROVIDERS = ROUTABLE_USAGE_PROVIDERS;
 
   const usages = $derived(usageStore.values);
   const loading = $derived(usageStore.loading);
@@ -65,7 +62,14 @@
   }
 
   function providerName(id: string): string {
-    return PROVIDERS.find((provider) => provider.id === id)?.name ?? id;
+    return usageProviderDefinition(id).name;
+  }
+
+  function diagnosticText(diagnostic: UsageDiagnostic): string {
+    if (diagnostic === 'provider_cli_only') return m['usage.diagnostic_cli_only']();
+    if (diagnostic === 'admin_api_required') return m['usage.diagnostic_admin_api']();
+    if (diagnostic === 'enterprise_api_required') return m['usage.diagnostic_enterprise_api']();
+    return m['usage.diagnostic_model_provider']();
   }
 
   function statusLabel(status: ProviderUsageStatus): string {
@@ -169,16 +173,21 @@
       {/if}
 
       {#each report.providers as provider (provider.provider)}
-        {@const meta = PROVIDERS.find((item) => item.id === provider.provider)}
+        {@const meta = usageProviderDefinition(provider.provider)}
         <section class="provider-row">
           <div class="provider-head">
-            {#if meta}<img src={meta.icon} width="18" height="18" alt="" />{/if}
-            <strong>{meta?.name ?? provider.provider}</strong>
+            {#if meta.icon}<img src={meta.icon} width="18" height="18" alt="" />{:else}<Bot size={18} aria-hidden="true" />{/if}
+            <strong>{meta.name}</strong>
             {#if provider.plan}<span class="plan">{provider.plan}</span>{/if}
             <span class="status" style:color={statusColor(provider.status)}>{statusLabel(provider.status)}</span>
           </div>
           {#if provider.error}
             <p class="provider-error"><TriangleAlert size={11} aria-hidden="true" /> {provider.error}</p>
+          {:else if provider.diagnostic}
+            <p class="provider-error diagnostic">
+              <span>{diagnosticText(provider.diagnostic)}</span>
+              {#if provider.helpUrl}<a href={provider.helpUrl} target="_blank" rel="noreferrer" aria-label={m['usage.official_docs']()}><ExternalLink size={11} /></a>{/if}
+            </p>
           {:else}
             <div class="windows">
               {#each provider.windows as window (window.kind)}
@@ -486,6 +495,18 @@
     border-left-color: var(--app-warning);
     background: color-mix(in srgb, var(--app-warning) 9%, transparent);
     color: var(--app-warning);
+  }
+
+  .provider-error.diagnostic {
+    align-items: flex-start;
+    justify-content: space-between;
+    color: var(--app-text-muted);
+  }
+
+  .provider-error.diagnostic a {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--app-accent);
   }
 
   footer {

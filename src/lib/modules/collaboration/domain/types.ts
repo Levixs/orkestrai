@@ -132,10 +132,11 @@ export type SharedWorkspaceDto = {
     }>;
   }>;
   usage: Array<{
-    provider: 'claude' | 'codex' | 'kimi';
+    provider: string;
     plan: string | null;
     windows: Array<{ kind: '5h' | 'weekly' | 'monthly'; usedPercent: number; resetsAt: string | null }>;
     available: boolean;
+    diagnostic?: 'provider_cli_only' | 'admin_api_required' | 'enterprise_api_required' | 'model_provider_managed' | null;
     fetchedAt: string;
   }>;
   activity: Array<{

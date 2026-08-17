@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
+import { USAGE_PROVIDERS, usageProviderDefinition, type UsageDiagnostic } from '$lib/modules/agent-room/domain/usage-providers.js';
 
 const FETCH_TIMEOUT_MS = 10_000;
 /** OAuth do kimi-code (client publico da CLI). */
@@ -21,10 +22,12 @@ export type UsageWindow = {
 };
 
 export type ProviderUsage = {
-  provider: 'claude' | 'codex' | 'kimi';
+  provider: string;
   plan: string | null;
   windows: UsageWindow[];
   error: string | null;
+  diagnostic?: UsageDiagnostic | null;
+  helpUrl?: string | null;
   fetchedAt: string;
 };
 
@@ -70,12 +73,12 @@ export class UsageService {
   ) {}
 
   async getAll(forceRefresh = false): Promise<ProviderUsage[]> {
-    return Promise.all(['claude', 'codex', 'kimi'].map((provider) => this.getUsage(provider, forceRefresh)));
+    return Promise.all(USAGE_PROVIDERS.map((provider) => this.getUsage(provider.id, forceRefresh)));
   }
 
   cached(): ProviderUsage[] {
-    return ['claude', 'codex', 'kimi']
-      .map((provider) => this.cache.get(provider)?.usage ?? null)
+    return USAGE_PROVIDERS
+      .map((provider) => this.cache.get(provider.id)?.usage ?? null)
       .filter((usage): usage is ProviderUsage => Boolean(usage));
   }
 
@@ -85,10 +88,24 @@ export class UsageService {
 
     let usage: ProviderUsage;
     try {
-      if (provider === 'claude') usage = await this.claudeUsage();
-      else if (provider === 'codex') usage = await this.codexUsage();
-      else if (provider === 'kimi') usage = await this.kimiUsage();
-      else usage = this.failure(provider, 'Provider desconhecido.');
+      const definition = usageProviderDefinition(provider);
+      const collectors = {
+        claude: () => this.claudeUsage(),
+        codex: () => this.codexUsage(),
+        kimi: () => this.kimiUsage(),
+      } satisfies Record<NonNullable<typeof definition.collector>, () => Promise<ProviderUsage>>;
+      if (definition.collector) usage = await collectors[definition.collector]();
+      else {
+        usage = {
+          provider,
+          plan: null,
+          windows: [],
+          error: definition.diagnostic ? null : 'Provider desconhecido.',
+          diagnostic: definition.diagnostic,
+          helpUrl: definition.helpUrl,
+          fetchedAt: new Date().toISOString(),
+        };
+      }
     } catch (error) {
       usage = this.failure(provider, error instanceof Error ? error.message : 'Falha ao consultar uso.');
     }
@@ -97,7 +114,7 @@ export class UsageService {
   }
 
   private failure(provider: string, error: string): ProviderUsage {
-    return { provider: provider as ProviderUsage['provider'], plan: null, windows: [], error, fetchedAt: new Date().toISOString() };
+    return { provider, plan: null, windows: [], error, diagnostic: null, helpUrl: usageProviderDefinition(provider).helpUrl, fetchedAt: new Date().toISOString() };
   }
 
   // -- Claude (OAuth do Claude Code; token no arquivo ou no Keychain do macOS) --
@@ -130,7 +147,7 @@ export class UsageService {
     const sevenDay = data?.seven_day as { utilization?: number; resets_at?: string } | null;
     if (fiveHour) windows.push(windowOf('5h', Number(fiveHour.utilization ?? 0), fiveHour.resets_at ?? null));
     if (sevenDay) windows.push(windowOf('weekly', Number(sevenDay.utilization ?? 0), sevenDay.resets_at ?? null));
-    return { provider: 'claude', plan: null, windows, error: null, fetchedAt: new Date().toISOString() };
+    return { provider: 'claude', plan: null, windows, error: null, diagnostic: null, helpUrl: null, fetchedAt: new Date().toISOString() };
   }
 
   // -- Codex (ChatGPT backend; auth.json do codex CLI) --
@@ -176,6 +193,8 @@ export class UsageService {
       plan: plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : null,
       windows,
       error: null,
+      diagnostic: null,
+      helpUrl: null,
       fetchedAt: new Date().toISOString(),
     };
   }
@@ -260,7 +279,7 @@ export class UsageService {
 
     const level = (data?.user as { membership?: { level?: string } } | undefined)?.membership?.level ?? null;
     const plan = level ? level.replace(/^LEVEL_/, '').charAt(0).toUpperCase() + level.replace(/^LEVEL_/, '').slice(1).toLowerCase() : null;
-    return { provider: 'kimi', plan, windows, error: null, fetchedAt: new Date().toISOString() };
+    return { provider: 'kimi', plan, windows, error: null, diagnostic: null, helpUrl: null, fetchedAt: new Date().toISOString() };
   }
 
   private async fetchJson(url: string, headers: Record<string, string>): Promise<Record<string, unknown>> {

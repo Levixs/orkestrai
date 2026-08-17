@@ -67,7 +67,7 @@ export function fitSharedWorkspaceSnapshot(snapshot: SharedWorkspaceDto): Shared
         comments: design.comments.slice(0, 80).map((comment) => ({ ...comment, body: comment.body.slice(0, descriptionLimit) })),
         proposals: design.proposals.slice(0, 80).map((proposal) => ({ ...proposal, description: proposal.description.slice(0, descriptionLimit) })),
       })),
-      usage: snapshot.usage.slice(0, 3),
+      usage: snapshot.usage.slice(0, 8),
       activity: snapshot.activity.slice(0, 40),
     };
   };
@@ -289,6 +289,7 @@ export class SharedWorkspaceQuery {
           resetsAt: window.resetsAt,
         })),
         available: !usage.error && usage.windows.length > 0,
+        diagnostic: usage.diagnostic ?? null,
         fetchedAt: usage.fetchedAt,
       })),
       activity: [
