@@ -321,6 +321,12 @@ async function runAction(action: TourAction): Promise<void> {
         await goto(`/canvas?workspace=${encodeURIComponent(String(workspaceId))}&node=${encodeURIComponent(nodeId)}&design=1`);
         break;
       }
+      case 'openDesignExploration': {
+        window.dispatchEvent(new CustomEvent('orkestrai:open-design-exploration', {
+          detail: { workspaceId },
+        }));
+        break;
+      }
       case 'openPage': {
         // Placeholder {workspace} resolve para o workspace do tour.
         await goto(action.path.replaceAll('{workspace}', String(workspaceId)));

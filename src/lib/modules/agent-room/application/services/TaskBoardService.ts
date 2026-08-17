@@ -82,10 +82,15 @@ function normalizeAttachments(attachments: WorkspaceAttachment[] | undefined): W
   return [...unique.values()].slice(0, MAX_WORKSPACE_ATTACHMENTS);
 }
 
-function taskBrief(task: AgentBoardTask): string {
+async function taskBrief(task: AgentBoardTask): Promise<string> {
   const description = String(task.getAttribute('description') ?? '').trim();
   const images = imagesOf(task);
   const attachments = attachmentsOf(task);
+  const noteId = task.getAttribute('note_node_id') as string | null;
+  const note = noteId ? await workspaceRepository.getNode(noteId) : null;
+  const noteContent = note?.type === 'note'
+    ? String((note.payload as { content?: string }).content ?? '').trim()
+    : '';
   const imageList = images.length ? images.map((image) => `- ${image}`).join('\n') : '(nenhuma imagem anexada)';
   const attachmentList = attachments.length
     ? attachments.map((attachment) => `- ${attachment.name}: ${attachment.path ?? attachment.url}`).join('\n')
@@ -95,6 +100,9 @@ function taskBrief(task: AgentBoardTask): string {
     `Descrição:\n${description || '(sem descrição)'}`,
     `Imagens de referência:\n${imageList}`,
     `Arquivos e links:\n${attachmentList}`,
+    noteId
+      ? `Spec vinculada (${note?.title ?? 'sem título'}, id ${noteId}):\n${noteContent || '(nota sem conteúdo)'}`
+      : 'Spec vinculada: (nenhuma nota)',
   ].join('\n');
 }
 
@@ -511,7 +519,7 @@ export class TaskBoardService {
       : `SEM responsável. Distribua: orkestrai task assign ${taskId} "<Agente>" (ou coordene como achar melhor)`;
     await ptySessionManager.writeWithSubmit(
       session.id,
-      `[nova tarefa no quadro #${taskId.slice(0, 8)}]\n${taskBrief(task)}\n${hint}`,
+      `[nova tarefa no quadro #${taskId.slice(0, 8)}]\n${await taskBrief(task)}\n${hint}`,
     );
   }
 
@@ -632,7 +640,7 @@ export class TaskBoardService {
     const session = sessionId ? ptySessionManager.get(sessionId) : null;
     if (!session || session.exited) return;
     // Texto e Enter separados — ver writeWithSubmit (composer do Codex).
-    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}]\n${taskBrief(task)}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
+    const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}]\n${await taskBrief(task)}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
     await ptySessionManager.writeWithSubmit(session.id, prompt);
     await controlCenterService.recordActivity({
       workspaceId,

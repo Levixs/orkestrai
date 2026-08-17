@@ -17,6 +17,7 @@ export type TourAction =
   | { kind: 'openCouncil' }
   | { kind: 'openSharing' }
   | { kind: 'openDesign'; title: string }
+  | { kind: 'openDesignExploration' }
   | { kind: 'openPage'; path: string };
 
 export type TourCheck =

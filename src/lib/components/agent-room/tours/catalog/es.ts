@@ -413,6 +413,37 @@ export const TOURS_ES: Tour[] = [
   },
 
   {
+    id: 'ui-exploration',
+    icon: 'PanelsTopLeft',
+    title: 'Explora tres direcciones completas de UI',
+    tagline: 'Compara diseño editable, tokens, componentes, prototipo y código antes de elegir.',
+    steps: [
+      {
+        id: 'open-exploration',
+        title: 'Define el resultado una sola vez',
+        body: 'Abre la exploración guiada de UI desde el menú Diseño. Describe objetivo, público, plataforma, stack, restricciones, referencias y modos visuales. Elige trabajo manual o delega la primera etapa al líder activo del workspace.',
+        action: { kind: 'openDesignExploration' },
+        check: { kind: 'nodeExists', nodeType: 'group' },
+      },
+      {
+        id: 'inspect-package',
+        title: 'Trabaja desde un paquete trazable',
+        body: 'Orkestrai crea una spec vinculada, cinco etapas en Kanban y tres documentos Diseño nativos: Claridad, Expresiva y Eficiente. Cada tarea enviada incluye la spec completa, referencias, imágenes y adjuntos.',
+        check: { kind: 'nodeExists', nodeType: 'design' },
+      },
+      {
+        id: 'compare-directions',
+        title: 'Compara alternativas completas',
+        body: 'Cada dirección debe contener estados responsivos, tokens tipados, componentes reutilizables, un prototipo navegable, evidencia de accesibilidad y una vista previa de código en el stack elegido. Compara UX, marca, esfuerzo y riesgo técnico.',
+      },
+      {
+        id: 'approve-deliver',
+        title: 'Aprueba antes de implementar',
+        body: 'Una persona aprueba explícitamente una dirección o combinación declarada. Solo entonces aplica el código revisado, valida en un Portal o dispositivo móvil, ejecuta pruebas y registra el resultado vinculado a Git en Review Center.',
+      },
+    ],
+  },
+  {
     id: 'design-figma',
     icon: 'Palette',
     title: 'Diseña junto con tu equipo de IA',

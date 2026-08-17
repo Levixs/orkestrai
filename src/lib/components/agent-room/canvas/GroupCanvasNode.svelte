@@ -7,7 +7,7 @@
 
   export type GroupNodeData = {
     title: string;
-    payload: { members?: string[] };
+    payload: { members?: string[]; workflowKind?: string; designNodeIds?: string[]; taskIds?: string[] };
     onRename: (id: string, title: string) => void;
     onUngroup: (id: string) => void;
   };
@@ -35,78 +35,28 @@
   }
 </script>
 
-<div class="canvas-group" class:selected>
-  <header class="group-header" ondblclick={startRename} role="presentation">
-    <Group size={12} />
+<div class={selected
+  ? 'relative size-full rounded-lg border-2 border-dashed border-[var(--app-secondary)] bg-[color-mix(in_srgb,var(--app-secondary)_7%,transparent)]'
+  : 'relative size-full rounded-lg border-2 border-dashed border-[color-mix(in_srgb,var(--app-secondary)_52%,transparent)] bg-[color-mix(in_srgb,var(--app-secondary)_7%,transparent)]'}>
+  <header class="absolute -top-3.5 left-3.5 inline-flex max-w-[calc(100%-28px)] cursor-grab select-none items-center gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--app-text-soft)] shadow-sm" ondblclick={startRename} role="presentation">
+    <Group size={12} class="shrink-0" aria-hidden="true" />
     {#if editing}
       <!-- svelte-ignore a11y_autofocus -->
       <input
-        class="group-rename nodrag"
+        class="nodrag w-[min(220px,45vw)] border-0 bg-transparent text-[11px] text-inherit outline-none"
         bind:value={draft}
         onkeydown={handleKeydown}
         onblur={commitRename}
         autofocus
       />
     {:else}
-      <span class="group-title">{data.title}</span>
+      <span class="min-w-0 truncate">{data.title}</span>
+      {#if data.payload.workflowKind === 'design-exploration'}
+        <span class="shrink-0 whitespace-nowrap border-l border-[var(--app-border)] pl-1.5 text-[9px] font-medium text-[var(--app-text-muted)]">{m['design.exploration_group_summary']({ directions: String(data.payload.designNodeIds?.length ?? 3), tasks: String(data.payload.taskIds?.length ?? 5) })}</span>
+      {/if}
     {/if}
-    <HeaderIconButton label={m['group.ungroup']()} class="group-ungroup nodrag" side="left" onclick={() => data.onUngroup(id)}>
+    <HeaderIconButton label={m['group.ungroup']()} class="nodrag inline-flex size-5 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[var(--app-text-muted)] hover:text-[var(--app-danger)] focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]/45 focus-visible:outline-none" side="left" onclick={() => data.onUngroup(id)}>
       <Ungroup size={12} />
     </HeaderIconButton>
   </header>
 </div>
-
-<style>
-  .canvas-group {
-    width: 100%;
-    height: 100%;
-    border: 1.5px dashed color-mix(in srgb, var(--app-secondary) 52%, transparent);
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--app-secondary) 7%, transparent);
-    position: relative;
-  }
-
-  .canvas-group.selected {
-    border-color: var(--app-secondary);
-  }
-
-  .group-header {
-    position: absolute;
-    top: -14px;
-    left: 14px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: var(--app-surface-raised);
-    border: 1px solid var(--app-border);
-    color: var(--app-text-soft);
-    font-size: 11px;
-    font-weight: 500;
-    cursor: grab;
-    user-select: none;
-  }
-
-  .group-rename {
-    border: none;
-    outline: none;
-    background: transparent;
-    color: inherit;
-    font-size: 11px;
-    width: 120px;
-  }
-
-  :global(.group-ungroup) {
-    border: none;
-    background: transparent;
-    color: var(--app-text-muted);
-    cursor: pointer;
-    display: inline-flex;
-    padding: 0;
-  }
-
-  :global(.group-ungroup):hover {
-    color: var(--app-danger);
-  }
-</style>

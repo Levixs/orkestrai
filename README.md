@@ -101,6 +101,12 @@ Download the latest installers from
   can edit the exact same revision through typed Orkestrai tools while the UI
   updates live. Documents, assets, thumbnails, and history stay under
   `.orkestrai/designs` in the workspace.
+- **Guided UI exploration:** start from one objective and create a linked spec,
+  five Kanban stages, and three native directions: Clarity, Expressive, and
+  Efficient. Each alternative must include responsive states, typed tokens,
+  reusable components, a navigable prototype, quality evidence, and framework
+  code before a human approval gate. Work manually or delegate the first stage
+  to a live workspace leader without losing task, note, Design, or Git context.
 - **Live Design collaboration:** see human and agent presence, cursors, and
   selections; follow another participant; discuss a page or layer in anchored
   comment threads; and review visual proposals as structural diffs before an

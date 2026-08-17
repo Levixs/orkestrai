@@ -16,6 +16,38 @@ type NodeLike = Pick<Node, 'id' | 'position'> & {
 
 type Rect = { cx: number; cy: number; halfW: number; halfH: number; x: number; y: number };
 
+const nodeIndexCache = new WeakMap<object, ReadonlyMap<string, unknown>>();
+const edgeIndexCache = new WeakMap<object, ReadonlyMap<string, readonly unknown[]>>();
+
+/** Shared indexes prevent every rendered edge from scanning the full canvas. */
+export function nodeIndexFor<T extends { id: string }>(nodes: readonly T[]): ReadonlyMap<string, T> {
+  const cached = nodeIndexCache.get(nodes) as ReadonlyMap<string, T> | undefined;
+  if (cached) return cached;
+  const index = new Map(nodes.map((node) => [node.id, node]));
+  nodeIndexCache.set(nodes, index);
+  return index;
+}
+
+export function connectedEdgesFor<T extends { source: string; target: string }>(nodeId: string, edges: readonly T[]): readonly T[] {
+  let index = edgeIndexCache.get(edges) as ReadonlyMap<string, readonly T[]> | undefined;
+  if (!index) {
+    const mutable = new Map<string, T[]>();
+    for (const edge of edges) {
+      const sourceEdges = mutable.get(edge.source) ?? [];
+      sourceEdges.push(edge);
+      mutable.set(edge.source, sourceEdges);
+      if (edge.target !== edge.source) {
+        const targetEdges = mutable.get(edge.target) ?? [];
+        targetEdges.push(edge);
+        mutable.set(edge.target, targetEdges);
+      }
+    }
+    index = mutable;
+    edgeIndexCache.set(edges, index as ReadonlyMap<string, readonly unknown[]>);
+  }
+  return index.get(nodeId) ?? [];
+}
+
 function rectOf(node: NodeLike): Rect {
   const width = node.measured?.width ?? node.width ?? 320;
   const height = node.measured?.height ?? node.height ?? 200;
@@ -30,10 +62,11 @@ function rectOf(node: NodeLike): Rect {
 }
 
 /** Ancora absoluta (coordenadas de flow) do handle flutuante, ou null sem conexoes. */
-export function floatingAnchorFor(nodeId: string, nodes: NodeLike[], edges: Pick<Edge, 'source' | 'target'>[]): { x: number; y: number } | null {
-  const links = edges.filter((edge) => edge.source === nodeId || edge.target === nodeId);
+export function floatingAnchorFor(nodeId: string, nodes: readonly NodeLike[], edges: readonly Pick<Edge, 'source' | 'target'>[]): { x: number; y: number } | null {
+  const links = connectedEdgesFor(nodeId, edges);
   if (!links.length) return null;
-  const self = nodes.find((node) => node.id === nodeId);
+  const nodesById = nodeIndexFor(nodes);
+  const self = nodesById.get(nodeId);
   if (!self) return null;
   const rect = rectOf(self);
 
@@ -41,7 +74,7 @@ export function floatingAnchorFor(nodeId: string, nodes: NodeLike[], edges: Pick
   let bestDist = Infinity;
   for (const link of links) {
     const otherId = link.source === nodeId ? link.target : link.source;
-    const other = nodes.find((node) => node.id === otherId);
+    const other = nodesById.get(otherId);
     if (!other) continue;
     const otherRect = rectOf(other);
     const dx = otherRect.cx - rect.cx;

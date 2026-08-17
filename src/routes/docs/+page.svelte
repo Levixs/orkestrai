@@ -63,6 +63,7 @@
     'approval-pipeline': Workflow,
     'chained-flows': Workflow,
     'design-figma': Palette,
+    'ui-exploration': Palette,
     'mcp-tools': Cable,
     'quota-aware-delegation': Gauge,
     'focused-workspace-view': PanelLeftOpen,

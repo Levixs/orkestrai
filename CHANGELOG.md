@@ -9,6 +9,19 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added a guided three-direction UI exploration to the Canvas Design menu. One
+  transaction creates a linked specification, five traceable Kanban stages,
+  and native Clarity, Expressive, and Efficient Design documents. Manual work
+  or delegation to a live leader shares one required contract for responsive
+  states, typed tokens, reusable components, prototype, quality evidence, and
+  framework code, with explicit human approval before implementation. Task
+  dispatch now includes the complete linked note alongside descriptions,
+  images, files, and links.
+- Indexed Canvas nodes and edge adjacency once per immutable graph snapshot so
+  floating handles and connection geometry no longer scan the complete graph
+  for every rendered edge in dense workspaces. Canvas graph updates now replace
+  raw immutable arrays and refresh nodes, edges, and floors without rechecking
+  every provider, keeping agent-driven changes and new UI explorations responsive.
 - Added application-wide audio device controls under Settings → Voice. Users
   can select and test the microphone used by every local dictation surface and
   the speaker used by previews and spoken replies. Device removal falls back

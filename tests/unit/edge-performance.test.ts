@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { edgeIntersectsViewport, edgePerformanceProfile, staticEdgePath } from '$lib/components/agent-room/canvas/edge-performance.js';
+import { connectedEdgesFor, nodeIndexFor } from '$lib/components/agent-room/canvas/floating-anchor.js';
 
 describe('adaptive canvas edge performance', () => {
   it('keeps full rope physics for ordinary workspaces', () => {
@@ -32,5 +33,19 @@ describe('adaptive canvas edge performance', () => {
     expect(edgeIntersectsViewport(anchors, { x: -2_000, y: -2_000, zoom: 1 }, 800, 600)).toBe(false);
     expect(staticEdgePath(anchors, 'curve').path).toContain(' Q ');
     expect(staticEdgePath(anchors, 'line').path).toContain(' L ');
+  });
+
+  it('indexes nodes and adjacency once per immutable canvas snapshot', () => {
+    const nodes = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    const edges = [
+      { source: 'a', target: 'b' },
+      { source: 'c', target: 'a' },
+      { source: 'b', target: 'c' },
+    ];
+    expect(nodeIndexFor(nodes)).toBe(nodeIndexFor(nodes));
+    expect(nodeIndexFor(nodes).get('c')).toBe(nodes[2]);
+    expect(connectedEdgesFor('a', edges)).toEqual([edges[0], edges[1]]);
+    expect(connectedEdgesFor('a', edges)).toBe(connectedEdgesFor('a', edges));
+    expect(connectedEdgesFor('missing', edges)).toEqual([]);
   });
 });

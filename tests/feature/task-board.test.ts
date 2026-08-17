@@ -124,6 +124,30 @@ describe('TaskBoardService', () => {
     ptySessionManager.kill(session.id);
   });
 
+  it('inclui o conteúdo integral da nota vinculada no despacho', async () => {
+    const { workspace, terminal, session } = await createWorkspaceWithTerminal();
+    const note = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'note',
+      title: 'Spec de checkout',
+      payload: { content: 'Critério obrigatório: preservar o cálculo de frete e validar contraste WCAG.' },
+    });
+    const task = await taskBoardService.create(workspace.id, {
+      title: 'Implementar checkout',
+      description: 'Aplicar a direção aprovada.',
+      noteId: note.id,
+      assigneeNodeId: terminal.id,
+    });
+    expect(task.noteId).toBe(note.id);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const attached = ptySessionManager.attach(session.id, () => {});
+    attached.detach();
+    expect(attached.scrollback).toContain('Spec de checkout');
+    expect(attached.scrollback).toContain('preservar o cálculo de frete');
+    expect(attached.scrollback).toContain('validar contraste WCAG');
+    ptySessionManager.kill(session.id);
+  });
+
   it('avisa o lider quando outro agente conclui uma tarefa', async () => {
     const { workspace, leader, leaderSession } = await createWorkspaceWithLeader();
     const workerSession = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });

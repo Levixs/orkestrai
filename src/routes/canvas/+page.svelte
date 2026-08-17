@@ -64,6 +64,8 @@
   import DeviceCanvasNode from '$lib/components/agent-room/canvas/DeviceCanvasNode.svelte';
   import DesignCanvasNode from '$lib/components/agent-room/canvas/DesignCanvasNode.svelte';
   import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
+  import DesignExplorationDialog from '$lib/components/agent-room/canvas/DesignExplorationDialog.svelte';
+  import DesignToolbarMenu from '$lib/components/agent-room/canvas/DesignToolbarMenu.svelte';
   import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
   import PresetLibraryPanel from '$lib/components/agent-room/canvas/PresetLibraryPanel.svelte';
   import AgentToolbarMenu from '$lib/components/agent-room/canvas/AgentToolbarMenu.svelte';
@@ -95,6 +97,7 @@
     TerminalNodePayload,
     Workspace,
   } from '$lib/modules/agent-room/domain/types.js';
+  import type { DesignExplorationData } from '$lib/modules/agent-room/interface/http/resources/DesignExplorationResource.js';
   import { terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/domain/runtime.js';
 
   const nodeTypes = {
@@ -133,8 +136,8 @@
   let activeWorkspace = $state<Workspace | null>(null);
   let providers = $state<AgentProviderInfo[]>([]);
   const canChooseAlternateRuntime = typeof navigator !== 'undefined' && navigator.platform.startsWith('Win');
-  let nodes = $state<Node[]>([]);
-  let edges = $state<Edge[]>([]);
+  let nodes = $state.raw<Node[]>([]);
+  let edges = $state.raw<Edge[]>([]);
   let errorMessage = $state('');
   let designModeNodeId = $state<string | null>(null);
   let designRevisions = $state<Record<string, number>>({});
@@ -147,6 +150,7 @@
   let requestedTourId = $state<string | null>(null);
   let councilOpen = $state(false);
   let councilSource = $state<{ taskId?: string; taskTitle?: string; taskDescription?: string | null; leaderNodeId?: string } | null>(null);
+  let designExplorationOpen = $state(false);
   let sharingOpen = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
@@ -162,6 +166,17 @@
     getViewport: () => { x: number; y: number; zoom: number };
   } | null>(null);
   let flowWrapper: HTMLElement;
+
+  const explorationLeader = $derived.by(() => {
+    const node = nodes.find((item) => item.type === 'terminal' && Boolean((item.data?.payload as { maestro?: boolean } | undefined)?.maestro));
+    if (!node) return null;
+    const payload = (node.data?.payload ?? {}) as { provider?: string };
+    return {
+      id: node.id,
+      title: String(node.data?.title ?? m['canvas.fallback_terminal']()),
+      provider: providers.find((provider) => provider.id === payload.provider)?.displayName ?? payload.provider ?? '',
+    };
+  });
 
   // Undo/redo: snapshots leves de nodes+edges antes de cada mutacao estrutural.
   const undoStack: Array<{ nodes: Node[]; edges: Edge[] }> = [];
@@ -462,6 +477,14 @@
       }
       sharingOpen = true;
     };
+    const openDesignExplorationListener = (event: Event) => {
+      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      if (workspaceId && workspaceId !== activeWorkspace?.id) {
+        void selectWorkspace(workspaceId).then(() => (designExplorationOpen = true));
+        return;
+      }
+      designExplorationOpen = true;
+    };
     const openFileListener = (event: Event) => {
       const detail = (event as CustomEvent<{ workspaceId?: string; path?: string }>).detail;
       if (detail?.workspaceId && detail.path) void openFileFromSearch(detail.workspaceId, detail.path);
@@ -469,6 +492,7 @@
     window.addEventListener('orkestrai:menu-action', listener);
     window.addEventListener('orkestrai:open-council', openCouncilListener);
     window.addEventListener('orkestrai:open-sharing', openSharingListener);
+    window.addEventListener('orkestrai:open-design-exploration', openDesignExplorationListener);
     window.addEventListener('orkestrai:open-file', openFileListener);
     const pending = sessionStorage.getItem('orkestrai.menu-action');
     if (pending) {
@@ -479,6 +503,7 @@
       window.removeEventListener('orkestrai:menu-action', listener);
       window.removeEventListener('orkestrai:open-council', openCouncilListener);
       window.removeEventListener('orkestrai:open-sharing', openSharingListener);
+      window.removeEventListener('orkestrai:open-design-exploration', openDesignExplorationListener);
       window.removeEventListener('orkestrai:open-file', openFileListener);
     };
   });
@@ -557,6 +582,25 @@
   // servidor avisa via WS e a pagina recarrega nos/edges/andares do workspace
   // ativo — sem precisar trocar de andar ou recarregar a pagina.
   let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
+  let graphRefreshRequestId = 0;
+
+  async function refreshCanvasGraph(workspaceId: string): Promise<boolean> {
+    const requestId = ++graphRefreshRequestId;
+    const [canvasNodes, canvasEdges, floorList] = await Promise.all([
+      api<CanvasNode[]>(`/api/agent-room/workspaces/${workspaceId}/nodes`),
+      api<CanvasEdge[]>(`/api/agent-room/workspaces/${workspaceId}/edges`),
+      api<Floor[]>(`/api/agent-room/workspaces/${workspaceId}/floors`),
+    ]);
+    if (requestId !== graphRefreshRequestId || activeWorkspace?.id !== workspaceId) return false;
+    floors = floorList;
+    nodes = canvasNodes
+      .filter((node) => (node.floorId ?? null) === visibleFloorId)
+      .map(toFlowNode);
+    const visibleIds = new Set(nodes.map((node) => node.id));
+    edges = canvasEdges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+    writeWorkspaceViewCache({ workspace: activeWorkspace, nodes: canvasNodes, edges: canvasEdges, floors: floorList });
+    return true;
+  }
 
   async function refreshActivity(): Promise<void> {
     const summaries = await api<Record<string, { agents: Array<{ sessionAlive: boolean }> }>>('/api/agent-room/control-center').catch(() => ({}));
@@ -577,7 +621,7 @@
           if (refreshDebounce) clearTimeout(refreshDebounce);
           refreshDebounce = setTimeout(() => {
             refreshDebounce = null;
-            if (activeWorkspace) selectWorkspace(activeWorkspace.id, { force: true });
+            if (activeWorkspace) void refreshCanvasGraph(activeWorkspace.id);
           }, 250);
         }
         if (message.type === 'designChanged' && message.workspaceId === activeWorkspace?.id && message.nodeId) {
@@ -1318,6 +1362,14 @@
     designModeNodeId = node.id;
   }
 
+  async function handleDesignExplorationCreated(result: DesignExplorationData) {
+    if (!activeWorkspace) return;
+    const refreshed = await refreshCanvasGraph(activeWorkspace.id);
+    if (!refreshed) return;
+    await tick();
+    jumpToNode(result.groupId, 0.62);
+  }
+
   async function addDiff(rect?: { x: number; y: number; width: number; height: number }) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1486,6 +1538,7 @@
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
     { id: 'design', label: m['tool.design'](), hint: m['canvas.hint_action'](), run: () => void addDesignNode() },
+    { id: 'design-exploration', label: m['design.exploration_menu_item'](), hint: m['canvas.hint_action'](), run: () => (designExplorationOpen = true) },
     { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
     { id: 'share-workspace', label: m['collaboration.share_workspace'](), hint: m['canvas.hint_action'](), run: () => (sharingOpen = true) },
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
@@ -1957,9 +2010,11 @@
             <ToolbarButton label={m['tool.image']()} active={drawTool === 'image'} onclick={() => toggleDrawTool('image')}>
               <ImageIcon size={15} class="tool-icon-svg" /> {m['node.image']()}
             </ToolbarButton>
-            <ToolbarButton label={m['tool.design']()} active={drawTool === 'design'} onclick={() => toggleDrawTool('design')}>
-              <Palette size={15} class="tool-icon-svg" /> {m['design.title']()}
-            </ToolbarButton>
+            <DesignToolbarMenu
+              active={drawTool === 'design' || designExplorationOpen}
+              onBlank={() => toggleDrawTool('design')}
+              onExploration={() => (designExplorationOpen = true)}
+            />
             <ToolbarButton label={m['tool.files']()} active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
               <FolderTree size={15} class="tool-icon-svg" /> {m['canvas.default_files']()}
             </ToolbarButton>
@@ -2079,6 +2134,15 @@
       }}
       onCancel={() => (pendingAgentCreation = null)}
     />
+    {#if activeWorkspace}
+      <DesignExplorationDialog
+        open={designExplorationOpen}
+        workspaceId={activeWorkspace.id}
+        leader={explorationLeader}
+        onClose={() => (designExplorationOpen = false)}
+        onCreated={handleDesignExplorationCreated}
+      />
+    {/if}
     <OnboardingWizard
       open={showOnboarding}
       {requestedTourId}

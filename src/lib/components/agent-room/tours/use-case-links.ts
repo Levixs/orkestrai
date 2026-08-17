@@ -21,6 +21,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'approval-pipeline': 'pipeline-aprovacao',
   'chained-flows': 'chained-flows',
   'design-figma': 'design-figma',
+  'ui-exploration': 'ui-exploration',
   'design-delivery': 'design-delivery',
   'design-prototype': 'design-prototype',
   'design-collaboration': 'design-collaboration',

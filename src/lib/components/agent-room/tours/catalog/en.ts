@@ -413,6 +413,37 @@ export const TOURS_EN: Tour[] = [
   },
 
   {
+    id: 'ui-exploration',
+    icon: 'PanelsTopLeft',
+    title: 'Explore three complete UI directions',
+    tagline: 'Compare editable design, tokens, components, prototype, and code before choosing.',
+    steps: [
+      {
+        id: 'open-exploration',
+        title: 'Define the outcome once',
+        body: 'Open the guided UI exploration from the Design menu. Describe the objective, audience, platform, stack, constraints, references, and visual modes. Choose manual work or delegate the first stage to the active workspace leader.',
+        action: { kind: 'openDesignExploration' },
+        check: { kind: 'nodeExists', nodeType: 'group' },
+      },
+      {
+        id: 'inspect-package',
+        title: 'Work from one traceable package',
+        body: 'Orkestrai creates one linked spec, five Kanban stages, and three native Design documents: Clarity, Expressive, and Efficient. Every dispatched task includes the complete linked spec, references, images, and attachments.',
+        check: { kind: 'nodeExists', nodeType: 'design' },
+      },
+      {
+        id: 'compare-directions',
+        title: 'Compare complete alternatives',
+        body: 'Each direction must contain responsive states, typed tokens, reusable components, a navigable prototype, accessibility evidence, and a code preview in the chosen stack. Compare UX, brand, effort, and technical risk side by side.',
+      },
+      {
+        id: 'approve-deliver',
+        title: 'Approve before implementation',
+        body: 'A person explicitly approves one direction or a stated combination. Only then apply reviewed code, validate it in a Portal or mobile device, run tests, and register the Git-linked result in Review Center.',
+      },
+    ],
+  },
+  {
     id: 'design-figma',
     icon: 'Palette',
     title: 'Design together with your AI team',

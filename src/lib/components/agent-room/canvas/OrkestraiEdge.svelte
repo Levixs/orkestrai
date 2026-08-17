@@ -3,7 +3,7 @@
   import { EdgeLabel, useEdges, useNodes, useViewport, type EdgeProps } from '@xyflow/svelte';
   import { X } from '@lucide/svelte';
   import * as m from '$lib/paraglide/messages.js';
-  import { floatingAnchorFor } from './floating-anchor.js';
+  import { floatingAnchorFor, nodeIndexFor } from './floating-anchor.js';
   import { edgeIntersectsViewport, edgePerformanceProfile, staticEdgePath } from './edge-performance.js';
   import { canvasEdgeRuntime, retainCanvasEdgeRuntime } from './edge-performance-runtime.svelte.js';
 
@@ -30,7 +30,7 @@
   let hovered = $state(false);
 
   function centerOf(nodeId: string): { x: number; y: number } | null {
-    const node = nodesStore.current.find((item) => item.id === nodeId);
+    const node = nodeIndexFor(nodesStore.current).get(nodeId);
     if (!node) return null;
     const width = node.measured?.width ?? node.width ?? 320;
     const height = node.measured?.height ?? node.height ?? 200;
@@ -40,7 +40,7 @@
   type Box = { x: number; y: number; halfW: number; halfH: number };
 
   function boxOf(nodeId: string): Box | null {
-    const node = nodesStore.current.find((item) => item.id === nodeId);
+    const node = nodeIndexFor(nodesStore.current).get(nodeId);
     if (!node) return null;
     const width = node.measured?.width ?? node.width ?? 320;
     const height = node.measured?.height ?? node.height ?? 200;
