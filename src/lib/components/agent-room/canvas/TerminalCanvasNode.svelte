@@ -6,7 +6,7 @@
   import NodeShell from './NodeShell.svelte';
   import TerminalNode from '../TerminalNode.svelte';
   import VoiceConfirmDialog from '../VoiceConfirmDialog.svelte';
-  import { getAppSettings } from '../app-settings.svelte.js';
+  import { appSettingsStore, getAppSettings } from '../app-settings.svelte.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { voiceModelsReadyForUse } from '../voice-model-status.js';
   import { speakText } from '../voice-speech.js';
@@ -361,7 +361,7 @@
   function handleAgentReply(payload: { to: string; from: string | null; text: string }) {
     if (payload.to !== id || !voiceOn || !payload.text.trim()) return;
     voiceError = '';
-    speakText(payload.text).catch((error) => {
+    speakText(payload.text, appSettingsStore.values.audioOutputDeviceId).catch((error) => {
       voiceError = error instanceof Error ? error.message : m['term.voice_error']();
       setTimeout(() => (voiceError = ''), 6_000);
     });

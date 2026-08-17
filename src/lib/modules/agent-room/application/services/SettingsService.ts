@@ -21,6 +21,8 @@ const DEFAULTS: Record<string, string> = {
   newNoteHeight: '220',
   dictationHotkey: 'alt+space',
   dictationAutoSubmit: 'false',
+  audioInputDeviceId: 'default',
+  audioOutputDeviceId: 'default',
   voiceBackend: 'embedded',
   voiceStackUrl: 'http://localhost:8000',
   voiceSttModel: 'whisper-large-v3-turbo',

@@ -23,7 +23,8 @@ Download the latest installers from
 
 - **Live agent canvas:** arrange real PTY terminals, notes, task boards, browser
   portals, file trees, loops, and shapes. Connections show collaboration between
-  agents as it happens.
+  agents as it happens. Rope physics automatically scales down in dense or
+  offscreen graphs while active conversations retain their visual signal.
 - **Configurable Workbench:** keep open terminals, boards, notes, portals,
   files, flows, and usage in vertical tabs by default or optional horizontal
   tabs, then arrange up to eight live artifacts in resizable right/down splits.
@@ -187,7 +188,10 @@ Download the latest installers from
 - **Local voice:** dictate into any text field or use the no-focus workspace
   shortcut for the leader, then listen to replies in Brazilian Portuguese, US
   English, or Latin American Spanish. Terminal dictation can optionally submit
-  with Enter; regular text fields remain insert-only. The voice orb's pin badge
+  with Enter; regular text fields remain insert-only. Choose and test the input
+  and output devices under Settings → Voice; every dictation surface, preview,
+  and spoken reply follows that preference and falls back safely if the device
+  is removed. The voice orb's pin badge
   opens its position controls directly, while the tooltip also reveals the
   platform shortcut. STT and TTS run locally.
 - **Quota-aware delegation:** pin Claude, Codex, and Kimi usage to the canvas,

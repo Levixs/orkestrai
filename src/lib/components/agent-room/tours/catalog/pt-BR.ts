@@ -604,6 +604,34 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'audio-devices',
+    icon: 'Mic',
+    title: 'Escolher e testar dispositivos de áudio',
+    tagline: 'Use o microfone e a saída certos em todo o Orkestrai.',
+    steps: [
+      {
+        id: 'open-settings',
+        title: 'Abra as configurações de Voz',
+        body: 'Abra Configurações → Voz. Os dispositivos de áudio aparecem acima do motor de voz, mantendo a escolha de entrada e saída separada dos modelos de STT e TTS.',
+      },
+      {
+        id: 'grant-and-choose',
+        title: 'Revele e escolha o microfone',
+        body: 'Clique em Atualizar para autorizar o microfone e revelar os nomes. Escolha uma entrada, clique em Testar microfone e confirme a reação do medidor ao vivo antes de salvar.',
+      },
+      {
+        id: 'test-output',
+        title: 'Teste a saída de áudio',
+        body: 'Escolha uma saída e reproduza o tom curto. Toda prévia e resposta falada passa por ela. Se a plataforma não permitir escolher uma saída específica, o Orkestrai explica que usará o padrão do sistema.',
+      },
+      {
+        id: 'recover',
+        title: 'Recupere sem adivinhação',
+        body: 'Se o dispositivo selecionado for desconectado, o Orkestrai volta ao padrão do sistema. Erros de captura distinguem permissão, hardware ausente, interrupção e provável disputa pelo único microfone.',
+      },
+    ],
+  },
+  {
     id: 'switch-agent-provider',
     icon: 'Cable',
     title: 'Trocar o provider de um agente',

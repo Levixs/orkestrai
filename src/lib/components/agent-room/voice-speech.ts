@@ -1,4 +1,5 @@
 import { getCsrfToken } from '@beeblock/svelar/http';
+import { playAudioBlob } from './audio-devices.js';
 
 /** Voz de volta multilíngue. A fila global impede respostas sobrepostas. */
 
@@ -6,20 +7,20 @@ let queue: Promise<void> = Promise.resolve();
 const MAX_SPEECH_CHARS = 1_000;
 const CHUNK_CHARS = 180;
 
-export function speakText(text: string): Promise<void> {
-  const run = queue.then(() => speakOnce(text));
+export function speakText(text: string, outputDeviceId?: string): Promise<void> {
+  const run = queue.then(() => speakOnce(text, outputDeviceId));
   queue = run.catch(() => {});
   return run;
 }
 
-async function speakOnce(text: string): Promise<void> {
+async function speakOnce(text: string, outputDeviceId?: string): Promise<void> {
   const chunks = speechChunks(text);
   if (chunks.length === 0) return;
   let next = fetchSpeech(chunks[0]);
   for (let index = 0; index < chunks.length; index += 1) {
     const blob = await next;
     if (index + 1 < chunks.length) next = fetchSpeech(chunks[index + 1]);
-    await playSpeech(blob);
+    await playAudioBlob(blob, outputDeviceId);
   }
 }
 
@@ -35,20 +36,6 @@ async function fetchSpeech(text: string): Promise<Blob> {
     throw new Error(payload.error || `TTS falhou (HTTP ${response.status}).`);
   }
   return response.blob();
-}
-
-async function playSpeech(blob: Blob): Promise<void> {
-  const url = URL.createObjectURL(blob);
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const audio = new Audio(url);
-      audio.onended = () => resolve();
-      audio.onerror = () => reject(new Error('Falha ao tocar o audio.'));
-      audio.play().catch(reject);
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
 }
 
 /** Divide por sentencas e limita cada requisicao para iniciar a fala cedo. */

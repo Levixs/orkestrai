@@ -9,6 +9,16 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added application-wide audio device controls under Settings → Voice. Users
+  can select and test the microphone used by every local dictation surface and
+  the speaker used by previews and spoken replies. Device removal falls back
+  to the system default, while permission, missing-device, interrupted-capture,
+  and likely single-microphone contention failures now have distinct guidance.
+- Made canvas connections adaptive to workspace density and visibility. Small
+  canvases keep the full Verlet rope physics, medium canvases reduce simulation
+  work, and dense or offscreen connections use static curves or lines while
+  preserving activity colors and animation on emphasized conversations. Hidden
+  windows and reduced-motion environments stop edge animation entirely.
 - Completed the quality, scale, and recovery phase of native Design Mode. A
   live audit reports naming, clipping, overlap, WCAG contrast, and accessibility
   issues and selects the affected layer. Four complete native templates create

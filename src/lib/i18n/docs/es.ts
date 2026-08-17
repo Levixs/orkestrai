@@ -113,7 +113,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'conexoes',
       title: 'Conexiones',
-      body: `Arrastra desde la bolita de un nodo hasta otro — la conexión es bidireccional y la bolita flota por el borde siempre en el punto más cercano al otro nodo. La cuerda punteada tiene física (se balancea al mover) y se pone verde animada mientras los agentes conversan. El hover muestra la X de eliminar; el clic fija la X. Conectar instala la skill del puente en los agentes (aprenden la CLI orkestrai solos).`,
+      body: `Arrastra desde la bolita de un nodo hasta otro — la conexión es bidireccional y la bolita flota por el borde siempre en el punto más cercano al otro nodo. La cuerda punteada tiene física (se balancea al mover) y se pone verde animada mientras los agentes conversan. Orkestrai reduce automáticamente la simulación en canvases grandes y conexiones fuera de pantalla, conservando la señal visual de las conversaciones seleccionadas o activas; las ventanas ocultas y el modo de movimiento reducido detienen las animaciones. El hover muestra la X de eliminar; el clic fija la X. Conectar instala la skill del puente en los agentes (aprenden la CLI orkestrai solos).`,
     },
     {
       id: 'andares',
@@ -326,6 +326,12 @@ export const DOCS_ES: DocsCatalog = {
       tags: ['Dictado global', 'campos de texto', 'voz local'],
     },
     {
+      id: 'audio-devices',
+      title: 'Elegir micrófono y altavoz',
+      body: 'Abre Configuración → Voz para elegir y probar el micrófono usado por todo dictado local y el altavoz usado en vistas previas y respuestas habladas. Autoriza el micrófono para revelar los nombres, observa el medidor de entrada en vivo y reproduce un tono corto en la salida antes de guardar. Si desaparece el dispositivo elegido, Orkestrai vuelve al predeterminado del sistema. Permiso denegado, dispositivo ausente, captura interrumpida y probable contención por el único micrófono reciben indicaciones distintas; las plataformas que no pueden dirigir el audio de la app a una salida específica explican la limitación en lugar de ignorar la selección.',
+      tags: ['Dispositivos de audio', 'prueba de micrófono', 'prueba de altavoz'],
+    },
+    {
       id: 'switch-agent-provider',
       title: 'Cambiar el provider de un miembro del equipo',
       body: 'Abre ⇄ en el encabezado del agente y elige otro provider instalado. Orkestrai cierra solo la PTY y la conversación anteriores, conserva nombre, rol, Modo Maestro, piso, posición y conexiones, e inicia el reemplazo en el mismo nodo.',
@@ -420,6 +426,8 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: 'En desarrollo',
       items: [
+        'La configuración de audio ahora selecciona y prueba el micrófono usado por todo dictado local y el altavoz usado por vistas previas y respuestas habladas. Los dispositivos retirados vuelven al predeterminado del sistema, y los fallos distinguen permiso, hardware ausente, captura interrumpida y probable contención por la única entrada.',
+        'Las conexiones del canvas ahora adaptan física, tasa de cuadros y renderizado a la cantidad de aristas, la visibilidad en el viewport, la ventana oculta y la preferencia de movimiento reducido. Los workspaces densos conservan los colores de conversación activa mientras las aristas inactivas o fuera de pantalla usan paths estáticos ligeros.',
         'Calidad y escala en Design Studio: una auditoría en vivo encuentra problemas de nombres, recortes, superposición, contraste WCAG y accesibilidad y enfoca la capa afectada; cuatro templates nativos completos crean bases editables de producto, marketing, mobile o design system; backup automático, recuperación de corrupción, migración de schema, historial limitado, restauración explícita y renderizado incremental protegen documentos grandes. Los agentes reciben las mismas operaciones de auditoría y template mediante CLI/MCP tipadas.',
         'Las terminales WSL en Windows ahora validan la distribución, directorio, PATH de inicio y CLI exactos antes del spawn y rastrean conversaciones de providers dentro de la home Linux de esa distribución. Solo se persisten o reanudan transcripts confirmados; los ids inválidos comienzan limpios en vez de invocar una conversación reciente especulativa, y los errores de distribución, ruta o comando ausente son distintos y accionables.',
         'Uso ahora inventaría los ocho providers de agentes desde un único catálogo de capacidades. Claude, Codex y Kimi conservan ventanas automáticas verificadas y ruteo; Antigravity, Cursor, Devin, OpenCode y Cline muestran sus limitaciones documentadas de CLI, API administrativa o provider de modelo con enlaces oficiales, sin porcentajes inventados.',

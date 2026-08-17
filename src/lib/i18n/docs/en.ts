@@ -113,7 +113,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'conexoes',
       title: 'Connections',
-      body: `Drag from one node's dot to another — the connection is bidirectional and the dot floats along the edge, always at the closest point to the other node. The dashed rope has physics (swings when you move) and glows animated green while the agents talk. Hover shows the remove X; click pins the X. Connecting installs the bridge skill on the agents (they learn the orkestrai CLI on their own).`,
+      body: `Drag from one node's dot to another — the connection is bidirectional and the dot floats along the edge, always at the closest point to the other node. The dashed rope has physics (swings when you move) and glows animated green while the agents talk. Orkestrai automatically reduces simulation work in large canvases and for offscreen connections, while selected and active conversations retain their visual signal; hidden windows and reduced-motion mode stop animation. Hover shows the remove X; click pins the X. Connecting installs the bridge skill on the agents (they learn the orkestrai CLI on their own).`,
     },
     {
       id: 'andares',
@@ -326,6 +326,12 @@ export const DOCS_EN: DocsCatalog = {
       tags: ['Global dictation', 'text fields', 'local voice'],
     },
     {
+      id: 'audio-devices',
+      title: 'Choose the microphone and speaker',
+      body: 'Open Settings → Voice to choose and test the microphone used by every local dictation surface and the speaker used by previews and spoken replies. Grant microphone access to reveal device names, watch the live input meter, and play a short output tone before saving. If a selected device disappears, Orkestrai returns to the system default. Permission denial, a missing device, interrupted capture, and likely contention for the only microphone receive distinct guidance; platforms that cannot route app audio to a specific output explain that limitation instead of silently ignoring the choice.',
+      tags: ['Audio devices', 'microphone test', 'speaker test'],
+    },
+    {
       id: 'switch-agent-provider',
       title: 'Change a team member\'s provider',
       body: 'Open ⇄ in the agent header and choose another installed provider. Orkestrai closes only the previous PTY and provider conversation, preserves name, role, Maestro Mode, floor, position, and connections, then starts the replacement in the same node.',
@@ -420,6 +426,8 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'In development',
       items: [
+        'Audio settings now select and test the microphone used by every local dictation surface and the speaker used by voice previews and spoken replies. Removed devices fall back to the system default, and capture failures distinguish permission, missing hardware, interruption, and likely contention for the only input.',
+        'Canvas connections now adapt physics, frame rate, and rendering to edge count, viewport visibility, document visibility, and reduced-motion preferences. Dense workspaces keep active-conversation colors while idle or offscreen edges become lightweight static paths.',
         'Design Studio quality and scale: a live audit finds naming, clipping, overlap, WCAG contrast, and accessibility issues and focuses the affected layer; four complete native templates create editable product, marketing, mobile, or design-system foundations; automatic backups, corruption recovery, schema migration, bounded history, explicit restore, and incremental viewport rendering protect large documents. Agents receive the same audit and template operations through typed CLI/MCP commands.',
         'Windows WSL terminals now preflight the exact distribution, directory, login PATH, and CLI before spawning and track provider conversations inside that distribution\'s Linux home. Only confirmed transcripts are persisted or resumed; invalid ids start clean instead of invoking a speculative latest conversation, and missing distribution, path, or command errors are distinct and actionable.',
         'Usage now inventories all eight agent providers from one capability catalog. Claude, Codex, and Kimi keep verified automatic quota windows and routing; Antigravity, Cursor, Devin, OpenCode, and Cline show their documented CLI, administrative API, or underlying model-provider limitations with official links instead of fabricated percentages.',

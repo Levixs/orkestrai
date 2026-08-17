@@ -28,6 +28,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'mcp-tools': 'mcp-tools',
   'managed-ports': 'managed-ports',
   'leader-dictation': 'leader-dictation',
+  'audio-devices': 'audio-devices',
   'switch-agent-provider': 'switch-agent-provider',
   'devin-local-agent': 'devin-local-agent',
   'multilingual-spoken-replies': 'multilingual-spoken-replies',

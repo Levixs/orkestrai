@@ -600,6 +600,34 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'audio-devices',
+    icon: 'Mic',
+    title: 'Choose and test audio devices',
+    tagline: 'Use the right microphone and speaker everywhere in Orkestrai.',
+    steps: [
+      {
+        id: 'open-settings',
+        title: 'Open Voice settings',
+        body: 'Open Settings → Voice. Audio devices appear above the voice engine, so input and output routing stay separate from the STT and TTS models.',
+      },
+      {
+        id: 'grant-and-choose',
+        title: 'Reveal and choose the microphone',
+        body: 'Click Refresh to grant microphone access and reveal device names. Choose an input, click Test microphone, and confirm that the live level meter reacts before saving.',
+      },
+      {
+        id: 'test-output',
+        title: 'Test the speaker',
+        body: 'Choose an output and play the short test tone. Every preview and spoken reply uses it. If this platform cannot select a specific output, Orkestrai explains that the system default will be used.',
+      },
+      {
+        id: 'recover',
+        title: 'Recover without guessing',
+        body: 'If a selected device is disconnected, Orkestrai returns to the system default. Capture errors distinguish permission, missing hardware, interruption, and likely contention for the only microphone.',
+      },
+    ],
+  },
+  {
     id: 'switch-agent-provider',
     icon: 'Cable',
     title: 'Change an agent provider',

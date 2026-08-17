@@ -12,7 +12,9 @@
   import '@xterm/xterm/css/xterm.css';
   import { TERMINAL_THEMES, type TerminalThemeName } from './terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
-  import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
+  import { appSettingsStore, getAppSettings, updateAppSettings } from './app-settings.svelte.js';
+  import { DEFAULT_AUDIO_DEVICE_ID, audioDeviceInventory, classifyAudioCaptureFailure, openPreferredAudioInput } from './audio-devices.js';
+  import { audioCaptureFailureMessage } from './audio-device-messages.js';
   import { blobToWav16k } from './audio-pcm.js';
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
@@ -156,7 +158,7 @@
       if (text === lastSpoken) return; // ja falou exatamente isso — nao repete
       lastSpoken = text;
       try {
-        await speakText(text);
+        await speakText(text, appSettingsStore.values.audioOutputDeviceId);
       } catch {
         // voz indisponivel — segue em texto
       }
@@ -192,10 +194,12 @@
     if (transcribing) return;
     if (checkingVoiceModels) return;
     checkingVoiceModels = true;
+    let voiceSettings: Record<string, string> = appSettingsStore.values;
     try {
       // A presenca real dos modelos prevalece sobre a confirmacao persistida:
       // eles podem ter sido apagados nas Configuracoes ou fora do app.
-      if (!(await voiceModelsReadyForUse(await getAppSettings(true)))) {
+      voiceSettings = await getAppSettings(true);
+      if (!(await voiceModelsReadyForUse(voiceSettings))) {
         voiceConfirmOpen = true;
         reportDictationState('idle');
         return;
@@ -208,9 +212,15 @@
       checkingVoiceModels = false;
     }
     try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      dictateError = m['voice.mic_denied']();
+      const opened = await openPreferredAudioInput(voiceSettings.audioInputDeviceId);
+      mediaStream = opened.stream;
+      if (opened.fallback) {
+        dictateError = m['voice.mic_fallback']();
+        void updateAppSettings({ audioInputDeviceId: DEFAULT_AUDIO_DEVICE_ID });
+      }
+    } catch (error) {
+      const count = (await audioDeviceInventory().catch(() => ({ inputs: [], outputs: [] }))).inputs.length;
+      dictateError = audioCaptureFailureMessage(classifyAudioCaptureFailure(error, count));
       reportDictationState('idle');
       return;
     }
@@ -499,7 +509,7 @@
         case 'say':
           // orkestrai say: TTS sob demanda no desktop (falha silenciosa sem modelo).
           if ((!workspaceId || message.workspaceId === workspaceId) && typeof message.text === 'string' && message.text.trim()) {
-            speakText(String(message.text)).catch(() => {});
+            speakText(String(message.text), appSettingsStore.values.audioOutputDeviceId).catch(() => {});
           }
           break;
         case 'killed':

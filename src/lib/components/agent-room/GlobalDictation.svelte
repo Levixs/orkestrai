@@ -7,7 +7,15 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import VoiceConfirmDialog from './VoiceConfirmDialog.svelte';
   import { blobToWav16k } from './audio-pcm.js';
-  import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
+  import { appSettingsStore, getAppSettings, updateAppSettings } from './app-settings.svelte.js';
+  import {
+    DEFAULT_AUDIO_DEVICE_ID,
+    audioDeviceInventory,
+    classifyAudioCaptureFailure,
+    missingPreferredAudioDevices,
+    openPreferredAudioInput,
+  } from './audio-devices.js';
+  import { audioCaptureFailureMessage } from './audio-device-messages.js';
   import { DEFAULT_DICTATION_HOTKEY, matchesCombo } from './dictation-hotkey.js';
   import {
     LEADER_DICTATION_STATE,
@@ -223,8 +231,10 @@
     if (status !== 'idle' || !editableUsable(target) || checkingVoiceModels) return;
 
     checkingVoiceModels = true;
+    let voiceSettings: Record<string, string> = appSettingsStore.values;
     try {
-      if (!(await voiceModelsReadyForUse(await getAppSettings(true)))) {
+      voiceSettings = await getAppSettings(true);
+      if (!(await voiceModelsReadyForUse(voiceSettings))) {
         voiceConfirmOpen = true;
         return;
       }
@@ -236,9 +246,15 @@
     }
 
     try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      toast.error(m['voice.mic_denied']());
+      const opened = await openPreferredAudioInput(voiceSettings.audioInputDeviceId);
+      mediaStream = opened.stream;
+      if (opened.fallback) {
+        toast.warning(m['voice.mic_fallback']());
+        void updateAppSettings({ audioInputDeviceId: DEFAULT_AUDIO_DEVICE_ID });
+      }
+    } catch (error) {
+      const count = (await audioDeviceInventory().catch(() => ({ inputs: [], outputs: [] }))).inputs.length;
+      toast.error(audioCaptureFailureMessage(classifyAudioCaptureFailure(error, count)));
       return;
     }
 
@@ -366,11 +382,24 @@
       source = detail.status === 'idle' ? null : 'leader';
       status = detail.status;
     };
+    const audioDevicesChanged = async () => {
+      const settings = await getAppSettings();
+      const inventory = await audioDeviceInventory().catch(() => null);
+      if (!inventory) return;
+      const missing = missingPreferredAudioDevices(inventory, settings.audioInputDeviceId, settings.audioOutputDeviceId);
+      if (!missing.input && !missing.output) return;
+      await updateAppSettings({
+        ...(missing.input ? { audioInputDeviceId: DEFAULT_AUDIO_DEVICE_ID } : {}),
+        ...(missing.output ? { audioOutputDeviceId: DEFAULT_AUDIO_DEVICE_ID } : {}),
+      }).catch(() => undefined);
+      toast.warning(m['settings.audio_device_removed']());
+    };
     document.addEventListener('focusin', focusIn, true);
     document.addEventListener('pointerdown', pointerDown, true);
     document.addEventListener('selectionchange', selectionChange);
     window.addEventListener('keydown', keyDown);
     window.addEventListener(LEADER_DICTATION_STATE, leaderState);
+    navigator.mediaDevices?.addEventListener?.('devicechange', audioDevicesChanged);
     target = editableFrom(document.activeElement);
     rememberSelection();
     return () => {
@@ -379,6 +408,7 @@
       document.removeEventListener('selectionchange', selectionChange);
       window.removeEventListener('keydown', keyDown);
       window.removeEventListener(LEADER_DICTATION_STATE, leaderState);
+      navigator.mediaDevices?.removeEventListener?.('devicechange', audioDevicesChanged);
       window.removeEventListener('resize', clampOnResize);
       placementObserver.disconnect();
       surfaceObserver.disconnect();
