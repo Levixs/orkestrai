@@ -454,7 +454,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 18, 2026 · 0.13.0',
       items: [
-        'Terminal keyboard input is now isolated from Canvas accessibility shortcuts. Escape correctly reaches Vim, merge/rebase editors, pagers, and other TUIs without deselecting the node or blurring xterm; search and dictation remain local to the terminal.',
+        'Orkestrai 0.13.0 keeps terminal keyboard input isolated from Canvas accessibility shortcuts. Escape correctly reaches Vim, merge/rebase editors, pagers, and other TUIs without deselecting the node or blurring xterm; search and dictation remain local to the terminal.',
         'Scrolling inside terminals and other Canvas nodes now remains isolated even at the start or end of their content. Canvas zoom responds only while the pointer is over the free Canvas pane.',
         'Canvas shapes now expose a visible duplicate action plus Cmd/Ctrl+D. Cmd/Ctrl+C and Cmd/Ctrl+V copy and paste single shapes or complete multi-selection arrangements while preserving size, text, styles, editable arrow geometry, and relative spacing.',
         'New native API Client in Canvas and Workbench: create and send requests with methods, URLs, headers, Bearer/Basic authentication, bodies, and variables, inspect formatted status, duration, size, and response data, import Bruno folders through the official parser or Postman v2.1 collections, and reopen the source in its installed application.',
