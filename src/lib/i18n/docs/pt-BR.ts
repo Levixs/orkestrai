@@ -456,7 +456,7 @@ export const DOCS_PT: DocsCatalog = {
   ],
   changelog: [
     {
-      date: 'Em desenvolvimento',
+      date: '18 ago 2026 · 0.13.0',
       items: [
         'O teclado do terminal agora fica isolado dos atalhos de acessibilidade do Canvas. Escape chega corretamente ao Vim, editores de merge/rebase, pagers e outras TUIs sem desselecionar o node nem tirar o foco do xterm; busca e ditado continuam locais ao terminal.',
         'O scroll dentro de terminais e outros nodes do Canvas agora permanece isolado mesmo quando chega ao início ou ao fim do conteúdo. O zoom do Canvas só responde quando o ponteiro está sobre a área livre do próprio Canvas.',

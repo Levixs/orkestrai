@@ -452,7 +452,7 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
-      date: 'En desarrollo',
+      date: '18 ago 2026 · 0.13.0',
       items: [
         'La entrada de teclado del terminal ahora queda aislada de los atajos de accesibilidad del Canvas. Escape llega correctamente a Vim, editores de merge/rebase, paginadores y otras TUIs sin deseleccionar el nodo ni quitar el foco de xterm; la búsqueda y el dictado siguen siendo locales al terminal.',
         'El desplazamiento dentro de terminales y otros nodos del Canvas ahora permanece aislado incluso al llegar al inicio o al final del contenido. El zoom del Canvas solo responde cuando el puntero está sobre el área libre del propio Canvas.',

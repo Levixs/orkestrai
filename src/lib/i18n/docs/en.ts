@@ -452,7 +452,7 @@ export const DOCS_EN: DocsCatalog = {
   ],
   changelog: [
     {
-      date: 'In development',
+      date: 'Aug 18, 2026 · 0.13.0',
       items: [
         'Terminal keyboard input is now isolated from Canvas accessibility shortcuts. Escape correctly reaches Vim, merge/rebase editors, pagers, and other TUIs without deselecting the node or blurring xterm; search and dictation remain local to the terminal.',
         'Scrolling inside terminals and other Canvas nodes now remains isolated even at the start or end of their content. Canvas zoom responds only while the pointer is over the free Canvas pane.',
