@@ -26,7 +26,7 @@ function exploration(overrides: Record<string, unknown> = {}) {
 describe('DesignExplorationService', () => {
   useSvelarTest({ refreshDatabase: true });
 
-  it('creates one traceable package with a spec, three designs and five linked tasks', async () => {
+  it('creates one staged package with a spec, three concepts, visual review and linked tasks', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'Exploration', workingDir: '/tmp' });
     const terminal = await workspaceRepository.createNode({
       workspaceId: workspace.id,
@@ -40,7 +40,7 @@ describe('DesignExplorationService', () => {
     const tasks = await taskBoardService.list(workspace.id);
 
     expect(result.designNodes).toHaveLength(3);
-    expect(result.taskIds).toHaveLength(5);
+    expect(result.taskIds).toHaveLength(8);
     expect(result.tasksNodeCreated).toBe(true);
     expect(result.dispatched).toBe(false);
     expect(nodes.filter((node) => node.type === 'design').map((node) => node.title)).toEqual([
@@ -48,11 +48,14 @@ describe('DesignExplorationService', () => {
       'UI B - Expressive',
       'UI C - Efficient',
     ]);
-    expect(tasks).toHaveLength(5);
+    expect(tasks).toHaveLength(8);
     expect(tasks.every((task) => task.noteId === result.note.id)).toBe(true);
+    expect(tasks.filter((task) => task.title.startsWith('2')).every((task) => task.description?.includes('orkestrai:design-node='))).toBe(true);
+    expect(tasks.find((task) => task.title.startsWith('3.'))?.description).toContain('orkestrai:design-review=');
     expect(String((result.note.payload as { content?: string }).content)).toContain('Required output for every direction');
     expect(result.edges.some((edge) => edge.sourceNodeId === result.note.id && edge.targetNodeId === terminal.id)).toBe(true);
     expect((result.group.payload as { workflowKind?: string }).workflowKind).toBe('design-exploration');
+    expect(result.designNodes.every((node) => (node.payload as { visualReview?: { status?: string } }).visualReview?.status === 'pending')).toBe(true);
   });
 
   it('delegates only when the selected leader has a live PTY session', async () => {

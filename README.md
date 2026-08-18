@@ -106,15 +106,14 @@ Download the latest installers from
   updates live. Documents, assets, thumbnails, and history stay under
   `.orkestrai/designs` in the workspace.
 - **Guided UI exploration:** start from one objective and create a linked spec,
-  five Kanban stages, and three native directions: Clarity, Expressive, and
-  Efficient. Each alternative must include responsive states, typed tokens,
-  reusable components, a navigable prototype, quality evidence, and framework
-  code before a human approval gate. Work manually or delegate the first stage
-  to a live workspace leader without losing task, note, Design, or Git context.
-  Agents receive an exact on-demand schema and create complete directions in
-  a few transactional batches instead of probing the API layer by layer. Large
-  directions expand the visual workspace automatically and remain navigable by
-  trackpad, Hand tool, Space-drag, fit-all, and zoom down to 2%.
+  eight progressive Kanban tasks, and three native directions: Clarity,
+  Expressive, and Efficient. Each agent first renders one desktop and one mobile
+  concept through compact semantic composition; the Canvas shows waiting,
+  working, stalled, and ready states. A revision-aware visual review gate accepts
+  or returns each concept with traceable feedback, while the automatic audit is
+  kept explicitly structural. Only the approved direction expands into states,
+  tokens, components, prototype, and framework code. Large directions remain
+  navigable by trackpad, Hand tool, Space-drag, fit-all, and zoom down to 2%.
 - **Live Design collaboration:** see human and agent presence, cursors, and
   selections; follow another participant; discuss a page or layer in anchored
   comment threads; and review visual proposals as structural diffs before an

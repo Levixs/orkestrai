@@ -246,6 +246,7 @@ describe('contrato MCP x bridge (todas as tools)', () => {
     const elementBatchTool = MCP_TOOLS.find((tool) => tool.name === 'design_create_elements') as any;
     const blueprintTool = MCP_TOOLS.find((tool) => tool.name === 'design_apply_blueprint') as any;
     expect(referenceTool.inputSchema.properties.topic.enum).toContain('elements');
+    expect(referenceTool.inputSchema.properties.topic.enum).toContain('concept');
     expect(elementBatchTool.inputSchema.properties.elements.items.required).toEqual(['type', 'name', 'x', 'y', 'width', 'height']);
     expect(blueprintTool.inputSchema.properties.variables.items.required).toContain('values');
 

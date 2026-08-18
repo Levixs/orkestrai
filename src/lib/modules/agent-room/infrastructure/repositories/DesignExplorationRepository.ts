@@ -67,12 +67,26 @@ export class DesignExplorationRepository {
           ...input.layout.designs[index],
           payload: {
             schemaVersion: 1,
+            workflowKind: 'design-exploration',
             explorationId,
             direction,
             intent: localized.directions[direction].intent,
             platform: input.data.platform,
             codeTarget: input.data.codeTarget,
             includeDarkMode: input.data.includeDarkMode,
+            explorationWork: {
+              phase: 'waiting',
+              taskId: null,
+              assigneeNodeId: null,
+              startedAt: null,
+              lastProgressAt: null,
+            },
+            visualReview: {
+              status: 'pending',
+              revision: null,
+              note: '',
+              reviewedAt: null,
+            },
           },
         }));
       }
@@ -82,11 +96,19 @@ export class DesignExplorationRepository {
       for (const task of localized.tasks) {
         const taskId = uuidv7();
         taskIds.push(taskId);
+        const designNode = task.direction
+          ? designNodes[DESIGN_EXPLORATION_DIRECTIONS.indexOf(task.direction)]
+          : null;
+        const marker = designNode
+          ? `<!-- orkestrai:design-node=${designNode.id} -->`
+          : task.kind === 'review'
+            ? `<!-- orkestrai:design-review=${explorationId} -->`
+            : `<!-- orkestrai:design-stage=${task.kind};exploration=${explorationId} -->`;
         await AgentBoardTask.query().insert({
           id: taskId,
           workspace_id: input.workspaceId,
           title: task.title,
-          description: `${task.description}\n\nSpec: ${note.id}`,
+          description: `${task.description}\n\nSpec: ${note.id}\n\n${marker}`,
           status: 'todo',
           assignee_node_id: null,
           note_node_id: note.id,

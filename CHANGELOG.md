@@ -18,13 +18,16 @@ pt-BR, English, and Spanish translations.
   prohibit schema probes, installation inspection, and scratch discovery
   scripts.
 - Added a guided three-direction UI exploration to the Canvas Design menu. One
-  transaction creates a linked specification, five traceable Kanban stages,
-  and native Clarity, Expressive, and Efficient Design documents. Manual work
-  or delegation to a live leader shares one required contract for responsive
-  states, typed tokens, reusable components, prototype, quality evidence, and
-  framework code, with explicit human approval before implementation. Task
-  dispatch now includes the complete linked note alongside descriptions,
-  images, files, and links.
+  transaction creates a linked specification, eight progressive Kanban tasks,
+  and native Clarity, Expressive, and Efficient Design documents. Each designer
+  first produces one representative desktop screen and one mobile screen with a
+  five-minute first-revision target, preferably through semantic HTML/CSS import.
+  Canvas nodes now expose waiting, working, stalled, ready, and reviewed states;
+  the Quality panel adds revision-aware human approval and traceable change
+  requests. Only an approved direction expands into responsive states, typed
+  tokens, reusable components, prototype, and framework code. The structural
+  audit is explicitly separated from visual quality review, and existing guided
+  exploration nodes remain compatible with the new progress and review flow.
 - Indexed Canvas nodes and edge adjacency once per immutable graph snapshot so
   floating handles and connection geometry no longer scan the complete graph
   for every rendered edge in dense workspaces. Canvas graph updates now replace

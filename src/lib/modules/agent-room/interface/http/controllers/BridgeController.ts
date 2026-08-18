@@ -37,6 +37,7 @@ import { DesignLeaseConflictError } from '$lib/modules/agent-room/application/se
 import { auditDesignDocument } from '$lib/modules/agent-room/domain/design-quality.js';
 import { createDesignTemplate, designTemplateIds } from '$lib/modules/agent-room/domain/design-templates.js';
 import { uuidv7 } from '@beeblock/svelar/support';
+import { isDesignExplorationPayload } from '$lib/modules/agent-room/domain/design-exploration.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -101,12 +102,33 @@ export class BridgeController extends Controller {
       const designs = (await workspaceRepository.listNodes(workspace.id)).filter((node) => node.type === 'design');
       const data = await Promise.all(designs.map(async (node) => {
         const document = await designDocumentService.get(workspace.id, node.id);
+        const payload = node.payload as Record<string, unknown>;
+        const work = (payload.explorationWork ?? {}) as Record<string, unknown>;
+        const review = (payload.visualReview ?? {}) as Record<string, unknown>;
+        const lastProgressAt = typeof work.lastProgressAt === 'string' ? work.lastProgressAt : document.updatedAt;
+        const stalled = work.phase === 'active'
+          && Date.now() - Date.parse(lastProgressAt) >= 5 * 60 * 1_000;
+        const reviewStatus = review.status === 'approved' && review.revision === document.revision
+          ? 'approved'
+          : review.status === 'changes_requested' && review.revision === document.revision
+            ? 'changes_requested'
+            : document.revision > 0
+              ? 'pending'
+              : 'empty';
         return {
           nodeId: node.id,
           title: node.title || document.name,
           revision: document.revision,
           pages: document.pages.length,
           elements: document.elements.length,
+          updatedAt: document.updatedAt,
+          workflowKind: isDesignExplorationPayload(payload) ? 'design-exploration' : payload.workflowKind ?? null,
+          direction: payload.direction ?? null,
+          progress: stalled ? 'stalled' : work.phase ?? null,
+          lastProgressAt,
+          reviewStatus,
+          reviewRevision: review.revision ?? null,
+          reviewNote: review.note ?? '',
         };
       }));
       return this.json({ data });
@@ -426,6 +448,8 @@ export class BridgeController extends Controller {
         from: input.from,
         title: input.title,
         provider: input.provider,
+        model: input.model,
+        effort: input.effort,
         role: input.role,
         x: input.x,
         y: input.y,

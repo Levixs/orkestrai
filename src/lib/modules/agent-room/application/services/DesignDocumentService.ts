@@ -17,6 +17,7 @@ import {
 } from '../../contracts/schemas/designSchemas.js';
 import type { ApplyDesignOperationsDto } from '../dto/DesignDtos.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
+import { isDesignExplorationPayload } from '../../domain/design-exploration.js';
 import { resolveDesignVariableValue } from '../../domain/design-variables.js';
 import { designCollaborationService } from './DesignCollaborationService.js';
 
@@ -1228,6 +1229,23 @@ export class DesignDocumentService {
       }).catch((error) => {
         console.error('[design] Failed to append document history.', error);
       });
+      const nodePayload = context.node.payload as Record<string, unknown>;
+      if (isDesignExplorationPayload(nodePayload)) {
+        const work = (nodePayload.explorationWork ?? {}) as Record<string, unknown>;
+        await workspaceRepository.updateNode(context.node.id, {
+          payload: {
+            ...nodePayload,
+            explorationWork: {
+              ...work,
+              phase: work.phase === 'waiting' ? 'active' : work.phase,
+              lastProgressAt: now,
+              revision: validated.revision,
+            },
+          },
+        });
+        const broadcast = (globalThis as { __orkestraiBroadcast?: (payload: Record<string, unknown>) => void }).__orkestraiBroadcast;
+        broadcast?.({ type: 'workspaceChanged', workspaceId: dto.workspaceId, nodeId: dto.nodeId });
+      }
       broadcastDesignChanged(dto.workspaceId, dto.nodeId, validated.revision);
       await Promise.all(deletedAssetPaths.map(async (path) => {
         const absolute = resolve(context.root, path);

@@ -4,7 +4,7 @@ import { uuidv7 } from '@beeblock/svelar/support';
 import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
-import type { AgentActivityState, CanvasNode, Workspace, WorkspaceExecutionRuntime } from '../../domain/types.js';
+import type { AgentActivityState, CanvasNode, ModelEffort, Workspace, WorkspaceExecutionRuntime } from '../../domain/types.js';
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pty/PtySessionManager.ts';
@@ -697,13 +697,13 @@ export class BridgeService {
    */
   async recruit(
     workspaceId: string,
-    input: { from: string; title: string; provider?: string | null; role?: string | null; x?: number; y?: number; replace?: string | null; floorId?: string | null }
+    input: { from: string; title: string; provider?: string | null; model?: string | null; effort?: ModelEffort | null; role?: string | null; x?: number; y?: number; replace?: string | null; floorId?: string | null }
   ) {
     const origin = await this.requireMaestro(workspaceId, input.from);
     const originNode = await workspaceRepository.getNode(origin.nodeId);
     const inheritedRuntime = (originNode?.payload as { executionRuntime?: unknown } | undefined)?.executionRuntime;
 
-    const command = this.commandForProvider(input.provider);
+    const command = this.commandForProvider(input.provider, { model: input.model, effort: input.effort });
     if (input.floorId) {
       const floor = (await floorService.list(workspaceId)).find((candidate) => candidate.id === input.floorId);
       if (!floor) throw new Error('Andar ativo não encontrado neste workspace.');
@@ -718,6 +718,8 @@ export class BridgeService {
         ...command,
         env: command.env,
         provider: input.provider ?? null,
+        model: input.model ?? null,
+        effort: input.effort ?? null,
         role: input.role ?? (node.payload as { role?: string }).role,
         sessionId: undefined,
         agentSessionId: undefined,
@@ -745,6 +747,8 @@ export class BridgeService {
       payload: {
         ...command,
         provider: input.provider ?? null,
+        model: input.model ?? null,
+        effort: input.effort ?? null,
         role: input.role ? shortTitle(input.role, 60) : null,
         ...(inheritedRuntime ? { executionRuntime: inheritedRuntime } : {}),
       },
@@ -900,10 +904,13 @@ export class BridgeService {
     return { edgeId, from: origin.title, to: target.title };
   }
 
-  private commandForProvider(provider?: string | null): { command: string; args: string[]; env?: Record<string, string> } {
+  private commandForProvider(provider?: string | null, options?: { model?: string | null; effort?: ModelEffort | null }): { command: string; args: string[]; env?: Record<string, string> } {
     if (!provider) return { command: defaultShell(), args: [] };
     if (!hasAgentAdapter(provider)) throw new Error(`Provider desconhecido: ${provider}.`);
-    const spec = getAgentAdapter(provider).interactiveCommand();
+    const spec = getAgentAdapter(provider).interactiveCommand({
+      model: options?.model ?? undefined,
+      effort: options?.effort ?? undefined,
+    });
     return { command: spec.command, args: spec.args, env: spec.env };
   }
 
@@ -931,7 +938,7 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_
 - \`orkestrai note write <nodeId> "<conteúdo>"\` — substitui o conteúdo da nota.
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edição pontual.
 - \`orkestrai design list\` / \`design read <nodeId>\` — lista e lê o scene graph de documentos visuais nativos conectados ao trabalho. Leia sempre a revisão atual antes de alterar.
-- Tool MCP \`design_reference\` — consulte UMA vez o tópico necessário para obter campos e exemplos exatos. Em seguida use \`design_create_elements\` para criar telas completas em lote ou \`design_apply_blueprint\` para aplicar layers, tokens, bindings, componentes, protótipo e motion em 1–3 revisões. NUNCA inspecione o código/instalação do Orkestrai, faça operações de teste ou crie scratch scripts apenas para descobrir o schema. Coordenadas x/y são absolutas mesmo em filhos. Leia uma vez, aplique o lote planejado, releia e audite no final.
+- Tool MCP \`design_reference\` — consulte UMA vez o tópico necessário para obter campos e exemplos exatos. Em explorações, faça primeiro um conceito de 1 desktop + 1 mobile com \`design_import_code\` (HTML/CSS semântico) ou um lote pequeno de \`design_create_elements\`, entregue a primeira revisão em até 5 minutos e AGUARDE o gate humano. Só a direção aprovada recebe o blueprint completo com tokens, componentes, protótipo e motion. NUNCA inspecione o código/instalação do Orkestrai, faça operações de teste ou crie scratch scripts apenas para descobrir o schema.
 - Tool MCP \`design_apply_operations\` — escape hatch do command bus completo para operações não cobertas pelas tools de lote. As tools \`design_create_element\`, \`design_update_element\` e \`design_delete_element\` são atalhos para operações pontuais. Passe \`taskId\` quando a alteração pertence a uma task; conflito exige reler, nunca sobrescrever o trabalho humano.
 - Tools MCP \`design_comment\`, \`design_propose\` e \`design_decide_proposal\` — colaboram no documento nativo com autoria, threads e propostas pendentes. Propor não altera o design aprovado; nunca simule aprovação humana. Use Floors para variantes paralelas e Council quando perspectivas independentes forem úteis.
 - Tools MCP \`design_import_code\` e \`design_generate_code_preview/apply\` — transformam HTML/Svelte/React/Vue em scene graph nativo ou entregam seleções em Svelar/Svelte, React/Next, Vue e HTML/Tailwind. Gere preview primeiro; o apply valida hash do arquivo e revisão do documento antes de escrever e registra o artefato no Design Studio.
@@ -983,13 +990,13 @@ PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagente
 Antes de propor o time e antes de cada nova rodada de delegação, consulte \`orkestrai usage\`. Se \`shouldFallback\` vier verdadeiro, use o provider recomendado para novas tarefas ou reatribua somente tarefas que ainda não começaram. Se não houver fallback saudável, avise o usuário com \`orkestrai notify --kind attention\`; nunca invente estimativas de cota e nunca interrompa um agente no meio de uma tarefa apenas para trocar de provider.
 
 1. PRIMEIRO proponha o time: liste os agentes sugeridos (título, provider, role de cada um) e pergunte quais ele quer criar — não crie nada sem aprovação. VARIE os providers instalados: times com 3+ agentes devem combinar perspectivas diferentes — NUNCA crie o time inteiro com um provider só.
-2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider ${providerIds}] [--role <papel>]\`. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
+2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider ${providerIds}] [--model <id>] [--effort medium|high|xhigh] [--role <papel>]\`. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Para composição visual estruturada, use \`medium\` ou \`high\`: \`xhigh\` aumenta muito a latência de payloads sem melhorar o gate visual. Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota já conecta ao time inteiro por padrão).
 4. Trabalho em código? Cada agente trabalha no PRÓPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente começar — NUNCA deixe vários agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (vê conflitos) e \`orkestrai floor land\`.
 5. Distribua TODO trabalho com \`orkestrai task add --assign\` ANTES de usar \`orkestrai ask\` para o handoff (o quadro kanban aparece no canvas sozinho na primeira tarefa). É PROIBIDO delegar trabalho apenas por mensagem direta. Use notas com \`orkestrai note create\`; cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.
 6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time está construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrão 5173/3000 — outro workspace pode estar usando).
    Projeto mobile? Use \`orkestrai device list\`, anexe um iOS Simulator ou Android AVD e valide pelo ciclo tree/screenshot → ação → tree/screenshot. Aparelhos Android físicos exigem que o usuário inicie e confirme a sessão na UI. Instalações ficam confinadas ao workspace e o usuário acompanha a sessão ao vivo no Workbench.
-7. Acompanhe o quadro com \`orkestrai task list\`, cobre os agentes com \`orkestrai ask\` e integre o trabalho dos andares com \`orkestrai floor preview/land\`. DESBLOQUEIO (regra dura): se um agente travar, ficar em silêncio ou pedir algo (uma nota, um id, um esclarecimento), VOCÊ resolve na hora — responda com \`orkestrai ask\`, crie/edite a nota que falta (\`orkestrai note create ... --connect "<Agente>"\`) e devolva o id. Implementar a tarefa VOCÊ MESMO é o último recurso, só depois de tentar desbloquear e o agente realmente não dar conta — e, mesmo assim, prefira reatribuir a outro agente com \`orkestrai task add --assign\`. Time travado é problema de coordenação do líder, não motivo para assumir o trabalho.
+7. Acompanhe o quadro com \`orkestrai task list\`, \`orkestrai design list\`, cobre os agentes com \`orkestrai ask\` e integre os andares com \`floor preview/land\`. \`design list\` marca uma direção como \`stalled\` quando há trabalho ativo sem revisão nova por 5 minutos; interrompa e reoriente para um conceito menor em vez de aguardar dezenas de minutos. Em exploração visual, \`audit\` sem erros NÃO é aprovação: abra o resultado e espere \`reviewStatus: approved\` na revisão atual. DESBLOQUEIO (regra dura): se um agente travar, ficar em silêncio ou pedir algo, resolva na hora; implementar você mesmo é o último recurso e reatribuir continua preferível.
 8. NUNCA afirme que consultou/falou com outro agente sem uma execução bem-sucedida de \`orkestrai ask\` e a confirmação explícita retornada pela ponte. \`orkestrai task done\` avisa o líder automaticamente, além da notificação nativa de TAREFA CONCLUÍDA. Não duplique esse aviso. Quando precisar de atenção/aprovação, use \`orkestrai notify "<pedido>" --kind attention\`. Somente ao concluir o PROJETO inteiro, após conferir o quadro, use \`orkestrai notify "<resumo>" --kind project --title "<projeto>"\`.
 9. Mantenha o Control Center fiel: reporte somente MUDANÇAS semânticas com \`orkestrai status\` (trabalhando, bloqueado, aguardando entrada/permissão, concluído ou erro). O ciclo do PTY já cobre inicialização/atividade/ociosidade; não envie pulsos repetidos.
 9. Ao finalizar uma frente, dispense o que não precisa mais com \`orkestrai dismiss <agente>\` — o time nasce e morre sob demanda.
@@ -1094,7 +1101,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai usage` — cotas reais e recomendação do nó Usage; líderes consultam antes de delegar e roteiam novas tarefas ao recommendedProvider quando shouldFallback=true.',
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
-      '- `orkestrai design list/read/reference/apply` — documentos visuais nativos. Consulte design_reference uma vez e produza em 1-3 lotes com design_create_elements ou design_apply_blueprint; nunca vasculhe a instalacao, faca probes ou crie scratch scripts para descobrir schemas. Coordenadas de filhos sao absolutas. Leia antes, aplique o lote e releia/audite no final; design_apply_operations fica como escape hatch.',
+      '- `orkestrai design list/read/reference/apply` — documentos visuais nativos. Em exploração, produza primeiro 1 desktop + 1 mobile com design_import_code ou lote pequeno, entregue a primeira revisão em até 5 minutos e espere o gate visual humano. Só expanda a direção aprovada com blueprint completo. design list sinaliza stalled e o reviewStatus da revisão atual.',
       '- `design_comment` / `design_propose` / `design_decide_proposal` — colaboracao visual com autoria e revisao: propostas ficam pendentes ate decisao explicita e podem ser comparadas em Floors/Council.',
       '- `design_import_code` / `design_generate_code_preview/apply` — importacao estrutural de HTML/Svelte/React/Vue e entrega para Svelar/Svelte, React/Next, Vue ou HTML/Tailwind; sempre revise o preview e preserve os component mappings antes de aplicar.',
       '- `design_figma_inspect/import/sync_preview/sync_apply` — interoperabilidade estrutural com Figma; combine com o MCP oficial `figma`, sempre revise conflitos antes de sincronizar e preserve Code Connect.',

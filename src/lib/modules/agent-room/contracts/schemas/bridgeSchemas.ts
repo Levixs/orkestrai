@@ -80,6 +80,8 @@ export const bridgeRecruitSchema = z.object({
   from: z.string().trim().min(1, 'Informe o agente maestro (from).'),
   title: z.string().trim().min(1, 'Informe o titulo do recruta.'),
   provider: z.string().trim().nullish(),
+  model: z.string().trim().nullish(),
+  effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']).nullish(),
   role: z.string().trim().nullish(),
   x: z.coerce.number().optional(),
   y: z.coerce.number().optional(),

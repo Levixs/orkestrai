@@ -128,6 +128,13 @@ function mapTask(model: AgentBoardTask, assigneeTitle: string | null = null, not
   };
 }
 
+function designNodeIdFromTask(task: AgentBoardTask): string | null {
+  const description = String(task.getAttribute('description') ?? '');
+  return description.match(/<!--\s*orkestrai:design-node=([0-9a-f-]{36})\s*-->/i)?.[1]
+    ?? description.match(/\bnodeId\b\s*[:=]?\s*`?([0-9a-f-]{36})/i)?.[1]
+    ?? null;
+}
+
 /**
  * Quadro de tarefas do workspace (kanban): o usuário ou o líder (via bridge)
  * cria tarefas, atribui a um agente e o agente recebe o prompt na hora no
@@ -364,6 +371,29 @@ export class TaskBoardService {
         taskId: updated.id,
         metadata: { taskTitle: updated.title },
       });
+    }
+    if (!wasDone && updated.status === 'done') {
+      const designNodeId = designNodeIdFromTask(task);
+      if (designNodeId) {
+        const designNode = await workspaceRepository.getNode(designNodeId);
+        if (designNode?.workspaceId === workspaceId && designNode.type === 'design') {
+          const payload = designNode.payload as Record<string, unknown>;
+          const work = (payload.explorationWork ?? {}) as Record<string, unknown>;
+          await workspaceRepository.updateNode(designNode.id, {
+            payload: {
+              ...payload,
+              explorationWork: {
+                ...work,
+                phase: 'ready_for_review',
+                taskId: updated.id,
+                assigneeNodeId: updated.assigneeNodeId,
+                lastProgressAt: new Date().toISOString(),
+              },
+            },
+          });
+          notifyWorkspaceChanged(workspaceId);
+        }
+      }
     }
     let completionHandoff: BoardTask['completionHandoff'];
     if (input.notifyCompletion && !wasDone && updated.status === 'done') {
@@ -639,6 +669,29 @@ export class TaskBoardService {
     const sessionId = (node.payload as { sessionId?: string }).sessionId;
     const session = sessionId ? ptySessionManager.get(sessionId) : null;
     if (!session || session.exited) return;
+    const designNodeId = designNodeIdFromTask(task);
+    if (designNodeId) {
+      const designNode = await workspaceRepository.getNode(designNodeId);
+      if (designNode?.workspaceId === workspaceId && designNode.type === 'design') {
+        const payload = designNode.payload as Record<string, unknown>;
+        const work = (payload.explorationWork ?? {}) as Record<string, unknown>;
+        const now = new Date().toISOString();
+        await workspaceRepository.updateNode(designNode.id, {
+          payload: {
+            ...payload,
+            explorationWork: {
+              ...work,
+              phase: 'active',
+              taskId,
+              assigneeNodeId,
+              startedAt: now,
+              lastProgressAt: now,
+            },
+          },
+        });
+        notifyWorkspaceChanged(workspaceId);
+      }
+    }
     // Texto e Enter separados — ver writeWithSubmit (composer do Codex).
     const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}]\n${await taskBrief(task)}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
     await ptySessionManager.writeWithSubmit(session.id, prompt);

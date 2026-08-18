@@ -1,5 +1,6 @@
 export const DESIGN_REFERENCE_TOPICS = [
   'quickstart',
+  'concept',
   'elements',
   'tokens',
   'components',
@@ -10,11 +11,12 @@ export const DESIGN_REFERENCE_TOPICS = [
 ];
 
 const commonRules = [
-  'Call design_read once, keep its revision and activePageId, then write the planned result in one to three batches.',
-  'Prefer design_create_elements for layers and design_apply_blueprint for a complete design. Use design_apply_operations only for edits not covered by those tools.',
+  'Call design_read once and keep its revision and activePageId.',
+  'For a visual exploration, create only one representative desktop and one mobile concept first. Apply a visible first revision within five minutes, then stop for human visual review.',
+  'Prefer design_import_code with semantic HTML/CSS for a fast native concept, or design_create_elements for a small scene graph. Use design_apply_blueprint only after the current revision is visually approved.',
   'Element x/y coordinates are absolute page coordinates, including children. parentId controls hierarchy, not the coordinate origin.',
   'Use RFC 4122 UUIDs for explicit ids. References between elements, tokens, components and prototypes must use ids from the same batch.',
-  'After each successful write, use the returned revision as the next baseRevision. Read and audit once at the end.',
+  'After each successful write, use the returned revision as the next baseRevision. Audit structure and inspect the rendered result; an error-free audit is not visual approval.',
   'Never inspect the Orkestrai application/source, create schema probes, or write scratch scripts merely to discover the design API.',
 ];
 
@@ -22,16 +24,32 @@ const references = {
   quickstart: {
     workflow: [
       'design_read(nodeId)',
-      'design_reference(topic="elements" or the required subsystem)',
-      'design_create_elements or design_apply_blueprint with the complete planned batch',
-      'design_read(nodeId), design_audit(nodeId), then design_generate_code_preview when code is required',
+      'For exploration: design_reference(topic="concept"), then design_import_code or a small design_create_elements batch',
+      'design_read(nodeId), design_audit(nodeId), visually review the rendered desktop and mobile concept, then wait for reviewStatus=approved',
+      'Only after approval: design_apply_blueprint for the complete system and design_generate_code_preview when code is required',
     ],
     rules: commonRules,
     batching: {
-      targetTransactions: '1-3 per complete direction',
+      targetTransactions: '1 concept transaction before review; 1-3 expansion transactions only after approval',
       maxOperationsPerTransaction: 2000,
       instruction: 'Build ids and payload in memory. Do not create one layer per tool call.',
     },
+  },
+  concept: {
+    rules: commonRules,
+    goal: 'Validate visual direction before investing in exhaustive states and systems.',
+    scope: {
+      frames: 'One representative desktop frame and one representative mobile frame.',
+      usefulLayers: '30-120 total; every layer must contribute visible hierarchy or content.',
+      firstRevision: 'Within five minutes of task dispatch.',
+      deferUntilApproved: ['complete state catalog', 'token library', 'component catalog', 'prototype', 'motion system', 'generated production code'],
+    },
+    preferredTool: {
+      name: 'design_import_code',
+      format: 'html',
+      instruction: 'Compose semantic HTML and focused CSS, import it as native editable layers, then inspect the rendered concept.',
+    },
+    gate: 'Stop after structural audit and visual inspection. The human Review visual gate must approve the current revision before expansion.',
   },
   elements: {
     rules: commonRules,
@@ -107,7 +125,7 @@ const references = {
   delivery: {
     rules: commonRules,
     steps: [
-      'Run design_audit and resolve critical issues.',
+      'Confirm the current revision is visually approved, then run design_audit and resolve critical issues.',
       'Call design_generate_code_preview with the approved root element ids and real workspace output path.',
       'Review content, mappings and expectedExistingHash.',
       'Call design_generate_code_apply with that exact hash and the latest design revision.',

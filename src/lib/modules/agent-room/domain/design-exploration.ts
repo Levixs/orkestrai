@@ -4,11 +4,22 @@ import type { CanvasNode } from './types.js';
 export const DESIGN_EXPLORATION_DIRECTIONS = ['clarity', 'expressive', 'efficient'] as const;
 export type DesignExplorationDirection = (typeof DESIGN_EXPLORATION_DIRECTIONS)[number];
 
+export function isDesignExplorationPayload(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  const value = payload as { workflowKind?: unknown; explorationId?: unknown };
+  return value.workflowKind === 'design-exploration' || typeof value.explorationId === 'string';
+}
+
 export type DesignExplorationCopy = {
   groupTitle: string;
   noteTitle: string;
   directions: Record<DesignExplorationDirection, { title: string; intent: string }>;
-  tasks: Array<{ title: string; description: string }>;
+  tasks: Array<{
+    kind: 'brief' | 'concept' | 'review' | 'expand' | 'implement' | 'validate';
+    direction?: DesignExplorationDirection;
+    title: string;
+    description: string;
+  }>;
   brief: {
     section: string;
     objective: string;
@@ -20,6 +31,9 @@ export type DesignExplorationCopy = {
     references: string;
     independentDirections: string;
     requiredOutput: string;
+    conceptOutput: string;
+    conceptOutputs: string[];
+    expansionOutput: string;
     outputs: string[];
     codeDelivery: string;
     decisionGate: string;
@@ -40,14 +54,23 @@ const copy: Record<CreateDesignExplorationDto['locale'], DesignExplorationCopy> 
       efficient: { title: 'UI C - Eficiente', intent: 'Densidade, produtividade e escala para uso recorrente.' },
     },
     tasks: [
-      { title: '1. Fechar brief e critérios', description: 'Valide objetivo, público, plataforma, conteúdo, restrições, stack, referências e critérios mensuráveis. Inspecione código, tokens e componentes existentes antes de delegar.' },
-      { title: '2. Produzir 3 direções completas', description: 'Produza A Clareza, B Expressiva e C Eficiente nos três documentos Design. Em cada documento: leia uma vez, consulte design_reference, aplique o plano em 1–3 lotes com design_create_elements/design_apply_blueprint e só então releia e audite. Não inspecione a instalação, faça probes ou crie scratch scripts para descobrir schemas. Cada alternativa deve incluir frames responsivos e estados, tokens, componentes, protótipo, auditoria e preview de código.' },
-      { title: '3. Comparar e decidir direção', description: 'Compare UX, marca, acessibilidade, responsividade, esforço, risco e aderência ao brief. Registre a decisão humana explícita; nunca escolha ou combine propostas automaticamente.' },
-      { title: '4. Implementar direção aprovada', description: 'Depois da aprovação humana, gere o preview na stack real, revise arquivos e mappings e aplique com revisão e hash, preservando os vínculos com design, tokens e componentes.' },
-      { title: '5. Validar e entregar ponta a ponta', description: 'Abra o Portal, compare desktop e mobile com o Design aprovado, corrija regressões, execute quality gate e testes e registre a entrega no Review Center.' },
+      { kind: 'brief', title: '1. Fechar brief e critérios', description: 'Valide objetivo, público, plataforma, conteúdo, restrições, stack, referências e critérios mensuráveis. Inspecione código, tokens e componentes existentes antes de delegar.' },
+      { kind: 'concept', direction: 'clarity', title: '2A. Conceito A - Clareza', description: 'Crie somente o conceito visual da direção A: uma tela principal desktop e uma mobile representativas. Use design_import_code com HTML/CSS semântico para obter layers nativas rapidamente, ou design_create_elements quando o scene graph for menor. Limite-se a 30-120 layers úteis, aplique a primeira revisão em até 5 minutos e não produza ainda catálogo de estados, biblioteca completa de tokens, componentes, protótipo ou código final. Rode a auditoria estrutural, confira visualmente as duas telas e marque a tarefa pronta para revisão humana.' },
+      { kind: 'concept', direction: 'expressive', title: '2B. Conceito B - Expressiva', description: 'Crie somente o conceito visual da direção B: uma tela principal desktop e uma mobile representativas. Use design_import_code com HTML/CSS semântico para obter layers nativas rapidamente, ou design_create_elements quando o scene graph for menor. Limite-se a 30-120 layers úteis, aplique a primeira revisão em até 5 minutos e não produza ainda catálogo de estados, biblioteca completa de tokens, componentes, protótipo ou código final. Rode a auditoria estrutural, confira visualmente as duas telas e marque a tarefa pronta para revisão humana.' },
+      { kind: 'concept', direction: 'efficient', title: '2C. Conceito C - Eficiente', description: 'Crie somente o conceito visual da direção C: uma tela principal desktop e uma mobile representativas. Use design_import_code com HTML/CSS semântico para obter layers nativas rapidamente, ou design_create_elements quando o scene graph for menor. Limite-se a 30-120 layers úteis, aplique a primeira revisão em até 5 minutos e não produza ainda catálogo de estados, biblioteca completa de tokens, componentes, protótipo ou código final. Rode a auditoria estrutural, confira visualmente as duas telas e marque a tarefa pronta para revisão humana.' },
+      { kind: 'review', title: '3. Revisar conceitos e decidir', description: 'Abra cada conceito em tamanho legível, avalie hierarquia, composição, clareza, marca, responsividade e acabamento. A auditoria automática é apenas estrutural e não substitui esta inspeção. Uma pessoa deve aprovar uma direção no gate de Revisão visual ou solicitar alterações com feedback rastreável antes de qualquer expansão.' },
+      { kind: 'expand', title: '4. Expandir direção aprovada', description: 'Somente depois da aprovação humana, expanda a direção aprovada para todas as áreas e estados exigidos. Então crie tokens Light/Dark, bindings, componentes e variantes, protótipo, motion reduzido e evidências. Não expanda direções rejeitadas ou ainda pendentes.' },
+      { kind: 'implement', title: '5. Implementar direção aprovada', description: 'Gere o preview na stack real apenas da direção aprovada, revise arquivos e mappings e aplique com revisão e hash, preservando os vínculos com design, tokens e componentes.' },
+      { kind: 'validate', title: '6. Validar e entregar ponta a ponta', description: 'Abra o Portal, compare desktop e mobile com o Design aprovado, corrija regressões, execute quality gate e testes e registre a entrega no Review Center.' },
     ],
     brief: {
-      section: 'Brief', objective: 'Objetivo', audience: 'Público', platform: 'Plataforma', codeTarget: 'Destino do código', visualModes: 'Modos visuais', constraints: 'Restrições', references: 'Referências', independentDirections: 'Direções independentes', requiredOutput: 'Entrega obrigatória de cada direção',
+      section: 'Brief', objective: 'Objetivo', audience: 'Público', platform: 'Plataforma', codeTarget: 'Destino do código', visualModes: 'Modos visuais', constraints: 'Restrições', references: 'Referências', independentDirections: 'Direções independentes', requiredOutput: 'Entrega obrigatória de cada direção', conceptOutput: 'Primeiro gate - conceito visual',
+      conceptOutputs: [
+        'Uma tela principal desktop e uma mobile, nativas e editáveis, com 30-120 layers úteis.',
+        'Primeira revisão visível em até 5 minutos; prefira importação semântica HTML/CSS em vez de centenas de objetos JSON.',
+        'Inspeção visual humana obrigatória. Contagem de layers e auditoria estrutural não comprovam qualidade visual.',
+      ],
+      expansionOutput: 'Somente após uma direção ser aprovada',
       outputs: [
         'Documento Design nativo e editável, com frames responsivos e estados vazio, carregando, erro e sucesso.',
         'Tokens tipados de cor, tipografia, espaçamento, raio, efeitos e motion, vinculados às layers reais.',
@@ -70,14 +93,23 @@ const copy: Record<CreateDesignExplorationDto['locale'], DesignExplorationCopy> 
       efficient: { title: 'UI C - Efficient', intent: 'Density, productivity, and scale for repeated use.' },
     },
     tasks: [
-      { title: '1. Finalize brief and criteria', description: 'Validate the objective, audience, platform, content, constraints, stack, references, and measurable criteria. Inspect existing code, tokens, and components before delegating.' },
-      { title: '2. Produce 3 complete directions', description: 'Produce A Clarity, B Expressive, and C Efficient in the three Design documents. For each document: read once, call design_reference, apply the plan in 1–3 batches with design_create_elements/design_apply_blueprint, then read and audit once. Do not inspect the installation, probe operations, or create scratch scripts to discover schemas. Each alternative must include responsive frames and states, tokens, components, a prototype, an audit, and a code preview.' },
-      { title: '3. Compare and choose a direction', description: 'Compare UX, brand, accessibility, responsiveness, effort, risk, and brief alignment. Record an explicit human decision; never select or combine proposals automatically.' },
-      { title: '4. Implement the approved direction', description: 'After human approval, generate a preview in the real stack, review files and mappings, and apply with revision and hash checks while preserving design, token, and component links.' },
-      { title: '5. Validate and deliver end to end', description: 'Open the Portal, compare desktop and mobile with the approved Design, fix regressions, run the quality gate and tests, and record delivery in the Review Center.' },
+      { kind: 'brief', title: '1. Finalize brief and criteria', description: 'Validate the objective, audience, platform, content, constraints, stack, references, and measurable criteria. Inspect existing code, tokens, and components before delegating.' },
+      { kind: 'concept', direction: 'clarity', title: '2A. Concept A - Clarity', description: 'Create only direction A\'s visual concept: one representative desktop screen and one mobile screen. Use design_import_code with semantic HTML/CSS to obtain native layers quickly, or design_create_elements for a smaller scene graph. Stay within 30-120 useful layers, apply the first revision within 5 minutes, and do not build the full state catalog, token library, components, prototype, or final code yet. Run the structural audit, visually inspect both screens, and mark the task ready for human review.' },
+      { kind: 'concept', direction: 'expressive', title: '2B. Concept B - Expressive', description: 'Create only direction B\'s visual concept: one representative desktop screen and one mobile screen. Use design_import_code with semantic HTML/CSS to obtain native layers quickly, or design_create_elements for a smaller scene graph. Stay within 30-120 useful layers, apply the first revision within 5 minutes, and do not build the full state catalog, token library, components, prototype, or final code yet. Run the structural audit, visually inspect both screens, and mark the task ready for human review.' },
+      { kind: 'concept', direction: 'efficient', title: '2C. Concept C - Efficient', description: 'Create only direction C\'s visual concept: one representative desktop screen and one mobile screen. Use design_import_code with semantic HTML/CSS to obtain native layers quickly, or design_create_elements for a smaller scene graph. Stay within 30-120 useful layers, apply the first revision within 5 minutes, and do not build the full state catalog, token library, components, prototype, or final code yet. Run the structural audit, visually inspect both screens, and mark the task ready for human review.' },
+      { kind: 'review', title: '3. Review concepts and decide', description: 'Open every concept at a legible size and evaluate hierarchy, composition, clarity, brand, responsiveness, and polish. The automated audit is structural only and does not replace this inspection. A human must approve a direction in the Visual review gate or request changes with traceable feedback before expansion.' },
+      { kind: 'expand', title: '4. Expand the approved direction', description: 'Only after human approval, expand the approved direction into every required area and state. Then create Light/Dark tokens, bindings, components and variants, prototype, reduced motion, and evidence. Do not expand rejected or pending directions.' },
+      { kind: 'implement', title: '5. Implement the approved direction', description: 'Generate a preview in the real stack only for the approved direction, review files and mappings, and apply with revision and hash checks while preserving design, token, and component links.' },
+      { kind: 'validate', title: '6. Validate and deliver end to end', description: 'Open the Portal, compare desktop and mobile with the approved Design, fix regressions, run the quality gate and tests, and record delivery in the Review Center.' },
     ],
     brief: {
-      section: 'Brief', objective: 'Objective', audience: 'Audience', platform: 'Platform', codeTarget: 'Code target', visualModes: 'Visual modes', constraints: 'Constraints', references: 'References', independentDirections: 'Independent directions', requiredOutput: 'Required output for every direction',
+      section: 'Brief', objective: 'Objective', audience: 'Audience', platform: 'Platform', codeTarget: 'Code target', visualModes: 'Visual modes', constraints: 'Constraints', references: 'References', independentDirections: 'Independent directions', requiredOutput: 'Required output for every direction', conceptOutput: 'First gate - visual concept',
+      conceptOutputs: [
+        'One editable native desktop key screen and one mobile screen with 30-120 useful layers.',
+        'A visible first revision within 5 minutes; prefer semantic HTML/CSS import over hundreds of JSON objects.',
+        'Mandatory human visual inspection. Layer counts and structural audits do not prove visual quality.',
+      ],
+      expansionOutput: 'Only after one direction is approved',
       outputs: [
         'Editable native Design document with responsive frames and empty, loading, error, and success states.',
         'Typed color, typography, spacing, radius, effect, and motion tokens, bound to the actual layers.',
@@ -100,14 +132,23 @@ const copy: Record<CreateDesignExplorationDto['locale'], DesignExplorationCopy> 
       efficient: { title: 'UI C - Eficiente', intent: 'Densidad, productividad y escala para uso recurrente.' },
     },
     tasks: [
-      { title: '1. Cerrar brief y criterios', description: 'Valida objetivo, público, plataforma, contenido, restricciones, stack, referencias y criterios medibles. Inspecciona código, tokens y componentes existentes antes de delegar.' },
-      { title: '2. Producir 3 direcciones completas', description: 'Produce A Claridad, B Expresiva y C Eficiente en los tres documentos Design. En cada documento: lee una vez, consulta design_reference, aplica el plan en 1–3 lotes con design_create_elements/design_apply_blueprint y solo entonces vuelve a leer y auditar. No inspecciones la instalación, hagas probes ni crees scratch scripts para descubrir schemas. Cada alternativa debe incluir frames responsivos y estados, tokens, componentes, prototipo, auditoría y vista previa de código.' },
-      { title: '3. Comparar y elegir una dirección', description: 'Compara UX, marca, accesibilidad, responsividad, esfuerzo, riesgo y alineación con el brief. Registra una decisión humana explícita; nunca elijas ni combines propuestas automáticamente.' },
-      { title: '4. Implementar la dirección aprobada', description: 'Tras la aprobación humana, genera una vista previa en el stack real, revisa archivos y mappings y aplica con revisión y hash, conservando los vínculos de design, tokens y componentes.' },
-      { title: '5. Validar y entregar de punta a punta', description: 'Abre el Portal, compara desktop y mobile con el Design aprobado, corrige regresiones, ejecuta quality gate y pruebas y registra la entrega en Review Center.' },
+      { kind: 'brief', title: '1. Cerrar brief y criterios', description: 'Valida objetivo, público, plataforma, contenido, restricciones, stack, referencias y criterios medibles. Inspecciona código, tokens y componentes existentes antes de delegar.' },
+      { kind: 'concept', direction: 'clarity', title: '2A. Concepto A - Claridad', description: 'Crea solamente el concepto visual de la dirección A: una pantalla principal desktop y una mobile representativas. Usa design_import_code con HTML/CSS semántico para obtener capas nativas rápidamente, o design_create_elements si el scene graph es menor. Limítate a 30-120 capas útiles, aplica la primera revisión en hasta 5 minutos y todavía no produzcas el catálogo de estados, biblioteca completa de tokens, componentes, prototipo o código final. Ejecuta la auditoría estructural, inspecciona visualmente ambas pantallas y marca la tarea lista para revisión humana.' },
+      { kind: 'concept', direction: 'expressive', title: '2B. Concepto B - Expresiva', description: 'Crea solamente el concepto visual de la dirección B: una pantalla principal desktop y una mobile representativas. Usa design_import_code con HTML/CSS semántico para obtener capas nativas rápidamente, o design_create_elements si el scene graph es menor. Limítate a 30-120 capas útiles, aplica la primera revisión en hasta 5 minutos y todavía no produzcas el catálogo de estados, biblioteca completa de tokens, componentes, prototipo o código final. Ejecuta la auditoría estructural, inspecciona visualmente ambas pantallas y marca la tarea lista para revisión humana.' },
+      { kind: 'concept', direction: 'efficient', title: '2C. Concepto C - Eficiente', description: 'Crea solamente el concepto visual de la dirección C: una pantalla principal desktop y una mobile representativas. Usa design_import_code con HTML/CSS semántico para obtener capas nativas rápidamente, o design_create_elements si el scene graph es menor. Limítate a 30-120 capas útiles, aplica la primera revisión en hasta 5 minutos y todavía no produzcas el catálogo de estados, biblioteca completa de tokens, componentes, prototipo o código final. Ejecuta la auditoría estructural, inspecciona visualmente ambas pantallas y marca la tarea lista para revisión humana.' },
+      { kind: 'review', title: '3. Revisar conceptos y decidir', description: 'Abre cada concepto en un tamaño legible y evalúa jerarquía, composición, claridad, marca, responsividad y acabado. La auditoría automática es solo estructural y no sustituye esta inspección. Una persona debe aprobar una dirección en el gate de Revisión visual o solicitar cambios con feedback rastreable antes de expandir.' },
+      { kind: 'expand', title: '4. Expandir la dirección aprobada', description: 'Solo después de la aprobación humana, expande la dirección aprobada a todas las áreas y estados exigidos. Después crea tokens Light/Dark, bindings, componentes y variantes, prototipo, motion reducido y evidencias. No expandas direcciones rechazadas o pendientes.' },
+      { kind: 'implement', title: '5. Implementar la dirección aprobada', description: 'Genera la vista previa en el stack real solo para la dirección aprobada, revisa archivos y mappings y aplica con revisión y hash, conservando los vínculos de design, tokens y componentes.' },
+      { kind: 'validate', title: '6. Validar y entregar de punta a punta', description: 'Abre el Portal, compara desktop y mobile con el Design aprobado, corrige regresiones, ejecuta quality gate y pruebas y registra la entrega en Review Center.' },
     ],
     brief: {
-      section: 'Brief', objective: 'Objetivo', audience: 'Público', platform: 'Plataforma', codeTarget: 'Destino del código', visualModes: 'Modos visuales', constraints: 'Restricciones', references: 'Referencias', independentDirections: 'Direcciones independientes', requiredOutput: 'Entrega obligatoria de cada dirección',
+      section: 'Brief', objective: 'Objetivo', audience: 'Público', platform: 'Plataforma', codeTarget: 'Destino del código', visualModes: 'Modos visuales', constraints: 'Restricciones', references: 'Referencias', independentDirections: 'Direcciones independientes', requiredOutput: 'Entrega obligatoria de cada dirección', conceptOutput: 'Primer gate - concepto visual',
+      conceptOutputs: [
+        'Una pantalla principal desktop y una mobile, nativas y editables, con 30-120 capas útiles.',
+        'Primera revisión visible en hasta 5 minutos; prefiere importación semántica HTML/CSS a cientos de objetos JSON.',
+        'Inspección visual humana obligatoria. Conteos de capas y auditoría estructural no demuestran calidad visual.',
+      ],
+      expansionOutput: 'Solo después de aprobar una dirección',
       outputs: [
         'Documento Design nativo y editable, con frames responsivos y estados vacío, cargando, error y éxito.',
         'Tokens tipados de color, tipografía, espaciado, radio, efectos y movimiento, vinculados a las capas reales.',
@@ -153,7 +194,11 @@ export function designExplorationBrief(input: CreateDesignExplorationDto, noteId
     `## ${labels.independentDirections}`,
     ...directionLines,
     '',
-    `## ${labels.requiredOutput}`,
+    `## ${labels.conceptOutput}`,
+    ...labels.conceptOutputs.map((output) => `- ${output}`),
+    '',
+    `## ${labels.expansionOutput}`,
+    `### ${labels.requiredOutput}`,
     ...labels.outputs.map((output) => `- ${output}`),
     `- ${input.codeTarget}: ${labels.codeDelivery}`,
     '',

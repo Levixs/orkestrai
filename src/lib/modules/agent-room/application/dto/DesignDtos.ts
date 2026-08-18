@@ -1,4 +1,18 @@
-import type { ApplyDesignOperationsInput, DesignOperation, ExportDesignPdfInput, ImportDesignAssetInput, UploadDesignThumbnailInput } from '../../contracts/schemas/designSchemas.js';
+import type { ApplyDesignOperationsInput, DesignOperation, DesignVisualReviewInput, ExportDesignPdfInput, ImportDesignAssetInput, UploadDesignThumbnailInput } from '../../contracts/schemas/designSchemas.js';
+
+export class ReviewDesignDto {
+  constructor(
+    public readonly workspaceId: string,
+    public readonly nodeId: string,
+    public readonly status: DesignVisualReviewInput['status'],
+    public readonly revision: number,
+    public readonly note: string,
+  ) {}
+
+  static from(workspaceId: string, nodeId: string, input: DesignVisualReviewInput): ReviewDesignDto {
+    return new ReviewDesignDto(workspaceId, nodeId, input.status, input.revision, input.note);
+  }
+}
 
 export class ApplyDesignOperationsDto {
   constructor(

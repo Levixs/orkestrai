@@ -2,13 +2,15 @@
   import { onMount } from 'svelte';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
-  import { AlertCircle, CheckCircle2, Clock3, History, Info, LayoutTemplate, RotateCcw, ShieldCheck, TriangleAlert } from '@lucide/svelte';
+  import { AlertCircle, CheckCircle2, Clock3, Eye, History, Info, LayoutTemplate, MessageSquareWarning, RotateCcw, ShieldCheck, TriangleAlert, X } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Textarea } from '$lib/components/ui/textarea';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import type { DesignDocument } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
   import type { DesignMaintenanceStatus } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
   import { auditDesignDocument, type DesignQualityIssue, type DesignQualityRule } from '$lib/modules/agent-room/domain/design-quality.js';
   import { designTemplateIds, type DesignTemplateId } from '$lib/modules/agent-room/domain/design-templates.js';
+  import { isDesignExplorationPayload } from '$lib/modules/agent-room/domain/design-exploration.js';
   import * as m from '$lib/paraglide/messages.js';
 
   let {
@@ -32,7 +34,21 @@
   let restoreOpen = $state(false);
   let templateConfirmOpen = $state(false);
   let pendingTemplate = $state<DesignTemplateId | null>(null);
+  let reviewNode = $state<{
+    payload: {
+      workflowKind?: string;
+      explorationId?: string;
+      visualReview?: { status?: string; revision?: number | null; note?: string; reviewedAt?: string | null };
+    };
+  } | null>(null);
+  let reviewMode = $state(false);
+  let reviewNote = $state('');
+  let reviewing = $state(false);
+  let reviewError = $state('');
   const report = $derived(auditDesignDocument(document));
+  const isExploration = $derived(isDesignExplorationPayload(reviewNode?.payload));
+  const visualReview = $derived(reviewNode?.payload.visualReview ?? null);
+  const reviewIsCurrent = $derived(Boolean(visualReview?.revision && visualReview.revision === document.revision));
 
   async function request<T>(init?: RequestInit): Promise<T> {
     const csrf = getCsrfToken();
@@ -51,6 +67,48 @@
       maintenance = data.maintenance;
     } catch {
       maintenance = null;
+    }
+  }
+
+  async function loadReviewNode() {
+    try {
+      const response = await fetch(`/api/agent-room/workspaces/${workspaceId}/nodes/${nodeId}`);
+      const payload = await response.json();
+      reviewNode = response.ok && !payload.error ? payload.data : null;
+    } catch {
+      reviewNode = null;
+    }
+  }
+
+  async function submitVisualReview(status: 'approved' | 'changes_requested') {
+    if (reviewing || !isExploration) return;
+    const note = reviewNote.trim();
+    if (status === 'changes_requested' && !note) {
+      reviewError = m['design.visual_review_feedback_required']();
+      return;
+    }
+    reviewing = true;
+    reviewError = '';
+    try {
+      const csrf = getCsrfToken();
+      const response = await fetch(`/api/agent-room/workspaces/${workspaceId}/designs/${nodeId}/review`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
+        body: JSON.stringify({ status, revision: document.revision, note }),
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.error) {
+        if (payload.error === 'design_review_empty') throw new Error(m['design.visual_review_empty']());
+        throw new Error(m['design.visual_review_error']());
+      }
+      await loadReviewNode();
+      reviewMode = false;
+      reviewNote = '';
+      toast.success(m['design.visual_review_saved']());
+    } catch (error) {
+      reviewError = error instanceof Error ? error.message : m['design.visual_review_error']();
+    } finally {
+      reviewing = false;
     }
   }
 
@@ -117,17 +175,63 @@
     return value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KB` : `${(value / 1024 / 1024).toFixed(1)} MB`;
   }
 
-  onMount(() => void loadMaintenance());
+  onMount(() => {
+    void loadMaintenance();
+    void loadReviewNode();
+  });
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
   <div class="min-h-0 flex-1 overflow-y-auto">
     <div class="space-y-5 p-3">
+      {#if isExploration}
+        <section class="space-y-3 border border-[var(--app-border-strong)] bg-[var(--app-surface-raised)] p-3" aria-labelledby="design-visual-review">
+          <div class="flex items-start gap-2">
+            <Eye size={15} class="mt-0.5 shrink-0 text-[var(--app-secondary)]" />
+            <div class="min-w-0">
+              <h3 id="design-visual-review" class="text-xs font-semibold">{m['design.visual_review_title']()}</h3>
+              <p class="mt-1 text-[10px] leading-4 text-[var(--app-text-muted)]">{m['design.visual_review_description']()}</p>
+            </div>
+          </div>
+
+          {#if visualReview?.revision && !reviewIsCurrent}
+            <p class="border border-[color-mix(in_srgb,var(--app-warning)_35%,var(--app-border))] bg-[color-mix(in_srgb,var(--app-warning)_8%,transparent)] p-2 text-[10px] leading-4">{m['design.visual_review_stale']()}</p>
+          {:else if reviewIsCurrent && visualReview?.status === 'approved'}
+            <p class="flex items-center gap-1.5 border border-[color-mix(in_srgb,var(--app-success)_35%,var(--app-border))] bg-[color-mix(in_srgb,var(--app-success)_8%,transparent)] p-2 text-[10px] leading-4"><CheckCircle2 size={13} class="shrink-0 text-[var(--app-success)]" />{m['design.visual_review_approved']({ revision: document.revision })}</p>
+          {:else if reviewIsCurrent && visualReview?.status === 'changes_requested'}
+            <div class="space-y-1.5 border border-[color-mix(in_srgb,var(--app-warning)_35%,var(--app-border))] bg-[color-mix(in_srgb,var(--app-warning)_8%,transparent)] p-2 text-[10px] leading-4">
+              <p class="flex items-center gap-1.5"><MessageSquareWarning size={13} class="shrink-0 text-[var(--app-warning)]" />{m['design.visual_review_changes']({ revision: document.revision })}</p>
+              {#if visualReview.note}<p class="text-[var(--app-text-muted)]">{visualReview.note}</p>{/if}
+            </div>
+          {:else}
+            <p class="border border-[var(--app-border)] bg-[var(--app-surface)] p-2 text-[10px] leading-4 text-[var(--app-text-soft)]">{m['design.visual_review_pending']({ revision: document.revision })}</p>
+          {/if}
+
+          {#if reviewMode}
+            <div class="space-y-2">
+              <Textarea bind:value={reviewNote} rows={4} class="min-h-24 resize-y text-xs" placeholder={m['design.visual_review_feedback']()} />
+              {#if reviewError}<p class="text-[10px] text-[var(--app-danger)]" role="alert">{reviewError}</p>{/if}
+              <div class="flex gap-1.5">
+                <Button size="sm" variant="outline" class="flex-1 text-[10px]" disabled={reviewing} onclick={() => { reviewMode = false; reviewError = ''; }}><X size={12} />{m['design.visual_review_cancel']()}</Button>
+                <Button size="sm" variant="destructive" class="flex-1 text-[10px]" disabled={reviewing} onclick={() => void submitVisualReview('changes_requested')}><MessageSquareWarning size={12} />{m['design.visual_review_request_changes']()}</Button>
+              </div>
+            </div>
+          {:else}
+            {#if reviewError}<p class="text-[10px] text-[var(--app-danger)]" role="alert">{reviewError}</p>{/if}
+            <div class="grid grid-cols-2 gap-1.5">
+              <Button size="sm" variant="outline" class="h-auto min-h-9 whitespace-normal px-2 py-1.5 text-[10px]" disabled={reviewing || document.revision < 1} onclick={() => { reviewMode = true; reviewError = ''; }}><MessageSquareWarning size={12} />{m['design.visual_review_request_changes']()}</Button>
+              <Button size="sm" class="h-auto min-h-9 whitespace-normal px-2 py-1.5 text-[10px]" disabled={reviewing || document.revision < 1} onclick={() => void submitVisualReview('approved')}><CheckCircle2 size={12} />{m['design.visual_review_approve']()}</Button>
+            </div>
+          {/if}
+        </section>
+      {/if}
+
       <section class="space-y-3" aria-labelledby="design-quality-summary">
         <div class="flex items-start justify-between gap-3">
           <div>
             <h3 id="design-quality-summary" class="flex items-center gap-1.5 text-xs font-semibold"><ShieldCheck size={14} />{m['design.quality_summary']()}</h3>
             <p class="mt-1 text-[10px] text-[var(--app-text-muted)]">{m['design.quality_audited']({ count: String(report.auditedElements), duration: String(report.durationMs) })}</p>
+            <p class="mt-1 text-[9px] leading-3.5 text-[var(--app-text-muted)]">{m['design.quality_structural_notice']()}</p>
           </div>
           {#if !report.issues.length}<CheckCircle2 size={18} class="text-[var(--app-success)]" />{:else}<span class="text-[10px] font-semibold tabular-nums text-[var(--app-text-soft)]">{report.issues.length}</span>{/if}
         </div>

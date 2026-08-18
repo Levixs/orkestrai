@@ -564,6 +564,22 @@ export const designDocumentSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const designVisualReviewSchema = z.object({
+  status: z.enum(['approved', 'changes_requested']),
+  revision: z.number().int().min(1),
+  note: z.string().trim().max(4_000).default(''),
+}).superRefine((value, context) => {
+  if (value.status === 'changes_requested' && !value.note) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['note'],
+      message: 'Review feedback is required when requesting changes.',
+    });
+  }
+});
+
+export type DesignVisualReviewInput = z.infer<typeof designVisualReviewSchema>;
+
 const designElementChangesSchema = designElementSchema
   .omit({ id: true, pageId: true, parentId: true, type: true })
   .partial();

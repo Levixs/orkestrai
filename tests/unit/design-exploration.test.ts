@@ -3,6 +3,7 @@ import { CreateDesignExplorationDto } from '$lib/modules/agent-room/application/
 import {
   designExplorationBrief,
   designExplorationLayout,
+  isDesignExplorationPayload,
 } from '$lib/modules/agent-room/domain/design-exploration.js';
 import { createDesignExplorationSchema } from '$lib/modules/agent-room/contracts/schemas/create-design-exploration.schema.js';
 import type { CanvasNode } from '$lib/modules/agent-room/domain/types.js';
@@ -23,6 +24,12 @@ function input(locale: 'pt-BR' | 'en' | 'es' = 'en') {
 }
 
 describe('design exploration workflow', () => {
+  it('recognizes both current and legacy exploration payloads', () => {
+    expect(isDesignExplorationPayload({ workflowKind: 'design-exploration' })).toBe(true);
+    expect(isDesignExplorationPayload({ explorationId: 'legacy-exploration' })).toBe(true);
+    expect(isDesignExplorationPayload({ workflowKind: 'other' })).toBe(false);
+  });
+
   it('validates delegation and keeps manual creation independent from a leader', () => {
     expect(createDesignExplorationSchema.safeParse(input()).success).toBe(true);
     expect(createDesignExplorationSchema.safeParse({ ...input(), executionMode: 'leader' }).success).toBe(false);
@@ -33,12 +40,14 @@ describe('design exploration workflow', () => {
     }).success).toBe(true);
   });
 
-  it('builds a localized brief with all three directions and complete delivery', () => {
+  it('builds a localized brief with a small concept gate before complete delivery', () => {
     const brief = designExplorationBrief(CreateDesignExplorationDto.from(input('es')), 'note-1');
     expect(brief).toContain('UI A - Claridad');
     expect(brief).toContain('UI B - Expresiva');
     expect(brief).toContain('UI C - Eficiente');
     expect(brief).toContain('Tokens tipados');
+    expect(brief).toContain('30-120 capas útiles');
+    expect(brief).toContain('Inspección visual humana');
     expect(brief).toContain('Vista previa de código');
     expect(brief).toContain('note-1');
     expect(brief).not.toContain('lista de arquivos');
