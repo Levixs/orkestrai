@@ -164,6 +164,10 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Kept terminal keyboard input isolated from Canvas accessibility shortcuts.
+  Escape now reaches Vim, merge/rebase editors, pagers, and other terminal TUIs
+  without deselecting the node or blurring xterm, while terminal search and
+  dictation shortcuts remain local to the terminal.
 - Prevented wheel events over terminals and other Canvas nodes from falling
   through to the viewport at their scroll limits and unexpectedly zooming the
   complete Canvas. Canvas zoom now remains restricted to the actual pane.

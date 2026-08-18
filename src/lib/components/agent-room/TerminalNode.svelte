@@ -286,25 +286,35 @@
   let searchQuery = $state('');
   let searchAddon: SearchAddon | null = null;
 
-  function handleDictateHotkey(event: KeyboardEvent) {
+  function handleTerminalKeydown(event: KeyboardEvent) {
     if (matchesCombo(event, dictateHotkey)) {
       event.preventDefault();
       toggleDictation();
+      event.stopPropagation();
       return;
     }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
       event.preventDefault();
       searchOpen = !searchOpen;
+      event.stopPropagation();
       return;
     }
     if (event.key === 'Escape' && searchOpen) {
+      event.preventDefault();
       searchOpen = false;
       searchAddon?.clearDecorations();
+      requestAnimationFrame(() => xtermInstance?.focus());
+      event.stopPropagation();
       return;
     }
     if (event.key === 'Enter' && searchOpen && searchQuery) {
       searchAddon?.findNext(searchQuery);
     }
+
+    // O xterm processa a tecla antes deste handler no wrapper. Nao deixe o
+    // evento subir ao NodeWrapper do XYFlow: ele usa Escape para desselecionar
+    // o node e agenda blur(), interrompendo Vim, merge/rebase e outras TUIs.
+    event.stopPropagation();
   }
 
   export function isWaiting() {
@@ -328,6 +338,13 @@
     searchAddon = new SearchAddon();
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(searchAddon);
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown') return true;
+      if (matchesCombo(event, dictateHotkey)) return false;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') return false;
+      if (event.key === 'Escape' && searchOpen) return false;
+      return true;
+    });
     terminal.open(container);
     fitAddon.fit();
 
@@ -632,11 +649,11 @@
   });
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
-  class="terminal-node"
+  class="terminal-node nokey"
   style:background={TERMINAL_THEMES[themeName]?.theme.background ?? TERMINAL_THEMES.dark.theme.background}
-  tabindex="0"
-  onkeydown={handleDictateHotkey}
+  onkeydown={handleTerminalKeydown}
   onclick={() => xtermInstance?.focus()}
   role="application"
 >

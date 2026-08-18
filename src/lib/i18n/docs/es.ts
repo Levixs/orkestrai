@@ -454,6 +454,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: 'En desarrollo',
       items: [
+        'La entrada de teclado del terminal ahora queda aislada de los atajos de accesibilidad del Canvas. Escape llega correctamente a Vim, editores de merge/rebase, paginadores y otras TUIs sin deseleccionar el nodo ni quitar el foco de xterm; la búsqueda y el dictado siguen siendo locales al terminal.',
         'El desplazamiento dentro de terminales y otros nodos del Canvas ahora permanece aislado incluso al llegar al inicio o al final del contenido. El zoom del Canvas solo responde cuando el puntero está sobre el área libre del propio Canvas.',
         'Las formas del Canvas ahora muestran una acción visible para duplicar y aceptan Cmd/Ctrl+D. Cmd/Ctrl+C y Cmd/Ctrl+V copian y pegan una forma o un arreglo completo de selección múltiple conservando tamaño, texto, estilos, geometría editable de las flechas y espaciado relativo.',
         'Nuevo Cliente de API nativo en Canvas y Workbench: crea y envía solicitudes con método, URL, encabezados, autenticación Bearer/Basic, cuerpo y variables, revisa estado, duración, tamaño y respuesta formateada, importa carpetas Bruno mediante el parser oficial o colecciones Postman v2.1 y vuelve a abrir el origen en la aplicación instalada.',
