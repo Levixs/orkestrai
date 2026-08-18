@@ -164,6 +164,9 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Prevented wheel events over terminals and other Canvas nodes from falling
+  through to the viewport at their scroll limits and unexpectedly zooming the
+  complete Canvas. Canvas zoom now remains restricted to the actual pane.
 - Preserved the current directory of native shell terminals across app restarts
   by tracking OSC 7 and the live PTY process directory, without changing the
   working directory of agent terminals or provider resume behavior.

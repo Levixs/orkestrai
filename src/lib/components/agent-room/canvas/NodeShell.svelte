@@ -93,7 +93,7 @@
   );
 </script>
 
-<div class={`node-shell ${klass}`} class:selected style:--accent={accent}>
+<div class={`node-shell nowheel ${klass}`} class:selected style:--accent={accent}>
   <NodeResizer
     isVisible={selected ?? false}
     {minWidth}
@@ -179,6 +179,7 @@
        e precisam ser clicaveis fora da caixa; o recorte dos cantos fica a
        cargo do header/body. */
     overflow: visible;
+    overscroll-behavior: contain;
     transition: border-color 120ms ease;
   }
 

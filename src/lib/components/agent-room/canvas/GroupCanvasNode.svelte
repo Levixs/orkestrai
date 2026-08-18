@@ -36,8 +36,8 @@
 </script>
 
 <div class={selected
-  ? 'relative size-full rounded-lg border-2 border-dashed border-[var(--app-secondary)] bg-[color-mix(in_srgb,var(--app-secondary)_7%,transparent)]'
-  : 'relative size-full rounded-lg border-2 border-dashed border-[color-mix(in_srgb,var(--app-secondary)_52%,transparent)] bg-[color-mix(in_srgb,var(--app-secondary)_7%,transparent)]'}>
+  ? 'nowheel relative size-full rounded-lg border-2 border-dashed border-[var(--app-secondary)] bg-[color-mix(in_srgb,var(--app-secondary)_7%,transparent)]'
+  : 'nowheel relative size-full rounded-lg border-2 border-dashed border-[color-mix(in_srgb,var(--app-secondary)_52%,transparent)] bg-[color-mix(in_srgb,var(--app-secondary)_7%,transparent)]'}>
   <header class="absolute -top-3.5 left-3.5 inline-flex max-w-[calc(100%-28px)] cursor-grab select-none items-center gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-surface-raised)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--app-text-soft)] shadow-sm" ondblclick={startRename} role="presentation">
     <Group size={12} class="shrink-0" aria-hidden="true" />
     {#if editing}

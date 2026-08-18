@@ -279,7 +279,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="canvas-shape"
+  class="canvas-shape nowheel"
   class:selected
   bind:clientWidth={boxWidth}
   bind:clientHeight={boxHeight}
