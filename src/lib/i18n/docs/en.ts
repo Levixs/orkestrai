@@ -66,6 +66,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `Add Mobile Device from the Canvas toolbar. It is one persistent workspace node; Workbench lists and opens the same node and session. On Apple Silicon Macs with Xcode installed, choose an iOS Simulator. On macOS, Windows, or Linux with Android Studio Platform Tools installed, choose a local AVD or an ADB-authorized USB or network device; physical devices require an explicit confirmation before Orkestrai attaches. The panel streams the screen and sends taps, swipes, pinch gestures, rotation, Home, text input, and Android Back and Recents. The complete screen automatically fits Canvas and Workbench; independent controls zoom out, zoom in, restore automatic fit, or use 1:1 with horizontal and vertical scrolling. The tool drawer installs .app/.ipa or .apk builds, launches an iOS bundle id or Android package/activity, saves screenshots under .orkestrai/devices/screenshots, reads bounded logs and the accessibility or UIAutomator tree, and inspects or changes permissions. Agents receive the same workspace-scoped actions through the orkestrai device CLI and MCP tools after the user starts a session. Orkestrai stops only helpers and simulators or emulators it started; one node and session are allowed per workspace and idle sessions are cleaned up.`,
     },
     {
+      id: 'api-client',
+      title: 'API client for Bruno and Postman',
+      body: `Add API Client from the Canvas toolbar to work with APIs without switching applications. Create and organize HTTP requests, edit the URL, method, headers, Bearer or Basic authentication, JSON, text, XML, or URL-encoded form body, and {{name}} variables, send them through Orkestrai's local process, and inspect the formatted status, time, size, type, and response. The node menu imports Bruno folders (.bru, .yml, and .yaml) through the official parser or Postman v2.1 JSON collections. After importing, Open in original app starts the installed Bruno or Postman with the selected source. The node and its data persist in the workspace and open in Canvas or Workbench. Connected agents list and execute saved requests through the api_client_list and api_client_execute tools; the inventory never returns tokens or passwords.`,
+    },
+    {
       id: 'notas',
       title: 'Notes as work channels',
       body: `Notes are living markdown shared with the agents. The convention: connect the note to whoever should read/write it and state the purpose in the title and content. E.g.: a "Backlog (leader writes)" note connected to the leader — you write "break this into tasks for the team" and it reads it with orkestrai note read and distributes it on the board. A "For me (human)" note — ask the leader to log status/decisions there with orkestrai note write/edit, and you follow along formatted (eye icon). Double-click the title to rename the note. Drop, paste, or select images, PDFs, other files, and HTTP/HTTPS links; files up to 10 MB stay in .orkestrai/attachments/ and their markdown reference is inserted at the cursor. Removing an attachment with its X also removes that reference and deletes the stored workspace file.`,
@@ -79,6 +84,11 @@ export const DOCS_EN: DocsCatalog = {
       id: 'imagens',
       title: 'Image node (visual reference)',
       body: `The Image tool (bottom bar) creates a visual reference node on the canvas: mockup, screenshot, architecture diagram. Paste with Ctrl+V or click to pick the file — the image is saved in the workspace (.orkestrai/images/). Connect the node to the leader (or to a specific agent, like the designer) to make clear who should use that reference, and say in chat what to do with it. Double-click the title to rename; the image icon in the header swaps the file.`,
+    },
+    {
+      id: 'visual-annotations',
+      title: 'Shapes and visual annotations',
+      body: `Use Shapes in the Canvas toolbar to draw rectangles, rounded boxes, ellipses, diamonds, and editable curved arrows around the work. Double-click to edit the text; the style control changes fill, opacity, border, dash, typography, and arrow anchors. Select a shape and use its duplicate action or Cmd/Ctrl+D to preserve its exact size, text, style, and arrow geometry with a small offset. Cmd/Ctrl+C and Cmd/Ctrl+V copy and paste one or several selected shapes while keeping their relative spacing; every copy is a separate persistent node that remains independently editable.`,
     },
     {
       id: 'design-mode',
@@ -153,7 +163,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'atalhos',
       title: 'Shortcuts',
-      body: `⌘P palette · ⌘K (or Ctrl+K) search documentation from any screen · ⌘2 Provider Center · ⌘⇧A next attention · ⌘⇧T organize selected nodes, or the whole canvas when none are selected · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation · ⌘F search terminal · ⌘Z undo · Backspace delete. On Windows, the styled title bar provides File, Edit, View, Workspace, Window, and Help while preserving window controls; macOS and Linux keep their platform menus.`,
+      body: `⌘P palette · ⌘K (or Ctrl+K) search documentation from any screen · ⌘2 Provider Center · ⌘⇧A next attention · ⌘⇧T organize selected nodes, or the whole canvas when none are selected · Cmd/Ctrl+D duplicate selected shapes · Cmd/Ctrl+C and Cmd/Ctrl+V copy and paste selected shapes · ⌘G group · ⌘⇧G ungroup · N new note · L connect selected · Alt+1…9 focus terminal · Alt+Space voice dictation · ⌘F search terminal · ⌘Z undo · Backspace delete. On Windows, the styled title bar provides File, Edit, View, Workspace, Window, and Help while preserving window controls; macOS and Linux keep their platform menus.`,
     },
   ],
   useCases: [
@@ -180,6 +190,18 @@ export const DOCS_EN: DocsCatalog = {
       title: 'Compare approaches before committing the team',
       body: 'Open Council from the Canvas toolbar, the top of the workspace in Workbench, or Command/Ctrl+K. Starting from a task carries its complete brief. Ask three agents to independently evaluate architecture, delivery risk, and cost. Keep advisory mode for a decision only, or implementation mode for isolated prototypes. Compare the normalized matrix, read the optional leader synthesis, and record your own selection, consensus request, or rejection. Only a selected implementation with a clean target and conflict-free preview can be landed.',
       tags: ['Council', 'human decision', 'isolated floors'],
+    },
+    {
+      id: 'api-client-workflow',
+      title: 'Test Bruno or Postman APIs without leaving the Canvas',
+      body: 'Add an API Client and import a Bruno folder or a Postman v2.1 collection file. Select a request, adjust variables such as {{baseUrl}}, headers, and body, then send it inside Orkestrai. The response shows status, duration, size, and formatted content. The imported collection remains available to open in the original application when you need one of its specialized features.',
+      tags: ['Bruno + Postman', 'HTTP requests', 'Canvas + Workbench'],
+    },
+    {
+      id: 'visual-annotations',
+      title: 'Reuse a visual explanation without rebuilding it',
+      body: 'Style one shape or a complete arrangement of labels, containers, and arrows. Duplicate a selected shape with its action or Cmd/Ctrl+D, or copy and paste a multi-selection to create another version with the same geometry and spacing. Edit the copied text and colors independently while the original stays unchanged.',
+      tags: ['Shapes', 'copy and paste', 'Canvas annotations'],
     },
     {
       id: 'visual-qa',
@@ -432,6 +454,9 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'In development',
       items: [
+        'Canvas shapes now expose a visible duplicate action plus Cmd/Ctrl+D. Cmd/Ctrl+C and Cmd/Ctrl+V copy and paste single shapes or complete multi-selection arrangements while preserving size, text, styles, editable arrow geometry, and relative spacing.',
+        'New native API Client in Canvas and Workbench: create and send requests with methods, URLs, headers, Bearer/Basic authentication, bodies, and variables, inspect formatted status, duration, size, and response data, import Bruno folders through the official parser or Postman v2.1 collections, and reopen the source in its installed application.',
+        'Native shell terminals now preserve their current folder after restarting Orkestrai. Cursor and other providers also receive an explicit tool to list existing notes before reading or editing, preventing duplicates and empty-array dead ends.',
         'Command/Ctrl+K once again searches the complete localized documentation alongside workspace content. Topics, use cases, and changelog entries use accent-insensitive matching, open at their exact anchor, and remain available even if the workspace search request fails.',
         'Large Design documents now expand around every frame instead of clipping artwork to the nominal page. Use trackpad or scroll, the Hand tool (H), Space-drag, or the middle mouse button to move across the workspace; Fit frames all content and zoom reaches 2%. Exports and thumbnails include the same complete bounds. Connected agents now consult design_reference once, create up to 2,000 layers with design_create_elements, or apply layers, tokens, bindings, components, prototype, and motion together with design_apply_blueprint. Guided explorations explicitly prohibit installation inspection, schema probes, and scratch discovery scripts.',
         'Workbench and Control Center no longer accumulate agents, boards, and other nodes from landed or deleted Floors. The upgrade archives legacy records, floor retirement removes obsolete edges, active agents show their floor name, and layout clones start without reusing a PTY session or provider conversation. Bridge recruitment now honors and validates the requested Floor.',

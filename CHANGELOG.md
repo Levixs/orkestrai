@@ -9,6 +9,18 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Added reusable Canvas annotations. Selected shapes expose a visible duplicate
+  action and support Cmd/Ctrl+D; Cmd/Ctrl+C and Cmd/Ctrl+V copy and paste one
+  shape or a complete multi-selection while preserving size, text, styling,
+  editable arrow geometry, and relative spacing.
+- Added a native API Client node shared by Canvas and Workbench. It creates and
+  executes HTTP requests with methods, headers, Bearer/Basic authentication,
+  JSON/text/XML or URL-encoded form bodies, variables,
+  response timing, size, status, and formatted previews; imports Bruno folders
+  through Bruno's official parser and Postman Collection v2.1 JSON; and can
+  reopen an imported source in its installed desktop application. Connected
+  agents can list and execute saved requests through typed Orkestrai MCP tools
+  without receiving stored authentication secrets in the inventory response.
 - Added an explicit agent-facing Design contract and high-throughput batch
   tools. `design_reference` provides exact schemas and examples on demand,
   `design_create_elements` creates complete screens in one revision, and
@@ -152,6 +164,13 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Preserved the current directory of native shell terminals across app restarts
+  by tracking OSC 7 and the live PTY process directory, without changing the
+  working directory of agent terminals or provider resume behavior.
+- Added explicit note discovery to the Orkestrai CLI and MCP so Cursor and other
+  providers can list existing workspace notes before reading, editing, or
+  appending instead of treating an empty connected-node list as an empty
+  workspace.
 - Restored documentation content to the universal Command/Ctrl+K search after
   the workspace index had reduced it to an "Open documentation" command.
   Localized topics, use cases, and changelog entries now appear alongside

@@ -1368,6 +1368,40 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'visual-annotations',
+    icon: 'Shapes',
+    title: 'Anotar e reutilizar um layout do Canvas',
+    tagline: 'Monte uma explicação visual uma vez e duplique sem refazer os estilos.',
+    steps: [
+      {
+        id: 'create-annotation',
+        title: 'Adicione uma anotação visual',
+        body: 'Eu crio uma forma estilizada no Canvas. Dê duplo-clique no texto e use o controle de estilo para trocar forma, cores, tipografia, borda e pontos da seta.',
+        action: { kind: 'createShape', title: 'Nota de revisão', shape: 'rounded' },
+        check: { kind: 'nodeExists', nodeType: 'shape', titleIncludes: 'Nota de revisão' },
+      },
+      { id: 'duplicate-annotation', title: 'Duplique sem reconstruir', body: 'Selecione uma ou mais formas e pressione Cmd/Ctrl+D, ou use a ação visível de duplicar. Posição, tamanho, texto, cores, tipografia e geometria da seta são preservados com um pequeno deslocamento.' },
+      { id: 'copy-paste-annotation', title: 'Reutilize um arranjo completo', body: 'Selecione as formas, copie com Cmd/Ctrl+C e cole com Cmd/Ctrl+V. A seleção múltipla mantém o espaçamento relativo, e cada cópia continua editável de forma independente.' },
+    ],
+  },
+  {
+    id: 'api-client',
+    icon: 'FileCode2',
+    title: 'Testar uma API no Canvas',
+    tagline: 'Requests Bruno e Postman ao lado do time, sem Alt+Tab.',
+    steps: [
+      {
+        id: 'create-client',
+        title: 'Adicione o Cliente de API',
+        body: 'Crio um node persistente com requests, headers, body, variáveis e respostas no mesmo workspace.',
+        action: { kind: 'createApiClient', title: 'API do projeto' },
+        check: { kind: 'nodeExists', nodeType: 'apiClient', titleIncludes: 'API do projeto' },
+      },
+      { id: 'import-collection', title: 'Traga o que você já usa', body: 'No menu do node, importe uma pasta Bruno ou uma coleção Postman v2.1. Requests e variáveis entram no cliente nativo; Abrir no aplicativo original continua disponível.' },
+      { id: 'send-request', title: 'Edite e envie', body: 'Escolha método e URL, use {{nome}} para variáveis, ajuste headers e body e clique em Enviar. Status, duração, tamanho, tipo e conteúdo aparecem na aba Resposta.' },
+    ],
+  },
+  {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
     title: 'Combinar agentes Windows e WSL',

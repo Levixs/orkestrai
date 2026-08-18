@@ -38,6 +38,10 @@ import { auditDesignDocument } from '$lib/modules/agent-room/domain/design-quali
 import { createDesignTemplate, designTemplateIds } from '$lib/modules/agent-room/domain/design-templates.js';
 import { uuidv7 } from '@beeblock/svelar/support';
 import { isDesignExplorationPayload } from '$lib/modules/agent-room/domain/design-exploration.js';
+import { apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
+import { ExecuteSavedApiClientRequest } from '$lib/modules/agent-room/interface/http/requests/ApiClientRequests.js';
+import { ExecuteSavedApiClientRequestDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
+import { ExecuteSavedApiClientRequestAction } from '$lib/modules/agent-room/application/actions/ExecuteSavedApiClientRequestAction.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -71,6 +75,40 @@ export class BridgeController extends Controller {
       return this.json({ data: buildUsageRoutingReport(await usageService.getAll(false), policy) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao consultar uso dos providers.', 401);
+    }
+  }
+
+  async listNotes(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const agentNodeId = String(event.url.searchParams.get('agentNodeId') ?? '').trim();
+      return this.json({ data: await bridgeService.listNotes(workspace.id, agentNodeId || null) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar notas.', 401);
+    }
+  }
+
+  async listApiClients(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const agentNodeId = String(event.url.searchParams.get('agentNodeId') ?? '').trim();
+      return this.json({ data: await apiClientService.list(workspace.id, agentNodeId || null) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar clientes de API.', 401);
+    }
+  }
+
+  async executeApiClientRequest(event: any) {
+    try {
+      const input = await ExecuteSavedApiClientRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await new ExecuteSavedApiClientRequestAction().execute({
+        workspaceId: workspace.id,
+        nodeId: event.params.nodeId,
+        dto: ExecuteSavedApiClientRequestDto.from(input),
+      }) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao executar request salvo.');
     }
   }
 

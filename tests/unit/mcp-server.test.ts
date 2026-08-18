@@ -52,7 +52,7 @@ describe('servidor MCP (orkestrai mcp)', () => {
     send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
     const list = await waitFor(2);
     const names = list.result.tools.map((tool) => tool.name);
-    for (const expected of ['ask', 'usage', 'note_create', 'design_audit', 'design_apply_template', 'task_list', 'task_columns', 'task_move', 'task_done', 'portal_dom', 'floor_land', 'device_attach', 'device_screenshot', 'notify', 'port', 'recruit']) {
+    for (const expected of ['ask', 'usage', 'note_list', 'note_read', 'note_write', 'note_edit', 'note_create', 'api_client_list', 'api_client_execute', 'design_audit', 'design_apply_template', 'task_list', 'task_columns', 'task_move', 'task_done', 'portal_dom', 'floor_land', 'device_attach', 'device_screenshot', 'notify', 'port', 'recruit']) {
       expect(names).toContain(expected);
     }
     input.end();

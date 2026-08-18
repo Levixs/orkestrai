@@ -23,7 +23,9 @@ Baixe os instaladores mais recentes em
 
 - **Canvas de agentes ao vivo:** organize terminais PTY reais, notas, quadros de
   tarefas, portais de browser, árvores de arquivos, loops e formas. As conexões
-  mostram a colaboração entre os agentes enquanto ela acontece.
+  mostram a colaboração entre os agentes enquanto ela acontece. Duplique formas
+  estilizadas com Cmd/Ctrl+D ou copie e cole arranjos visuais completos mantendo
+  seu layout relativo.
 - **Workbench configurável:** mantenha terminais, quadros, notas, portais,
   arquivos, fluxos e uso abertos em abas verticais por padrão ou horizontais
   opcionais, e organize até oito artefatos ao vivo em divisões redimensionáveis
@@ -33,6 +35,14 @@ Baixe os instaladores mais recentes em
   acompanha o workspace ativo e seu líder.
   O rodapé mantém visíveis todas as janelas de cota reportadas por Claude, Codex
   e Kimi sem exigir a abertura de outro painel.
+- **Cliente de API nativo:** crie e execute requests HTTP ao lado do time, com
+  headers, autenticação Bearer/Basic, body JSON/texto/XML ou formulário URL encoded, `{{variáveis}}`,
+  status, duração, tamanho e
+  resposta formatada. Importe pastas Bruno pelo parser oficial do Bruno ou JSON
+  Postman Collection v2.1 e reabra a origem no aplicativo instalado quando
+  precisar. O mesmo node persiste no Canvas e Workbench; agentes conectados
+  listam e executam requests salvos por tools MCP tipadas sem expor segredos de
+  autenticação no inventário.
 - **Dispositivos móveis integrados:** adicione um node persistente de Dispositivo
   móvel pela barra do Canvas; o Workbench lista e abre o mesmo node e a mesma
   sessão. Controle iPhone e iPad Simulators em Macs Apple Silicon ou AVDs Android

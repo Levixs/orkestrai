@@ -16,6 +16,7 @@
     Smartphone,
     Palette,
     Workflow as AutomationIcon,
+    Braces,
   } from '@lucide/svelte';
   import type { CanvasNodeType } from '$lib/modules/agent-room/domain/types.js';
 
@@ -26,6 +27,7 @@
 {:else if type === 'tasks'}<SquareKanban {size} aria-hidden="true" />
 {:else if type === 'note'}<StickyNote {size} aria-hidden="true" />
 {:else if type === 'portal'}<Globe2 {size} aria-hidden="true" />
+{:else if type === 'apiClient'}<Braces {size} aria-hidden="true" />
 {:else if type === 'fileTree'}<FolderTree {size} aria-hidden="true" />
 {:else if type === 'editor'}<FileCode2 {size} aria-hidden="true" />
 {:else if type === 'diff'}<GitCompareArrows {size} aria-hidden="true" />

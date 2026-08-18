@@ -43,6 +43,10 @@ function nodePreview(node: CanvasNode): string | null {
   const payload = node.payload as Record<string, unknown>;
   if (node.type === 'terminal') return clip([payload.provider, payload.role].filter(Boolean).join(' · '));
   if (node.type === 'note') return clip(payload.content);
+  if (node.type === 'apiClient') {
+    const requests = Array.isArray(payload.requests) ? payload.requests as Array<{ method?: string; name?: string; url?: string }> : [];
+    return clip(requests.slice(0, 8).map((request) => [request.method, request.name, request.url].filter(Boolean).join(' ')).join(' · '));
+  }
   return clip(payload.path ?? payload.url ?? payload.objective ?? payload.description);
 }
 
@@ -50,6 +54,14 @@ function nodeAttachmentSearchText(node: CanvasNode): string {
   const attachments = (node.payload as { attachments?: Array<{ name?: string; path?: string | null; url?: string | null }> }).attachments;
   if (!Array.isArray(attachments)) return '';
   return attachments.flatMap((attachment) => [attachment.name, attachment.path, attachment.url]).filter(Boolean).join(' ');
+}
+
+function nodeContentSearchText(node: CanvasNode): string {
+  if (node.type !== 'apiClient') return '';
+  const requests = (node.payload as { requests?: Array<{ method?: string; name?: string; url?: string }> }).requests;
+  return Array.isArray(requests)
+    ? requests.flatMap((request) => [request.method, request.name, request.url]).filter(Boolean).join(' ')
+    : '';
 }
 
 function indexed(input: Omit<WorkspaceSearchResult, 'score'>, extra: unknown[] = []): IndexedResult {
@@ -180,7 +192,7 @@ export class WorkspaceSearchService {
         taskId: null,
         path: null,
         route: `/terminal?workspace=${workspace.id}&node=${node.id}`,
-      }, [node.type, (node.payload as Record<string, unknown>).provider, nodeAttachmentSearchText(node)]));
+      }, [node.type, (node.payload as Record<string, unknown>).provider, nodeAttachmentSearchText(node), nodeContentSearchText(node)]));
     }
 
     const designDocuments = await Promise.all(nodes

@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { readlink } from 'node:fs/promises';
+import { platform } from 'node:os';
+import { promisify } from 'node:util';
 import type { IPty } from 'node-pty';
 import type { WorkspaceExecutionRuntime } from '../../domain/types.ts';
 import { agentEnv, resolveCommand } from '../agent-path.ts';
@@ -34,6 +38,32 @@ export type PtySessionInfo = {
 export type PtySessionListener = (data: string) => void;
 export type PtyExitListener = (exitCode: number) => void;
 export type PtyAttentionListener = (waiting: boolean) => void;
+export type PtyWorkingDirectoryListener = (cwd: string) => void;
+
+const execFileAsync = promisify(execFile);
+
+export function parseLsofWorkingDirectory(output: string): string | null {
+  const value = output
+    .split(/\r?\n/)
+    .find((line) => line.startsWith('n'))
+    ?.slice(1)
+    .trim();
+  return value || null;
+}
+
+async function processWorkingDirectory(pid: number): Promise<string | null> {
+  if (platform() === 'linux') {
+    return readlink(`/proc/${pid}/cwd`).catch(() => null);
+  }
+  if (platform() === 'darwin') {
+    const { stdout } = await execFileAsync('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn'], {
+      encoding: 'utf8',
+      timeout: 2_000,
+    }).catch(() => ({ stdout: '' }));
+    return parseLsofWorkingDirectory(stdout);
+  }
+  return null;
+}
 
 type PtySession = PtySessionInfo & {
   pty: IPty;
@@ -41,6 +71,9 @@ type PtySession = PtySessionInfo & {
   listeners: Set<PtySessionListener>;
   exitListeners: Set<PtyExitListener>;
   attentionListeners: Set<PtyAttentionListener>;
+  workingDirectoryListeners: Set<PtyWorkingDirectoryListener>;
+  workingDirectoryTimer: ReturnType<typeof setTimeout> | null;
+  canTrackWorkingDirectory: boolean;
   idleTimer: ReturnType<typeof setTimeout> | null;
   deliveryTimer: ReturnType<typeof setTimeout> | null;
   deliveryQueue: ComposerDelivery[];
@@ -163,6 +196,9 @@ export class PtySessionManager {
       listeners: new Set(),
       exitListeners: new Set(),
       attentionListeners: new Set(),
+      workingDirectoryListeners: new Set(),
+      workingDirectoryTimer: null,
+      canTrackWorkingDirectory: !input.provider && input.runtime?.kind !== 'wsl',
       idleTimer: null,
       deliveryTimer: null,
       deliveryQueue: [],
@@ -190,6 +226,7 @@ export class PtySessionManager {
       session.exitCode = exitCode;
       if (session.idleTimer) clearTimeout(session.idleTimer);
       if (session.deliveryTimer) clearTimeout(session.deliveryTimer);
+      if (session.workingDirectoryTimer) clearTimeout(session.workingDirectoryTimer);
       this.rejectDeliveries(session, new Error(`Sessão PTY ${id} finalizada com código ${exitCode}.`));
       this.setWaiting(session, false);
       for (const listener of session.exitListeners) listener(exitCode);
@@ -219,12 +256,14 @@ export class PtySessionManager {
     id: string,
     onData: PtySessionListener,
     onExit?: PtyExitListener,
-    onAttention?: PtyAttentionListener
+    onAttention?: PtyAttentionListener,
+    onWorkingDirectory?: PtyWorkingDirectoryListener,
   ): { scrollback: string; detach: () => void } {
     const session = this.requireSession(id);
     session.listeners.add(onData);
     if (onExit) session.exitListeners.add(onExit);
     if (onAttention) session.attentionListeners.add(onAttention);
+    if (onWorkingDirectory) session.workingDirectoryListeners.add(onWorkingDirectory);
 
     const scrollback = session.scrollback;
     if (session.exited && onExit) {
@@ -237,6 +276,7 @@ export class PtySessionManager {
         session.listeners.delete(onData);
         if (onExit) session.exitListeners.delete(onExit);
         if (onAttention) session.attentionListeners.delete(onAttention);
+        if (onWorkingDirectory) session.workingDirectoryListeners.delete(onWorkingDirectory);
       },
     };
   }
@@ -262,6 +302,24 @@ export class PtySessionManager {
       return;
     }
     this.writeHumanInputNow(session, data);
+    if (/[\r\n]/.test(data)) this.scheduleWorkingDirectoryRefresh(session);
+  }
+
+  /**
+   * Shells mudam o proprio cwd sem informar o processo pai. Depois de Enter,
+   * consulta o processo PTY no macOS/Linux e publica somente mudancas reais.
+   * OSC 7 no renderer cobre shells com integracao propria e Windows.
+   */
+  private scheduleWorkingDirectoryRefresh(session: PtySession): void {
+    if (!session.canTrackWorkingDirectory || session.exited) return;
+    if (session.workingDirectoryTimer) clearTimeout(session.workingDirectoryTimer);
+    session.workingDirectoryTimer = setTimeout(async () => {
+      session.workingDirectoryTimer = null;
+      const cwd = await processWorkingDirectory(session.pty.pid);
+      if (!cwd || cwd === session.cwd || session.exited) return;
+      session.cwd = cwd;
+      for (const listener of session.workingDirectoryListeners) listener(cwd);
+    }, 250);
   }
 
   resize(id: string, cols: number, rows: number): void {
@@ -277,6 +335,7 @@ export class PtySessionManager {
     if (!session) return false;
     if (session.idleTimer) clearTimeout(session.idleTimer);
     if (session.deliveryTimer) clearTimeout(session.deliveryTimer);
+    if (session.workingDirectoryTimer) clearTimeout(session.workingDirectoryTimer);
     this.rejectDeliveries(session, new Error(`Sessão PTY ${id} encerrada.`));
     if (!session.exited) {
       try {

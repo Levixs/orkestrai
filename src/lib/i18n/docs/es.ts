@@ -66,6 +66,11 @@ export const DOCS_ES: DocsCatalog = {
       body: `Agrega Dispositivo móvil desde la barra del Canvas. Es un único nodo persistente del workspace; Workbench lista y abre el mismo nodo y la misma sesión. En Macs Apple Silicon con Xcode instalado, elige un iOS Simulator. En macOS, Windows o Linux con Platform Tools de Android Studio instalado, elige un AVD local o un dispositivo USB o de red autorizado en ADB; los dispositivos físicos requieren confirmación explícita antes de conectarse. El panel transmite la pantalla y envía toques, swipes, gestos de pinza, rotación, Home, texto y los botones Android Atrás y Recientes. La pantalla completa se ajusta a Canvas y Workbench; controles independientes permiten reducir, ampliar, restaurar el ajuste automático o usar 1:1 con scroll horizontal y vertical. El cajón instala builds .app/.ipa o .apk, abre un bundle id de iOS o package/activity de Android, guarda capturas en .orkestrai/devices/screenshots, lee logs limitados y el árbol de accesibilidad o UIAutomator e inspecciona o cambia permisos. Los agentes reciben las mismas acciones confinadas al workspace mediante la CLI orkestrai device y las tools MCP después de que el usuario inicia la sesión. Orkestrai detiene solo helpers y simuladores o emuladores iniciados por él; cada workspace admite un nodo y una sesión, y las sesiones inactivas se limpian.`,
     },
     {
+      id: 'api-client',
+      title: 'Cliente de API para Bruno y Postman',
+      body: `Agrega Cliente de API desde la barra del Canvas para trabajar con APIs sin cambiar de aplicación. Crea y organiza solicitudes HTTP, edita URL, método, encabezados, autenticación Bearer o Basic, cuerpo JSON, texto, XML o formulario URL encoded y variables {{nombre}}, envíalas mediante el proceso local de Orkestrai e inspecciona estado, tiempo, tamaño, tipo y respuesta formateada. El menú del nodo importa carpetas Bruno (.bru, .yml y .yaml) mediante el parser oficial o colecciones Postman v2.1 en JSON. Después de importar, Abrir en la aplicación original inicia el Bruno o Postman instalado con el origen seleccionado. El nodo y sus datos persisten en el workspace y se abren en Canvas o Workbench. Los agentes conectados listan y ejecutan solicitudes guardadas mediante las tools api_client_list y api_client_execute; el inventario nunca devuelve tokens ni contraseñas.`,
+    },
+    {
       id: 'notas',
       title: 'Notas como canales de trabajo',
       body: `Las notas son markdown vivo compartido con los agentes. La convención: conecta la nota a quien debe leerla/escribirla y di el propósito en el título y el contenido. Ej.: nota "Backlog (líder escribe)" conectada al líder — escribes "divide en tareas para el equipo" y él la lee con orkestrai note read y distribuye en el tablero. Nota "Para mí (humano)" — pide al líder que registre estado/decisiones en ella con orkestrai note write/edit, y tú lo sigues formateado (ícono de ojo). Doble clic en el título renombra la nota. Suelta, pega o selecciona imágenes, PDFs, otros archivos y enlaces HTTP/HTTPS; los archivos de hasta 10 MB quedan en .orkestrai/attachments/ y su referencia markdown se inserta en el cursor. Al eliminar un adjunto con su X, la referencia también desaparece de la nota y el archivo almacenado en el workspace se borra.`,
@@ -79,6 +84,11 @@ export const DOCS_ES: DocsCatalog = {
       id: 'imagens',
       title: 'Nodo de Imagen (referencia visual)',
       body: `La herramienta Imagen (barra inferior) crea un nodo de referencia visual en el canvas: mockup, screenshot, diagrama de arquitectura. Pega con Ctrl+V o haz clic para elegir el archivo — la imagen queda guardada en el workspace (.orkestrai/images/). Conecta el nodo al líder (o a un agente específico, como el diseñador) para dejar claro quién debe usar esa referencia, y di en el chat qué hacer con ella. Doble clic en el título renombra; el ícono de imagen en el encabezado cambia el archivo.`,
+    },
+    {
+      id: 'visual-annotations',
+      title: 'Formas y anotaciones visuales',
+      body: `Usa Formas en la barra del Canvas para dibujar rectángulos, cajas redondeadas, elipses, rombos y flechas curvas editables alrededor del trabajo. Haz doble clic para editar el texto; el control de estilo cambia fondo, opacidad, borde, trazo, tipografía y anclas de la flecha. Selecciona una forma y usa la acción de duplicar o Cmd/Ctrl+D para conservar exactamente tamaño, texto, estilo y geometría de la flecha con un pequeño desplazamiento. Cmd/Ctrl+C y Cmd/Ctrl+V copian y pegan una o varias formas seleccionadas manteniendo el espaciado relativo; cada copia es un nodo persistente separado y se puede editar de forma independiente.`,
     },
     {
       id: 'design-mode',
@@ -153,7 +163,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'atalhos',
       title: 'Atajos',
-      body: `⌘P paleta · ⌘K (o Ctrl+K) buscar en la documentación desde cualquier pantalla · ⌘2 Central de Providers · ⌘⇧A próxima atención · ⌘⇧T organizar los nodos seleccionados o todo el canvas cuando no hay selección · ⌘G agrupar · ⌘⇧G desagrupar · N nueva nota · L conectar seleccionados · Alt+1…9 enfocar terminal · Alt+Espacio dictado por voz · ⌘F buscar en la terminal · ⌘Z deshacer · Backspace eliminar. En Windows, la barra de título estilizada ofrece Archivo, Editar, Ver, Workspace, Ventana y Ayuda sin perder los controles de la ventana; macOS y Linux conservan sus menús de plataforma.`,
+      body: `⌘P paleta · ⌘K (o Ctrl+K) buscar en la documentación desde cualquier pantalla · ⌘2 Central de Providers · ⌘⇧A próxima atención · ⌘⇧T organizar los nodos seleccionados o todo el canvas cuando no hay selección · Cmd/Ctrl+D duplicar formas seleccionadas · Cmd/Ctrl+C y Cmd/Ctrl+V copiar y pegar formas seleccionadas · ⌘G agrupar · ⌘⇧G desagrupar · N nueva nota · L conectar seleccionados · Alt+1…9 enfocar terminal · Alt+Espacio dictado por voz · ⌘F buscar en la terminal · ⌘Z deshacer · Backspace eliminar. En Windows, la barra de título estilizada ofrece Archivo, Editar, Ver, Workspace, Ventana y Ayuda sin perder los controles de la ventana; macOS y Linux conservan sus menús de plataforma.`,
     },
   ],
   useCases: [
@@ -180,6 +190,18 @@ export const DOCS_ES: DocsCatalog = {
       title: 'Compara enfoques antes de comprometer al equipo',
       body: 'Abre Consejo desde la barra del Canvas, la parte superior del workspace en Workbench o Command/Ctrl+K. Si empiezas desde una tarea, lleva el briefing completo. Pide a tres agentes que evalúen de forma independiente arquitectura, riesgo de entrega y costo. Usa el modo consultivo solo para decidir o implementación para prototipos aislados. Compara la matriz normalizada, lee la síntesis opcional del líder y registra tu selección, solicitud de consenso o rechazo. Solo una implementación seleccionada, con destino limpio y vista previa sin conflictos, puede aterrizar.',
       tags: ['Council', 'decisión humana', 'pisos aislados'],
+    },
+    {
+      id: 'api-client-workflow',
+      title: 'Probar APIs de Bruno o Postman sin salir del Canvas',
+      body: 'Agrega un Cliente de API e importa una carpeta Bruno o un archivo de colección Postman v2.1. Elige una solicitud, ajusta variables como {{baseUrl}}, encabezados y cuerpo, y envíala dentro de Orkestrai. La respuesta muestra estado, duración, tamaño y contenido formateado. La colección importada sigue disponible para abrirse en la aplicación original cuando necesites una función específica.',
+      tags: ['Bruno + Postman', 'solicitudes HTTP', 'Canvas + Workbench'],
+    },
+    {
+      id: 'visual-annotations',
+      title: 'Reutilizar una explicación visual sin reconstruirla',
+      body: 'Estiliza una forma o un arreglo completo de etiquetas, contenedores y flechas. Duplica la forma seleccionada con su acción o Cmd/Ctrl+D, o copia y pega una selección múltiple para crear otra versión con la misma geometría y el mismo espaciado. Edita el texto y los colores de la copia de forma independiente sin cambiar el original.',
+      tags: ['Formas', 'copiar y pegar', 'anotaciones en Canvas'],
     },
     {
       id: 'visual-qa',
@@ -432,6 +454,9 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: 'En desarrollo',
       items: [
+        'Las formas del Canvas ahora muestran una acción visible para duplicar y aceptan Cmd/Ctrl+D. Cmd/Ctrl+C y Cmd/Ctrl+V copian y pegan una forma o un arreglo completo de selección múltiple conservando tamaño, texto, estilos, geometría editable de las flechas y espaciado relativo.',
+        'Nuevo Cliente de API nativo en Canvas y Workbench: crea y envía solicitudes con método, URL, encabezados, autenticación Bearer/Basic, cuerpo y variables, revisa estado, duración, tamaño y respuesta formateada, importa carpetas Bruno mediante el parser oficial o colecciones Postman v2.1 y vuelve a abrir el origen en la aplicación instalada.',
+        'Las terminales shell nativas ahora conservan su carpeta actual después de reiniciar Orkestrai. Cursor y los demás providers también reciben una tool explícita para listar notas existentes antes de leer o editar, evitando duplicados y resultados vacíos.',
         'Command/Ctrl+K vuelve a buscar toda la documentación localizada junto con el contenido de los workspaces. Los temas, casos de uso y entradas del changelog ignoran diferencias de acento, se abren en el ancla exacta y siguen disponibles aunque falle la búsqueda del workspace.',
         'Los documentos Diseño grandes ahora expanden el área de trabajo alrededor de todos los frames en vez de recortar lo que supera la página nominal. Usa trackpad o scroll, la herramienta Mano (H), Espacio+arrastrar o el botón central para navegar; Ajustar encuadra todo el contenido y el zoom llega al 2 %. Las exportaciones y miniaturas usan los mismos límites completos. Los agentes conectados consultan design_reference una vez, crean hasta 2.000 capas con design_create_elements o aplican capas, tokens, bindings, componentes, prototipo y motion juntos con design_apply_blueprint. Las exploraciones guiadas prohíben inspeccionar la instalación, hacer probes del schema o crear scratch scripts de descubrimiento.',
         'Workbench y Centro de control ya no acumulan agentes, tableros y otros nodes de Pisos aterrizados o eliminados. La actualización archiva los registros antiguos, el cierre del piso elimina edges obsoletas, los agentes activos muestran el nombre del piso y los clones de layout comienzan sin reutilizar una sesión PTY ni una conversación del provider. El reclutamiento por el bridge ahora respeta y valida el Piso solicitado.',

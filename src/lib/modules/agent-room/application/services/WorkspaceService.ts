@@ -239,6 +239,15 @@ export class WorkspaceService {
       }
       const agentSessionId = typeof payload.agentSessionId === 'string' ? payload.agentSessionId : null;
       const provider = typeof payload.provider === 'string' ? payload.provider : null;
+      const currentWorkingDir = typeof payload.currentWorkingDir === 'string' ? payload.currentWorkingDir : null;
+      if (currentWorkingDir && !provider && executionRuntime.kind === 'native') {
+        try {
+          if (!statSync(currentWorkingDir).isDirectory()) throw new Error('not_directory');
+        } catch {
+          delete payload.currentWorkingDir;
+          changed = true;
+        }
+      }
       if (executionRuntime.kind === 'wsl' && (!storedPty || storedPty.exited) && payload.resumeRecovery && !agentSessionId) {
         payload.resumeRecovery = false;
         changed = true;

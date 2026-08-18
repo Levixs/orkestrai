@@ -5,6 +5,8 @@ export type TourAction =
   | { kind: 'createNote'; title: string; content: string }
   | { kind: 'createTasksBoard' }
   | { kind: 'createUsage'; title: string }
+  | { kind: 'createApiClient'; title: string }
+  | { kind: 'createShape'; title: string; shape?: 'rectangle' | 'rounded' | 'ellipse' | 'diamond' | 'arrow' }
   | { kind: 'createDevice'; title: string }
   | { kind: 'createDesign'; title: string }
   | { kind: 'createTask'; title: string; assigneeTitle?: string }

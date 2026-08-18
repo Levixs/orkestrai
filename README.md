@@ -25,6 +25,8 @@ Download the latest installers from
   portals, file trees, loops, and shapes. Connections show collaboration between
   agents as it happens. Rope physics automatically scales down in dense or
   offscreen graphs while active conversations retain their visual signal.
+  Duplicate styled shapes with Cmd/Ctrl+D or copy and paste complete visual
+  arrangements while preserving their relative layout.
 - **Configurable Workbench:** keep open terminals, boards, notes, portals,
   files, flows, and usage in vertical tabs by default or optional horizontal
   tabs, then arrange up to eight live artifacts in resizable right/down splits.
@@ -35,6 +37,14 @@ Download the latest installers from
   label. The global
   voice orb follows its active workspace and leader. Its footer keeps every
   reported Claude, Codex, and Kimi quota window visible without opening a panel.
+- **Native API client:** create and execute HTTP requests beside the team, with
+  headers, Bearer/Basic authentication, JSON/text/XML or URL-encoded form bodies, `{{variables}}`,
+  status, timing, size, and a
+  formatted response preview. Import Bruno folders through Bruno's official
+  parser or Postman Collection v2.1 JSON, then reopen the source in its original
+  installed application when needed. The same node persists in Canvas and
+  Workbench, and connected agents can list and execute its saved requests through
+  typed MCP tools without exposing authentication secrets in the inventory.
 - **Integrated mobile devices:** add a persistent Mobile Device node from the
   Canvas toolbar; Workbench lists and opens that same node and session. Control
   iPhone and iPad Simulators on Apple Silicon Macs, or Android AVDs and explicitly

@@ -21,6 +21,7 @@
   import { voiceModelsReadyForUse } from './voice-model-status.js';
   import { terminalDictationInput } from './terminal-dictation.js';
   import { terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
+  import { workingDirectoryFromOsc } from './terminal-working-directory.js';
   import {
     LEADER_DICTATION_COMMAND,
     LEADER_DICTATION_STATE,
@@ -61,6 +62,8 @@
     onRespawn?: () => void;
     /** Session-id real da CLI descoberto (para resume exato). */
     onAgentSession?: (agentSessionId: string) => void;
+    /** Diretorio real reportado por um shell puro, para restauracao futura. */
+    onWorkingDirectoryChange?: (cwd: string) => void;
     /** Id do no no canvas (para o endpoint de resposta do transcrito). */
     nodeId?: string;
     /** Edge conversando (bridge ask) — repassado pela pagina do canvas. */
@@ -74,7 +77,7 @@
     themeName?: TerminalThemeName;
   };
 
-  let { sessionId, createRequest, provider, sessionStorage, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
+  let { sessionId, createRequest, provider, sessionStorage, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onWorkingDirectoryChange, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
 
   let container: HTMLDivElement;
   let xtermInstance: Terminal | null = null;
@@ -328,6 +331,14 @@
     terminal.open(container);
     fitAddon.fit();
 
+    // OSC 7 e o contrato padrao de shells integrados para publicar o cwd.
+    // A deteccao no servidor cobre zsh/bash sem integracao no macOS/Linux.
+    terminal.parser.registerOscHandler(7, (payload) => {
+      const cwd = workingDirectoryFromOsc(payload, navigator.platform.startsWith('Win'));
+      if (cwd) onWorkingDirectoryChange?.(cwd);
+      return true;
+    });
+
     // O canvas aplica transform: scale() e alguns Chromiums no Windows usam as
     // metricas nao escaladas do xterm para selecao. Recalcula a faixa pelo
     // retangulo visual real, inclusive em DPI 125/150% e zoom do canvas.
@@ -494,6 +505,11 @@
         case 'agentSession':
           if (!message.sessionId || message.sessionId === currentSessionId()) {
             onAgentSession?.(String(message.agentSessionId));
+          }
+          break;
+        case 'cwd':
+          if (!message.sessionId || message.sessionId === currentSessionId()) {
+            onWorkingDirectoryChange?.(String(message.cwd ?? ''));
           }
           break;
         case 'talking':

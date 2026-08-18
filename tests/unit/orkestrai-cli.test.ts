@@ -23,7 +23,13 @@ describe('orkestrai CLI', () => {
       req.on('end', () => {
         requests.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : undefined, auth: req.headers.authorization });
         res.setHeader('content-type', 'application/json');
-        if (req.url?.startsWith('/api/agent-room/bridge/agents')) {
+        if (req.url?.startsWith('/api/agent-room/bridge/notes') && req.method === 'GET' && !req.url.includes('/n9')) {
+          res.end(JSON.stringify({ data: [] }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients/') && req.url.endsWith('/execute')) {
+          res.end(JSON.stringify({ data: { status: 200, statusText: 'OK', durationMs: 12, size: 11, ok: true, body: '{"ok":true}' } }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients')) {
+          res.end(JSON.stringify({ data: [{ nodeId: 'api1', title: 'Project API', requests: [{ requestId: 'r1', method: 'GET', name: 'Health', url: 'https://example.test/health', authType: 'bearer' }] }] }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/agents')) {
           res.end(JSON.stringify({ data: { workspace: { id: 'w1', name: 'Teste' }, agents: [{ nodeId: 'n1', title: 'Claude', provider: 'claude', sessionAlive: true }], notes: [] } }));
         } else if (req.url === '/api/agent-room/bridge/usage') {
           res.end(JSON.stringify({ data: {
@@ -378,6 +384,20 @@ describe('orkestrai CLI', () => {
     const code = await run(['notes'], { cwd, out, env: {} });
     expect(code).toBe(0);
     expect(lines.join('\n')).toContain('(sem notas)');
+  });
+
+  it('api lista e executa requests salvos com variaveis', async () => {
+    const { lines, out } = capture();
+    expect(await run(['api', 'list'], { cwd, out, env: { ORKESTRAI_NODE_ID: 'n1' } })).toBe(0);
+    expect(lines.join('\n')).toContain('GET Health');
+    expect(requests.at(-1).url).toContain('agentNodeId=n1');
+
+    expect(await run(['api', 'run', 'api1', 'r1', '--variables', '{"baseUrl":"https://example.test"}'], { cwd, out, env: { ORKESTRAI_NODE_ID: 'n1' } })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({
+      method: 'POST',
+      url: '/api/agent-room/bridge/api-clients/api1/execute',
+      body: { requestId: 'r1', variables: { baseUrl: 'https://example.test' }, from: 'n1' },
+    });
   });
 
   it('port devolve uma porta livre (sem precisar de workspace.json)', async () => {

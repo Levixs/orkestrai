@@ -38,6 +38,11 @@ const portalCreateSchema = z.object({
   title: z.string().trim().nullish(),
   connect: z.string().trim().nullish(),
 });
+const apiClientExecuteSchema = z.object({
+  requestId: z.string().trim().min(1).max(200),
+  variables: z.record(z.string(), z.string().max(100_000)).default({}),
+  from: z.string().trim().min(1).max(200).nullish(),
+}).strict();
 
 type Expectation = { method: string; path: RegExp; schema?: z.ZodTypeAny };
 
@@ -45,10 +50,13 @@ const EXPECTED: Record<string, Expectation> = {
   list: { method: 'GET', path: /\/bridge\/agents\?/ },
   usage: { method: 'GET', path: /\/bridge\/usage$/ },
   ask: { method: 'POST', path: /\/bridge\/ask$/, schema: bridgeAskSchema },
+  note_list: { method: 'GET', path: /\/bridge\/notes\?agentNodeId=/ },
   note_read: { method: 'GET', path: /\/bridge\/notes\/n1$/ },
   note_write: { method: 'PUT', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteWriteSchema },
   note_edit: { method: 'PATCH', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteEditSchema },
   note_create: { method: 'POST', path: /\/bridge\/notes$/, schema: bridgeNoteCreateSchema },
+  api_client_list: { method: 'GET', path: /\/bridge\/api-clients\?agentNodeId=/ },
+  api_client_execute: { method: 'POST', path: /\/bridge\/api-clients\/n1\/execute$/, schema: apiClientExecuteSchema },
   design_list: { method: 'GET', path: /\/bridge\/designs$/ },
   design_read: { method: 'GET', path: /\/bridge\/designs\/n1$/ },
   design_audit: { method: 'GET', path: /\/bridge\/designs\/n1\/quality$/ },
@@ -89,6 +97,7 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   note_write: { nodeId: 'n1', content: 'x' },
   note_edit: { nodeId: 'n1', oldText: 'a', newText: 'b' },
   note_create: { title: 'T', content: 'c' },
+  api_client_execute: { nodeId: 'n1', requestId: 'r1', variables: { baseUrl: 'https://example.test' } },
   design_read: { nodeId: 'n1' },
   design_audit: { nodeId: 'n1' },
   design_apply_template: {

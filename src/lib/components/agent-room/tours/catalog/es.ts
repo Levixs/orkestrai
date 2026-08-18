@@ -1364,6 +1364,40 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'visual-annotations',
+    icon: 'Shapes',
+    title: 'Anotar y reutilizar un diseño del Canvas',
+    tagline: 'Crea una explicación visual una vez y duplícala sin rehacer los estilos.',
+    steps: [
+      {
+        id: 'create-annotation',
+        title: 'Agrega una anotación visual',
+        body: 'Creo una forma con estilo en el Canvas. Haz doble clic en el texto y usa el control de estilo para cambiar forma, colores, tipografía, borde y puntos de la flecha.',
+        action: { kind: 'createShape', title: 'Nota de revisión', shape: 'rounded' },
+        check: { kind: 'nodeExists', nodeType: 'shape', titleIncludes: 'Nota de revisión' },
+      },
+      { id: 'duplicate-annotation', title: 'Duplica sin reconstruir', body: 'Selecciona una o más formas y pulsa Cmd/Ctrl+D, o usa la acción visible de duplicar. Se conservan posición, tamaño, texto, colores, tipografía y geometría de la flecha con un pequeño desplazamiento.' },
+      { id: 'copy-paste-annotation', title: 'Reutiliza una composición completa', body: 'Selecciona las formas, copia con Cmd/Ctrl+C y pega con Cmd/Ctrl+V. La selección múltiple mantiene el espaciado relativo, y cada copia sigue siendo editable de forma independiente.' },
+    ],
+  },
+  {
+    id: 'api-client',
+    icon: 'FileCode2',
+    title: 'Probar una API en el Canvas',
+    tagline: 'Solicitudes Bruno y Postman junto al equipo, sin cambiar de aplicación.',
+    steps: [
+      {
+        id: 'create-client',
+        title: 'Agrega el Cliente de API',
+        body: 'Creo un nodo persistente con solicitudes, encabezados, cuerpo, variables y respuestas en el mismo workspace.',
+        action: { kind: 'createApiClient', title: 'API del proyecto' },
+        check: { kind: 'nodeExists', nodeType: 'apiClient', titleIncludes: 'API del proyecto' },
+      },
+      { id: 'import-collection', title: 'Trae lo que ya utilizas', body: 'Desde el menú del nodo, importa una carpeta Bruno o una colección Postman v2.1. Solicitudes y variables entran al cliente nativo; Abrir en la aplicación original sigue disponible.' },
+      { id: 'send-request', title: 'Edita y envía', body: 'Elige método y URL, usa variables {{nombre}}, ajusta encabezados y cuerpo y pulsa Enviar. Estado, duración, tamaño, tipo y contenido aparecen en Respuesta.' },
+    ],
+  },
+  {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
     title: 'Combinar agentes Windows y WSL',

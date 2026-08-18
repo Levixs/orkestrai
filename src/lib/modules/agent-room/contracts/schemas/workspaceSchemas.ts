@@ -21,7 +21,7 @@ export const updateWorkspaceSchema = z.object({
   wslWorkingDir: z.string().trim().nullish(),
 });
 
-export const canvasNodeTypeSchema = z.enum(['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'loop', 'group', 'shape', 'tasks', 'flow', 'image', 'usage', 'device', 'design']);
+export const canvasNodeTypeSchema = z.enum(['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'apiClient', 'loop', 'group', 'shape', 'tasks', 'flow', 'image', 'usage', 'device', 'design']);
 
 export const createCanvasNodeSchema = z.object({
   type: canvasNodeTypeSchema,

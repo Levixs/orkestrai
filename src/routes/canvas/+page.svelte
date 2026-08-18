@@ -28,10 +28,18 @@
   import EditorCanvasNode from '$lib/components/agent-room/canvas/EditorCanvasNode.svelte';
   import DiffCanvasNode from '$lib/components/agent-room/canvas/DiffCanvasNode.svelte';
   import PortalCanvasNode from '$lib/components/agent-room/canvas/PortalCanvasNode.svelte';
+  import ApiClientCanvasNode from '$lib/components/agent-room/canvas/ApiClientCanvasNode.svelte';
   import LoopCanvasNode from '$lib/components/agent-room/canvas/LoopCanvasNode.svelte';
   import GroupCanvasNode from '$lib/components/agent-room/canvas/GroupCanvasNode.svelte';
   import OrkestraiEdge from '$lib/components/agent-room/canvas/OrkestraiEdge.svelte';
-  import ShapeCanvasNode from '$lib/components/agent-room/canvas/ShapeCanvasNode.svelte';
+  import ShapeCanvasNode, { type ShapeStyle } from '$lib/components/agent-room/canvas/ShapeCanvasNode.svelte';
+  import {
+    SHAPE_CLIPBOARD_TYPE,
+    offsetShapeClipboard,
+    parseShapeClipboard,
+    serializeShapeClipboard,
+    type ShapeClipboardEntry,
+  } from '$lib/components/agent-room/canvas/shape-clipboard.js';
   import FloorPanel from '$lib/components/agent-room/canvas/FloorPanel.svelte';
   import AgentCreateDialog from '$lib/components/agent-room/canvas/AgentCreateDialog.svelte';
   import HeaderIconButton from '$lib/components/agent-room/canvas/HeaderIconButton.svelte';
@@ -86,7 +94,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Braces, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -107,6 +115,7 @@
     editor: EditorCanvasNode,
     diff: DiffCanvasNode,
     portal: PortalCanvasNode,
+    apiClient: ApiClientCanvasNode,
     loop: LoopCanvasNode,
     group: GroupCanvasNode,
     shape: ShapeCanvasNode,
@@ -138,6 +147,7 @@
   const canChooseAlternateRuntime = typeof navigator !== 'undefined' && navigator.platform.startsWith('Win');
   let nodes = $state.raw<Node[]>([]);
   let edges = $state.raw<Edge[]>([]);
+  let shapePasteSequence = 0;
   let errorMessage = $state('');
   let designModeNodeId = $state<string | null>(null);
   let designRevisions = $state<Record<string, number>>({});
@@ -230,7 +240,7 @@
   }
 
   // Modo "desenhar no": clique na ferramenta e arraste o retangulo no canvas.
-  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'device' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'design';
+  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'apiClient' | 'device' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'design';
   let drawTool = $state<DrawTool | null>(null);
   let drawStart = $state<{ x: number; y: number } | null>(null);
   let drawCurrent = $state<{ x: number; y: number } | null>(null);
@@ -256,6 +266,7 @@
     fileTree: async (rect) => { await addFileTree(rect); },
     diff: async (rect) => { await addDiff(rect); },
     portal: async (rect) => { await addPortal(rect); },
+    apiClient: async (rect) => { await addApiClient(rect); },
     device: async (rect) => { await addDevice(rect); },
     loop: async (rect) => { await addLoop(rect); },
     shape: async (rect) => { await addShape(rect); },
@@ -792,6 +803,7 @@
         onJumpToNode: jumpToNode,
         onRemoveConnection: removeConnection,
         onDelete: deleteNode,
+        onDuplicate: duplicateShape,
         onResize: resizeNode,
         onSessionCreated: async (id: string, sessionId: string, options: { resumed: boolean }) => {
           await updateNodePayload(id, { sessionId });
@@ -1172,7 +1184,7 @@
     if (provider) {
       // Monta o comando com model/effort escolhidos no dialogo (server-side,
       // via adapter — as flags variam por provider).
-      let spec = provider.tui
+      let spec: { command: string; args: string[]; env?: Record<string, string> } | null = provider.tui
         ? { command: provider.tui.command, args: provider.tui.args, env: provider.tui.env }
         : null;
       if (creation && (creation.model || creation.effort)) {
@@ -1248,6 +1260,23 @@
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
       body: JSON.stringify({ type: 'portal', title: m['canvas.default_portal'](), ...position, ...nodeSize(rect, 360, 260, 720, 520), payload: {}, floorId: visibleFloorId }),
+    });
+    nodes = [...nodes, toFlowNode(node)];
+  }
+
+  async function addApiClient(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'apiClient',
+        title: m['api_client.title'](),
+        ...position,
+        ...nodeSize(rect, 520, 360, 820, 560),
+        payload: { requests: [], selectedRequestId: null, variables: {} },
+        floorId: visibleFloorId,
+      }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -1425,6 +1454,79 @@
     );
   }
 
+  function shapeClipboardEntries(ids?: string[]): ShapeClipboardEntry<ShapeStyle>[] {
+    const requested = ids ? new Set(ids) : null;
+    return nodes
+      .filter((node) => node.type === 'shape' && (requested ? requested.has(node.id) : node.selected))
+      .map((node) => ({
+        title: String(node.data?.title ?? ''),
+        x: node.position.x,
+        y: node.position.y,
+        width: Math.max(60, Number(node.width ?? node.measured?.width ?? 160)),
+        height: Math.max(40, Number(node.height ?? node.measured?.height ?? 160)),
+        payload: structuredClone((node.data?.payload ?? {}) as ShapeStyle),
+      }));
+  }
+
+  async function createShapeCopies(entries: ShapeClipboardEntry<ShapeStyle>[], offset: number) {
+    if (!activeWorkspace || !entries.length) return;
+    snapshot();
+    const created: Node[] = [];
+    for (const entry of offsetShapeClipboard(entries, offset)) {
+      const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'shape',
+          title: entry.title,
+          x: entry.x,
+          y: entry.y,
+          width: entry.width,
+          height: entry.height,
+          payload: structuredClone(entry.payload),
+          floorId: visibleFloorId,
+        }),
+      });
+      created.push({ ...toFlowNode(node), selected: true });
+    }
+    nodes = [...nodes.map((node) => ({ ...node, selected: false })), ...created];
+  }
+
+  async function duplicateShape(id: string) {
+    const entries = shapeClipboardEntries([id]);
+    await createShapeCopies(entries, 24);
+    if (entries.length) toast.success(m['shape.duplicated']({ count: entries.length }));
+  }
+
+  async function duplicateSelectedShapes() {
+    const entries = shapeClipboardEntries();
+    await createShapeCopies(entries, 24);
+    if (entries.length) toast.success(m['shape.duplicated']({ count: entries.length }));
+  }
+
+  function handleShapeCopy(event: ClipboardEvent) {
+    if (isTypingTarget(event.target)) return;
+    const shapes = shapeClipboardEntries();
+    if (!shapes.length || !event.clipboardData) return;
+    event.preventDefault();
+    shapePasteSequence = 0;
+    event.clipboardData.setData(SHAPE_CLIPBOARD_TYPE, serializeShapeClipboard(shapes));
+    event.clipboardData.setData('text/plain', m['shape.clipboard_summary']({ count: shapes.length }));
+    toast.success(m['shape.copied']({ count: shapes.length }));
+  }
+
+  function handleShapePaste(event: ClipboardEvent) {
+    if (isTypingTarget(event.target)) return;
+    const raw = event.clipboardData?.getData(SHAPE_CLIPBOARD_TYPE) ?? '';
+    if (!raw) return;
+    const shapes = parseShapeClipboard<ShapeStyle>(raw);
+    if (!shapes.length) return;
+    event.preventDefault();
+    shapePasteSequence += 1;
+    void createShapeCopies(shapes, 24 * shapePasteSequence).then(() => {
+      toast.success(m['shape.pasted']({ count: shapes.length }));
+    });
+  }
+
   const preDragPositions = new Map<string, { x: number; y: number }>();
 
   async function groupSelection() {
@@ -1538,6 +1640,7 @@
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
     { id: 'design', label: m['tool.design'](), hint: m['canvas.hint_action'](), run: () => void addDesignNode() },
+    { id: 'api-client', label: m['api_client.title'](), hint: m['canvas.hint_action'](), run: () => void addApiClient() },
     { id: 'design-exploration', label: m['design.exploration_menu_item'](), hint: m['canvas.hint_action'](), run: () => (designExplorationOpen = true) },
     { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
     { id: 'share-workspace', label: m['collaboration.share_workspace'](), hint: m['canvas.hint_action'](), run: () => (sharingOpen = true) },
@@ -1591,6 +1694,14 @@
 
   function handleGlobalKeydown(event: KeyboardEvent) {
     const mod = event.metaKey || event.ctrlKey;
+    if (mod && event.key.toLowerCase() === 'd' && !isTypingTarget(event.target)) {
+      const selectedShapes = nodes.some((node) => node.selected && node.type === 'shape');
+      if (selectedShapes) {
+        event.preventDefault();
+        void duplicateSelectedShapes();
+      }
+      return;
+    }
     if (mod && event.key.toLowerCase() === 'p') {
       event.preventDefault();
       showPalette = !showPalette;
@@ -1788,7 +1899,7 @@
   <title>{m['canvas.page_title']()}</title>
 </svelte:head>
 
-<svelte:window onkeydown={handleGlobalKeydown} />
+<svelte:window onkeydown={handleGlobalKeydown} oncopy={handleShapeCopy} onpaste={handleShapePaste} />
 
 <main class="canvas-page">
   <aside class="sidebar">
@@ -2023,6 +2134,9 @@
             </ToolbarButton>
             <ToolbarButton label={m['tool.portal']()} active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
               <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.default_portal']()}
+            </ToolbarButton>
+            <ToolbarButton label={m['api_client.tool']()} active={drawTool === 'apiClient'} onclick={() => toggleDrawTool('apiClient')}>
+              <Braces size={15} class="tool-icon-svg" /> {m['api_client.title']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.device']()} active={drawTool === 'device'} onclick={() => toggleDrawTool('device')}>
               <Smartphone size={15} class="tool-icon-svg" /> {m['device.title']()}

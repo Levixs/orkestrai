@@ -44,10 +44,13 @@ const TOOLS = [
   { name: 'list', description: 'Lista agentes do workspace (titulo, provider, sessao viva) e suas notas/portais conectados.', inputSchema: { type: 'object', properties: {} } },
   { name: 'usage', description: 'Consulta cotas dos providers e a recomendacao de roteamento configurada no no Usage do canvas.', inputSchema: { type: 'object', properties: {} } },
   { name: 'ask', description: 'Envia mensagem a outro agente e aguarda resposta confirmada. So afirme que conversou quando replyConfirmed for true.', inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Titulo do agente' }, message: { type: 'string' } }, required: ['agent', 'message'] } },
+  { name: 'note_list', description: 'Lista notas acessiveis com nodeId, titulo e previa. Use antes de criar para atualizar a nota existente com note_read, note_write ou note_edit.', inputSchema: { type: 'object', properties: {} } },
   { name: 'note_read', description: 'Le uma nota pelo nodeId.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'note_write', description: 'Substitui o conteudo de uma nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, content: { type: 'string' } }, required: ['nodeId', 'content'] } },
   { name: 'note_edit', description: 'Edicao pontual: troca um trecho da nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, oldText: { type: 'string' }, newText: { type: 'string' } }, required: ['nodeId', 'oldText', 'newText'] } },
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
+  { name: 'api_client_list', description: 'Lista os requests salvos em nodes Cliente de API conectados a este agente, sem expor tokens ou senhas.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'api_client_execute', description: 'Executa um request salvo em um Cliente de API conectado, aplicando variaveis e autenticacao localmente.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, requestId: { type: 'string' }, variables: { type: 'object', additionalProperties: { type: 'string' } } }, required: ['nodeId', 'requestId'] } },
   { name: 'design_list', description: 'Lista Designs, revisoes, progresso, estagnacao e gate visual. stalled = 5 min sem nova revisao; reviewStatus approved vale somente para a revisao atual.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'design_reference', description: 'Retorna o contrato exato e exemplos para criar Design nativo sem probes, scripts temporarios ou inspecao do app. Consulte uma vez e escreva em lotes.', inputSchema: { type: 'object', properties: { topic: { type: 'string', enum: DESIGN_REFERENCE_TOPICS, default: 'quickstart' } } } },
@@ -136,6 +139,10 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', '/api/agent-room/bridge/usage');
     case 'ask':
       return bridge('POST', '/api/agent-room/bridge/ask', { to: args.agent, message: args.message, from: selfAgent });
+    case 'note_list': {
+      const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
+      return bridge('GET', `/api/agent-room/bridge/notes${query}`);
+    }
     case 'note_read':
       return bridge('GET', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`);
     case 'note_write':
@@ -144,6 +151,12 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('PATCH', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`, { old: args.oldText, new: args.newText });
     case 'note_create':
       return bridge('POST', '/api/agent-room/bridge/notes', { title: args.title, content: args.content, connect: args.connect ?? 'all', from: selfAgent });
+    case 'api_client_list': {
+      const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
+      return bridge('GET', `/api/agent-room/bridge/api-clients${query}`);
+    }
+    case 'api_client_execute':
+      return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/execute`, { requestId: args.requestId, variables: args.variables ?? {}, from: selfAgent });
     case 'design_list':
       return bridge('GET', '/api/agent-room/bridge/designs');
     case 'design_read':

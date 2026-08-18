@@ -199,7 +199,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'automation' | 'device' | 'design';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'automation' | 'device' | 'design';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 export type WorkspaceRuntimeKind = 'native' | 'wsl';
 export type WorkspaceExecutionRuntime =
@@ -326,6 +326,8 @@ export type Workspace = {
 export type TerminalNodePayload = {
   sessionId?: string;
   agentSessionId?: string;
+  /** Ultimo diretorio real de um shell puro; agentes sempre usam a raiz do trabalho. */
+  currentWorkingDir?: string;
   /** Conversa persistida sumiu: inicia limpo, mas sem reinjetar o role. */
   resumeRecovery?: boolean;
   command?: string;
@@ -359,7 +361,39 @@ export type UsageNodePayload = {
   thresholdPercent?: number;
 };
 
-export type CanvasNodePayload = TerminalNodePayload | NoteNodePayload | Record<string, unknown>;
+export type ApiClientHeader = {
+  id: string;
+  name: string;
+  value: string;
+  enabled: boolean;
+};
+
+export type ApiClientRequest = {
+  id: string;
+  name: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+  url: string;
+  headers: ApiClientHeader[];
+  auth: {
+    type: 'none' | 'bearer' | 'basic';
+    token: string;
+    username: string;
+    password: string;
+  };
+  body: string;
+  bodyMode: 'none' | 'json' | 'text' | 'xml' | 'form';
+  sourcePath?: string | null;
+};
+
+export type ApiClientNodePayload = {
+  sourceKind?: 'bruno' | 'postman' | null;
+  sourcePath?: string | null;
+  requests?: ApiClientRequest[];
+  selectedRequestId?: string | null;
+  variables?: Record<string, string>;
+};
+
+export type CanvasNodePayload = TerminalNodePayload | NoteNodePayload | ApiClientNodePayload | Record<string, unknown>;
 
 export type CanvasNode = {
   id: string;

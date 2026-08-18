@@ -1364,6 +1364,40 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'visual-annotations',
+    icon: 'Shapes',
+    title: 'Annotate and reuse a Canvas layout',
+    tagline: 'Build a visual explanation once, then duplicate it without rebuilding styles.',
+    steps: [
+      {
+        id: 'create-annotation',
+        title: 'Add a visual annotation',
+        body: 'I create a styled shape on the Canvas. Double-click its text and use the style control to change shape, colors, typography, border, and arrow points.',
+        action: { kind: 'createShape', title: 'Review note', shape: 'rounded' },
+        check: { kind: 'nodeExists', nodeType: 'shape', titleIncludes: 'Review note' },
+      },
+      { id: 'duplicate-annotation', title: 'Duplicate without rebuilding', body: 'Select one or more shapes and press Cmd/Ctrl+D, or use the visible duplicate action. Position, size, label, colors, typography, and arrow geometry are preserved with a small offset.' },
+      { id: 'copy-paste-annotation', title: 'Reuse a complete arrangement', body: 'Select the shapes, copy with Cmd/Ctrl+C, and paste with Cmd/Ctrl+V. Multi-selection keeps the relative spacing, and every pasted copy remains independently editable.' },
+    ],
+  },
+  {
+    id: 'api-client',
+    icon: 'FileCode2',
+    title: 'Test an API in the Canvas',
+    tagline: 'Bruno and Postman requests beside the team, without app switching.',
+    steps: [
+      {
+        id: 'create-client',
+        title: 'Add the API Client',
+        body: 'I create a persistent node with requests, headers, body, variables, and responses in the same workspace.',
+        action: { kind: 'createApiClient', title: 'Project API' },
+        check: { kind: 'nodeExists', nodeType: 'apiClient', titleIncludes: 'Project API' },
+      },
+      { id: 'import-collection', title: 'Bring your existing work', body: 'From the node menu, import a Bruno folder or Postman v2.1 collection. Requests and variables enter the native client, while Open in original app remains available.' },
+      { id: 'send-request', title: 'Edit and send', body: 'Choose the method and URL, use {{name}} variables, adjust headers and body, then click Send. Status, duration, size, type, and content appear under Response.' },
+    ],
+  },
+  {
     id: 'windows-wsl-agents',
     icon: 'Laptop',
     title: 'Combine Windows and WSL agents',

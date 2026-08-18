@@ -607,6 +607,25 @@ export class BridgeService {
     return nodes.filter((node) => noteIds.has(node.id) && node.type === 'note').map((node) => node.id);
   }
 
+  /** Descoberta tipada para agentes: notas conectadas, ou todas sem identidade. */
+  async listNotes(workspaceId: string, agentNodeId?: string | null): Promise<Array<{
+    nodeId: string;
+    title: string;
+    preview: string;
+  }>> {
+    const connectedIds = agentNodeId
+      ? new Set(await this.notesForAgent(workspaceId, agentNodeId))
+      : null;
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    return nodes
+      .filter((node) => node.type === 'note' && (!connectedIds || connectedIds.has(node.id)))
+      .map((node) => ({
+        nodeId: node.id,
+        title: node.title ?? 'Nota',
+        preview: String((node.payload as { content?: string }).content ?? '').trim().slice(0, 280),
+      }));
+  }
+
   /** Portais conectados ao agente (para o `list` da CLI): id, título e URL. */
   async portalsForAgent(workspaceId: string, agentNodeId: string): Promise<Array<{ id: string; title: string; url: string }>> {
     const edges = await workspaceRepository.listEdges(workspaceId);
@@ -937,6 +956,9 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_
 - \`orkestrai note create "<título>" [--content "<texto>"] [--connect "<Agente>"|all]\` — cria uma nota no canvas (default: conecta ao time inteiro).
 - \`orkestrai note write <nodeId> "<conteúdo>"\` — substitui o conteúdo da nota.
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edição pontual.
+- \`orkestrai notes\` — lista \`nodeId\`, título e prévia das notas acessíveis. Rode antes de criar; se a nota já existe, use \`note read\` e \`note write/edit\` em vez de duplicar.
+- \`orkestrai api list\` — lista requests dos Clientes de API conectados, sem revelar credenciais.
+- \`orkestrai api run <nodeId> <requestId> [--variables '{"baseUrl":"..."}']\` — executa um request salvo com as variáveis informadas.
 - \`orkestrai design list\` / \`design read <nodeId>\` — lista e lê o scene graph de documentos visuais nativos conectados ao trabalho. Leia sempre a revisão atual antes de alterar.
 - Tool MCP \`design_reference\` — consulte UMA vez o tópico necessário para obter campos e exemplos exatos. Em explorações, faça primeiro um conceito de 1 desktop + 1 mobile com \`design_import_code\` (HTML/CSS semântico) ou um lote pequeno de \`design_create_elements\`, entregue a primeira revisão em até 5 minutos e AGUARDE o gate humano. Só a direção aprovada recebe o blueprint completo com tokens, componentes, protótipo e motion. NUNCA inspecione o código/instalação do Orkestrai, faça operações de teste ou crie scratch scripts apenas para descobrir o schema.
 - Tool MCP \`design_apply_operations\` — escape hatch do command bus completo para operações não cobertas pelas tools de lote. As tools \`design_create_element\`, \`design_update_element\` e \`design_delete_element\` são atalhos para operações pontuais. Passe \`taskId\` quando a alteração pertence a uma task; conflito exige reler, nunca sobrescrever o trabalho humano.
@@ -968,7 +990,7 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_
 - \`orkestrai fs read <path>\` / \`fs write <path> <conteúdo>\` / \`fs search <termo> [--content]\` — arquivos do workspace via ponte.
 - \`orkestrai run <taskId>\` — re-despacha a tarefa para o responsável (re-tentar/re-briefar).
 - \`orkestrai say "<texto>"\` — fala em voz alta no desktop do usuário, na voz configurada.
-- \`orkestrai notes\` / \`orkestrai portals\` — listagens rapidas das suas notas/portais.
+- \`orkestrai portals\` — lista rapidamente os portais acessíveis.
 - \`orkestrai clip\` — lê a área de transferência local.
 
 ## Portas e processos (varios workspaces rodam AO MESMO TEMPO nesta maquina)

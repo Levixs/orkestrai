@@ -212,6 +212,45 @@ async function runAction(action: TourAction): Promise<void> {
         });
         break;
       }
+      case 'createApiClient': {
+        await api(`/api/agent-room/workspaces/${workspaceId}/nodes`, {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'apiClient',
+            title: action.title,
+            ...nextPosition(),
+            width: 760,
+            height: 520,
+            payload: { requests: [], selectedRequestId: null, variables: {} },
+          }),
+        });
+        break;
+      }
+      case 'createShape': {
+        await api(`/api/agent-room/workspaces/${workspaceId}/nodes`, {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'shape',
+            title: action.title,
+            ...nextPosition(),
+            width: action.shape === 'arrow' ? 260 : 220,
+            height: action.shape === 'arrow' ? 100 : 140,
+            payload: {
+              shape: action.shape ?? 'rounded',
+              label: action.title,
+              fill: '#7C4DFF',
+              fillOpacity: 0.08,
+              stroke: '#7C4DFF',
+              strokeWidth: 2,
+              textColor: '#ffffff',
+              fontSize: 14,
+              fontWeight: 600,
+              textAlign: 'center',
+            },
+          }),
+        });
+        break;
+      }
       case 'createDevice': {
         const nodes = await api<WorkspaceSnapshot['nodes']>(`/api/agent-room/workspaces/${workspaceId}/nodes`);
         if (!nodes?.some((node) => node.type === 'device')) {

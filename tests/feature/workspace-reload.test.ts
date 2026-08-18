@@ -81,6 +81,28 @@ describe('WorkspaceService.reloadNode', () => {
     expect(persisted.agentSessionId).toBe('conversa-real-123');
   });
 
+  it('preserva o ultimo diretorio valido de shell e descarta um caminho removido', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'orkestrai-shell-cwd-'));
+    const workspace = await workspaceRepository.createWorkspace({ name: 'shell cwd', workingDir: '/tmp' });
+    const valid = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Shell valido',
+      payload: { command: '/bin/zsh', currentWorkingDir: dir },
+    });
+    const missing = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Shell removido',
+      payload: { command: '/bin/zsh', currentWorkingDir: join(dir, 'missing') },
+    });
+
+    const listed = await workspaceService.listNodes(workspace.id);
+    expect((listed.find((node) => node.id === valid.id)?.payload as Record<string, unknown>).currentWorkingDir).toBe(dir);
+    expect((listed.find((node) => node.id === missing.id)?.payload as Record<string, unknown>).currentWorkingDir).toBeUndefined();
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it('inicia conversa Claude ausente sem fallback especulativo e com a role nativa', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'recovery', workingDir: '/tmp' });
     await roleService.save(workspace.id, { name: 'Lider', prompt: 'Coordene o time.' });

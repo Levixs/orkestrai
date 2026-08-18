@@ -171,6 +171,9 @@ describe('BridgeService', () => {
     await workspaceRepository.createEdge({ workspaceId: workspace.id, sourceNodeId: otherTerminal.id, targetNodeId: note.id });
 
     expect(await bridgeService.notesForAgent(workspace.id, terminal.id)).toEqual([note.id]);
+    expect(await bridgeService.listNotes(workspace.id, terminal.id)).toEqual([
+      expect.objectContaining({ nodeId: note.id, title: 'Nota', preview: '' }),
+    ]);
     ptySessionManager.kill(session.id);
   });
 });

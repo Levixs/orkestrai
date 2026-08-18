@@ -45,6 +45,7 @@ Uso:
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
+  orkestrai api list [--json] | api run <nodeId> <requestId> [--variables <json>] [--json]
   orkestrai design list | design read <nodeId> | design reference [${DESIGN_REFERENCE_TOPICS.join('|')}] | design audit <nodeId> | design template <nodeId> <product|marketing|mobile|design-system> --revision <n>
   orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
   orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
@@ -374,6 +375,37 @@ export async function run(argv, options = {}) {
         return 0;
       }
       throw new Error(`Acao de nota desconhecida: ${action}`);
+    }
+    case 'api': {
+      const [action, nodeId, requestId] = rest;
+      if (action === 'list') {
+        const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/api-clients${query}`);
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else {
+          for (const client of data) {
+            out(`- ${client.title} (${client.nodeId})`);
+            for (const request of client.requests ?? []) out(`  ${request.method} ${request.name} (${request.requestId}) ${request.url}`);
+          }
+          if (!data.length) out('(nenhum cliente de API conectado)');
+        }
+        return 0;
+      }
+      if (action === 'run' && nodeId && requestId) {
+        let variables = {};
+        if (flags.variables) {
+          variables = JSON.parse(String(flags.variables));
+          if (!variables || Array.isArray(variables) || typeof variables !== 'object') throw new Error('--variables deve ser um objeto JSON.');
+        }
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}/execute`, { requestId, variables, from: selfAgent });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else {
+          out(`${data.status} ${data.statusText} · ${data.durationMs} ms · ${data.size} bytes`);
+          if (data.body) out(data.body);
+        }
+        return data.ok ? 0 : 2;
+      }
+      throw new Error('Uso: orkestrai api <list|run <nodeId> <requestId>> [--variables <json>]');
     }
     case 'design': {
       const [action, nodeId, ...values] = rest;
@@ -822,8 +854,12 @@ export async function run(argv, options = {}) {
     case 'notes':
     case 'portals': {
       const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
-      const data = await bridge(config, 'GET', `/api/agent-room/bridge/agents${query}`);
-      const items = command === 'notes' ? (data.notes ?? []) : (data.portals ?? []);
+      const data = command === 'notes'
+        ? await bridge(config, 'GET', `/api/agent-room/bridge/notes${query}`)
+        : await bridge(config, 'GET', `/api/agent-room/bridge/agents${query}`);
+      const items = command === 'notes'
+        ? (Array.isArray(data) ? data : (data.notes ?? []))
+        : (data.portals ?? []);
       for (const item of items) out(`- ${item.title} (${item.id ?? item.nodeId})${item.url ? ` ${item.url}` : ''}`);
       if (!items.length) out(command === 'notes' ? '(sem notas)' : '(sem portais)');
       return 0;
