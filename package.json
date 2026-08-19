@@ -248,6 +248,7 @@
         "AppImage",
         "rpm"
       ],
+      "maintainer": "Beeblock <11634143+rzeradev@users.noreply.github.com>",
       "category": "Development",
       "icon": "electron/resources/icons"
     },

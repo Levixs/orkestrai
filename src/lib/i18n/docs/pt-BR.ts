@@ -461,6 +461,7 @@ export const DOCS_PT: DocsCatalog = {
       summary: 'Fedora, RHEL, CentOS e distribuições compatíveis agora têm um instalador nativo do Orkestrai.',
       items: [
         'Toda release Linux agora publica um RPM junto ao AppImage existente.',
+        'O pacote inclui os metadados públicos de mantenedor exigidos por instaladores nativos do Linux.',
         'O pipeline de release verifica o RPM e sua entrada no latest-linux.yml antes de publicar qualquer artefato.',
         'Instalações RPM usam o fluxo de atualização do Linux compatível com o gerenciador de pacotes.',
       ],

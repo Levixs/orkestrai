@@ -11,8 +11,9 @@ pt-BR, English, and Spanish translations.
 
 - Added RPM packaging for Linux (Fedora, RHEL, CentOS, and compatible
   distributions). The release pipeline now publishes `.rpm` alongside the
-  existing AppImage, and validates both the installer and its entry in
-  `latest-linux.yml` before publication (thanks to @rlevidev).
+  existing AppImage, includes the required public maintainer metadata, and
+  validates both the installer and its entry in `latest-linux.yml` before
+  publication (thanks to @rlevidev).
 
 ## 0.13.0 - 2026-08-18
 
