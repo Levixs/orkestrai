@@ -251,7 +251,7 @@ Download the latest installers from
 | --- | --- | --- |
 | macOS | Apple Silicon and Intel | DMG and update ZIP |
 | Windows | x64 | NSIS installer |
-| Linux | x64 | AppImage |
+| Linux | x64 | AppImage and RPM |
 
 The desktop application uses your locally installed agent CLIs. Install and
 authenticate only the providers you plan to use:

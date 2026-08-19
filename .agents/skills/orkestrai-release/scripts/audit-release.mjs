@@ -34,6 +34,7 @@ const requiredAssets = [
   `Orkestrai-${version}-mac.zip`,
   `Orkestrai-${version}-mac.zip.blockmap`,
   `Orkestrai-${version}.AppImage`,
+  `Orkestrai-${version}.x86_64.rpm`,
   `Orkestrai-${version}.dmg`,
   `Orkestrai-${version}.dmg.blockmap`,
   `Orkestrai-Setup-${version}.exe`,

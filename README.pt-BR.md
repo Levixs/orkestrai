@@ -177,7 +177,7 @@ Baixe os instaladores mais recentes em
 | --- | --- | --- |
 | macOS | Apple Silicon e Intel | DMG e ZIP de atualização |
 | Windows | x64 | Instalador NSIS |
-| Linux | x64 | AppImage |
+| Linux | x64 | AppImage e RPM |
 
 O aplicativo desktop utiliza as CLIs de agentes instaladas localmente. Instale e
 autentique somente os providers que pretende usar:

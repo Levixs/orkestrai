@@ -25,6 +25,7 @@ const requiredAssets = [
   `Orkestrai-Setup-${VERSION}.exe`,
   `Orkestrai-Setup-${VERSION}.exe.blockmap`,
   `Orkestrai-${VERSION}.AppImage`,
+  `Orkestrai-${VERSION}.x86_64.rpm`,
 ];
 
 const temporaryDirectories: string[] = [];
@@ -63,7 +64,13 @@ function fixture() {
   );
   writeFileSync(
     path.join(directory, 'latest-linux.yml'),
-    stringify({ version: VERSION, files: [manifestEntry(directory, `Orkestrai-${VERSION}.AppImage`)] }),
+    stringify({
+      version: VERSION,
+      files: [
+        manifestEntry(directory, `Orkestrai-${VERSION}.AppImage`),
+        manifestEntry(directory, `Orkestrai-${VERSION}.x86_64.rpm`),
+      ],
+    }),
   );
   return directory;
 }
@@ -88,6 +95,15 @@ describe('release artifact validation', () => {
       stringify({ version: VERSION, files: [manifestEntry(directory, `Orkestrai-${VERSION}-arm64-mac.zip`)] }),
     );
     expect(() => validateReleaseArtifacts(directory, VERSION)).toThrow(/Intel update ZIP/);
+  });
+
+  it('rejects a Linux manifest without the RPM installer', () => {
+    const directory = fixture();
+    writeFileSync(
+      path.join(directory, 'latest-linux.yml'),
+      stringify({ version: VERSION, files: [manifestEntry(directory, `Orkestrai-${VERSION}.AppImage`)] }),
+    );
+    expect(() => validateReleaseArtifacts(directory, VERSION)).toThrow(/RPM/);
   });
 });
 

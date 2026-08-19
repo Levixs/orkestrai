@@ -16,7 +16,7 @@ For version `<v>`, require:
 - Apple Silicon: `Orkestrai-<v>-arm64.dmg`, its blockmap, `Orkestrai-<v>-arm64-mac.zip`, and its blockmap
 - macOS Intel: `Orkestrai-<v>.dmg`, its blockmap, `Orkestrai-<v>-mac.zip`, and its blockmap
 - Windows x64: `Orkestrai-Setup-<v>.exe` and its blockmap
-- Linux x64: `Orkestrai-<v>.AppImage`; its blockmap is embedded, so no separate `.AppImage.blockmap` exists
+- Linux x64: `Orkestrai-<v>.AppImage` (blockmap embedded) and `Orkestrai-<v>.x86_64.rpm`
 - Feeds: `latest-mac.yml`, `latest.yml`, and `latest-linux.yml`
 
 The Windows filename must exactly match the URL in `latest.yml`. The macOS manifest must contain both architecture ZIPs. Installer sizes and SHA-512 values must match their manifest entries.
@@ -41,7 +41,7 @@ The publisher refuses to alter an already-public release. Failed upload retries 
 
 - The packaged app checks on boot and every six hours.
 - The renderer receives persisted updater state through Electron IPC.
-- Windows NSIS and Linux AppImage support unsigned replacement.
+- Windows NSIS, Linux AppImage and Linux RPM support unsigned replacement.
 - Ad-hoc macOS builds do not download or replace applications in place; their feed rollout is 0% to stop legacy updaters, while the current app checks the primary GitHub release API and offers manual installation. In-place macOS update requires Apple signing and notarization secrets.
 - User data, workspaces, settings, and voice models live outside the application bundle.
 

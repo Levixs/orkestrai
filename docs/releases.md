@@ -53,7 +53,7 @@ O workflow `Release Desktop` compila:
 - macOS Apple Silicon: DMG, ZIP e blockmaps;
 - macOS Intel: DMG, ZIP e blockmaps;
 - Windows x64: instalador NSIS e blockmap;
-- Linux x64: AppImage e manifest `latest-linux.yml` (o electron-builder não gera blockmap separado para AppImage).
+- Linux x64: AppImage, RPM e manifest `latest-linux.yml` (o electron-builder não gera blockmap separado para AppImage).
 
 Depois dos builds, `scripts/validate-release-artifacts.mjs` confere versão,
 arquivos referenciados, tamanho e SHA-512 dos manifests `latest-mac.yml`,
@@ -64,7 +64,7 @@ repositório principal recebe releases novas.
 
 ## Assinatura
 
-Windows NSIS e Linux AppImage atualizam mesmo sem assinatura. Windows mostra o
+Windows NSIS, Linux AppImage e Linux RPM atualizam mesmo sem assinatura. Windows mostra o
 aviso esperado do SmartScreen até existir um certificado.
 
 No macOS, a troca automática exige Developer ID Application e notarização. Sem
