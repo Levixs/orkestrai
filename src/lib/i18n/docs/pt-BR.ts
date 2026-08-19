@@ -457,7 +457,7 @@ export const DOCS_PT: DocsCatalog = {
   changelog: [
     {
       date: '19 ago 2026 · 0.14.0',
-      title: 'Pacotes RPM nativos para Linux',
+      title: 'Orkestrai 0.14.0: pacotes RPM nativos para Linux',
       summary: 'Fedora, RHEL, CentOS e distribuições compatíveis agora têm um instalador nativo do Orkestrai.',
       items: [
         'Toda release Linux agora publica um RPM junto ao AppImage existente.',
