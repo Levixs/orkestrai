@@ -9,11 +9,13 @@
   import EditorCanvasNode from './canvas/EditorCanvasNode.svelte';
   import DiffCanvasNode from './canvas/DiffCanvasNode.svelte';
   import PortalCanvasNode from './canvas/PortalCanvasNode.svelte';
+  import ApiClientCanvasNode from './canvas/ApiClientCanvasNode.svelte';
   import LoopCanvasNode from './canvas/LoopCanvasNode.svelte';
   import TasksCanvasNode from './canvas/TasksCanvasNode.svelte';
   import FlowCanvasNode from './canvas/FlowCanvasNode.svelte';
   import ImageCanvasNode from './canvas/ImageCanvasNode.svelte';
   import UsageCanvasNode from './canvas/UsageCanvasNode.svelte';
+  import DesignCanvasNode from './canvas/DesignCanvasNode.svelte';
   import WorkbenchFileView from './WorkbenchFileView.svelte';
   import type { TerminalThemeName } from './terminal-themes.js';
   import type {
@@ -60,11 +62,13 @@
     editor: EditorCanvasNode,
     diff: DiffCanvasNode,
     portal: PortalCanvasNode,
+    apiClient: ApiClientCanvasNode,
     loop: LoopCanvasNode,
     tasks: TasksCanvasNode,
     flow: FlowCanvasNode,
     image: ImageCanvasNode,
     usage: UsageCanvasNode,
+    design: DesignCanvasNode,
   };
 
   let host: HTMLDivElement;

@@ -11,6 +11,27 @@ const runtimeContext = new AsyncLocalStorage<WorkspaceExecutionRuntime>();
 
 export type WslDistribution = { name: string };
 
+export type WslLaunchErrorCode =
+  | 'WSL_DISTRIBUTION_UNAVAILABLE'
+  | 'WSL_DIRECTORY_NOT_FOUND'
+  | 'WSL_COMMAND_NOT_FOUND'
+  | 'WSL_SPAWN_FAILED';
+
+export class WslLaunchError extends Error {
+  readonly code: WslLaunchErrorCode;
+
+  constructor(code: WslLaunchErrorCode, message: string) {
+    super(message);
+    this.code = code;
+    this.name = 'WslLaunchError';
+  }
+}
+
+export type WslTrackingContext = {
+  homeHostPath: string;
+  linuxWorkingDir: string;
+};
+
 export function parseWslDistributionList(output: string): WslDistribution[] {
   const names = output
     .replace(/\u0000/g, '')
@@ -156,7 +177,7 @@ export async function resolveWorkspaceRuntime(input: {
   };
 }
 
-function guestWorkingDirectory(
+export function guestWorkingDirectory(
   runtime: Extract<WorkspaceExecutionRuntime, { kind: 'wsl' }>,
   hostCwd: string,
   workspaceRoot?: string
@@ -184,6 +205,62 @@ function guestWorkingDirectory(
     }
   }
   return runtime.linuxWorkingDir;
+}
+
+function wslFailure(error: unknown, runtime: Extract<WorkspaceExecutionRuntime, { kind: 'wsl' }>, command?: string): WslLaunchError {
+  const candidate = error as NodeJS.ErrnoException & { stderr?: string; stdout?: string };
+  const detail = `${candidate.message ?? ''}\n${candidate.stderr ?? ''}\n${candidate.stdout ?? ''}`.trim();
+  if (/distribution|distro|WSL_E_DISTRO_NOT_FOUND|there is no distribution/i.test(detail)) {
+    return new WslLaunchError('WSL_DISTRIBUTION_UNAVAILABLE', `WSL distribution is unavailable: ${runtime.distribution}`);
+  }
+  if (/chdir|directory|no such file|WSL_E_PATH_NOT_FOUND/i.test(detail)) {
+    return new WslLaunchError('WSL_DIRECTORY_NOT_FOUND', `WSL working directory is unavailable: ${runtime.linuxWorkingDir}`);
+  }
+  if (command) return new WslLaunchError('WSL_COMMAND_NOT_FOUND', `Command is not installed in ${runtime.distribution}: ${command}`);
+  return new WslLaunchError('WSL_SPAWN_FAILED', detail || `WSL failed to start: ${runtime.distribution}`);
+}
+
+export async function resolveWslTrackingContext(input: {
+  runtime: Extract<WorkspaceExecutionRuntime, { kind: 'wsl' }>;
+  hostCwd: string;
+  workspaceRoot?: string;
+}): Promise<WslTrackingContext> {
+  const linuxWorkingDir = guestWorkingDirectory(input.runtime, input.hostCwd, input.workspaceRoot);
+  try {
+    const { stdout } = await execFileAsync('wsl.exe', [
+      '--distribution', input.runtime.distribution,
+      '--cd', linuxWorkingDir,
+      '--exec', '/bin/sh', '-lc', 'printf "__ORKESTRAI_HOME__%s\\n" "$HOME"',
+    ], { encoding: 'utf8', windowsHide: true, timeout: 15_000 });
+    const home = stdout.split(/\r?\n/).find((line) => line.startsWith('__ORKESTRAI_HOME__'))?.slice('__ORKESTRAI_HOME__'.length).trim();
+    if (!home?.startsWith('/')) throw new Error('WSL did not report its home directory.');
+    return { homeHostPath: wslHostPath(input.runtime.distribution, home), linuxWorkingDir };
+  } catch (error) {
+    throw wslFailure(error, input.runtime);
+  }
+}
+
+export async function preflightWslLaunch(input: {
+  runtime: Extract<WorkspaceExecutionRuntime, { kind: 'wsl' }>;
+  command: string;
+  hostCwd: string;
+  workspaceRoot?: string;
+}): Promise<WslTrackingContext> {
+  const context = await resolveWslTrackingContext(input);
+  const originalCommand = input.command.trim();
+  const command = /^(?:wsl(?:\.exe)?|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh(?:\.exe)?)$/i.test(originalCommand)
+    ? '/bin/bash'
+    : originalCommand;
+  try {
+    await execFileAsync('wsl.exe', [
+      '--distribution', input.runtime.distribution,
+      '--cd', context.linuxWorkingDir,
+      '--exec', '/bin/bash', '-lic', 'command -v -- "$1" >/dev/null', 'orkestrai-preflight', command,
+    ], { encoding: 'utf8', windowsHide: true, timeout: 15_000 });
+    return context;
+  } catch (error) {
+    throw wslFailure(error, input.runtime, command);
+  }
 }
 
 function guestArgument(

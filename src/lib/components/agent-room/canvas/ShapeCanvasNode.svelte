@@ -1,9 +1,8 @@
 <script lang="ts">
   import HeaderIconButton from './HeaderIconButton.svelte';
 
-  import type { NodeProps } from '@xyflow/svelte';
   import { NodeResizer } from '@xyflow/svelte';
-  import { GripHorizontal, Settings2, X } from '@lucide/svelte';
+  import { CopyPlus, GripHorizontal, Settings2, X } from '@lucide/svelte';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import { Slider } from '$lib/components/ui/slider';
@@ -33,13 +32,20 @@
     title: string;
     payload: ShapeStyle;
     onDelete: (id: string) => void;
+    onDuplicate?: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
     onPayloadChange?: (id: string, partial: Record<string, unknown>) => void;
   };
 
-  let { id, data, selected } = $props<NodeProps & { data: ShapeNodeData }>();
+  type ArrowPoint = { x: number; y: number };
+  type ResolvedShapeStyle = Required<Omit<ShapeStyle, 'shape' | 'label' | 'points' | 'headSize'>> & {
+    points?: ArrowPoint[];
+    headSize?: number;
+  };
 
-  const DEFAULTS: Required<Omit<ShapeStyle, 'shape' | 'label'>> = {
+  let { id, data, selected } = $props<{ id: string; data: ShapeNodeData; selected?: boolean }>();
+
+  const DEFAULTS: Required<Omit<ShapeStyle, 'shape' | 'label' | 'points' | 'headSize'>> = {
     fill: '#7C4DFF',
     fillOpacity: 0.08,
     stroke: '#7C4DFF',
@@ -51,8 +57,8 @@
     textAlign: 'center',
   };
 
-  const style = $derived({ ...DEFAULTS, ...data.payload });
-  const shape = $derived(data.payload.shape ?? 'rectangle');
+  const style: ResolvedShapeStyle = $derived({ ...DEFAULTS, ...data.payload });
+  const shape: ShapeKind = $derived(data.payload.shape ?? 'rectangle');
   const label = $derived(data.payload.label ?? data.title ?? '');
 
   const SWATCHES = ['#7C4DFF', '#00BFFF', '#FFC857', '#3dd68c', '#e5484d', '#ffffff', '#8b8c96', 'transparent'];
@@ -154,10 +160,10 @@
   ];
 
   /** Pontos locais durante o arraste (persiste no payload ao soltar). */
-  let dragPoints = $state<Array<{ x: number; y: number }> | null>(null);
+  let dragPoints = $state<ArrowPoint[] | null>(null);
   let dragIndex = -1;
 
-  const arrowPoints = $derived(dragPoints ?? data.payload.points ?? DEFAULT_ARROW_POINTS);
+  const arrowPoints: ArrowPoint[] = $derived(dragPoints ?? data.payload.points ?? DEFAULT_ARROW_POINTS);
 
   /** Catmull-Rom -> bezier cubico (curva suave passando por todos os pontos). */
   function smoothPath(pts: Array<{ x: number; y: number }>, w: number, h: number): string {
@@ -273,7 +279,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="canvas-shape"
+  class="canvas-shape nowheel"
   class:selected
   bind:clientWidth={boxWidth}
   bind:clientHeight={boxHeight}
@@ -283,6 +289,15 @@
   {#if selected}
     <HeaderIconButton label={m['shape.remove']()} class="shape-delete nodrag" side="left" onclick={() => data.onDelete(id)}>
       <X size={12} />
+    </HeaderIconButton>
+
+    <HeaderIconButton
+      label={m['shape.duplicate_shortcut']()}
+      class="shape-duplicate nodrag"
+      side="left"
+      onclick={() => data.onDuplicate?.(id)}
+    >
+      <CopyPlus size={12} />
     </HeaderIconButton>
 
     <button class="shape-settings nodrag" class:style-open={styleOpen} aria-label={m['shape.style_title']()} onclick={openStylePanel}>
@@ -297,8 +312,10 @@
       style:left="{panelPos.x}px"
       style:top="{panelPos.y}px"
       role="dialog"
+      tabindex="-1"
       aria-label={m['shape.style_title']()}
       onclick={(event) => event.stopPropagation()}
+      onkeydown={(event) => event.stopPropagation()}
       ondblclick={(event) => event.stopPropagation()}
     >
       <div
@@ -318,7 +335,7 @@
       </div>
       <div class="pop-grid">
         <span class="pop-label">{m['shape.lbl_type']()}</span>
-        <Select.Root type="single" value={shape} onValueChange={(value: string) => patch({ shape: value })}>
+        <Select.Root type="single" value={shape} onValueChange={(value: string) => patch({ shape: value as ShapeKind })}>
           <Select.Trigger class="h-7 w-full text-xs" data-slot="select-trigger">
             {{ rectangle: m['shape.kind_rectangle'](), rounded: m['shape.kind_rounded'](), ellipse: m['shape.kind_ellipse'](), diamond: m['shape.kind_diamond'](), arrow: m['shape.kind_arrow']() }[shape]}
           </Select.Trigger>
@@ -421,7 +438,7 @@
           min={8}
           max={72}
           value={style.fontSize}
-          oninput={(event) => patch({ fontSize: Number((event.target as HTMLInputElement).value) || DEFAULTS.fontSize })}
+          oninput={(event: Event) => patch({ fontSize: Number((event.target as HTMLInputElement).value) || DEFAULTS.fontSize })}
         />
 
         <span class="pop-label">{m['shape.lbl_weight']()}</span>
@@ -609,10 +626,10 @@
     line-height: 1.2;
   }
 
-  :global(.shape-delete) {
+  :global(.shape-delete),
+  :global(.shape-duplicate) {
     position: absolute;
     top: -10px;
-    right: -10px;
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -626,8 +643,21 @@
     z-index: 5;
   }
 
+  :global(.shape-delete) {
+    right: -10px;
+  }
+
+  :global(.shape-duplicate) {
+    right: 16px;
+  }
+
   :global(.shape-delete):hover {
     color: var(--app-danger);
+  }
+
+  :global(.shape-duplicate):hover {
+    color: var(--app-accent);
+    border-color: var(--app-accent);
   }
 
   :global(.shape-settings) {

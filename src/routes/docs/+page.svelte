@@ -63,6 +63,7 @@
     'approval-pipeline': Workflow,
     'chained-flows': Workflow,
     'design-figma': Palette,
+    'ui-exploration': Palette,
     'mcp-tools': Cable,
     'quota-aware-delegation': Gauge,
     'focused-workspace-view': PanelLeftOpen,
@@ -123,7 +124,7 @@
     const term = query.trim().toLowerCase();
     const items: PaletteItem[] = [
       { kind: 'topico', title: m['docs.quickstart_title'](), body: quickstart.join(' '), href: '#comece' },
-      ...useCases.map((useCase) => ({ kind: 'caso' as const, title: useCase.title, body: useCase.body, href: '#casos-de-uso' })),
+      ...useCases.map((useCase) => ({ kind: 'caso' as const, title: useCase.title, body: useCase.body, href: `#usecase-${useCase.id}` })),
       ...sections.map((section) => ({ kind: 'topico' as const, title: section.title, body: section.body, href: `#${section.id}` })),
       { kind: 'topico', title: m['docs.changelog_title'](), body: changelog.map((entry) => `${entry.date} ${entry.items.join(' ')}`).join(' '), href: '#changelog' },
     ];
@@ -228,7 +229,7 @@
         <h2 class="usecases-title">{m['docs.usecases_title']()}</h2>
         <div class="usecases-grid">
           {#each useCases as useCase (useCase.id)}
-            <article class="doc-card usecase-card">
+            <article class="doc-card usecase-card" id={`usecase-${useCase.id}`}>
               <header>
                 <span class="icon-chip"><useCase.icon size={15} aria-hidden="true" /></span>
                 <h3>{useCase.title}</h3>

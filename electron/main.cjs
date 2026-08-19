@@ -519,6 +519,45 @@ ipcMain.handle('orkestrai:pick-directory', async () => {
   return result.canceled ? null : (result.filePaths[0] ?? null);
 });
 
+ipcMain.handle('orkestrai:pick-api-collection', async (_event, kind) => {
+  if (!mainWindow) return null;
+  const isPostman = kind === 'postman';
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: isPostman
+      ? [{ name: 'Postman Collection', extensions: ['json'] }]
+      : [{ name: 'Bruno / OpenCollection', extensions: ['bru', 'yml', 'yaml'] }],
+  });
+  return result.canceled ? null : (result.filePaths[0] ?? null);
+});
+
+function spawnApiApp(command, args, waitForExit = false) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { detached: !waitForExit, stdio: 'ignore' });
+    child.once('error', () => resolve(false));
+    if (waitForExit) child.once('exit', (code) => resolve(code === 0));
+    else child.once('spawn', () => { child.unref(); resolve(true); });
+  });
+}
+
+ipcMain.handle('orkestrai:open-api-collection', async (_event, kind, sourcePath) => {
+  if (!['bruno', 'postman'].includes(kind) || typeof sourcePath !== 'string' || !sourcePath || !fs.existsSync(sourcePath)) return false;
+  const appName = kind === 'bruno' ? 'Bruno' : 'Postman';
+  if (process.platform === 'darwin') return spawnApiApp('/usr/bin/open', ['-a', appName, sourcePath], true);
+  if (process.platform === 'win32') {
+    const local = process.env.LOCALAPPDATA ?? '';
+    const candidates = kind === 'bruno'
+      ? [path.join(local, 'Programs', 'Bruno', 'Bruno.exe'), path.join(local, 'Programs', 'bruno', 'Bruno.exe')]
+      : [path.join(local, 'Postman', 'Postman.exe')];
+    const executable = candidates.find((candidate) => fs.existsSync(candidate));
+    return executable ? spawnApiApp(executable, [sourcePath]) : false;
+  }
+  for (const executable of (kind === 'bruno' ? ['bruno'] : ['postman', 'Postman'])) {
+    if (await spawnApiApp(executable, [sourcePath])) return true;
+  }
+  return false;
+});
+
 // -- Auto-update (electron-updater, releases publicos no GitHub) --------------
 // O download cai num cache separado e só e ativado na troca (quitAndInstall):
 // a versão atual NUNCA e tocada antes da nova estar 100% baixada e verificada
@@ -641,6 +680,11 @@ ipcMain.handle('orkestrai:automation-secret-status', (_event, key) => {
 ipcMain.handle('orkestrai:automation-secret-save', (_event, key, value) => saveAutomationSecret(key, value));
 
 ipcMain.handle('orkestrai:automation-secret-delete', (_event, key) => deleteAutomationSecret(key));
+
+ipcMain.handle('orkestrai:figma-plugin-folder', async () => {
+  const pluginPath = path.join(app.getAppPath(), 'packages', 'orkestrai-figma-plugin');
+  return shell.openPath(pluginPath);
+});
 
 ipcMain.handle('orkestrai:open-external', (_event, url) => {
   // Só https — nunca abre esquema arbitrario vindo do renderer.

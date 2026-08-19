@@ -8,6 +8,7 @@ import type {
   ControlCenterSnapshot,
 } from '../../domain/types.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
+import { AgentFloor } from '../../domain/models/AgentFloor.js';
 import { controlCenterRepository } from '../../infrastructure/repositories/ControlCenterRepository.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
@@ -127,13 +128,18 @@ export class ControlCenterService {
   }
 
   async snapshot(workspaceId: string, includeCommunications = true): Promise<ControlCenterSnapshot> {
-    const [nodes, activityEvents, deliveryEvents, taskModels] = await Promise.all([
+    const [nodes, activeFloors, activityEvents, deliveryEvents, taskModels] = await Promise.all([
       workspaceRepository.listNodes(workspaceId),
+      AgentFloor.query().where('workspace_id', workspaceId).where('status', 'active').get(),
       controlCenterRepository.listActivity(workspaceId),
       includeCommunications ? controlCenterRepository.listDeliveries(workspaceId) : Promise.resolve([]),
       AgentBoardTask.query().where('workspace_id', workspaceId).get(),
     ]);
     const terminalNodes = nodes.filter((node) => node.type === 'terminal');
+    const floorNames = new Map(activeFloors.map((floor) => [
+      String(floor.getAttribute('id')),
+      String(floor.getAttribute('name')),
+    ]));
     const titles = new Map(terminalNodes.map((node) => [node.id, node.title ?? 'Terminal']));
     const latestByNode = new Map<string, AgentActivity>();
     for (const event of activityEvents) latestByNode.set(event.nodeId, event);
@@ -169,6 +175,8 @@ export class ControlCenterService {
         title: node.title ?? 'Terminal',
         provider: payload.provider ?? session?.provider ?? null,
         role: payload.role ?? null,
+        floorId: node.floorId,
+        floorName: node.floorId ? floorNames.get(node.floorId) ?? null : null,
         state,
         stateSince: latest?.createdAt ?? node.updatedAt,
         lastAction: latest?.action ?? null,

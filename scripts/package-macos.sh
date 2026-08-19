@@ -26,7 +26,9 @@ if [[ -z "${CSC_LINK:-}" ]]; then
   unset CSC_LINK CSC_NAME CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
   export CSC_IDENTITY_AUTO_DISCOVERY=false
   npx electron-builder "${builder_args[@]}" -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false
-  node scripts/set-mac-update-policy.mjs release/latest-mac.yml
+  if [[ -f release/latest-mac.yml ]]; then
+    node scripts/set-mac-update-policy.mjs release/latest-mac.yml
+  fi
 else
   npx electron-builder "${builder_args[@]}"
 fi

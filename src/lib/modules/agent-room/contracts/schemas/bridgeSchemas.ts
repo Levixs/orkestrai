@@ -1,5 +1,27 @@
 import { z } from 'zod';
 
+export const bridgeFigmaSelectionSchema = z.object({
+  baseRevision: z.number().int().min(0),
+  fileKey: z.string().trim().regex(/^[A-Za-z0-9_-]{6,240}$/),
+  fileName: z.string().trim().min(1).max(240),
+  sourceNodes: z.array(z.record(z.string(), z.unknown())).min(1).max(100),
+  imageAssets: z.record(z.string().trim().min(1).max(500), z.object({
+    mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif']),
+    base64: z.string().regex(/^[A-Za-z0-9+/]+={0,2}$/).max(28 * 1024 * 1024),
+  })).default({}),
+  targetPageId: z.string().uuid(),
+  summary: z.string().trim().min(1).max(500).default('Import Figma plugin selection'),
+});
+import { applyDesignOperationsSchema } from './designSchemas.js';
+
+export const bridgeDesignApplySchema = applyDesignOperationsSchema.omit({ actor: true }).extend({
+  token: z.string().trim().min(1).nullish(),
+  from: z.string().trim().max(120).nullish(),
+  taskId: z.string().uuid().nullish(),
+});
+
+export type BridgeDesignApplyInput = z.infer<typeof bridgeDesignApplySchema>;
+
 export const bridgeAskSchema = z.object({
   token: z.string().trim().min(1).nullish(),
   to: z.string().trim().min(1, 'Informe o agente de destino (titulo ou id do no).'),
@@ -58,6 +80,8 @@ export const bridgeRecruitSchema = z.object({
   from: z.string().trim().min(1, 'Informe o agente maestro (from).'),
   title: z.string().trim().min(1, 'Informe o titulo do recruta.'),
   provider: z.string().trim().nullish(),
+  model: z.string().trim().nullish(),
+  effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']).nullish(),
   role: z.string().trim().nullish(),
   x: z.coerce.number().optional(),
   y: z.coerce.number().optional(),

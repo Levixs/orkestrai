@@ -14,7 +14,7 @@ import {
 } from '@orkestrai/collaboration-protocol';
 import type { CollaborationCommand, CollaborationCommandResult, SharedWorkspaceDto } from '../../domain/types.js';
 import { collaborationRepository } from '../../infrastructure/repositories/CollaborationRepository.js';
-import { sharedWorkspaceQuery } from '../queries/SharedWorkspaceQuery.js';
+import { scopeSharedWorkspaceSnapshot, sharedWorkspaceQuery } from '../queries/SharedWorkspaceQuery.js';
 import { ExecuteCollaborationCommandDto } from '../dto/CollaborationDto.js';
 import { sharedWorkspaceCommandBus } from './SharedWorkspaceCommandBus.js';
 import { collaborationRuntime } from './CollaborationRuntime.js';
@@ -482,9 +482,12 @@ export class CollaborationSessionManager {
 
   private async sendSnapshot(host: HostSession, peer: HostPeer): Promise<void> {
     if (!peer.sessionChannel) return;
-    const snapshot = await sharedWorkspaceQuery.snapshot(host.shareId);
+    const device = await collaborationRepository.findDevice(peer.deviceRecordId);
+    if (!device?.approvedAt || device.revokedAt) return;
+    const fullSnapshot = await sharedWorkspaceQuery.snapshot(host.shareId);
+    const snapshot = scopeSharedWorkspaceSnapshot(fullSnapshot, device.scopes);
     this.send(host.socket, peer.sessionChannel.encrypt({ type: 'snapshot', revision: snapshot.revision, workspace: snapshot }, peer.peerId));
-    host.lastProjectionHash = this.projectionHash(snapshot);
+    host.lastProjectionHash = this.projectionHash(fullSnapshot);
   }
 
   private async openTerminal(
@@ -778,7 +781,11 @@ export class CollaborationSessionManager {
       snapshot = { ...snapshot, revision };
       host.lastProjectionHash = this.projectionHash(snapshot);
       for (const peer of host.peers.values()) {
-        if (peer.sessionChannel) this.send(host.socket, peer.sessionChannel.encrypt({ type: 'snapshot', revision, workspace: snapshot }, peer.peerId));
+        if (!peer.sessionChannel) continue;
+        const device = await collaborationRepository.findDevice(peer.deviceRecordId);
+        if (!device?.approvedAt || device.revokedAt) continue;
+        const scoped = scopeSharedWorkspaceSnapshot(snapshot, device.scopes);
+        this.send(host.socket, peer.sessionChannel.encrypt({ type: 'snapshot', revision, workspace: scoped }, peer.peerId));
       }
     });
   }

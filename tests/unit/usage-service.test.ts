@@ -192,4 +192,26 @@ describe('UsageService', () => {
       vi.useRealTimers();
     }
   });
+
+  it('lista todos os adapters e explica quando a cota nao e legivel automaticamente', async () => {
+    const service = new UsageService(fakeFetch({}), homeWith({}), async () => null);
+    const usages = await service.getAll();
+
+    expect(usages.map((usage) => usage.provider)).toEqual([
+      'claude', 'codex', 'kimi', 'antigravity', 'cursor', 'devin', 'opencode', 'cline',
+    ]);
+    expect(usages.find((usage) => usage.provider === 'antigravity')).toMatchObject({
+      diagnostic: 'provider_cli_only',
+      error: null,
+    });
+    expect(usages.find((usage) => usage.provider === 'cursor')?.helpUrl).toContain('cursor.com');
+    expect(usages.find((usage) => usage.provider === 'devin')?.helpUrl).toContain('/build-usage-dashboard');
+    expect(usages.find((usage) => usage.provider === 'opencode')).toMatchObject({
+      diagnostic: 'model_provider_managed',
+      helpUrl: 'https://dev.opencode.ai/docs/go/',
+    });
+    expect(usages.find((usage) => usage.provider === 'cline')?.helpUrl).toBe(
+      'https://docs.cline.bot/getting-started/cline-provider',
+    );
+  });
 });

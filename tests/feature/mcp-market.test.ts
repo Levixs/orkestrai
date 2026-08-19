@@ -44,6 +44,10 @@ describe('McpMarketService', () => {
     expect(results.every((entry) => entry.source === 'curadoria')).toBe(true);
     expect(results.some((entry) => entry.key === 'github')).toBe(true);
     expect(results.some((entry) => entry.url)).toBe(true); // entradas de 1 clique
+    expect(results.find((entry) => entry.key === 'figma')).toMatchObject({
+      official: true,
+      url: 'https://mcp.figma.com/mcp',
+    });
   });
 
   it('com busca: curadoria filtrada primeiro + registry sem duplicar', async () => {

@@ -23,7 +23,13 @@ describe('orkestrai CLI', () => {
       req.on('end', () => {
         requests.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : undefined, auth: req.headers.authorization });
         res.setHeader('content-type', 'application/json');
-        if (req.url?.startsWith('/api/agent-room/bridge/agents')) {
+        if (req.url?.startsWith('/api/agent-room/bridge/notes') && req.method === 'GET' && !req.url.includes('/n9')) {
+          res.end(JSON.stringify({ data: [] }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients/') && req.url.endsWith('/execute')) {
+          res.end(JSON.stringify({ data: { status: 200, statusText: 'OK', durationMs: 12, size: 11, ok: true, body: '{"ok":true}' } }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients')) {
+          res.end(JSON.stringify({ data: [{ nodeId: 'api1', title: 'Project API', requests: [{ requestId: 'r1', method: 'GET', name: 'Health', url: 'https://example.test/health', authType: 'bearer' }] }] }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/agents')) {
           res.end(JSON.stringify({ data: { workspace: { id: 'w1', name: 'Teste' }, agents: [{ nodeId: 'n1', title: 'Claude', provider: 'claude', sessionAlive: true }], notes: [] } }));
         } else if (req.url === '/api/agent-room/bridge/usage') {
           res.end(JSON.stringify({ data: {
@@ -52,6 +58,12 @@ describe('orkestrai CLI', () => {
           res.end(JSON.stringify({ data: { ok: false, error: 'Portal indisponível: servidor ainda não respondeu.' } }));
         } else if (req.url === '/api/agent-room/bridge/notes/n9' && req.method === 'GET') {
           res.end(JSON.stringify({ data: { nodeId: 'n9', title: 'nota', content: 'conteudo da nota' } }));
+        } else if (req.url?.endsWith('/delivery/preview')) {
+          res.end(JSON.stringify({ data: { path: 'src/lib/Card.svelte', content: '<article>Card</article>', status: 'create', existingHash: null } }));
+        } else if (req.url?.endsWith('/delivery/apply')) {
+          res.end(JSON.stringify({ data: { path: 'src/lib/Card.svelte', status: 'create', revision: 5 } }));
+        } else if (req.url?.endsWith('/delivery/import')) {
+          res.end(JSON.stringify({ data: { elements: [{ id: 'e1' }], rootIds: ['e1'], revision: 5 } }));
         } else {
           res.end(JSON.stringify({ data: { ok: true } }));
         }
@@ -168,6 +180,66 @@ describe('orkestrai CLI', () => {
     expect(request.body.connect).toBe('all');
   });
 
+  it('design apply envia operacoes e revisao sem editar o arquivo diretamente', async () => {
+    const { out } = capture();
+    await run([
+      'design',
+      'apply',
+      'design-1',
+      JSON.stringify({ kind: 'update', elementId: 'element-1', changes: { x: 80 } }),
+      '--revision',
+      '4',
+      '--summary',
+      'Move heading',
+      '--task',
+      '00000000-0000-7000-8000-000000000003',
+    ], { env: { ORKESTRAI_NODE_ID: 'designer-1' }, cwd, out });
+    const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/designs/design-1').at(-1);
+    expect(request.method).toBe('PATCH');
+    expect(request.body).toMatchObject({
+      baseRevision: 4,
+      summary: 'Move heading',
+      from: 'designer-1',
+      taskId: '00000000-0000-7000-8000-000000000003',
+      operations: [{ kind: 'update', elementId: 'element-1', changes: { x: 80 } }],
+    });
+  });
+
+  it('design import-code le arquivos e registra a importacao pela bridge', async () => {
+    writeFileSync(join(cwd, 'card.html'), '<article class="p-4">Card</article>');
+    writeFileSync(join(cwd, 'card.css'), 'article { color: red; }');
+    const { out } = capture();
+    await run([
+      'design', 'import-code', 'design-1', 'card.html', '--format', 'html', '--name', 'Card',
+      '--revision', '4', '--css', 'card.css', '--task', '00000000-0000-7000-8000-000000000003',
+    ], { env: { ORKESTRAI_NODE_ID: 'designer-1' }, cwd, out });
+    const request = requests.filter((entry) => entry.url === '/api/agent-room/bridge/designs/design-1/delivery/import').at(-1);
+    expect(request.body).toMatchObject({
+      baseRevision: 4,
+      format: 'html',
+      name: 'Card',
+      markup: '<article class="p-4">Card</article>',
+      css: 'article { color: red; }',
+      from: 'designer-1',
+    });
+  });
+
+  it('design generate sempre faz preview e so escreve com hash e revisao', async () => {
+    const { out } = capture();
+    const elementIds = JSON.stringify(['00000000-0000-7000-8000-000000000001']);
+    await run([
+      'design', 'generate', 'design-1', elementIds, '--framework', 'svelar', '--output', 'src/lib/Card.svelte',
+      '--name', 'Card', '--write', '--revision', '4',
+    ], { env: { ORKESTRAI_NODE_ID: 'designer-1' }, cwd, out });
+    const calls = requests.filter((entry) => entry.url?.includes('/api/agent-room/bridge/designs/design-1/delivery/'));
+    expect(calls.at(-2)).toMatchObject({ method: 'POST', url: '/api/agent-room/bridge/designs/design-1/delivery/preview' });
+    expect(calls.at(-1)).toMatchObject({
+      method: 'POST',
+      url: '/api/agent-room/bridge/designs/design-1/delivery/apply',
+      body: { baseRevision: 4, expectedExistingHash: null, from: 'designer-1' },
+    });
+  });
+
   it('task assign usa o flag --assign', async () => {
     const { out } = capture();
     await run(['task', 'add', 'Revisar PR', '--assign', 'Claude'], { env: {}, cwd, out });
@@ -244,9 +316,12 @@ describe('orkestrai CLI', () => {
 
   it('recruit usa ORKESTRAI_NODE_ID como --from padrao', async () => {
     const { out } = capture();
-    await run(['recruit', 'Dev Frontend', '--provider', 'claude'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
+    await run(['recruit', 'Dev Frontend', '--provider', 'claude', '--model', 'opus', '--effort', 'high', '--floor', 'floor-1'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });
     const request = requests.find((entry) => entry.url === '/api/agent-room/bridge/recruit');
     expect(request.body.from).toBe('n1');
+    expect(request.body.floorId).toBe('floor-1');
+    expect(request.body.model).toBe('opus');
+    expect(request.body.effort).toBe('high');
   });
 
   it('flag --from explicito tem precedencia sobre o env', async () => {
@@ -309,6 +384,20 @@ describe('orkestrai CLI', () => {
     const code = await run(['notes'], { cwd, out, env: {} });
     expect(code).toBe(0);
     expect(lines.join('\n')).toContain('(sem notas)');
+  });
+
+  it('api lista e executa requests salvos com variaveis', async () => {
+    const { lines, out } = capture();
+    expect(await run(['api', 'list'], { cwd, out, env: { ORKESTRAI_NODE_ID: 'n1' } })).toBe(0);
+    expect(lines.join('\n')).toContain('GET Health');
+    expect(requests.at(-1).url).toContain('agentNodeId=n1');
+
+    expect(await run(['api', 'run', 'api1', 'r1', '--variables', '{"baseUrl":"https://example.test"}'], { cwd, out, env: { ORKESTRAI_NODE_ID: 'n1' } })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({
+      method: 'POST',
+      url: '/api/agent-room/bridge/api-clients/api1/execute',
+      body: { requestId: 'r1', variables: { baseUrl: 'https://example.test' }, from: 'n1' },
+    });
   });
 
   it('port devolve uma porta livre (sem precisar de workspace.json)', async () => {

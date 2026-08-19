@@ -28,10 +28,18 @@
   import EditorCanvasNode from '$lib/components/agent-room/canvas/EditorCanvasNode.svelte';
   import DiffCanvasNode from '$lib/components/agent-room/canvas/DiffCanvasNode.svelte';
   import PortalCanvasNode from '$lib/components/agent-room/canvas/PortalCanvasNode.svelte';
+  import ApiClientCanvasNode from '$lib/components/agent-room/canvas/ApiClientCanvasNode.svelte';
   import LoopCanvasNode from '$lib/components/agent-room/canvas/LoopCanvasNode.svelte';
   import GroupCanvasNode from '$lib/components/agent-room/canvas/GroupCanvasNode.svelte';
   import OrkestraiEdge from '$lib/components/agent-room/canvas/OrkestraiEdge.svelte';
-  import ShapeCanvasNode from '$lib/components/agent-room/canvas/ShapeCanvasNode.svelte';
+  import ShapeCanvasNode, { type ShapeStyle } from '$lib/components/agent-room/canvas/ShapeCanvasNode.svelte';
+  import {
+    SHAPE_CLIPBOARD_TYPE,
+    offsetShapeClipboard,
+    parseShapeClipboard,
+    serializeShapeClipboard,
+    type ShapeClipboardEntry,
+  } from '$lib/components/agent-room/canvas/shape-clipboard.js';
   import FloorPanel from '$lib/components/agent-room/canvas/FloorPanel.svelte';
   import AgentCreateDialog from '$lib/components/agent-room/canvas/AgentCreateDialog.svelte';
   import HeaderIconButton from '$lib/components/agent-room/canvas/HeaderIconButton.svelte';
@@ -62,6 +70,10 @@
   import UsagePanel from '$lib/components/agent-room/canvas/UsagePanel.svelte';
   import UsageCanvasNode from '$lib/components/agent-room/canvas/UsageCanvasNode.svelte';
   import DeviceCanvasNode from '$lib/components/agent-room/canvas/DeviceCanvasNode.svelte';
+  import DesignCanvasNode from '$lib/components/agent-room/canvas/DesignCanvasNode.svelte';
+  import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
+  import DesignExplorationDialog from '$lib/components/agent-room/canvas/DesignExplorationDialog.svelte';
+  import DesignToolbarMenu from '$lib/components/agent-room/canvas/DesignToolbarMenu.svelte';
   import PortsPanel from '$lib/components/agent-room/canvas/PortsPanel.svelte';
   import PresetLibraryPanel from '$lib/components/agent-room/canvas/PresetLibraryPanel.svelte';
   import AgentToolbarMenu from '$lib/components/agent-room/canvas/AgentToolbarMenu.svelte';
@@ -82,7 +94,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, Braces, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -93,6 +105,7 @@
     TerminalNodePayload,
     Workspace,
   } from '$lib/modules/agent-room/domain/types.js';
+  import type { DesignExplorationData } from '$lib/modules/agent-room/interface/http/resources/DesignExplorationResource.js';
   import { terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/domain/runtime.js';
 
   const nodeTypes = {
@@ -102,6 +115,7 @@
     editor: EditorCanvasNode,
     diff: DiffCanvasNode,
     portal: PortalCanvasNode,
+    apiClient: ApiClientCanvasNode,
     loop: LoopCanvasNode,
     group: GroupCanvasNode,
     shape: ShapeCanvasNode,
@@ -110,6 +124,7 @@
     image: ImageCanvasNode,
     usage: UsageCanvasNode,
     device: DeviceCanvasNode,
+    design: DesignCanvasNode,
   };
 
   let workspaces = $state<Workspace[]>([]);
@@ -130,9 +145,12 @@
   let activeWorkspace = $state<Workspace | null>(null);
   let providers = $state<AgentProviderInfo[]>([]);
   const canChooseAlternateRuntime = typeof navigator !== 'undefined' && navigator.platform.startsWith('Win');
-  let nodes = $state<Node[]>([]);
-  let edges = $state<Edge[]>([]);
+  let nodes = $state.raw<Node[]>([]);
+  let edges = $state.raw<Edge[]>([]);
+  let shapePasteSequence = 0;
   let errorMessage = $state('');
+  let designModeNodeId = $state<string | null>(null);
+  let designRevisions = $state<Record<string, number>>({});
   let permissionWorkspace = $state<Workspace | null>(null);
 
   // Formulario de novo workspace
@@ -141,6 +159,8 @@
   let showOnboarding = $state(false);
   let requestedTourId = $state<string | null>(null);
   let councilOpen = $state(false);
+  let councilSource = $state<{ taskId?: string; taskTitle?: string; taskDescription?: string | null; leaderNodeId?: string } | null>(null);
+  let designExplorationOpen = $state(false);
   let sharingOpen = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
@@ -156,6 +176,17 @@
     getViewport: () => { x: number; y: number; zoom: number };
   } | null>(null);
   let flowWrapper: HTMLElement;
+
+  const explorationLeader = $derived.by(() => {
+    const node = nodes.find((item) => item.type === 'terminal' && Boolean((item.data?.payload as { maestro?: boolean } | undefined)?.maestro));
+    if (!node) return null;
+    const payload = (node.data?.payload ?? {}) as { provider?: string };
+    return {
+      id: node.id,
+      title: String(node.data?.title ?? m['canvas.fallback_terminal']()),
+      provider: providers.find((provider) => provider.id === payload.provider)?.displayName ?? payload.provider ?? '',
+    };
+  });
 
   // Undo/redo: snapshots leves de nodes+edges antes de cada mutacao estrutural.
   const undoStack: Array<{ nodes: Node[]; edges: Edge[] }> = [];
@@ -209,7 +240,7 @@
   }
 
   // Modo "desenhar no": clique na ferramenta e arraste o retangulo no canvas.
-  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'device' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage';
+  type DrawTool = 'terminal' | 'note' | 'fileTree' | 'diff' | 'portal' | 'apiClient' | 'device' | 'loop' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'design';
   let drawTool = $state<DrawTool | null>(null);
   let drawStart = $state<{ x: number; y: number } | null>(null);
   let drawCurrent = $state<{ x: number; y: number } | null>(null);
@@ -235,6 +266,7 @@
     fileTree: async (rect) => { await addFileTree(rect); },
     diff: async (rect) => { await addDiff(rect); },
     portal: async (rect) => { await addPortal(rect); },
+    apiClient: async (rect) => { await addApiClient(rect); },
     device: async (rect) => { await addDevice(rect); },
     loop: async (rect) => { await addLoop(rect); },
     shape: async (rect) => { await addShape(rect); },
@@ -242,6 +274,7 @@
     flow: async (rect) => { await addFlowNode(rect); },
     image: async (rect) => { await addImageNode(rect); },
     usage: async (rect) => { await addUsageNode(rect); },
+    design: async (rect) => { await addDesignNode(rect); },
   };
 
   function toggleDrawTool(tool: DrawTool, provider?: AgentProviderInfo) {
@@ -438,7 +471,9 @@
   onMount(() => {
     const listener = (event: Event) => handleDesktopMenuAction(String((event as CustomEvent).detail ?? ''));
     const openCouncilListener = (event: Event) => {
-      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      const detail = (event as CustomEvent<{ workspaceId?: string; source?: typeof councilSource }>).detail;
+      const workspaceId = detail?.workspaceId;
+      councilSource = detail?.source ?? null;
       if (workspaceId && workspaceId !== activeWorkspace?.id) {
         void selectWorkspace(workspaceId).then(() => (councilOpen = true));
         return;
@@ -453,6 +488,14 @@
       }
       sharingOpen = true;
     };
+    const openDesignExplorationListener = (event: Event) => {
+      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      if (workspaceId && workspaceId !== activeWorkspace?.id) {
+        void selectWorkspace(workspaceId).then(() => (designExplorationOpen = true));
+        return;
+      }
+      designExplorationOpen = true;
+    };
     const openFileListener = (event: Event) => {
       const detail = (event as CustomEvent<{ workspaceId?: string; path?: string }>).detail;
       if (detail?.workspaceId && detail.path) void openFileFromSearch(detail.workspaceId, detail.path);
@@ -460,6 +503,7 @@
     window.addEventListener('orkestrai:menu-action', listener);
     window.addEventListener('orkestrai:open-council', openCouncilListener);
     window.addEventListener('orkestrai:open-sharing', openSharingListener);
+    window.addEventListener('orkestrai:open-design-exploration', openDesignExplorationListener);
     window.addEventListener('orkestrai:open-file', openFileListener);
     const pending = sessionStorage.getItem('orkestrai.menu-action');
     if (pending) {
@@ -470,6 +514,7 @@
       window.removeEventListener('orkestrai:menu-action', listener);
       window.removeEventListener('orkestrai:open-council', openCouncilListener);
       window.removeEventListener('orkestrai:open-sharing', openSharingListener);
+      window.removeEventListener('orkestrai:open-design-exploration', openDesignExplorationListener);
       window.removeEventListener('orkestrai:open-file', openFileListener);
     };
   });
@@ -548,6 +593,25 @@
   // servidor avisa via WS e a pagina recarrega nos/edges/andares do workspace
   // ativo — sem precisar trocar de andar ou recarregar a pagina.
   let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
+  let graphRefreshRequestId = 0;
+
+  async function refreshCanvasGraph(workspaceId: string): Promise<boolean> {
+    const requestId = ++graphRefreshRequestId;
+    const [canvasNodes, canvasEdges, floorList] = await Promise.all([
+      api<CanvasNode[]>(`/api/agent-room/workspaces/${workspaceId}/nodes`),
+      api<CanvasEdge[]>(`/api/agent-room/workspaces/${workspaceId}/edges`),
+      api<Floor[]>(`/api/agent-room/workspaces/${workspaceId}/floors`),
+    ]);
+    if (requestId !== graphRefreshRequestId || activeWorkspace?.id !== workspaceId) return false;
+    floors = floorList;
+    nodes = canvasNodes
+      .filter((node) => (node.floorId ?? null) === visibleFloorId)
+      .map(toFlowNode);
+    const visibleIds = new Set(nodes.map((node) => node.id));
+    edges = canvasEdges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
+    writeWorkspaceViewCache({ workspace: activeWorkspace, nodes: canvasNodes, edges: canvasEdges, floors: floorList });
+    return true;
+  }
 
   async function refreshActivity(): Promise<void> {
     const summaries = await api<Record<string, { agents: Array<{ sessionAlive: boolean }> }>>('/api/agent-room/control-center').catch(() => ({}));
@@ -568,8 +632,16 @@
           if (refreshDebounce) clearTimeout(refreshDebounce);
           refreshDebounce = setTimeout(() => {
             refreshDebounce = null;
-            if (activeWorkspace) selectWorkspace(activeWorkspace.id, { force: true });
+            if (activeWorkspace) void refreshCanvasGraph(activeWorkspace.id);
           }, 250);
+        }
+        if (message.type === 'designChanged' && message.workspaceId === activeWorkspace?.id && message.nodeId) {
+          const nodeId = String(message.nodeId);
+          const revision = Number(message.revision) || 0;
+          designRevisions = { ...designRevisions, [nodeId]: revision };
+          nodes = nodes.map((node) => node.id === nodeId
+            ? { ...node, data: { ...node.data, designRevision: revision } }
+            : node);
         }
         if (message.type === 'controlCenterChanged' || message.type === 'messageDelivery') {
           void refreshActivity();
@@ -619,6 +691,9 @@
           if (requestedNodeId && nodes.some((node) => node.id === requestedNodeId)) {
             await tick();
             const requestedNode = nodes.find((node) => node.id === requestedNodeId);
+            if (requestedNode?.type === 'design' && params.get('design') === '1') {
+              designModeNodeId = requestedNodeId;
+            }
             requestAnimationFrame(() => requestAnimationFrame(() => (
               requestedNode?.type === 'device'
                 ? jumpToNode(requestedNodeId, 0.64, 26)
@@ -728,6 +803,7 @@
         onJumpToNode: jumpToNode,
         onRemoveConnection: removeConnection,
         onDelete: deleteNode,
+        onDuplicate: duplicateShape,
         onResize: resizeNode,
         onSessionCreated: async (id: string, sessionId: string, options: { resumed: boolean }) => {
           await updateNodePayload(id, { sessionId });
@@ -747,6 +823,7 @@
         onColorChange: (id: string, color: string) => updateNodePayload(id, { color }),
         onRoleChange: (id: string, role: string | null) => updateNodePayload(id, { role }),
         onOpenFile: (path: string) => openEditor(path),
+        onOpenWorkbench: (id: string) => (designModeNodeId = id),
         onUrlChange: (id: string, url: string) => updateNodePayload(id, { url }),
         onRename: (id: string, title: string) => {
           nodes = nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, title } } : node));
@@ -902,6 +979,8 @@
       if (changingWorkspace) {
         leaderDictationState = 'idle';
         leaderDictationNodeId = null;
+        designModeNodeId = null;
+        designRevisions = {};
       }
       floors = floorList;
       if (!options.force) {
@@ -1105,7 +1184,7 @@
     if (provider) {
       // Monta o comando com model/effort escolhidos no dialogo (server-side,
       // via adapter — as flags variam por provider).
-      let spec = provider.tui
+      let spec: { command: string; args: string[]; env?: Record<string, string> } | null = provider.tui
         ? { command: provider.tui.command, args: provider.tui.args, env: provider.tui.env }
         : null;
       if (creation && (creation.model || creation.effort)) {
@@ -1181,6 +1260,23 @@
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
       body: JSON.stringify({ type: 'portal', title: m['canvas.default_portal'](), ...position, ...nodeSize(rect, 360, 260, 720, 520), payload: {}, floorId: visibleFloorId }),
+    });
+    nodes = [...nodes, toFlowNode(node)];
+  }
+
+  async function addApiClient(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'apiClient',
+        title: m['api_client.title'](),
+        ...position,
+        ...nodeSize(rect, 520, 360, 820, 560),
+        payload: { requests: [], selectedRequestId: null, variables: {} },
+        floorId: visibleFloorId,
+      }),
     });
     nodes = [...nodes, toFlowNode(node)];
   }
@@ -1277,6 +1373,32 @@
     nodes = [...nodes, toFlowNode(node)];
   }
 
+  async function addDesignNode(rect?: { x: number; y: number; width: number; height: number }) {
+    if (!activeWorkspace) return;
+    const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
+    const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'design',
+        title: m['design.default_name'](),
+        ...position,
+        ...nodeSize(rect, 360, 260, 520, 380),
+        payload: { schemaVersion: 1 },
+        floorId: visibleFloorId,
+      }),
+    });
+    nodes = [...nodes, toFlowNode(node)];
+    designModeNodeId = node.id;
+  }
+
+  async function handleDesignExplorationCreated(result: DesignExplorationData) {
+    if (!activeWorkspace) return;
+    const refreshed = await refreshCanvasGraph(activeWorkspace.id);
+    if (!refreshed) return;
+    await tick();
+    jumpToNode(result.groupId, 0.62);
+  }
+
   async function addDiff(rect?: { x: number; y: number; width: number; height: number }) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1330,6 +1452,79 @@
     nodes = nodes.map((node) =>
       node.id === id ? { ...node, data: { ...node.data, payload: { ...current, ...partial } } } : node
     );
+  }
+
+  function shapeClipboardEntries(ids?: string[]): ShapeClipboardEntry<ShapeStyle>[] {
+    const requested = ids ? new Set(ids) : null;
+    return nodes
+      .filter((node) => node.type === 'shape' && (requested ? requested.has(node.id) : node.selected))
+      .map((node) => ({
+        title: String(node.data?.title ?? ''),
+        x: node.position.x,
+        y: node.position.y,
+        width: Math.max(60, Number(node.width ?? node.measured?.width ?? 160)),
+        height: Math.max(40, Number(node.height ?? node.measured?.height ?? 160)),
+        payload: structuredClone((node.data?.payload ?? {}) as ShapeStyle),
+      }));
+  }
+
+  async function createShapeCopies(entries: ShapeClipboardEntry<ShapeStyle>[], offset: number) {
+    if (!activeWorkspace || !entries.length) return;
+    snapshot();
+    const created: Node[] = [];
+    for (const entry of offsetShapeClipboard(entries, offset)) {
+      const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'shape',
+          title: entry.title,
+          x: entry.x,
+          y: entry.y,
+          width: entry.width,
+          height: entry.height,
+          payload: structuredClone(entry.payload),
+          floorId: visibleFloorId,
+        }),
+      });
+      created.push({ ...toFlowNode(node), selected: true });
+    }
+    nodes = [...nodes.map((node) => ({ ...node, selected: false })), ...created];
+  }
+
+  async function duplicateShape(id: string) {
+    const entries = shapeClipboardEntries([id]);
+    await createShapeCopies(entries, 24);
+    if (entries.length) toast.success(m['shape.duplicated']({ count: entries.length }));
+  }
+
+  async function duplicateSelectedShapes() {
+    const entries = shapeClipboardEntries();
+    await createShapeCopies(entries, 24);
+    if (entries.length) toast.success(m['shape.duplicated']({ count: entries.length }));
+  }
+
+  function handleShapeCopy(event: ClipboardEvent) {
+    if (isTypingTarget(event.target)) return;
+    const shapes = shapeClipboardEntries();
+    if (!shapes.length || !event.clipboardData) return;
+    event.preventDefault();
+    shapePasteSequence = 0;
+    event.clipboardData.setData(SHAPE_CLIPBOARD_TYPE, serializeShapeClipboard(shapes));
+    event.clipboardData.setData('text/plain', m['shape.clipboard_summary']({ count: shapes.length }));
+    toast.success(m['shape.copied']({ count: shapes.length }));
+  }
+
+  function handleShapePaste(event: ClipboardEvent) {
+    if (isTypingTarget(event.target)) return;
+    const raw = event.clipboardData?.getData(SHAPE_CLIPBOARD_TYPE) ?? '';
+    if (!raw) return;
+    const shapes = parseShapeClipboard<ShapeStyle>(raw);
+    if (!shapes.length) return;
+    event.preventDefault();
+    shapePasteSequence += 1;
+    void createShapeCopies(shapes, 24 * shapePasteSequence).then(() => {
+      toast.success(m['shape.pasted']({ count: shapes.length }));
+    });
   }
 
   const preDragPositions = new Map<string, { x: number; y: number }>();
@@ -1444,6 +1639,9 @@
 
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
+    { id: 'design', label: m['tool.design'](), hint: m['canvas.hint_action'](), run: () => void addDesignNode() },
+    { id: 'api-client', label: m['api_client.title'](), hint: m['canvas.hint_action'](), run: () => void addApiClient() },
+    { id: 'design-exploration', label: m['design.exploration_menu_item'](), hint: m['canvas.hint_action'](), run: () => (designExplorationOpen = true) },
     { id: 'usage-node', label: m['usage.add_canvas'](), hint: m['canvas.hint_action'](), run: () => void addUsageNode() },
     { id: 'share-workspace', label: m['collaboration.share_workspace'](), hint: m['canvas.hint_action'](), run: () => (sharingOpen = true) },
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
@@ -1496,6 +1694,14 @@
 
   function handleGlobalKeydown(event: KeyboardEvent) {
     const mod = event.metaKey || event.ctrlKey;
+    if (mod && event.key.toLowerCase() === 'd' && !isTypingTarget(event.target)) {
+      const selectedShapes = nodes.some((node) => node.selected && node.type === 'shape');
+      if (selectedShapes) {
+        event.preventDefault();
+        void duplicateSelectedShapes();
+      }
+      return;
+    }
     if (mod && event.key.toLowerCase() === 'p') {
       event.preventDefault();
       showPalette = !showPalette;
@@ -1633,7 +1839,8 @@
    * retorna false (bloqueia) e abre a modal de confirmacao — o canvas nao
    * perde o no se o usuario cancelar. Arestas passam direto (barato refazer).
    */
-  function handleBeforeDelete({ nodes: deletingNodes }: { nodes: Node[]; edges: Edge[] }): boolean {
+  async function handleBeforeDelete({ nodes: deletingNodes }: { nodes: Node[]; edges: Edge[] }): Promise<boolean> {
+    if (designModeNodeId) return false;
     if (!deletingNodes.length) return true;
     pendingNodeDeletion = { nodeIds: deletingNodes.map((node) => node.id), edgeIds: [] };
     return false;
@@ -1692,7 +1899,7 @@
   <title>{m['canvas.page_title']()}</title>
 </svelte:head>
 
-<svelte:window onkeydown={handleGlobalKeydown} />
+<svelte:window onkeydown={handleGlobalKeydown} oncopy={handleShapeCopy} onpaste={handleShapePaste} />
 
 <main class="canvas-page">
   <aside class="sidebar">
@@ -1830,6 +2037,20 @@
   <section class="canvas-area" class:drawing={drawTool !== null}>
     <SvelteFlowProvider>
     {#if activeWorkspace}
+      {#if designModeNodeId}
+        <div class="absolute inset-0 z-[70] flex min-h-0 flex-col bg-[var(--app-canvas)]" data-testid="canvas-design-mode">
+          <header class="flex h-10 shrink-0 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface)] px-3">
+            <Palette size={15} class="text-[var(--app-secondary)]" />
+            <strong class="min-w-0 flex-1 truncate text-xs">{String(nodes.find((item) => item.id === designModeNodeId)?.data?.title ?? m['design.title']())}</strong>
+            <span class="text-[10px] text-[var(--app-text-muted)]">{m['workspace_view.canvas']()} · {m['design.title']()}</span>
+            <HeaderIconButton label={m['onboarding.close']()} onclick={() => (designModeNodeId = null)}><X size={14} /></HeaderIconButton>
+          </header>
+          <div class="min-h-0 flex-1">
+            <DesignEditor workspaceId={activeWorkspace.id} nodeId={designModeNodeId} externalRevision={designRevisions[designModeNodeId] ?? 0} />
+          </div>
+        </div>
+      {/if}
+      <div class="contents" inert={designModeNodeId !== null} aria-hidden={designModeNodeId ? 'true' : undefined}>
       <ZoomBridge onReady={(api) => (zoomApi = api)} />
       {#if ghostRect}
         <div
@@ -1851,7 +2072,7 @@
         minZoom={0.05}
         maxZoom={4}
         panOnDrag={drawTool === null ? true : [1, 2]}
-        deleteKey={['Backspace', 'Delete']}
+        deleteKey={designModeNodeId ? null : ['Backspace', 'Delete']}
         onconnect={handleConnect}
         onedgeclick={handleEdgeClick}
         onbeforedelete={handleBeforeDelete}
@@ -1900,6 +2121,11 @@
             <ToolbarButton label={m['tool.image']()} active={drawTool === 'image'} onclick={() => toggleDrawTool('image')}>
               <ImageIcon size={15} class="tool-icon-svg" /> {m['node.image']()}
             </ToolbarButton>
+            <DesignToolbarMenu
+              active={drawTool === 'design' || designExplorationOpen}
+              onBlank={() => toggleDrawTool('design')}
+              onExploration={() => (designExplorationOpen = true)}
+            />
             <ToolbarButton label={m['tool.files']()} active={drawTool === 'fileTree'} onclick={() => toggleDrawTool('fileTree')}>
               <FolderTree size={15} class="tool-icon-svg" /> {m['canvas.default_files']()}
             </ToolbarButton>
@@ -1908,6 +2134,9 @@
             </ToolbarButton>
             <ToolbarButton label={m['tool.portal']()} active={drawTool === 'portal'} onclick={() => toggleDrawTool('portal')}>
               <img src="/images/portal.svg" width="15" height="15" alt="" class="tool-icon" /> {m['canvas.default_portal']()}
+            </ToolbarButton>
+            <ToolbarButton label={m['api_client.tool']()} active={drawTool === 'apiClient'} onclick={() => toggleDrawTool('apiClient')}>
+              <Braces size={15} class="tool-icon-svg" /> {m['api_client.title']()}
             </ToolbarButton>
             <ToolbarButton label={m['tool.device']()} active={drawTool === 'device'} onclick={() => toggleDrawTool('device')}>
               <Smartphone size={15} class="tool-icon-svg" /> {m['device.title']()}
@@ -1956,6 +2185,7 @@
           </div>
         </Panel>
       </SvelteFlow>
+      </div>
     {:else}
       <div class="canvas-empty">
         <img src="/brand/icon.svg" width="56" height="56" alt="" />
@@ -2018,6 +2248,15 @@
       }}
       onCancel={() => (pendingAgentCreation = null)}
     />
+    {#if activeWorkspace}
+      <DesignExplorationDialog
+        open={designExplorationOpen}
+        workspaceId={activeWorkspace.id}
+        leader={explorationLeader}
+        onClose={() => (designExplorationOpen = false)}
+        onCreated={handleDesignExplorationCreated}
+      />
+    {/if}
     <OnboardingWizard
       open={showOnboarding}
       {requestedTourId}
@@ -2037,7 +2276,7 @@
       activeWorkspaceId={activeWorkspace?.id ?? null}
     />
     {#if activeWorkspace}
-      <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} />
+      <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} source={councilSource} />
     {/if}
     {#if sharingOpen && activeWorkspace}
       <WorkspaceSharingDialog workspaceId={activeWorkspace.id} onClose={() => (sharingOpen = false)} />

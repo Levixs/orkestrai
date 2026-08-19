@@ -61,6 +61,21 @@
 - Canvas page and `/terminal` are client-only (`ssr = false`) — avoids hydration races with xterm/xyflow.
 - e2e tests run against the production build (`npm run build && PORT=5199 node scripts/orkestrai-server.mjs`), serial workers. Clean up created workspaces via API at the end of each test.
 
+## Figma interoperability
+
+- The managed official remote MCP is `https://mcp.figma.com/mcp`. Provision it only in provider formats documented as compatible; do not replace it with community Figma MCP packages.
+- App-side structural reads use `FigmaApiClient` against the fixed official REST host. The optional read-only token is stored under `automation:figma:<workspaceId>` through Electron secure storage and must never enter workspace files, logs, URLs, or renderer persistence.
+- Figma imports remain native `DesignDocument` content with persistent `figmaLinks`, source mappings, and separate remote/local hashes. Synchronization must preview added, removed, remote, local, and conflicting states before applying explicit resolutions, while preserving Code Connect metadata.
+- REST does not write the Figma scene graph. Selection transfer and write-back use the first-party `packages/orkestrai-figma-plugin` bridge, authenticated with the workspace token and restricted in code to loopback Orkestrai origins. Do not add OpenPencil, Pen.dev, or another editor/bridge dependency.
+
+## Design delivery
+
+- Code-to-design parses static HTML/Svelte/Vue with parse5, React/JSX/TSX with the ESM-safe Babel parser, CSS with PostCSS, and a bounded Tailwind utility map. Never execute imported scripts, framework configuration, plugins, or arbitrary CSS.
+- Design-to-code supports Svelar/Svelte, React/Next, Vue, and HTML/Tailwind through `DesignDeliveryService`. Always preview before writing; preserve workspace path confinement, expected file hashes, document revisions, and Code Connect component mappings.
+- Generated files are workspace artifacts linked to the native Design document. Monaco, Review Center, global search, Portal/device capture, bridge CLI, and MCP tools must operate on the same artifact path and revision rather than maintain parallel state.
+- Visual comparison is evidence, not an automatic correctness claim: normalize explicit viewports, retain reference/actual/diff images, and create traceable review tasks for human or agent decisions.
+- Native prototypes, interactions, presentation settings, motion tokens, tracks, and keyframes live inside the versioned `DesignDocument`; the manual editor, player, global search, CLI, and MCP agents must use that same command bus and revision guard rather than maintain a parallel prototype store.
+
 ## Electron
 
 - `electron/main.cjs` spawns the adapter-node server (`build/index.js`) as a child process with `ELECTRON_RUN_AS_NODE=1` and loads it in a BrowserWindow.

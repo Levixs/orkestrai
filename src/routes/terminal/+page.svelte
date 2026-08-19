@@ -32,6 +32,7 @@
   import ControlCenterView from '$lib/components/agent-room/ControlCenterView.svelte';
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
+  import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
   import WorkspaceSharingButton from '$lib/components/collaboration/WorkspaceSharingButton.svelte';
   import WorkspaceSharingDialog from '$lib/components/collaboration/WorkspaceSharingDialog.svelte';
@@ -132,6 +133,7 @@
     'tasks',
     'note',
     'portal',
+    'apiClient',
     'fileTree',
     'editor',
     'diff',
@@ -142,10 +144,12 @@
     'controlCenter',
     'reviewCenter',
     'device',
+    'design',
   ]);
 
   let workspaces = $state<Workspace[]>([]);
   let nodesByWorkspace = $state<Record<string, CanvasNode[]>>({});
+  let designRevisions = $state<Record<string, number>>({});
   let edgesByWorkspace = $state<Record<string, CanvasEdge[]>>({});
   let floorsByWorkspace = $state<Record<string, Floor[]>>({});
   let providers = $state<AgentProviderInfo[]>([]);
@@ -176,8 +180,8 @@
   const EXPLORER_GROUPS: Array<{ id: 'agents' | 'work' | 'content' | 'tools'; types: CanvasNodeType[] }> = [
     { id: 'agents', types: ['terminal'] },
     { id: 'work', types: ['tasks', 'flow', 'loop'] },
-    { id: 'content', types: ['note', 'image'] },
-    { id: 'tools', types: ['portal', 'device', 'diff', 'usage'] },
+    { id: 'content', types: ['note', 'image', 'design'] },
+    { id: 'tools', types: ['portal', 'apiClient', 'device', 'diff', 'usage'] },
   ];
 
   const selectedWorkspace = $derived(workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ?? null);
@@ -249,6 +253,11 @@
         if (a.type !== 'terminal' && b.type === 'terminal') return 1;
         return String(a.title ?? a.type).localeCompare(String(b.title ?? b.type));
       });
+  }
+
+  function agentFloorLabel(workspaceId: string, node: CanvasNode): string | null {
+    if (!node.floorId) return null;
+    return floorsByWorkspace[workspaceId]?.find((floor) => floor.id === node.floorId)?.name ?? null;
   }
 
   const visibleWorkspaces = $derived.by(() => {
@@ -566,6 +575,7 @@
     if (node.type === 'tasks') return m['terminal_browser.kind_tasks']();
     if (node.type === 'note') return m['terminal_browser.kind_note']();
     if (node.type === 'portal') return m['terminal_browser.kind_portal']();
+    if (node.type === 'apiClient') return m['api_client.title']();
     if (node.type === 'fileTree') return m['terminal_browser.kind_files']();
     if (node.type === 'editor') return m['terminal_browser.kind_editor']();
     if (node.type === 'diff') return m['terminal_browser.kind_diff']();
@@ -577,6 +587,7 @@
     if (node.type === 'reviewCenter') return m['review_center.title']();
     if (node.type === 'automation') return m['automation.title']();
     if (node.type === 'device') return m['device.title']();
+    if (node.type === 'design') return m['terminal_browser.kind_design']();
     return node.type;
   }
 
@@ -786,6 +797,10 @@
             if (refreshTimer) clearTimeout(refreshTimer);
             refreshTimer = setTimeout(() => void loadWorkspace(String(message.workspaceId)), 200);
           }
+          if (message.type === 'designChanged' && message.nodeId) {
+            const nodeId = String(message.nodeId);
+            designRevisions = { ...designRevisions, [nodeId]: Number(message.revision) || 0 };
+          }
           if (message.type === 'controlCenterChanged' || message.type === 'messageDelivery') {
             void refreshControlCenter(String(message.workspaceId));
           }
@@ -964,6 +979,10 @@
         {:else if paneNode.type === 'device'}
           {#key `${pane.id}:${paneNode.id}`}
             <DeviceWorkbenchPanel workspaceId={selectedWorkspace.id} />
+          {/key}
+        {:else if paneNode.type === 'design'}
+          {#key `${pane.id}:${paneNode.id}`}
+            <DesignEditor workspaceId={selectedWorkspace.id} nodeId={paneNode.id} externalRevision={designRevisions[paneNode.id] ?? 0} />
           {/key}
         {:else}
           {#key `${pane.id}:${paneNode.id}`}
@@ -1179,6 +1198,7 @@
                             <span class="min-w-0 flex-1 py-1.5">
                               <span data-testid="workbench-agent-name" class="block break-words font-medium leading-[14px]">{item.title || nodeTypeLabel(item)}</span>
                               <span data-testid="workbench-agent-role" class="mt-0.5 block break-words text-[9px] leading-[13px] text-[var(--app-text-muted)]">{(item.payload as TerminalNodePayload).role ?? nodeTypeLabel(item)}</span>
+                              {#if agentFloorLabel(workspace.id, item)}<span class="mt-0.5 block truncate text-[9px] leading-[13px] text-[var(--app-accent)]">{agentFloorLabel(workspace.id, item)}</span>{/if}
                               <span class="mt-1 block truncate text-[9px] text-[var(--app-text-soft)]">{agentActivityLabel(workspace.id, item.id) ?? nodeTypeLabel(item)}</span>
                             </span>
                           {:else}

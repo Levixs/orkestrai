@@ -46,7 +46,7 @@ export class McpService {
       args: Array.isArray(def.args) ? def.args.map(String) : [],
       env: (def.env ?? {}) as Record<string, string>,
       url: typeof def.url === 'string' ? def.url : undefined,
-      builtin: name === 'orkestrai',
+      builtin: name === 'orkestrai' || name === 'figma',
     }));
   }
 
@@ -78,6 +78,7 @@ export class McpService {
   }
 
   async remove(workspaceId: string, name: string): Promise<McpServerDef[]> {
+    if (name === 'orkestrai' || name === 'figma') throw new Error(`Servidor "${name}" e gerenciado pelo Orkestrai.`);
     const config = await this.readConfig(workspaceId);
     if (!(name in config.mcpServers)) throw new Error(`Servidor "${name}" nao encontrado.`);
     delete config.mcpServers[name];

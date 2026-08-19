@@ -23,15 +23,28 @@ Download the latest installers from
 
 - **Live agent canvas:** arrange real PTY terminals, notes, task boards, browser
   portals, file trees, loops, and shapes. Connections show collaboration between
-  agents as it happens.
+  agents as it happens. Rope physics automatically scales down in dense or
+  offscreen graphs while active conversations retain their visual signal.
+  Duplicate styled shapes with Cmd/Ctrl+D or copy and paste complete visual
+  arrangements while preserving their relative layout.
 - **Configurable Workbench:** keep open terminals, boards, notes, portals,
   files, flows, and usage in vertical tabs by default or optional horizontal
   tabs, then arrange up to eight live artifacts in resizable right/down splits.
   Tabs move between panes by drag and drop or an accessible menu. The Workbench
   references canvas artifacts without duplicating sessions, while workspace
-  files remain local editor tabs, and the global
+  files remain local editor tabs. Finished Floors retire their nodes instead of
+  inflating the explorer, while active floor agents retain an explicit floor
+  label. The global
   voice orb follows its active workspace and leader. Its footer keeps every
   reported Claude, Codex, and Kimi quota window visible without opening a panel.
+- **Native API client:** create and execute HTTP requests beside the team, with
+  headers, Bearer/Basic authentication, JSON/text/XML or URL-encoded form bodies, `{{variables}}`,
+  status, timing, size, and a
+  formatted response preview. Import Bruno folders through Bruno's official
+  parser or Postman Collection v2.1 JSON, then reopen the source in its original
+  installed application when needed. The same node persists in Canvas and
+  Workbench, and connected agents can list and execute its saved requests through
+  typed MCP tools without exposing authentication secrets in the inventory.
 - **Integrated mobile devices:** add a persistent Mobile Device node from the
   Canvas toolbar; Workbench lists and opens that same node and session. Control
   iPhone and iPad Simulators on Apple Silicon Macs, or Android AVDs and explicitly
@@ -45,6 +58,8 @@ Download the latest installers from
   state duration, provider, role, and usage. Its persistent communications inbox
   proves whether each handoff was queued, delivered, acknowledged, replied to,
   or failed under one message id, without waking idle terminals after restart.
+  Counts include only the Ground floor and currently active Floors; historical
+  floor nodes stay archived for task attribution instead of appearing as agents.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
   session, choose a browser/mobile or installed-app invite, approve the device
   fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator
@@ -79,6 +94,73 @@ Download the latest installers from
   review its cropped screenshot and safe visual context, then track feedback in
   a new leader-triage task, a task assigned to an agent, or an existing task.
   Browser secrets and hidden state stay excluded.
+- **Native Design Mode:** create structured interface documents directly on the
+  Canvas and open the same artifact in Workbench. Draw vector paths with direct
+  anchor, segment, and Bezier-handle editing; box-select and transform vector
+  points, continue open paths, resize layers directly, and edit text in place,
+  combine shapes, use masks, gradients, effects, snapping, guides, auto layout,
+  grids, and responsive constraints; import SVGs as editable hierarchical vector layers,
+  group or ungroup them, find and replace matching colors across the design,
+  and copy or export a selection as SVG or PNG. Create typed design tokens in
+  collections with multiple modes, aliases, presets, DTCG/CSS import, and
+  DTCG/CSS/Tailwind export; audit repetition and bind compatible properties.
+  Turn frames into reusable components with linked instances, properties,
+  variants, slots, and local overrides. Publish versioned libraries only to
+  authorized workspaces, and statically extract CSS variables, Tailwind tokens,
+  and Svelte, React, or Vue component contracts without executing project code.
+  Switching a mode updates every bound layer immediately, components and tokens
+  are searchable, and agents use the same revision-safe operations through MCP.
+  Raster images remain reusable
+  assets, while full documents export to SVG, PNG, JPEG, WebP, or PDF. A designer or leader
+  can edit the exact same revision through typed Orkestrai tools while the UI
+  updates live. Documents, assets, thumbnails, and history stay under
+  `.orkestrai/designs` in the workspace.
+- **Guided UI exploration:** start from one objective and create a linked spec,
+  eight progressive Kanban tasks, and three native directions: Clarity,
+  Expressive, and Efficient. Each agent first renders one desktop and one mobile
+  concept through compact semantic composition; the Canvas shows waiting,
+  working, stalled, and ready states. A revision-aware visual review gate accepts
+  or returns each concept with traceable feedback, while the automatic audit is
+  kept explicitly structural. Only the approved direction expands into states,
+  tokens, components, prototype, and framework code. Large directions remain
+  navigable by trackpad, Hand tool, Space-drag, fit-all, and zoom down to 2%.
+- **Live Design collaboration:** see human and agent presence, cursors, and
+  selections; follow another participant; discuss a page or layer in anchored
+  comment threads; and review visual proposals as structural diffs before an
+  explicit approval applies them atomically. Short layer leases prevent
+  conflicting edits. Proposals can move into Council or an isolated Git Floor,
+  while the encrypted Remote Companion receives only sanitized summaries and
+  separately granted View, Comment, Propose, Edit, and Decide permissions.
+- **Official Figma interoperability:** the managed official Figma MCP gives
+  compatible agents direct design context, while the native Figma tab inspects
+  links and imports selected pages or frames, vectors, assets, styles,
+  variables, components, variants, instances, and external-library identities
+  into the same Orkestrai document. Linked
+  sources compare remote and local hashes before selective synchronization, and
+  existing Code Connect mappings form a Figma node → Orkestrai layer → code
+  relationship. A bundled first-party, loopback-only plugin transfers live
+  selections, editable SVG or structural JSON, opens an Orkestrai document on a
+  new Figma page with native design resources, and sends only linked local
+  changes reviewed in Orkestrai back to the current file.
+  REST credentials stay encrypted in the operating-system vault.
+- **Design delivery and visual validation:** import HTML/Tailwind, Svelte,
+  React/JSX, or Vue structure as editable native layers, then generate
+  Svelar/Svelte 5, React, Next.js, Vue 3, or HTML/Tailwind from a selected frame
+  with a complete preview before writing. Existing component mappings are
+  reused first, generated files open in Monaco, and the live implementation can
+  be captured from a Portal or attached iOS/Android device. Pixel diff and an
+  adjustable overlay link the visual result to a Kanban feedback task or the
+  Review Center Git diff. Claude, Codex, Kimi, and other connected agents use
+  the same revision-safe import, preview, and protected-write flow through the
+  bundled CLI or typed MCP tools.
+- **Interactive prototypes and native motion:** connect any layer to another
+  frame, overlay, scroll target, history action, or variable mode using click,
+  press, hover, and timed triggers. Preview flows in a focused player with
+  transitions, fixed layers, overflow, hotspots, and device framing, then
+  share a self-contained read-only HTML prototype. Reusable motion tokens,
+  per-layer tracks, keyframes, easing, CSS keyframes, and Motion.dev output all
+  remain inside the same revisioned Design document, editable by people and
+  connected agents without a parallel prototype file.
 - **Council decisions:** open Council from the Canvas toolbar, the workspace in
   Workbench, or `Cmd/Ctrl+K`, then ask two to five real agents for independent,
   budget-limited perspectives on one task or objective, compare the same
@@ -122,18 +204,30 @@ Download the latest installers from
   distribution and Linux project path. Provider discovery, sessions, resume,
   Council, recruited agents, and the bridge follow each terminal, so one team
   can combine tools installed across Windows, Ubuntu, Debian, or other distros.
+  Orkestrai validates the selected Linux environment before spawn and restores
+  only a conversation confirmed inside that distribution's own home.
 - **Git floors:** isolate work in Git worktrees, inspect conflicts, and land
   completed changes from the canvas.
 - **Local voice:** dictate into any text field or use the no-focus workspace
   shortcut for the leader, then listen to replies in Brazilian Portuguese, US
   English, or Latin American Spanish. Terminal dictation can optionally submit
-  with Enter; regular text fields remain insert-only. The voice orb's pin badge
+  with Enter; regular text fields remain insert-only. Choose and test the input
+  and output devices under Settings → Voice; every dictation surface, preview,
+  and spoken reply follows that preference and falls back safely if the device
+  is removed. The voice orb's pin badge
   opens its position controls directly, while the tooltip also reveals the
   platform shortcut. STT and TTS run locally.
 - **Quota-aware delegation:** pin Claude, Codex, and Kimi usage to the canvas,
   configure a source, fallback, 5-hour/weekly/monthly window, and threshold,
   and let the leader consult the same recommendation through the CLI or MCP
-  before assigning new work.
+  before assigning new work. The same panel inventories Antigravity, Cursor,
+  Devin, OpenCode, and Cline and explains their documented CLI, admin-API, or
+  model-provider usage source without inventing a percentage.
+- **Production Design quality:** audit naming, clipping, overlap, WCAG contrast,
+  and accessibility, jump to the affected layer, start from complete editable
+  product, marketing, mobile, and design-system templates, and rely on automatic
+  backups, recovery, schema migration, bounded history, and incremental rendering
+  for large documents. Agents use the same typed audit and template commands.
 - **Custom appearance:** start from a coherent graphite-and-gold dark system or
   a high-contrast light palette, choose the other built-in themes, or duplicate
   one and edit semantic tokens with live preview and JSON import/export.

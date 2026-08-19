@@ -2,6 +2,54 @@ import { expect, test } from '@playwright/test';
 import { selectAgentTool } from './helpers.js';
 
 test.describe('terminais PTY', () => {
+  test('entrega Escape a TUIs sem perder o foco do terminal no Canvas', async ({ page, request }) => {
+    test.skip(process.platform === 'win32', 'O probe raw usa o runtime POSIX do runner');
+    const workspaceName = `E2E terminal Escape ${Date.now()}`;
+    const workspaceResponse = await request.post('/api/agent-room/workspaces', {
+      data: { name: workspaceName, workingDir: '/tmp' },
+    });
+    const workspace = (await workspaceResponse.json()).data as { id: string };
+
+    try {
+      await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+        data: {
+          type: 'terminal',
+          title: 'Shell Escape',
+          x: 120,
+          y: 100,
+          width: 640,
+          height: 380,
+          payload: { command: '/bin/sh', args: [] },
+        },
+      });
+
+      await page.goto(`/canvas?workspace=${workspace.id}`);
+      const terminal = page.locator('.canvas-terminal');
+      const input = terminal.locator('.xterm-helper-textarea');
+      await expect(input).toBeAttached({ timeout: 15_000 });
+      await terminal.locator('.terminal-container').click();
+      await input.focus();
+      await expect.poll(() => input.evaluate((element) => document.activeElement === element)).toBe(true);
+      await expect(terminal).toHaveClass(/selected/);
+
+      const rawEscapeProbe = `node -e "const i=process.stdin;i.setRawMode(true);i.resume();i.once('data',d=>{i.setRawMode(false);console.log(d.toString('hex')==='1b'?'ESCAPE_OK':'ESCAPE_BAD_'+d.toString('hex'));process.exit(0)})"`;
+      await page.keyboard.type(rawEscapeProbe);
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(250);
+      await page.keyboard.press('Escape');
+
+      await expect(terminal.locator('.terminal-container')).toContainText('ESCAPE_OK', { timeout: 10_000 });
+      await expect.poll(() => input.evaluate((element) => document.activeElement === element)).toBe(true);
+      await expect(terminal).toHaveClass(/selected/);
+
+      await page.keyboard.type('echo AFTER_ESCAPE_OK');
+      await page.keyboard.press('Enter');
+      await expect(terminal.locator('.terminal-container')).toContainText('AFTER_ESCAPE_OK', { timeout: 10_000 });
+    } finally {
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+    }
+  });
+
   test('troca de workspace antes de abrir ao lado e nao mistura artefatos', async ({ page, request }) => {
     const runId = Date.now();
     const firstName = `E2E Workbench A ${runId}`;

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { AgentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.js';
 import { claudeAdapter } from '$lib/modules/agent-room/application/adapters/ClaudeAdapter.js';
@@ -229,6 +229,20 @@ describe('AgentSessionTracker', () => {
     expect(tracker.isAgentSessionResumable(claudeAdapter.sessionStorage, cwd, 'reservada')).toBe(false);
     expect(tracker.isAgentSessionResumable(claudeAdapter.sessionStorage, cwd, 'valida')).toBe(true);
     expect(tracker.isAgentSessionResumable(codexAdapter.sessionStorage, cwd, 'qualquer')).toBeNull();
+  });
+
+  it('rastreia a sessao do Claude na home isolada de uma distribuicao WSL', () => {
+    const home = mkdtempSync(join(tmpdir(), 'orkestrai-wsl-home-'));
+    temporaryHomes.push(home);
+    const tracker = new AgentSessionTracker(home, (cwd) => posix.normalize(cwd));
+    const linuxCwd = '/home/raoni/projects/app';
+    const slug = linuxCwd.replace(/[^a-zA-Z0-9]/g, '-');
+    const claudeDir = join(home, '.claude', 'projects', slug);
+    mkdirSync(claudeDir, { recursive: true });
+    touch(join(claudeDir, 'wsl-session.jsonl'), new Date());
+
+    expect(tracker.findLatestAgentSessionId(claudeAdapter.sessionStorage, linuxCwd)).toBe('wsl-session');
+    expect(tracker.isAgentSessionResumable(claudeAdapter.sessionStorage, linuxCwd, 'wsl-session')).toBe(true);
   });
 
   it('encontra a sessao do Cursor apenas no projeto correspondente', () => {

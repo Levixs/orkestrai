@@ -5,6 +5,222 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.13.0 - 2026-08-18
+
+### Added
+
+- Added reusable Canvas annotations. Selected shapes expose a visible duplicate
+  action and support Cmd/Ctrl+D; Cmd/Ctrl+C and Cmd/Ctrl+V copy and paste one
+  shape or a complete multi-selection while preserving size, text, styling,
+  editable arrow geometry, and relative spacing.
+- Added a native API Client node shared by Canvas and Workbench. It creates and
+  executes HTTP requests with methods, headers, Bearer/Basic authentication,
+  JSON/text/XML or URL-encoded form bodies, variables,
+  response timing, size, status, and formatted previews; imports Bruno folders
+  through Bruno's official parser and Postman Collection v2.1 JSON; and can
+  reopen an imported source in its installed desktop application. Connected
+  agents can list and execute saved requests through typed Orkestrai MCP tools
+  without receiving stored authentication secrets in the inventory response.
+- Added an explicit agent-facing Design contract and high-throughput batch
+  tools. `design_reference` provides exact schemas and examples on demand,
+  `design_create_elements` creates complete screens in one revision, and
+  `design_apply_blueprint` atomically combines layers, tokens, bindings,
+  components, prototypes, and motion. Provisioned skills and guided UI
+  exploration briefs now require the read-once, batch, verify workflow and
+  prohibit schema probes, installation inspection, and scratch discovery
+  scripts.
+- Added a guided three-direction UI exploration to the Canvas Design menu. One
+  transaction creates a linked specification, eight progressive Kanban tasks,
+  and native Clarity, Expressive, and Efficient Design documents. Each designer
+  first produces one representative desktop screen and one mobile screen with a
+  five-minute first-revision target, preferably through semantic HTML/CSS import.
+  Canvas nodes now expose waiting, working, stalled, ready, and reviewed states;
+  the Quality panel adds revision-aware human approval and traceable change
+  requests. Only an approved direction expands into responsive states, typed
+  tokens, reusable components, prototype, and framework code. The structural
+  audit is explicitly separated from visual quality review, and existing guided
+  exploration nodes remain compatible with the new progress and review flow.
+- Indexed Canvas nodes and edge adjacency once per immutable graph snapshot so
+  floating handles and connection geometry no longer scan the complete graph
+  for every rendered edge in dense workspaces. Canvas graph updates now replace
+  raw immutable arrays and refresh nodes, edges, and floors without rechecking
+  every provider, keeping agent-driven changes and new UI explorations responsive.
+- Added application-wide audio device controls under Settings → Voice. Users
+  can select and test the microphone used by every local dictation surface and
+  the speaker used by previews and spoken replies. Device removal falls back
+  to the system default, while permission, missing-device, interrupted-capture,
+  and likely single-microphone contention failures now have distinct guidance.
+- Made canvas connections adaptive to workspace density and visibility. Small
+  canvases keep the full Verlet rope physics, medium canvases reduce simulation
+  work, and dense or offscreen connections use static curves or lines while
+  preserving activity colors and animation on emphasized conversations. Hidden
+  windows and reduced-motion environments stop edge animation entirely.
+- Completed the quality, scale, and recovery phase of native Design Mode. A
+  live audit reports naming, clipping, overlap, WCAG contrast, and accessibility
+  issues and selects the affected layer. Four complete native templates create
+  editable product, marketing, mobile, or design-system foundations through the
+  revision-safe command bus. Automatic backups, corruption recovery, schema
+  migration, bounded history, explicit restore, and viewport-based incremental
+  rendering protect large documents. Connected agents use the same audit and
+  template operations through typed Orkestrai CLI and MCP commands.
+- Expanded provider Usage into one capability-driven inventory for all eight
+  supported agent CLIs. Claude, Codex, and Kimi retain verified automatic quota
+  windows and routing. Antigravity, Cursor, Devin, OpenCode, and Cline now show
+  their documented interactive CLI, administrative API, or underlying model-
+  provider limitations with official links instead of fabricated percentages.
+- Added live human-agent collaboration to native Design documents. The Design
+  editor now shows participant presence, cursors, selections, short layer
+  leases, follow mode, anchored comment threads with replies and resolution,
+  and revisioned visual proposals with structural diffs and explicit human
+  approval or rejection. Approved proposals apply atomically; conflicting
+  edits are blocked before mutation. Proposals can open an existing Council or
+  create a parallel Git Floor without creating a second design system. The
+  encrypted Remote Companion exposes only sanitized page, activity, comment,
+  and proposal summaries, with independent per-device View, Comment, Propose,
+  Edit, and Decide permissions. Connected agents use the same versioned
+  comments and proposals through typed Orkestrai MCP tools.
+- Added native interactive prototyping and motion to Design Studio. Designers
+  and agents can define multiple starting flows, attach click, press, hover, or
+  timed interactions to any layer, navigate frames, open or close overlays,
+  return through history, scroll to content, and switch variable modes. The
+  focused player supports transitions, hotspots, fixed layers, overflow,
+  device framing, fullscreen, and self-contained read-only HTML sharing.
+  Reusable motion tokens, per-layer timelines, keyframes, easing, CSS keyframe
+  export, and Motion.dev output live in the same revision-safe Design document
+  and are indexed by universal search and available through the Orkestrai MCP.
+- Completed the native Design delivery phase with safe code-to-design import
+  for HTML/Tailwind, Svelte, React/JSX, and Vue; design-to-code adapters for
+  Svelar/Svelte 5, React, Next.js, Vue 3, and HTML/Tailwind; and preview-before-
+  write generation protected against concurrent design/file changes and
+  symlink escapes outside the workspace. Generated code
+  prioritizes existing Code Connect component mappings, records the linked
+  artifact on the Design document, and opens directly in the Workbench Monaco
+  editor. Visual validation captures a live Portal or attached iOS/Android
+  device, compares it with the selected frame through normalized pixel diff
+  and an adjustable overlay, and converts the evidence into a traceable Kanban
+  task or a Review Center entry tied to the real Git change. Agents use the
+  same import, preview, and protected-write flow through typed Orkestrai MCP
+  tools or the bundled CLI, with revision and task attribution preserved.
+- Added first-party Figma interoperability to native Design Mode. Orkestrai now
+  provisions the official remote Figma MCP for compatible providers, stores the
+  optional read-only REST credential in the operating-system vault, inspects
+  file, page, and frame links, and imports native layers, editable vectors,
+  raster assets, published styles, variables, components, variants, local
+  instances, and published identities from external libraries. Persistent
+  Figma node mappings and separate remote/local hashes
+  power a selective synchronization preview that distinguishes incoming
+  changes, local edits, removals, and conflicts. Figma sources are searchable,
+  preserve existing Code Connect links, and are exposed to agents through typed
+  inspect, import, preview, and sync tools in the Orkestrai MCP. The bundled
+  loopback-only Orkestrai Design Bridge plugin transfers live Figma selections,
+  copies editable SVG or structural JSON, creates a new Figma page with native
+  assets, variables, styles, components, and variants from an Orkestrai
+  document, and sends only reviewed linked changes back to the current Figma
+  file without third-party editor code.
+- Completed the Design Systems phase of native Design Mode. Designers can start
+  from product, marketing, or mobile token presets; import DTCG JSON or CSS
+  variables; export DTCG, CSS, or Tailwind tokens; and audit duplicate, unused,
+  and repeated hardcoded values plus repeated component candidates. Frames and
+  groups can become reusable components with linked instances, text, boolean,
+  and slot properties, local overrides, whole-instance or variant swapping, and
+  safe detaching. Versioned local libraries publish to explicitly authorized
+  workspaces, preserve local placement while synchronizing, and can be detached
+  into local copies. A read-only codebase scan extracts CSS variables, static
+  Tailwind tokens, and Svelte, React, or Vue component contracts without
+  executing project code, then maintains source hashes and visual-to-code
+  links. Tokens and components are also available through universal search,
+  Canvas summaries, and the revision-safe MCP command bus.
+- Native Design documents now include typed design variables organized into
+  collections and modes. Designers can create color, spacing, radius,
+  typography, opacity, effect, breakpoint, string, and boolean tokens, reuse
+  values through aliases, bind compatible layer properties, and switch the
+  active mode with an immediate canvas preview. The same revision-safe command
+  bus is exposed to agents through `design_apply_operations` in the Orkestrai
+  MCP, including variable, mode, alias, and binding operations.
+- SVG files copied, pasted, dropped, or chosen in Design Mode are now parsed
+  into editable native vector layers, including paths, primitive shapes,
+  nested transforms and group hierarchy, inline and class styles, reusable
+  gradients, and `use` references. Designers can group and ungroup layers,
+  move or resize a group with its descendants, select or list every layer that
+  uses a fill or stroke color, apply one color to the current selection, and
+  replace matching solid or gradient-stop colors across the page. A selection
+  can be copied as SVG or PNG and exports crop to the selected artwork when a
+  selection exists.
+- Expanded native Design Mode with Pen paths and editable points, boolean
+  operations, masks, multiple solid or gradient fills and strokes, visual
+  effects, blend modes, rulers, persistent guides, snapping, alignment and
+  distribution. Frames now support horizontal, vertical, wrapping, and grid
+  auto layout plus responsive child constraints. Images and SVGs can be
+  imported by picker, paste, or drag and drop, reused from the document asset
+  library, and exported with the design to SVG, PNG, JPEG, WebP, or PDF.
+  Revision-bound raster thumbnails keep large Design nodes inexpensive on the
+  Canvas while preserving the live vector renderer as a fallback.
+- Added the first phase of Orkestrai's native Design Mode. A persistent Design
+  node now opens the same structured visual document in Canvas and Workbench,
+  with frames, rectangles, ellipses, text, layers, property editing, zoom,
+  undo/redo, revision history, and live refresh when an agent changes it.
+  Connected agents use typed CLI/MCP operations with optimistic revision
+  checks instead of rewriting project JSON directly.
+
+### Fixed
+
+- Kept terminal keyboard input isolated from Canvas accessibility shortcuts.
+  Escape now reaches Vim, merge/rebase editors, pagers, and other terminal TUIs
+  without deselecting the node or blurring xterm, while terminal search and
+  dictation shortcuts remain local to the terminal.
+- Prevented wheel events over terminals and other Canvas nodes from falling
+  through to the viewport at their scroll limits and unexpectedly zooming the
+  complete Canvas. Canvas zoom now remains restricted to the actual pane.
+- Preserved the current directory of native shell terminals across app restarts
+  by tracking OSC 7 and the live PTY process directory, without changing the
+  working directory of agent terminals or provider resume behavior.
+- Added explicit note discovery to the Orkestrai CLI and MCP so Cursor and other
+  providers can list existing workspace notes before reading, editing, or
+  appending instead of treating an empty connected-node list as an empty
+  workspace.
+- Restored documentation content to the universal Command/Ctrl+K search after
+  the workspace index had reduced it to an "Open documentation" command.
+  Localized topics, use cases, and changelog entries now appear alongside
+  workspace results with accent-insensitive matching and direct anchors, even
+  when the workspace search request fails.
+- Fixed Design documents clipping frames placed outside the nominal page.
+  The editor now derives a stable expandable scene from the actual artwork,
+  fits every frame, exports the complete content, and supports native
+  trackpad/scroll navigation plus Hand (`H`), Space-drag, and middle-button
+  panning at zoom levels down to 2%.
+- Fixed finished Git Floors accumulating their cloned or recruited nodes in the
+  Workbench and Control Center. Nodes from landed or deleted floors are now
+  archived, their obsolete edges are removed, and legacy records are repaired
+  during migration. Active floor agents show their floor name, cloned terminals
+  never inherit PTY or provider conversation ids, and bridge recruitment now
+  honors and validates its existing floor target instead of silently placing
+  the agent elsewhere.
+- Fixed WSL terminal creation and restoration on Windows by preflighting the
+  exact distribution, Linux directory, login PATH, and CLI before PTY spawn,
+  then tracking provider transcripts inside that distribution's Linux home.
+  Only confirmed conversation ids are persisted or resumed; missing or invalid
+  ids start clean instead of invoking a speculative latest conversation.
+  Missing distributions, paths, and commands now produce distinct actionable
+  errors without falling back silently to native Windows.
+- Rebuilt Design Mode interaction around explicit layer and vector-edit states.
+  Pen now previews its next segment and close target, continues existing open
+  paths, bends segments directly, splits curves without changing their shape,
+  and supports multi-point box selection, group transforms, keyboard nudging,
+  and corner, mirrored, asymmetric, or disconnected handles. Selected layers
+  have eight direct resize handles with Shift/Option modifiers, path geometry
+  scales with its bounds, rotated paths edit in place, and text can be edited
+  directly on the canvas. Editing overlays no longer leak into exports or
+  thumbnails, selection contrast stays legible across themes, and multiline
+  text wraps consistently while inline editing grows the layer to keep every
+  line visible.
+- Design shapes now draw by dragging in any direction, with a live preview and
+  the exact released size; a simple click still creates the useful default.
+- Isolated Design Mode keyboard shortcuts from the underlying Canvas so Delete
+  removes only the selected layer instead of also deleting its Design node,
+  and replaced invalid cloning of Svelte state proxies that froze deletion.
+- Exposed rotation and text alignment in the property inspector, matching
+  capabilities already supported by the native document and renderer.
+
 ## 0.12.0 - 2026-08-15
 
 ### Added

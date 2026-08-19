@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { upsertCodexMcpConfig } from '$lib/modules/agent-room/infrastructure/codex-mcp-config.js';
+import { FIGMA_MCP_URL, upsertCodexMcpConfig } from '$lib/modules/agent-room/infrastructure/codex-mcp-config.js';
 
 describe('configuracao MCP do Codex', () => {
   const windowsLaunch = {
@@ -15,6 +15,8 @@ describe('configuracao MCP do Codex', () => {
     expect(config).toContain('args = ["C:\\\\Program Files\\\\Orkestrai\\\\resources');
     expect(config).toContain('[mcp_servers.orkestrai.env]');
     expect(config).toContain('ELECTRON_RUN_AS_NODE = "1"');
+    expect(config).toContain('[mcp_servers.figma]');
+    expect(config).toContain(`url = "${FIGMA_MCP_URL}"`);
   });
 
   it('migra command orkestrai sem apagar secoes ou chaves do usuario', () => {
@@ -48,5 +50,6 @@ describe('configuracao MCP do Codex', () => {
     expect(second).toContain('command = "D:\\\\Orkestrai.exe"');
     expect(second.match(/\[mcp_servers\.orkestrai\.env\]/g)).toHaveLength(1);
     expect(second.match(/ELECTRON_RUN_AS_NODE/g)).toHaveLength(1);
+    expect(second.match(/\[mcp_servers\.figma\]/g)).toHaveLength(1);
   });
 });

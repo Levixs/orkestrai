@@ -22,9 +22,10 @@ export class ApproveCollaborationDeviceDto {
     readonly approved: boolean,
     readonly role: ApproveCollaborationDeviceInput['role'],
     readonly terminalAccess: boolean,
+    readonly designAccess: ApproveCollaborationDeviceInput['designAccess'],
   ) {}
   static from(input: ApproveCollaborationDeviceInput): ApproveCollaborationDeviceDto {
-    return new ApproveCollaborationDeviceDto(input.approved, input.role, input.terminalAccess);
+    return new ApproveCollaborationDeviceDto(input.approved, input.role, input.terminalAccess, input.designAccess);
   }
 }
 

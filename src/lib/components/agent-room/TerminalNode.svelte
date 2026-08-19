@@ -12,13 +12,16 @@
   import '@xterm/xterm/css/xterm.css';
   import { TERMINAL_THEMES, type TerminalThemeName } from './terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboLabel, matchesCombo } from './dictation-hotkey.js';
-  import { appSettingsStore, getAppSettings } from './app-settings.svelte.js';
+  import { appSettingsStore, getAppSettings, updateAppSettings } from './app-settings.svelte.js';
+  import { DEFAULT_AUDIO_DEVICE_ID, audioDeviceInventory, classifyAudioCaptureFailure, openPreferredAudioInput } from './audio-devices.js';
+  import { audioCaptureFailureMessage } from './audio-device-messages.js';
   import { blobToWav16k } from './audio-pcm.js';
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
   import { terminalDictationInput } from './terminal-dictation.js';
   import { terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
+  import { workingDirectoryFromOsc } from './terminal-working-directory.js';
   import {
     LEADER_DICTATION_COMMAND,
     LEADER_DICTATION_STATE,
@@ -59,6 +62,8 @@
     onRespawn?: () => void;
     /** Session-id real da CLI descoberto (para resume exato). */
     onAgentSession?: (agentSessionId: string) => void;
+    /** Diretorio real reportado por um shell puro, para restauracao futura. */
+    onWorkingDirectoryChange?: (cwd: string) => void;
     /** Id do no no canvas (para o endpoint de resposta do transcrito). */
     nodeId?: string;
     /** Edge conversando (bridge ask) — repassado pela pagina do canvas. */
@@ -72,7 +77,7 @@
     themeName?: TerminalThemeName;
   };
 
-  let { sessionId, createRequest, provider, sessionStorage, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
+  let { sessionId, createRequest, provider, sessionStorage, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onWorkingDirectoryChange, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
 
   let container: HTMLDivElement;
   let xtermInstance: Terminal | null = null;
@@ -134,6 +139,14 @@
   let captureBuf = '';
   let speakTimer: ReturnType<typeof setTimeout> | null = null;
 
+  function terminalErrorMessage(code: unknown, fallback: unknown): string {
+    if (code === 'WSL_DISTRIBUTION_UNAVAILABLE') return m['term.wsl_distribution_unavailable']();
+    if (code === 'WSL_DIRECTORY_NOT_FOUND') return m['term.wsl_directory_missing']();
+    if (code === 'WSL_COMMAND_NOT_FOUND') return m['term.wsl_command_missing']({ provider: provider ?? m['term.provider_fallback']() });
+    if (code === 'WSL_SPAWN_FAILED') return m['term.wsl_start_failed']();
+    return String(fallback ?? m['term.ws_error']());
+  }
+
 
   function scheduleSpeakFromCapture() {
     if (speakTimer) clearTimeout(speakTimer);
@@ -148,7 +161,7 @@
       if (text === lastSpoken) return; // ja falou exatamente isso — nao repete
       lastSpoken = text;
       try {
-        await speakText(text);
+        await speakText(text, appSettingsStore.values.audioOutputDeviceId);
       } catch {
         // voz indisponivel — segue em texto
       }
@@ -184,10 +197,12 @@
     if (transcribing) return;
     if (checkingVoiceModels) return;
     checkingVoiceModels = true;
+    let voiceSettings: Record<string, string> = appSettingsStore.values;
     try {
       // A presenca real dos modelos prevalece sobre a confirmacao persistida:
       // eles podem ter sido apagados nas Configuracoes ou fora do app.
-      if (!(await voiceModelsReadyForUse(await getAppSettings(true)))) {
+      voiceSettings = await getAppSettings(true);
+      if (!(await voiceModelsReadyForUse(voiceSettings))) {
         voiceConfirmOpen = true;
         reportDictationState('idle');
         return;
@@ -200,9 +215,15 @@
       checkingVoiceModels = false;
     }
     try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      dictateError = m['voice.mic_denied']();
+      const opened = await openPreferredAudioInput(voiceSettings.audioInputDeviceId);
+      mediaStream = opened.stream;
+      if (opened.fallback) {
+        dictateError = m['voice.mic_fallback']();
+        void updateAppSettings({ audioInputDeviceId: DEFAULT_AUDIO_DEVICE_ID });
+      }
+    } catch (error) {
+      const count = (await audioDeviceInventory().catch(() => ({ inputs: [], outputs: [] }))).inputs.length;
+      dictateError = audioCaptureFailureMessage(classifyAudioCaptureFailure(error, count));
       reportDictationState('idle');
       return;
     }
@@ -265,25 +286,35 @@
   let searchQuery = $state('');
   let searchAddon: SearchAddon | null = null;
 
-  function handleDictateHotkey(event: KeyboardEvent) {
+  function handleTerminalKeydown(event: KeyboardEvent) {
     if (matchesCombo(event, dictateHotkey)) {
       event.preventDefault();
       toggleDictation();
+      event.stopPropagation();
       return;
     }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
       event.preventDefault();
       searchOpen = !searchOpen;
+      event.stopPropagation();
       return;
     }
     if (event.key === 'Escape' && searchOpen) {
+      event.preventDefault();
       searchOpen = false;
       searchAddon?.clearDecorations();
+      requestAnimationFrame(() => xtermInstance?.focus());
+      event.stopPropagation();
       return;
     }
     if (event.key === 'Enter' && searchOpen && searchQuery) {
       searchAddon?.findNext(searchQuery);
     }
+
+    // O xterm processa a tecla antes deste handler no wrapper. Nao deixe o
+    // evento subir ao NodeWrapper do XYFlow: ele usa Escape para desselecionar
+    // o node e agenda blur(), interrompendo Vim, merge/rebase e outras TUIs.
+    event.stopPropagation();
   }
 
   export function isWaiting() {
@@ -307,8 +338,23 @@
     searchAddon = new SearchAddon();
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(searchAddon);
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== 'keydown') return true;
+      if (matchesCombo(event, dictateHotkey)) return false;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') return false;
+      if (event.key === 'Escape' && searchOpen) return false;
+      return true;
+    });
     terminal.open(container);
     fitAddon.fit();
+
+    // OSC 7 e o contrato padrao de shells integrados para publicar o cwd.
+    // A deteccao no servidor cobre zsh/bash sem integracao no macOS/Linux.
+    terminal.parser.registerOscHandler(7, (payload) => {
+      const cwd = workingDirectoryFromOsc(payload, navigator.platform.startsWith('Win'));
+      if (cwd) onWorkingDirectoryChange?.(cwd);
+      return true;
+    });
 
     // O canvas aplica transform: scale() e alguns Chromiums no Windows usam as
     // metricas nao escaladas do xterm para selecao. Recalcula a faixa pelo
@@ -478,6 +524,11 @@
             onAgentSession?.(String(message.agentSessionId));
           }
           break;
+        case 'cwd':
+          if (!message.sessionId || message.sessionId === currentSessionId()) {
+            onWorkingDirectoryChange?.(String(message.cwd ?? ''));
+          }
+          break;
         case 'talking':
           if (!workspaceId || message.workspaceId === workspaceId) {
             onTalking?.({ from: message.from ?? null, to: String(message.to), talking: Boolean(message.talking) });
@@ -491,7 +542,7 @@
         case 'say':
           // orkestrai say: TTS sob demanda no desktop (falha silenciosa sem modelo).
           if ((!workspaceId || message.workspaceId === workspaceId) && typeof message.text === 'string' && message.text.trim()) {
-            speakText(String(message.text)).catch(() => {});
+            speakText(String(message.text), appSettingsStore.values.audioOutputDeviceId).catch(() => {});
           }
           break;
         case 'killed':
@@ -511,7 +562,7 @@
             statusMessage = '';
             onRespawn();
           } else {
-            statusMessage = message.message;
+            statusMessage = terminalErrorMessage(message.code, message.message);
           }
           break;
       }
@@ -598,11 +649,11 @@
   });
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
-  class="terminal-node"
+  class="terminal-node nokey"
   style:background={TERMINAL_THEMES[themeName]?.theme.background ?? TERMINAL_THEMES.dark.theme.background}
-  tabindex="0"
-  onkeydown={handleDictateHotkey}
+  onkeydown={handleTerminalKeydown}
   onclick={() => xtermInstance?.focus()}
   role="application"
 >

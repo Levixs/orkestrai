@@ -9,7 +9,7 @@ import { taskBoardService } from '$lib/modules/agent-room/application/services/T
 import { collaborationRepository } from '$lib/modules/collaboration/infrastructure/repositories/CollaborationRepository.js';
 import { collaborationPolicy } from '$lib/modules/collaboration/domain/policies/CollaborationPolicy.js';
 import { sharedWorkspaceQuery } from '$lib/modules/collaboration/application/queries/SharedWorkspaceQuery.js';
-import { fitSharedWorkspaceSnapshot, MAX_SHARED_SNAPSHOT_BYTES } from '$lib/modules/collaboration/application/queries/SharedWorkspaceQuery.js';
+import { fitSharedWorkspaceSnapshot, MAX_SHARED_SNAPSHOT_BYTES, scopeSharedWorkspaceSnapshot } from '$lib/modules/collaboration/application/queries/SharedWorkspaceQuery.js';
 import { sharedWorkspaceCommandBus } from '$lib/modules/collaboration/application/services/SharedWorkspaceCommandBus.js';
 import { collaborationRuntime } from '$lib/modules/collaboration/application/services/CollaborationRuntime.js';
 import { collaborationShareService } from '$lib/modules/collaboration/application/services/CollaborationShareService.js';
@@ -19,6 +19,10 @@ import { ExecuteCollaborationCommandDto } from '$lib/modules/collaboration/appli
 import { controlCenterService } from '$lib/modules/agent-room/application/services/ControlCenterService.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.js';
 import { bridgeService } from '$lib/modules/agent-room/application/services/BridgeService.js';
+import { designDocumentService } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
+import { ApplyDesignOperationsDto } from '$lib/modules/agent-room/application/dto/DesignDtos.js';
+import { designOperationSchema } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
+import { collaborationCommandSchema } from '$lib/modules/collaboration/contracts/schemas/collaboration.schema.js';
 
 async function setup(role: 'viewer' | 'operator' | 'administrator' = 'operator') {
   const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-collaboration-'));
@@ -108,6 +112,20 @@ describe('collaboration host core', () => {
     expect(JSON.stringify(snapshot.conversations)).not.toContain('Internal secret');
   });
 
+  it('removes design data from snapshots when the device has no design scope', async () => {
+    const { share, workspace } = await setup();
+    await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'design', title: 'Private design', payload: {} });
+    const snapshot = await sharedWorkspaceQuery.snapshot(share.id);
+    expect(snapshot.designs).toHaveLength(1);
+    expect(snapshot.nodes.some((node) => node.type === 'design')).toBe(true);
+
+    const scoped = scopeSharedWorkspaceSnapshot(snapshot, ['workspace.view']);
+    const nodeIds = new Set(scoped.nodes.map((node) => node.id));
+    expect(scoped.designs).toEqual([]);
+    expect(scoped.nodes.some((node) => node.type === 'design')).toBe(false);
+    expect(scoped.edges.every((edge) => nodeIds.has(edge.sourceNodeId) && nodeIds.has(edge.targetNodeId))).toBe(true);
+  });
+
   it('routes leader messages through the correlated remote conversation flow', async () => {
     const { share, workspace, device, agent } = await setup('operator');
     vi.spyOn(bridgeService, 'listAgents').mockResolvedValue([{
@@ -153,6 +171,100 @@ describe('collaboration host core', () => {
     expect(collaborationPolicy.scopesForRole('collaborator')).not.toContain('voice.transcribe');
     expect(collaborationPolicy.scopesForApproval('operator', true)).not.toContain('terminal.control');
     expect(collaborationPolicy.scopesForApproval('administrator', true)).toContain('terminal.control');
+  });
+
+  it('grants design permissions independently from the collaboration role', () => {
+    expect(collaborationPolicy.scopesForApproval('administrator', false, 'none')).not.toContain('design.view');
+    expect(collaborationPolicy.scopesForApproval('viewer', false, 'view')).toContain('design.view');
+    expect(collaborationPolicy.scopesForApproval('viewer', false, 'comment')).toEqual(expect.arrayContaining([
+      'design.view',
+      'design.comment',
+    ]));
+    expect(collaborationPolicy.scopesForApproval('viewer', false, 'comment')).not.toContain('design.propose');
+    expect(collaborationPolicy.scopesForApproval('viewer', false, 'propose')).toEqual(expect.arrayContaining([
+      'design.view',
+      'design.comment',
+      'design.propose',
+    ]));
+    expect(collaborationPolicy.scopesForApproval('viewer', false, 'edit')).toEqual(expect.arrayContaining([
+      'design.view',
+      'design.comment',
+      'design.propose',
+      'design.decide',
+      'design.edit',
+    ]));
+    expect(collaborationPolicy.commandScope('design.proposal.create')).toBe('design.propose');
+    expect(collaborationPolicy.commandScope('design.element.update')).toBe('design.edit');
+  });
+
+  it('validates bounded remote design mutations with strict payloads', () => {
+    const changes = { x: 20, y: 30, width: 320, height: 180, opacity: 0.8, fill: '#2563eb' };
+    expect(collaborationCommandSchema.parse({
+      type: 'design.proposal.create', nodeId: uuidv7(), elementId: uuidv7(), title: 'Refine card', changes,
+    })).toMatchObject({ type: 'design.proposal.create', changes });
+    expect(() => collaborationCommandSchema.parse({
+      type: 'design.element.update', nodeId: uuidv7(), elementId: uuidv7(), changes: { ...changes, fill: 'red' },
+    })).toThrow();
+    expect(() => collaborationCommandSchema.parse({
+      type: 'design.element.update', nodeId: uuidv7(), elementId: uuidv7(), changes, unexpected: true,
+    })).toThrow();
+  });
+
+  it('creates, approves, and directly applies remote design changes', async () => {
+    const { share, workspace, device } = await setup('administrator');
+    const node = await workspaceRepository.createNode({
+      workspaceId: workspace.id, type: 'design', title: 'Remote review', payload: {},
+    });
+    const initial = await designDocumentService.get(workspace.id, node.id);
+    const elementId = uuidv7();
+    await designDocumentService.apply(new ApplyDesignOperationsDto(
+      workspace.id,
+      node.id,
+      initial.revision,
+      [designOperationSchema.parse({
+        kind: 'create',
+        element: {
+          id: elementId, pageId: initial.activePageId, parentId: null, type: 'rectangle', name: 'Card',
+          x: 0, y: 0, width: 200, height: 120,
+        },
+      })],
+      { kind: 'user', id: null, name: null, taskId: null },
+      'Create remote test layer',
+    ));
+    const proposal = await sharedWorkspaceCommandBus.execute(share.id, device.id, new ExecuteCollaborationCommandDto(
+      `command_${uuidv7().replaceAll('-', '_')}`,
+      0,
+      {
+        type: 'design.proposal.create', nodeId: node.id, elementId, title: 'Move card',
+        changes: { x: 24, y: 32, width: 240, height: 140, opacity: 0.9, fill: '#2563eb' },
+      },
+    ));
+    expect(proposal).toMatchObject({ accepted: true, revision: 1, errorCode: null });
+    let document = await designDocumentService.get(workspace.id, node.id);
+    expect(document.proposals).toHaveLength(1);
+    expect(document.elements.find((element) => element.id === elementId)).toMatchObject({ x: 0, y: 0 });
+
+    const decision = await sharedWorkspaceCommandBus.execute(share.id, device.id, new ExecuteCollaborationCommandDto(
+      `command_${uuidv7().replaceAll('-', '_')}`,
+      1,
+      { type: 'design.proposal.decide', nodeId: node.id, proposalId: document.proposals[0].id, status: 'approved' },
+    ));
+    expect(decision).toMatchObject({ accepted: true, revision: 2, errorCode: null });
+    document = await designDocumentService.get(workspace.id, node.id);
+    expect(document.proposals[0].status).toBe('approved');
+    expect(document.elements.find((element) => element.id === elementId)).toMatchObject({ x: 24, y: 32, width: 240, height: 140 });
+
+    const direct = await sharedWorkspaceCommandBus.execute(share.id, device.id, new ExecuteCollaborationCommandDto(
+      `command_${uuidv7().replaceAll('-', '_')}`,
+      2,
+      {
+        type: 'design.element.update', nodeId: node.id, elementId,
+        changes: { x: 48, y: 64, width: 280, height: 160, opacity: 1, fill: '#059669' },
+      },
+    ));
+    expect(direct).toMatchObject({ accepted: true, revision: 3, errorCode: null });
+    document = await designDocumentService.get(workspace.id, node.id);
+    expect(document.elements.find((element) => element.id === elementId)).toMatchObject({ x: 48, y: 64, width: 280, height: 160 });
   });
 
   it('starts a disconnected agent through an authorized remote command', async () => {
@@ -275,6 +387,6 @@ describe('collaboration host core', () => {
         body: JSON.stringify({ approved: true, role: 'operator' }),
       }),
     } as never);
-    expect(approval).toEqual({ approved: true, role: 'operator', terminalAccess: false });
+    expect(approval).toEqual({ approved: true, role: 'operator', terminalAccess: false, designAccess: 'inherited' });
   });
 });

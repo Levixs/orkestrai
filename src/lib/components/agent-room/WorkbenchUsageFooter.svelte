@@ -5,16 +5,11 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { usageSeverity } from '$lib/modules/agent-room/domain/usage.js';
   import type { ProviderUsage, UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
+  import { usageProviderDefinition } from '$lib/modules/agent-room/domain/usage-providers.js';
   import { retainUsageFeed, usageStore } from './usage-store.svelte.js';
   import * as m from '$lib/paraglide/messages.js';
 
   let { workspaceId }: { workspaceId: string | null } = $props();
-
-  const PROVIDERS: Record<string, { name: string; icon: string }> = {
-    claude: { name: 'Claude', icon: '/images/claude.svg' },
-    codex: { name: 'Codex', icon: '/images/codex.svg' },
-    kimi: { name: 'Kimi', icon: '/images/kimi.svg' },
-  };
 
   function windowLabel(window: UsageWindow): string {
     if (window.kind === '5h') return m['usage.window_5h']();
@@ -30,7 +25,7 @@
   }
 
   function summary(usage: ProviderUsage): string {
-    const meta = PROVIDERS[usage.provider] ?? { name: usage.provider, icon: '' };
+    const meta = usageProviderDefinition(usage.provider);
     if (usage.error || !usage.windows.length) return `${meta.name}: ${m['workbench.usage_unavailable']()}`;
     return usage.windows
       .map((window) => m['workbench.usage_summary']({
@@ -59,8 +54,8 @@
     {#if usageStore.loading && !usageStore.values.length}
       <span class="text-[10px] text-[var(--app-text-muted)]">{m['workbench.usage_loading']()}</span>
     {:else}
-      {#each usageStore.values as usage (usage.provider)}
-        {@const meta = PROVIDERS[usage.provider] ?? { name: usage.provider, icon: '' }}
+      {#each usageStore.values.filter((usage) => usage.windows.length > 0 || usage.error) as usage (usage.provider)}
+        {@const meta = usageProviderDefinition(usage.provider)}
         <Tooltip.Root>
           <Tooltip.Trigger>
             {#snippet child({ props })}

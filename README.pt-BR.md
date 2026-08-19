@@ -23,7 +23,9 @@ Baixe os instaladores mais recentes em
 
 - **Canvas de agentes ao vivo:** organize terminais PTY reais, notas, quadros de
   tarefas, portais de browser, árvores de arquivos, loops e formas. As conexões
-  mostram a colaboração entre os agentes enquanto ela acontece.
+  mostram a colaboração entre os agentes enquanto ela acontece. Duplique formas
+  estilizadas com Cmd/Ctrl+D ou copie e cole arranjos visuais completos mantendo
+  seu layout relativo.
 - **Workbench configurável:** mantenha terminais, quadros, notas, portais,
   arquivos, fluxos e uso abertos em abas verticais por padrão ou horizontais
   opcionais, e organize até oito artefatos ao vivo em divisões redimensionáveis
@@ -33,6 +35,14 @@ Baixe os instaladores mais recentes em
   acompanha o workspace ativo e seu líder.
   O rodapé mantém visíveis todas as janelas de cota reportadas por Claude, Codex
   e Kimi sem exigir a abertura de outro painel.
+- **Cliente de API nativo:** crie e execute requests HTTP ao lado do time, com
+  headers, autenticação Bearer/Basic, body JSON/texto/XML ou formulário URL encoded, `{{variáveis}}`,
+  status, duração, tamanho e
+  resposta formatada. Importe pastas Bruno pelo parser oficial do Bruno ou JSON
+  Postman Collection v2.1 e reabra a origem no aplicativo instalado quando
+  precisar. O mesmo node persiste no Canvas e Workbench; agentes conectados
+  listam e executam requests salvos por tools MCP tipadas sem expor segredos de
+  autenticação no inventário.
 - **Dispositivos móveis integrados:** adicione um node persistente de Dispositivo
   móvel pela barra do Canvas; o Workbench lista e abre o mesmo node e a mesma
   sessão. Controle iPhone e iPad Simulators em Macs Apple Silicon ou AVDs Android
@@ -64,6 +74,31 @@ Baixe os instaladores mais recentes em
   atenção, revise seu screenshot recortado e contexto visual seguro e registre
   o feedback em uma tarefa nova para triagem do líder, uma tarefa atribuída ou
   uma tarefa existente. Segredos e estado oculto ficam de fora.
+- **Modo Design nativo:** crie documentos de interface no Canvas e abra o mesmo
+  artefato no Workbench. Desenhe paths vetoriais editáveis, combine formas, use
+  máscaras, gradientes, efeitos, snap, guias, auto layout, grids e constraints
+  responsivas; importe imagens ou SVGs reutilizáveis por seletor, colagem ou
+  arraste e exporte SVG, PNG, JPEG, WebP ou PDF. Crie tokens com presets, modos,
+  aliases, importação DTCG/CSS, exportação DTCG/CSS/Tailwind e auditoria. Transforme
+  frames em componentes com instâncias, propriedades, variantes, slots e overrides;
+  publique bibliotecas versionadas somente para workspaces autorizados e extraia
+  CSS variables, Tailwind e contratos Svelte, React ou Vue sem executar código do
+  projeto. Designer e líder editam a mesma revisão por tools tipadas enquanto a UI
+  atualiza ao vivo. Componentes e tokens entram na busca; documentos, assets,
+  thumbnails e histórico ficam em `.orkestrai/designs` no workspace.
+- **Interoperabilidade oficial com Figma:** o MCP oficial gerenciado oferece
+  contexto de design aos agentes compatíveis, enquanto a aba Figma nativa
+  inspeciona links e importa páginas ou frames, vetores, assets, estilos,
+  variáveis, componentes, variantes, instâncias e identidades de bibliotecas
+  externas selecionadas para o mesmo documento
+  Orkestrai. Origens vinculadas comparam hashes remotos e locais antes da
+  sincronização seletiva, e mappings do Code Connect formam a relação node
+  Figma → camada Orkestrai → código. Um plugin próprio, incluído no app e
+  restrito ao loopback, transfere seleções ao vivo, SVG editável ou JSON
+  estrutural, abre um documento Orkestrai com recursos nativos em uma nova
+  página do Figma e envia apenas alterações locais vinculadas e revisadas de
+  volta ao arquivo atual. A credencial REST
+  fica criptografada no cofre do sistema operacional.
 - **Decisões com Council:** abra Conselho pela barra do Canvas, pelo workspace
   no Workbench ou por `Cmd/Ctrl+K` e peça perspectivas independentes e limitadas por
   orçamento a dois a cinco agentes reais sobre uma tarefa ou objetivo, compare

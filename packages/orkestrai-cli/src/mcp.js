@@ -13,17 +13,84 @@
  * tools/call) sobre a bridge HTTP existente (token do workspace).
  */
 
+import { DESIGN_REFERENCE_TOPICS, designReference } from './design-reference.js';
+
 const PROTOCOL_VERSION = '2024-11-05';
+
+const DESIGN_ELEMENT_PROPERTIES = {
+  id: { type: 'string', format: 'uuid' }, parentId: { type: ['string', 'null'], format: 'uuid' },
+  type: { type: 'string', enum: ['frame', 'group', 'rectangle', 'ellipse', 'text', 'path', 'image'] }, name: { type: 'string' },
+  x: { type: 'number' }, y: { type: 'number' }, width: { type: 'number', exclusiveMinimum: 0 }, height: { type: 'number', exclusiveMinimum: 0 }, order: { type: 'integer', minimum: 0 },
+  rotation: { type: 'number' }, opacity: { type: 'number', minimum: 0, maximum: 1 }, visible: { type: 'boolean' }, locked: { type: 'boolean' },
+  fill: { type: 'string' }, stroke: { type: 'string' }, strokeWidth: { type: 'number', minimum: 0 }, fills: { type: 'array', items: { type: 'object' } }, strokes: { type: 'array', items: { type: 'object' } }, effects: { type: 'array', items: { type: 'object' } },
+  blendMode: { type: 'string', enum: ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten'] }, cornerRadius: { type: 'number', minimum: 0 },
+  text: { type: 'string' }, fontSize: { type: 'number' }, fontWeight: { type: 'integer' }, textAlign: { type: 'string', enum: ['left', 'center', 'right'] },
+  accessibilityRole: { type: 'string', enum: ['none', 'button', 'link', 'heading', 'image', 'text', 'input', 'navigation', 'region'] }, accessibilityLabel: { type: ['string', 'null'] }, decorative: { type: 'boolean' },
+  pathPoints: { type: 'array', items: { type: 'object' } }, pathSubpaths: { type: 'array', items: { type: 'array', items: { type: 'object' } } }, pathClosed: { type: 'boolean' }, fillRule: { type: 'string', enum: ['nonzero', 'evenodd'] },
+  assetId: { type: ['string', 'null'], format: 'uuid' }, imageFit: { type: 'string', enum: ['fill', 'contain', 'cover'] }, maskId: { type: ['string', 'null'], format: 'uuid' }, isMask: { type: 'boolean' },
+  layoutMode: { type: 'string', enum: ['none', 'horizontal', 'vertical', 'grid'] }, layoutWrap: { type: 'boolean' }, layoutGap: { type: 'number' }, layoutRowGap: { type: 'number' }, layoutColumnGap: { type: 'number' },
+  layoutPaddingTop: { type: 'number' }, layoutPaddingRight: { type: 'number' }, layoutPaddingBottom: { type: 'number' }, layoutPaddingLeft: { type: 'number' }, layoutGridColumns: { type: 'integer' }, layoutAlign: { type: 'string', enum: ['start', 'center', 'end', 'space-between'] }, clipContent: { type: 'boolean' },
+  prototypeOverflow: { type: 'string', enum: ['none', 'horizontal', 'vertical', 'both'] }, prototypeFixed: { type: 'boolean' }, constraintHorizontal: { type: 'string', enum: ['left', 'right', 'left-right', 'center', 'scale'] }, constraintVertical: { type: 'string', enum: ['top', 'bottom', 'top-bottom', 'center', 'scale'] }, slotName: { type: ['string', 'null'] },
+};
+
+const DESIGN_ELEMENT_INPUT = { type: 'object', properties: DESIGN_ELEMENT_PROPERTIES, required: ['type', 'name', 'x', 'y', 'width', 'height'] };
+const DESIGN_BATCH_BASE = {
+  nodeId: { type: 'string' }, baseRevision: { type: 'integer', minimum: 0 }, pageId: { type: 'string', format: 'uuid' },
+  summary: { type: 'string', minLength: 1, maxLength: 500 }, taskId: { type: 'string', format: 'uuid' },
+};
 
 /** Tools expostas (inputSchema JSON Schema). args -> bridge no callTool(). */
 const TOOLS = [
   { name: 'list', description: 'Lista agentes do workspace (titulo, provider, sessao viva) e suas notas/portais conectados.', inputSchema: { type: 'object', properties: {} } },
   { name: 'usage', description: 'Consulta cotas dos providers e a recomendacao de roteamento configurada no no Usage do canvas.', inputSchema: { type: 'object', properties: {} } },
   { name: 'ask', description: 'Envia mensagem a outro agente e aguarda resposta confirmada. So afirme que conversou quando replyConfirmed for true.', inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Titulo do agente' }, message: { type: 'string' } }, required: ['agent', 'message'] } },
+  { name: 'note_list', description: 'Lista notas acessiveis com nodeId, titulo e previa. Use antes de criar para atualizar a nota existente com note_read, note_write ou note_edit.', inputSchema: { type: 'object', properties: {} } },
   { name: 'note_read', description: 'Le uma nota pelo nodeId.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
   { name: 'note_write', description: 'Substitui o conteudo de uma nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, content: { type: 'string' } }, required: ['nodeId', 'content'] } },
   { name: 'note_edit', description: 'Edicao pontual: troca um trecho da nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, oldText: { type: 'string' }, newText: { type: 'string' } }, required: ['nodeId', 'oldText', 'newText'] } },
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
+  { name: 'api_client_list', description: 'Lista os requests salvos em nodes Cliente de API conectados a este agente, sem expor tokens ou senhas.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'api_client_execute', description: 'Executa um request salvo em um Cliente de API conectado, aplicando variaveis e autenticacao localmente.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, requestId: { type: 'string' }, variables: { type: 'object', additionalProperties: { type: 'string' } } }, required: ['nodeId', 'requestId'] } },
+  { name: 'design_list', description: 'Lista Designs, revisoes, progresso, estagnacao e gate visual. stalled = 5 min sem nova revisao; reviewStatus approved vale somente para a revisao atual.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'design_reference', description: 'Retorna o contrato exato e exemplos para criar Design nativo sem probes, scripts temporarios ou inspecao do app. Consulte uma vez e escreva em lotes.', inputSchema: { type: 'object', properties: { topic: { type: 'string', enum: DESIGN_REFERENCE_TOPICS, default: 'quickstart' } } } },
+  { name: 'design_audit', description: 'Audita naming, clipping, overlap, contraste e acessibilidade sem alterar o documento. E uma auditoria estrutural, nunca uma aprovacao de qualidade visual.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'design_apply_template', description: 'Aplica um template nativo completo pelo command bus transacional.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, templateId: { type: 'string', enum: ['product', 'marketing', 'mobile', 'design-system'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'templateId'] } },
+  { name: 'design_apply_operations', description: 'Aplica operacoes transacionais ao documento: layers, vetores, design system, prototipo, motion, comentarios e propostas. Leia a revisao antes e verifique o resultado depois.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'operations', 'summary'] } },
+  { name: 'design_create_elements', description: 'Cria ate 2000 layers em uma unica revisao. Use para frames e telas completas; coordenadas de filhos continuam absolutas. Nao faca uma chamada por layer.', inputSchema: { type: 'object', properties: { ...DESIGN_BATCH_BASE, elements: { type: 'array', minItems: 1, maxItems: 2000, items: DESIGN_ELEMENT_INPUT } }, required: ['nodeId', 'baseRevision', 'pageId', 'elements', 'summary'] } },
+  { name: 'design_apply_blueprint', description: 'Aplica layers, tokens, bindings, componentes, prototipo e motion em um unico lote tipado. Prefira esta tool para uma direcao completa e use design_reference para exemplos.', inputSchema: { type: 'object', properties: {
+    ...DESIGN_BATCH_BASE,
+    elements: { type: 'array', maxItems: 2000, items: DESIGN_ELEMENT_INPUT },
+    variableCollections: { type: 'array', maxItems: 100, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, modes: { type: 'array', minItems: 1, maxItems: 16, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' } }, required: ['id', 'name'] } }, defaultModeId: { type: 'string', format: 'uuid' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name', 'modes'] } },
+    variables: { type: 'array', maxItems: 5000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, collectionId: { type: 'string', format: 'uuid' }, name: { type: 'string' }, type: { type: 'string', enum: ['color', 'spacing', 'radius', 'font-size', 'font-weight', 'line-height', 'opacity', 'effect', 'breakpoint', 'string', 'boolean'] }, description: { type: 'string' }, values: { type: 'object' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'collectionId', 'name', 'type', 'values'] } },
+    bindings: { type: 'array', maxItems: 10000, items: { type: 'object', properties: { elementId: { type: 'string', format: 'uuid' }, property: { type: 'string', enum: ['fill', 'stroke', 'opacity', 'cornerRadius', 'strokeWidth', 'fontSize', 'fontWeight', 'layoutGap', 'layoutRowGap', 'layoutColumnGap', 'layoutPaddingTop', 'layoutPaddingRight', 'layoutPaddingBottom', 'layoutPaddingLeft', 'effects'] }, variableId: { type: ['string', 'null'], format: 'uuid' } }, required: ['elementId', 'property', 'variableId'] } },
+    componentSets: { type: 'array', maxItems: 500, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, propertyNames: { type: 'array', items: { type: 'string' } }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name'] } },
+    components: { type: 'array', maxItems: 2000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, description: { type: 'string' }, rootElementId: { type: 'string', format: 'uuid' }, setId: { type: ['string', 'null'], format: 'uuid' }, variantValues: { type: 'object' }, properties: { type: 'array', items: { type: 'object' } }, key: { type: 'string' } }, required: ['id', 'name', 'rootElementId'] } },
+    prototypeFlows: { type: 'array', maxItems: 500, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, description: { type: 'string' }, startFrameId: { type: 'string', format: 'uuid' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name', 'startFrameId'] } },
+    prototypeInteractions: { type: 'array', maxItems: 5000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, sourceElementId: { type: 'string', format: 'uuid' }, trigger: { type: 'object' }, action: { type: 'object' }, transition: { type: 'object' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'sourceElementId', 'trigger', 'action'] } },
+    motionTokens: { type: 'array', maxItems: 500, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, name: { type: 'string' }, durationMs: { type: 'integer' }, easing: { type: 'object' }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'name'] } },
+    motionTracks: { type: 'array', maxItems: 5000, items: { type: 'object', properties: { id: { type: 'string', format: 'uuid' }, elementId: { type: 'string', format: 'uuid' }, name: { type: 'string' }, durationMs: { type: 'integer' }, delayMs: { type: 'integer' }, iterations: { type: 'integer' }, direction: { type: 'string' }, fillMode: { type: 'string' }, tokenId: { type: ['string', 'null'], format: 'uuid' }, easing: { type: 'object' }, keyframes: { type: 'array', minItems: 2, items: { type: 'object' } }, order: { type: 'integer', minimum: 0 } }, required: ['id', 'elementId', 'name', 'keyframes'] } },
+    presentation: { type: 'object', properties: { defaultFlowId: { type: ['string', 'null'], format: 'uuid' }, background: { type: 'string' }, showDeviceFrame: { type: 'boolean' }, showHotspots: { type: 'boolean' }, showCursor: { type: 'boolean' } } },
+  }, required: ['nodeId', 'baseRevision', 'pageId', 'summary'] } },
+  { name: 'design_comment', description: 'Cria um comentario rastreavel em uma pagina ou layer, com autoria do agente e suporte a mencoes no texto.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, elementId: { type: ['string', 'null'] }, body: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'pageId', 'body'] } },
+  { name: 'design_propose', description: 'Submete operacoes visuais como proposta pendente para revisao humana, sem alterar o design aprovado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, title: { type: 'string' }, description: { type: 'string' }, operations: { type: 'array', minItems: 1, maxItems: 2000, items: { type: 'object' } }, floorId: { type: ['string', 'null'] }, councilId: { type: ['string', 'null'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'title', 'operations'] } },
+  { name: 'design_decide_proposal', description: 'Aprova ou rejeita uma proposta visual pendente. A aprovacao aplica as operacoes validadas de forma transacional.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, proposalId: { type: 'string' }, status: { type: 'string', enum: ['approved', 'rejected'] }, note: { type: ['string', 'null'] }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'proposalId', 'status'] } },
+  { name: 'design_import_code', description: 'Composicao semantica compacta: transforma HTML/CSS, Svelte, React/JSX ou Vue em layers nativas editaveis. E a opcao preferida para colocar um conceito desktop/mobile visivel em poucos minutos.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, format: { type: 'string', enum: ['html', 'svelte', 'react', 'vue'] }, name: { type: 'string' }, markup: { type: 'string' }, css: { type: 'string' }, x: { type: 'number' }, y: { type: 'number' }, parentId: { type: ['string', 'null'] }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'format', 'name', 'markup'] } },
+  { name: 'design_generate_code_preview', description: 'Gera uma previa sem escrita para Svelar/Svelte, React/Next, Vue ou HTML/Tailwind. Retorna status, conteudo, mappings e hash esperado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, framework: { type: 'string', enum: ['svelar', 'svelte', 'react', 'next', 'vue', 'html'] }, elementIds: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string' } }, outputPath: { type: 'string' }, componentName: { type: 'string' } }, required: ['nodeId', 'framework', 'elementIds', 'outputPath', 'componentName'] } },
+  { name: 'design_generate_code_apply', description: 'Escreve codigo previamente revisado dentro do workspace, rejeita arquivo alterado e vincula o artefato ao documento de design.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, framework: { type: 'string', enum: ['svelar', 'svelte', 'react', 'next', 'vue', 'html'] }, elementIds: { type: 'array', minItems: 1, maxItems: 500, items: { type: 'string' } }, outputPath: { type: 'string' }, componentName: { type: 'string' }, expectedExistingHash: { type: ['string', 'null'] }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'framework', 'elementIds', 'outputPath', 'componentName', 'expectedExistingHash'] } },
+  { name: 'design_figma_inspect', description: 'Inspeciona um link oficial do Figma e lista paginas/frames importaveis sem alterar o documento.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' } }, required: ['nodeId', 'url'] } },
+  { name: 'design_figma_import', description: 'Importa frames do Figma como scene graph nativo, preservando o vinculo para sincronizacao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' }, sourceNodeIds: { type: 'array', items: { type: 'string' }, minItems: 1 }, baseRevision: { type: 'number' }, targetPageId: { type: 'string' } }, required: ['nodeId', 'url', 'sourceNodeIds', 'baseRevision', 'targetPageId'] } },
+  { name: 'design_figma_sync_preview', description: 'Compara Figma e Orkestrai e classifica alteracoes remotas, locais e conflitos antes de escrever.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, linkId: { type: 'string' } }, required: ['nodeId', 'linkId'] } },
+  { name: 'design_figma_sync_apply', description: 'Aplica resolucoes seletivas de sincronizacao Figma apos revisar o preview.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, linkId: { type: 'string' }, baseRevision: { type: 'number' }, changes: { type: 'array', items: { type: 'object', properties: { nodeId: { type: 'string' }, resolution: { type: 'string', enum: ['figma', 'local', 'delete'] } }, required: ['nodeId', 'resolution'] } } }, required: ['nodeId', 'linkId', 'baseRevision', 'changes'] } },
+  { name: 'design_create_element', description: 'Cria frame, grupo, retangulo, elipse, texto, vetor ou imagem no documento. A operacao falha em revisao antiga, sem sobrescrever trabalho humano.', inputSchema: { type: 'object', properties: {
+    nodeId: { type: 'string' }, baseRevision: { type: 'number' }, pageId: { type: 'string' }, parentId: { type: ['string', 'null'] },
+    type: { type: 'string', enum: ['frame', 'group', 'rectangle', 'ellipse', 'text', 'path', 'image'] }, name: { type: 'string' },
+    x: { type: 'number' }, y: { type: 'number' }, width: { type: 'number' }, height: { type: 'number' },
+    fill: { type: 'string' }, stroke: { type: 'string' }, strokeWidth: { type: 'number' }, cornerRadius: { type: 'number' },
+    text: { type: 'string' }, fontSize: { type: 'number' }, fontWeight: { type: 'number' }, summary: { type: 'string' }, taskId: { type: 'string' },
+  }, required: ['nodeId', 'baseRevision', 'pageId', 'type', 'name', 'x', 'y', 'width', 'height'] } },
+  { name: 'design_update_element', description: 'Atualiza propriedades tipadas de um elemento existente no Design node.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, elementId: { type: 'string' }, changes: { type: 'object' }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'elementId', 'changes'] } },
+  { name: 'design_delete_element', description: 'Exclui um elemento e seus descendentes do Design node, respeitando lock e revisao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseRevision: { type: 'number' }, elementId: { type: 'string' }, summary: { type: 'string' }, taskId: { type: 'string' } }, required: ['nodeId', 'baseRevision', 'elementId'] } },
   { name: 'task_list', description: 'Lista as tarefas do quadro (kanban) do workspace.', inputSchema: { type: 'object', properties: {} } },
   { name: 'task_columns', description: 'Lista as colunas e chaves validas do kanban.', inputSchema: { type: 'object', properties: {} } },
   { name: 'task_add', description: 'Cria tarefa; com assignee ja despacha para o agente.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string', description: 'Descricao em markdown (checklists, links)' }, assignee: { type: 'string' }, note: { type: 'string', description: 'Nota de spec (id ou titulo)' }, column: { type: 'string', description: 'Chave ou nome da coluna inicial' } }, required: ['title'] } },
@@ -57,7 +124,7 @@ const TOOLS = [
   { name: 'notify', description: 'Notificacao nativa de atencao ou conclusao do projeto. task_done ja notifica tarefas.', inputSchema: { type: 'object', properties: { message: { type: 'string' }, kind: { type: 'string', enum: ['info', 'attention', 'project', 'task'] }, title: { type: 'string' } }, required: ['message'] } },
   { name: 'status', description: 'Registra o estado semantico e a acao atual deste agente no Control Center.', inputSchema: { type: 'object', properties: { state: { type: 'string', enum: ['starting', 'working', 'waiting_input', 'waiting_permission', 'blocked', 'idle', 'done', 'error', 'disconnected'] }, action: { type: 'string' }, taskId: { type: 'string' } }, required: ['state'] } },
   { name: 'port', description: 'Devolve uma porta livre para subir servidores.', inputSchema: { type: 'object', properties: {} } },
-  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', description: 'Id de um provider registrado no Orkestrai.' }, role: { type: 'string' } }, required: ['title'] } },
+  { name: 'recruit', description: '(maestro) Recruta agente novo no canvas. Para composição visual, prefira effort medium ou high; xhigh aumenta muito a latência de payloads estruturados.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, provider: { type: 'string', description: 'Id de um provider registrado no Orkestrai.' }, model: { type: 'string' }, effort: { type: 'string', enum: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'] }, role: { type: 'string' }, floorId: { type: 'string', description: 'Andar ativo onde o agente deve trabalhar.' } }, required: ['title'] } },
   { name: 'dismiss', description: '(maestro) Dispensa um agente.', inputSchema: { type: 'object', properties: { agent: { type: 'string' } }, required: ['agent'] } },
 ];
 
@@ -72,6 +139,10 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', '/api/agent-room/bridge/usage');
     case 'ask':
       return bridge('POST', '/api/agent-room/bridge/ask', { to: args.agent, message: args.message, from: selfAgent });
+    case 'note_list': {
+      const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
+      return bridge('GET', `/api/agent-room/bridge/notes${query}`);
+    }
     case 'note_read':
       return bridge('GET', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`);
     case 'note_write':
@@ -80,6 +151,168 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('PATCH', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`, { old: args.oldText, new: args.newText });
     case 'note_create':
       return bridge('POST', '/api/agent-room/bridge/notes', { title: args.title, content: args.content, connect: args.connect ?? 'all', from: selfAgent });
+    case 'api_client_list': {
+      const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
+      return bridge('GET', `/api/agent-room/bridge/api-clients${query}`);
+    }
+    case 'api_client_execute':
+      return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/execute`, { requestId: args.requestId, variables: args.variables ?? {}, from: selfAgent });
+    case 'design_list':
+      return bridge('GET', '/api/agent-room/bridge/designs');
+    case 'design_read':
+      return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`);
+    case 'design_reference':
+      return designReference(args.topic ?? 'quickstart');
+    case 'design_audit':
+      return bridge('GET', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/quality`);
+    case 'design_apply_template':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/quality`, {
+        baseRevision: args.baseRevision,
+        templateId: args.templateId,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_apply_operations':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: args.operations,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_create_elements':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: args.elements.map((element) => ({ kind: 'create', element: { ...element, pageId: args.pageId, parentId: element.parentId ?? null } })),
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_apply_blueprint': {
+      const now = new Date().toISOString();
+      const operations = [
+        ...(args.elements ?? []).map((element) => ({ kind: 'create', element: { ...element, pageId: args.pageId, parentId: element.parentId ?? null } })),
+        ...(args.variableCollections ?? []).map((collection, order) => ({ kind: 'add-variable-collection', collection: { ...collection, defaultModeId: collection.defaultModeId ?? collection.modes[0]?.id, order: collection.order ?? order } })),
+        ...(args.variables ?? []).map((variable, order) => ({ kind: 'add-variable', variable: { ...variable, description: variable.description ?? '', order: variable.order ?? order } })),
+        ...(args.bindings ?? []).map((binding) => ({ kind: 'bind-variable', ...binding })),
+        ...(args.componentSets ?? []).map((componentSet, order) => ({ kind: 'add-component-set', componentSet: { ...componentSet, propertyNames: componentSet.propertyNames ?? [], order: componentSet.order ?? order } })),
+        ...(args.components ?? []).map((component) => ({ kind: 'add-component', component: { ...component, description: component.description ?? '', setId: component.setId ?? null, variantValues: component.variantValues ?? {}, properties: component.properties ?? [], key: component.key ?? component.id, updatedAt: now } })),
+        ...(args.prototypeFlows ?? []).map((flow, order) => ({ kind: 'add-prototype-flow', flow: { ...flow, description: flow.description ?? '', order: flow.order ?? order } })),
+        ...(args.prototypeInteractions ?? []).map((interaction, order) => ({ kind: 'add-prototype-interaction', interaction: { ...interaction, order: interaction.order ?? order } })),
+        ...(args.motionTokens ?? []).map((token, order) => ({ kind: 'add-motion-token', token: { ...token, order: token.order ?? order } })),
+        ...(args.motionTracks ?? []).map((track, order) => ({ kind: 'add-motion-track', track: { ...track, order: track.order ?? order } })),
+        ...(args.presentation ? [{ kind: 'update-presentation', changes: args.presentation }] : []),
+      ];
+      if (!operations.length) throw new Error('design_apply_blueprint needs at least one element, token, component, prototype, motion item, binding, or presentation change.');
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    }
+    case 'design_comment': {
+      const now = new Date().toISOString();
+      const author = { kind: 'agent', id: selfAgent || 'agent', name: selfAgent || 'Agent', color: '#059669' };
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'add-design-comment', comment: {
+          id: crypto.randomUUID(), pageId: args.pageId, elementId: args.elementId ?? null,
+          x: null, y: null, status: 'open', messages: [{ id: crypto.randomUUID(), author, body: args.body, mentions: [], createdAt: now }],
+          createdAt: now, updatedAt: now, resolvedAt: null, resolvedBy: null,
+        } }],
+        summary: 'Agent design comment', from: selfAgent, taskId: args.taskId,
+      });
+    }
+    case 'design_propose': {
+      const now = new Date().toISOString();
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'add-design-proposal', proposal: {
+          id: crypto.randomUUID(), title: args.title, description: args.description ?? '',
+          author: { kind: 'agent', id: selfAgent || 'agent', name: selfAgent || 'Agent', color: '#059669' },
+          baseRevision: args.baseRevision, operations: args.operations, status: 'pending',
+          floorId: args.floorId ?? null, councilId: args.councilId ?? null,
+          createdAt: now, updatedAt: now, decidedAt: null, decidedBy: null, decisionNote: null,
+        } }],
+        summary: `Agent design proposal: ${args.title}`, from: selfAgent, taskId: args.taskId,
+      });
+    }
+    case 'design_decide_proposal':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'decide-design-proposal', proposalId: args.proposalId, status: args.status,
+          actor: { kind: 'agent', id: selfAgent || 'agent', name: selfAgent || 'Agent', color: '#059669' }, note: args.note ?? null }],
+        summary: `Agent design proposal ${args.status}`, from: selfAgent, taskId: args.taskId,
+      });
+    case 'design_import_code':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/delivery/import`, {
+        baseRevision: args.baseRevision,
+        format: args.format,
+        name: args.name,
+        markup: args.markup,
+        css: args.css ?? '',
+        x: args.x ?? 80,
+        y: args.y ?? 80,
+        parentId: args.parentId ?? null,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_generate_code_preview':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/delivery/preview`, {
+        framework: args.framework,
+        elementIds: args.elementIds,
+        outputPath: args.outputPath,
+        componentName: args.componentName,
+      });
+    case 'design_generate_code_apply':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/delivery/apply`, {
+        baseRevision: args.baseRevision,
+        framework: args.framework,
+        elementIds: args.elementIds,
+        outputPath: args.outputPath,
+        componentName: args.componentName,
+        expectedExistingHash: args.expectedExistingHash,
+        summary: args.summary,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_figma_inspect':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/inspect`, { url: args.url });
+    case 'design_figma_import':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/import`, { url: args.url, sourceNodeIds: args.sourceNodeIds, baseRevision: args.baseRevision, targetPageId: args.targetPageId });
+    case 'design_figma_sync_preview':
+      return bridge('POST', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/sync`, { linkId: args.linkId });
+    case 'design_figma_sync_apply':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}/figma/sync`, { linkId: args.linkId, baseRevision: args.baseRevision, changes: args.changes });
+    case 'design_create_element': {
+      const { nodeId, baseRevision, summary, taskId, ...element } = args;
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`, {
+        baseRevision,
+        operations: [{ kind: 'create', element: { ...element, parentId: element.parentId ?? null } }],
+        summary: summary ?? `Create ${element.type} ${element.name}`,
+        from: selfAgent,
+        taskId,
+      });
+    }
+    case 'design_update_element':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'update', elementId: args.elementId, changes: args.changes }],
+        summary: args.summary ?? `Update design element ${args.elementId}`,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
+    case 'design_delete_element':
+      return bridge('PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(args.nodeId)}`, {
+        baseRevision: args.baseRevision,
+        operations: [{ kind: 'delete', elementId: args.elementId }],
+        summary: args.summary ?? `Delete design element ${args.elementId}`,
+        from: selfAgent,
+        taskId: args.taskId,
+      });
     case 'task_list':
       return bridge('GET', '/api/agent-room/bridge/tasks');
     case 'task_columns':
@@ -152,7 +385,7 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return { port: await findFreePort() };
     case 'recruit': {
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — recruit so funciona dentro do terminal do maestro.');
-      return bridge('POST', '/api/agent-room/bridge/recruit', { title: args.title, provider: args.provider, role: args.role, from: selfAgent });
+      return bridge('POST', '/api/agent-room/bridge/recruit', { title: args.title, provider: args.provider, model: args.model, effort: args.effort, role: args.role, floorId: args.floorId, from: selfAgent });
     }
     case 'dismiss': {
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — dismiss so funciona dentro do terminal do maestro.');
@@ -172,8 +405,18 @@ function writeMessage(write, message) {
  * Loop principal do servidor MCP. Io injetavel para testes:
  * input = stream legivel (stdin), write = funcao de escrita (stdout).
  * bridge = (method, path, body) => Promise<data> ja autenticada.
+ *
+ * @param {{
+ *   input: import('node:stream').Readable,
+ *   write: (chunk: string) => void,
+ *   bridge: (method: string, path: string, body?: any) => Promise<any>,
+ *   findFreePort: () => Promise<number>,
+ *   selfAgent?: string | null,
+ *   version?: string,
+ * }} options
  */
-export async function runMcpServer({ input, write, bridge, findFreePort, selfAgent = null, version = '0.0.1' }) {
+export async function runMcpServer(options) {
+  const { input, write, bridge, findFreePort, selfAgent = null, version = '0.0.1' } = options;
   let buffer = Buffer.alloc(0);
   const pending = [];
   let waiter = null;

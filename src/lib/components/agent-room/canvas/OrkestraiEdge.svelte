@@ -1,8 +1,11 @@
 <script lang="ts">
-  import { EdgeLabel, useEdges, useNodes, type EdgeProps } from '@xyflow/svelte';
+  import { onMount } from 'svelte';
+  import { EdgeLabel, useEdges, useNodes, useViewport, type EdgeProps } from '@xyflow/svelte';
   import { X } from '@lucide/svelte';
   import * as m from '$lib/paraglide/messages.js';
-  import { floatingAnchorFor } from './floating-anchor.js';
+  import { floatingAnchorFor, nodeIndexFor } from './floating-anchor.js';
+  import { edgeIntersectsViewport, edgePerformanceProfile, staticEdgePath } from './edge-performance.js';
+  import { canvasEdgeRuntime, retainCanvasEdgeRuntime } from './edge-performance-runtime.svelte.js';
 
   /**
    * Aresta do Orkestrai: corda com fisica verlet (segmentos com gravidade e
@@ -14,20 +17,20 @@
 
   const nodesStore = useNodes();
   const edgesStore = useEdges();
+  const viewportStore = useViewport();
 
   type RopePoint = { x: number; y: number; px: number; py: number };
 
-  const SEGMENTS = 14;
   const GRAVITY = 0.35;
-  const ITERATIONS = 5;
 
   let rope: RopePoint[] = $state([]);
   let rafId: number | null = null;
   let lastAnchorSig = '';
-  let initialized = false;
+  let lastFrameAt = 0;
+  let hovered = $state(false);
 
   function centerOf(nodeId: string): { x: number; y: number } | null {
-    const node = nodesStore.current.find((item) => item.id === nodeId);
+    const node = nodeIndexFor(nodesStore.current).get(nodeId);
     if (!node) return null;
     const width = node.measured?.width ?? node.width ?? 320;
     const height = node.measured?.height ?? node.height ?? 200;
@@ -37,7 +40,7 @@
   type Box = { x: number; y: number; halfW: number; halfH: number };
 
   function boxOf(nodeId: string): Box | null {
-    const node = nodesStore.current.find((item) => item.id === nodeId);
+    const node = nodeIndexFor(nodesStore.current).get(nodeId);
     if (!node) return null;
     const width = node.measured?.width ?? node.width ?? 320;
     const height = node.measured?.height ?? node.height ?? 200;
@@ -74,10 +77,10 @@
     }
   }
 
-  function initRope(ax: number, ay: number, bx: number, by: number) {
+  function initRope(ax: number, ay: number, bx: number, by: number, segments: number) {
     const points: RopePoint[] = [];
-    for (let i = 0; i <= SEGMENTS; i += 1) {
-      const t = i / SEGMENTS;
+    for (let i = 0; i <= segments; i += 1) {
+      const t = i / segments;
       const x = ax + (bx - ax) * t;
       const y = ay + (by - ay) * t + Math.sin(t * Math.PI) * 30;
       points.push({ x, y, px: x, py: y });
@@ -88,6 +91,7 @@
   function simulate(): boolean {
     const current = anchors();
     if (!current || rope.length === 0) return false;
+    const segments = rope.length - 1;
     const sourceBox = boxOf(source);
     const targetBox = boxOf(target);
 
@@ -103,16 +107,16 @@
       point.y += vy + GRAVITY;
     }
 
-    const segLength = Math.hypot(current.bx - current.ax, current.by - current.ay) / SEGMENTS * 1.06;
+    const segLength = Math.hypot(current.bx - current.ax, current.by - current.ay) / segments * 1.06;
 
-    for (let iter = 0; iter < ITERATIONS; iter += 1) {
+    for (let iter = 0; iter < profile.iterations; iter += 1) {
       // Pinos nas ancoras (flutuantes)
       rope[0].x = current.ax;
       rope[0].y = current.ay;
-      rope[SEGMENTS].x = current.bx;
-      rope[SEGMENTS].y = current.by;
+      rope[segments].x = current.bx;
+      rope[segments].y = current.by;
 
-      for (let i = 0; i < SEGMENTS; i += 1) {
+      for (let i = 0; i < segments; i += 1) {
         const p1 = rope[i];
         const p2 = rope[i + 1];
         const dx = p2.x - p1.x;
@@ -125,14 +129,14 @@
           p1.x += offsetX;
           p1.y += offsetY;
         }
-        if (i + 1 !== SEGMENTS) {
+        if (i + 1 !== segments) {
           p2.x -= offsetX;
           p2.y -= offsetY;
         }
       }
 
       // Corda contorna as caixas dos nos (exceto os pinos, que ficam na borda)
-      for (let i = 1; i < SEGMENTS; i += 1) {
+      for (let i = 1; i < segments; i += 1) {
         if (sourceBox) pushOutOfBox(rope[i], sourceBox);
         if (targetBox) pushOutOfBox(rope[i], targetBox);
       }
@@ -144,7 +148,17 @@
 
   let settleFrames = 0;
 
-  function loop() {
+  function loop(timestamp: number) {
+    if (profile.mode !== 'physics' || profile.fps <= 0) {
+      rafId = null;
+      return;
+    }
+    const interval = 1_000 / profile.fps;
+    if (timestamp - lastFrameAt < interval) {
+      rafId = requestAnimationFrame(loop);
+      return;
+    }
+    lastFrameAt = timestamp;
     const active = simulate();
     // Para a simulacao quando a corda estabiliza — o $effect religa o rAF
     // assim que uma ancora se move (no arrastado, redimensionado etc).
@@ -156,18 +170,36 @@
     rafId = requestAnimationFrame(loop);
   }
 
+  const talking = $derived(Boolean((data as { talking?: boolean } | undefined)?.talking));
+  const pinned = $derived(Boolean((data as { pinned?: boolean } | undefined)?.pinned));
+  const currentAnchors = $derived(anchors());
+  const inViewport = $derived(currentAnchors
+    ? edgeIntersectsViewport(currentAnchors, viewportStore.current, canvasEdgeRuntime.current.width, canvasEdgeRuntime.current.height)
+    : false);
+  const profile = $derived(edgePerformanceProfile({
+    edgeCount: edgesStore.current.length,
+    documentVisible: canvasEdgeRuntime.current.documentVisible,
+    inViewport,
+    reducedMotion: canvasEdgeRuntime.current.reducedMotion,
+    emphasized: talking || pinned || selected || hovered,
+  }));
+
   $effect(() => {
-    const current = anchors();
+    const current = currentAnchors;
     if (!current) return;
-    const sig = `${Math.round(current.ax)},${Math.round(current.ay)},${Math.round(current.bx)},${Math.round(current.by)}`;
+    if (profile.mode !== 'physics') {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = null;
+      rope = [];
+      lastAnchorSig = '';
+      return;
+    }
+    const sig = `${Math.round(current.ax)},${Math.round(current.ay)},${Math.round(current.bx)},${Math.round(current.by)}:${profile.segments}`;
     if (sig !== lastAnchorSig) {
       lastAnchorSig = sig;
-      if (!initialized) {
-        initialized = true;
-        initRope(current.ax, current.ay, current.bx, current.by);
-      }
-      if (rafId === null) rafId = requestAnimationFrame(loop);
+      if (rope.length !== profile.segments + 1) initRope(current.ax, current.ay, current.bx, current.by, profile.segments);
     }
+    if (rafId === null) rafId = requestAnimationFrame(loop);
   });
 
   $effect(() => {
@@ -178,26 +210,26 @@
   });
 
   const path = $derived.by(() => {
-    if (rope.length === 0) return { path: '', midX: 0, midY: 0 };
+    if (profile.mode !== 'physics' || rope.length === 0) {
+      return currentAnchors ? staticEdgePath(currentAnchors, profile.mode === 'line' ? 'line' : 'curve') : { path: '', midX: 0, midY: 0 };
+    }
     const pathD = rope.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`).join(' ');
-    const mid = rope[Math.floor(SEGMENTS / 2)];
+    const mid = rope[Math.floor((rope.length - 1) / 2)];
     return { path: pathD, midX: mid.x, midY: mid.y };
   });
 
-  const talking = $derived(Boolean((data as { talking?: boolean } | undefined)?.talking));
-  const pinned = $derived(Boolean((data as { pinned?: boolean } | undefined)?.pinned));
   const stroke = $derived(talking ? 'var(--app-success)' : pinned ? 'var(--app-accent)' : 'var(--app-edge)');
 
   // O X so aparece com hover na corda (ou no proprio botao) ou com a edge
   // selecionada/pinned — escondido ele nao intercepta cliques do canvas.
-  let hovered = $state(false);
-
   function remove() {
     (data as { onRemove?: (edgeId: string) => void } | undefined)?.onRemove?.(id);
   }
+
+  onMount(retainCanvasEdgeRuntime);
 </script>
 
-{#if rope.length}
+{#if path.path}
   <g class="orkestrai-edge" class:talking>
     <path
       d={path.path}
@@ -220,7 +252,7 @@
       stroke-dasharray="7 5"
       stroke-linecap="round"
       class="edge-line"
-      class:animated={talking}
+      class:animated={talking && profile.animateActivity}
       style="pointer-events: none"
     />
     <EdgeLabel x={Math.round(path.midX)} y={Math.round(path.midY)} selectEdgeOnClick>

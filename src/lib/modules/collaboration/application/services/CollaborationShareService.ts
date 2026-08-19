@@ -139,7 +139,7 @@ export class CollaborationShareService {
     const approved = await collaborationRepository.approveDevice(
       device.id,
       dto.role,
-      collaborationPolicy.scopesForApproval(dto.role, dto.terminalAccess),
+      collaborationPolicy.scopesForApproval(dto.role, dto.terminalAccess, dto.designAccess),
     );
     await collaborationRepository.appendAudit({
       workspaceId, shareId, actorDeviceId: device.deviceId, eventType: 'device.approved',

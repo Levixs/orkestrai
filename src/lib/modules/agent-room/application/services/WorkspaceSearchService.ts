@@ -11,6 +11,7 @@ import { roleService } from './RoleService.js';
 import { skillMarketService } from './SkillMarketService.js';
 import { taskBoardService } from './TaskBoardService.js';
 import { routineService } from './RoutineService.js';
+import { designDocumentService } from './DesignDocumentService.js';
 import type { WorkspaceSearchDto } from '../dto/WorkspaceSearchDto.js';
 
 const INDEX_TTL_MS = 15_000;
@@ -42,6 +43,10 @@ function nodePreview(node: CanvasNode): string | null {
   const payload = node.payload as Record<string, unknown>;
   if (node.type === 'terminal') return clip([payload.provider, payload.role].filter(Boolean).join(' · '));
   if (node.type === 'note') return clip(payload.content);
+  if (node.type === 'apiClient') {
+    const requests = Array.isArray(payload.requests) ? payload.requests as Array<{ method?: string; name?: string; url?: string }> : [];
+    return clip(requests.slice(0, 8).map((request) => [request.method, request.name, request.url].filter(Boolean).join(' ')).join(' · '));
+  }
   return clip(payload.path ?? payload.url ?? payload.objective ?? payload.description);
 }
 
@@ -49,6 +54,14 @@ function nodeAttachmentSearchText(node: CanvasNode): string {
   const attachments = (node.payload as { attachments?: Array<{ name?: string; path?: string | null; url?: string | null }> }).attachments;
   if (!Array.isArray(attachments)) return '';
   return attachments.flatMap((attachment) => [attachment.name, attachment.path, attachment.url]).filter(Boolean).join(' ');
+}
+
+function nodeContentSearchText(node: CanvasNode): string {
+  if (node.type !== 'apiClient') return '';
+  const requests = (node.payload as { requests?: Array<{ method?: string; name?: string; url?: string }> }).requests;
+  return Array.isArray(requests)
+    ? requests.flatMap((request) => [request.method, request.name, request.url]).filter(Boolean).join(' ')
+    : '';
 }
 
 function indexed(input: Omit<WorkspaceSearchResult, 'score'>, extra: unknown[] = []): IndexedResult {
@@ -179,7 +192,107 @@ export class WorkspaceSearchService {
         taskId: null,
         path: null,
         route: `/terminal?workspace=${workspace.id}&node=${node.id}`,
-      }, [node.type, (node.payload as Record<string, unknown>).provider, nodeAttachmentSearchText(node)]));
+      }, [node.type, (node.payload as Record<string, unknown>).provider, nodeAttachmentSearchText(node), nodeContentSearchText(node)]));
+    }
+
+    const designDocuments = await Promise.all(nodes
+      .filter((node) => node.type === 'design')
+      .map(async (node) => ({ node, document: await designDocumentService.get(workspace.id, node.id).catch(() => null) })));
+    for (const { node, document } of designDocuments) {
+      if (!document) continue;
+      const route = `/terminal?workspace=${workspace.id}&node=${node.id}`;
+      for (const component of document.components.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-component:${node.id}:${component.id}`,
+          kind: 'artifact',
+          title: component.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(component.description || component.key),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['design component componente componente de diseño', component.key, Object.values(component.variantValues), component.codeConnect?.path]));
+      }
+      for (const variable of document.variables.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        const collection = document.variableCollections.find((candidate) => candidate.id === variable.collectionId);
+        results.push(indexed({
+          id: `design-variable:${node.id}:${variable.id}`,
+          kind: 'artifact',
+          title: variable.name,
+          subtitle: `${workspace.name} · ${collection?.name ?? document.name}`,
+          preview: clip(variable.description || variable.type),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['design token variável variable', variable.type, collection?.codeSource?.path]));
+      }
+      for (const link of document.figmaLinks.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-figma:${node.id}:${link.id}`,
+          kind: 'artifact',
+          title: link.fileName,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(link.url),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['figma design source origem fuente linked sync', link.sourceNodeIds]));
+      }
+      for (const artifact of document.codeArtifacts.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-code:${node.id}:${artifact.id}`,
+          kind: 'artifact',
+          title: artifact.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(artifact.path),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: artifact.path,
+          route,
+        }, ['generated code codigo generado', artifact.framework, artifact.path, artifact.componentMappings]));
+      }
+      for (const flow of document.prototypeFlows.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        const interactions = document.prototypeInteractions.filter((interaction) => interaction.sourceElementId === flow.startFrameId);
+        results.push(indexed({
+          id: `design-prototype:${node.id}:${flow.id}`,
+          kind: 'artifact',
+          title: flow.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: clip(flow.description || `${interactions.length} interactions`),
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['prototype prototipo prototipo flow fluxo flujo interaction interacao interaccion', interactions.map((interaction) => interaction.action.type)]));
+      }
+      for (const token of document.motionTokens.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {
+        results.push(indexed({
+          id: `design-motion:${node.id}:${token.id}`,
+          kind: 'artifact',
+          title: token.name,
+          subtitle: `${workspace.name} · ${document.name}`,
+          preview: `${token.durationMs} ms`,
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          nodeId: node.id,
+          taskId: null,
+          path: null,
+          route,
+        }, ['motion animation animacao animacion easing timeline keyframe', token.easing]));
+      }
     }
 
     for (const task of tasks.slice(0, INDEX_LIMIT_PER_WORKSPACE)) {

@@ -22,6 +22,7 @@ export const approveCollaborationDeviceSchema = z.object({
   approved: z.boolean(),
   role: collaborationRoleSchema.default('viewer'),
   terminalAccess: z.boolean().default(false),
+  designAccess: z.enum(['inherited', 'none', 'view', 'comment', 'propose', 'edit']).default('inherited'),
 }).strict();
 
 const taskCreateCommandSchema = z.object({
@@ -64,6 +65,61 @@ const agentInvokeCommandSchema = z.object({
   agentNodeId: z.string().uuid(),
 }).strict();
 
+const designCommentCreateCommandSchema = z.object({
+  type: z.literal('design.comment.create'),
+  nodeId: z.string().uuid(),
+  pageId: z.string().uuid(),
+  elementId: z.string().uuid().nullish(),
+  body: z.string().trim().min(1).max(20_000),
+}).strict();
+
+const designCommentReplyCommandSchema = z.object({
+  type: z.literal('design.comment.reply'),
+  nodeId: z.string().uuid(),
+  commentId: z.string().uuid(),
+  body: z.string().trim().min(1).max(20_000),
+}).strict();
+
+const designCommentResolveCommandSchema = z.object({
+  type: z.literal('design.comment.resolve'),
+  nodeId: z.string().uuid(),
+  commentId: z.string().uuid(),
+  status: z.enum(['open', 'resolved']),
+}).strict();
+
+const designProposalDecisionCommandSchema = z.object({
+  type: z.literal('design.proposal.decide'),
+  nodeId: z.string().uuid(),
+  proposalId: z.string().uuid(),
+  status: z.enum(['approved', 'rejected']),
+  note: z.string().trim().max(4_000).nullish(),
+}).strict();
+
+const remoteDesignChangesSchema = z.object({
+  x: z.number().finite().min(-1_000_000).max(1_000_000),
+  y: z.number().finite().min(-1_000_000).max(1_000_000),
+  width: z.number().finite().min(1).max(1_000_000),
+  height: z.number().finite().min(1).max(1_000_000),
+  opacity: z.number().finite().min(0).max(1),
+  fill: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+}).strict();
+
+const designProposalCreateCommandSchema = z.object({
+  type: z.literal('design.proposal.create'),
+  nodeId: z.string().uuid(),
+  elementId: z.string().uuid(),
+  title: z.string().trim().min(1).max(180),
+  description: z.string().trim().max(4_000).nullish(),
+  changes: remoteDesignChangesSchema,
+}).strict();
+
+const designElementUpdateCommandSchema = z.object({
+  type: z.literal('design.element.update'),
+  nodeId: z.string().uuid(),
+  elementId: z.string().uuid(),
+  changes: remoteDesignChangesSchema,
+}).strict();
+
 export const collaborationCommandSchema = z.discriminatedUnion('type', [
   taskCreateCommandSchema,
   taskUpdateCommandSchema,
@@ -71,6 +127,12 @@ export const collaborationCommandSchema = z.discriminatedUnion('type', [
   leaderMessageCommandSchema,
   agentMessageCommandSchema,
   agentInvokeCommandSchema,
+  designCommentCreateCommandSchema,
+  designCommentReplyCommandSchema,
+  designCommentResolveCommandSchema,
+  designProposalCreateCommandSchema,
+  designProposalDecisionCommandSchema,
+  designElementUpdateCommandSchema,
 ]);
 
 export const executeCollaborationCommandSchema = z.object({

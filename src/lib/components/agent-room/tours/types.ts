@@ -5,7 +5,10 @@ export type TourAction =
   | { kind: 'createNote'; title: string; content: string }
   | { kind: 'createTasksBoard' }
   | { kind: 'createUsage'; title: string }
+  | { kind: 'createApiClient'; title: string }
+  | { kind: 'createShape'; title: string; shape?: 'rectangle' | 'rounded' | 'ellipse' | 'diamond' | 'arrow' }
   | { kind: 'createDevice'; title: string }
+  | { kind: 'createDesign'; title: string }
   | { kind: 'createTask'; title: string; assigneeTitle?: string }
   | { kind: 'connect'; fromTitle: string; toTitle: string }
   | { kind: 'createPortal'; url: string; title?: string }
@@ -15,6 +18,8 @@ export type TourAction =
   | { kind: 'installMcp'; key: string }
   | { kind: 'openCouncil' }
   | { kind: 'openSharing' }
+  | { kind: 'openDesign'; title: string }
+  | { kind: 'openDesignExploration' }
   | { kind: 'openPage'; path: string };
 
 export type TourCheck =

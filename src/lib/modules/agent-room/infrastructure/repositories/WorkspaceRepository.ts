@@ -189,10 +189,25 @@ export class WorkspaceRepository {
 
   // -- Nos do canvas ----------------------------------------------------------
 
-  async listNodes(workspaceId: string, floorId?: string | null, includeArchived = false): Promise<CanvasNode[]> {
+  async listNodes(
+    workspaceId: string,
+    floorId?: string | null,
+    includeArchived = false,
+    includeInactiveFloors = false,
+  ): Promise<CanvasNode[]> {
     const query = AgentCanvasNode.query().where('workspace_id', workspaceId).orderBy('created_at', 'asc');
     if (floorId === null) query.whereNull('floor_id');
     else if (floorId) query.where('floor_id', floorId);
+    else if (!includeInactiveFloors) {
+      const activeFloorIds = (await AgentFloor.query()
+        .where('workspace_id', workspaceId)
+        .where('status', 'active')
+        .pluck('id')) as string[];
+      query.whereNested((nested) => {
+        nested.whereNull('floor_id');
+        if (activeFloorIds.length > 0) nested.orWhereIn('floor_id', activeFloorIds);
+      });
+    }
     // Arquivados (notas vinculadas a tarefas arquivadas) ficam fora do canvas.
     if (!includeArchived) query.whereNull('archived_at');
     const rows = await query.get();
@@ -202,6 +217,20 @@ export class WorkspaceRepository {
   /** Arquiva um no (some do canvas, continua no banco para o historico). */
   async archiveNode(id: string): Promise<void> {
     await AgentCanvasNode.query().where('id', id).update({ archived_at: new Date().toISOString() });
+  }
+
+  async archiveFloorNodes(workspaceId: string, floorId: string): Promise<CanvasNode[]> {
+    const nodes = await this.listNodes(workspaceId, floorId, true, true);
+    const nodeIds = nodes.map((node) => node.id);
+    if (nodeIds.length === 0) return [];
+    await AgentCanvasEdge.query().where('workspace_id', workspaceId).whereIn('source_node_id', nodeIds).delete();
+    await AgentCanvasEdge.query().where('workspace_id', workspaceId).whereIn('target_node_id', nodeIds).delete();
+    await AgentCanvasNode.query()
+      .where('workspace_id', workspaceId)
+      .where('floor_id', floorId)
+      .whereNull('archived_at')
+      .update({ archived_at: new Date().toISOString() });
+    return nodes;
   }
 
   async getNode(id: string): Promise<CanvasNode | null> {

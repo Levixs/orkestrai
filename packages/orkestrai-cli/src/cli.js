@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { DESIGN_REFERENCE_TOPICS, designReference } from './design-reference.js';
 
 /** Porta livre de verdade: binda na efemera, le o numero e libera. */
 export async function findFreePort() {
@@ -44,12 +45,17 @@ Uso:
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
+  orkestrai api list [--json] | api run <nodeId> <requestId> [--variables <json>] [--json]
+  orkestrai design list | design read <nodeId> | design reference [${DESIGN_REFERENCE_TOPICS.join('|')}] | design audit <nodeId> | design template <nodeId> <product|marketing|mobile|design-system> --revision <n>
+  orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
+  orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
+  orkestrai design generate <nodeId> <elementIds-json> --framework svelar|svelte|react|next|vue|html --output <path> --name <nome> [--write --revision <n>]
   orkestrai role show [nome] | role write <nome> <prompt> | role edit <nome> <antigo> <novo>
   orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]
   orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
   orkestrai notify <mensagem> [--kind info|attention|project|task] [--title <titulo>]
   orkestrai status <starting|working|waiting_input|waiting_permission|blocked|idle|done|error|disconnected> [acao] [--task <id>]
-  orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--role <papel>] [--replace <agente>] [--json]
+  orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--model <id>] [--effort low|medium|high|xhigh|max|ultra] [--role <papel>] [--replace <agente>] [--floor <id>] [--json]
   orkestrai dismiss <agente> --from <maestro>
   orkestrai connect <de> <para> --from <maestro>
   orkestrai task list [--json]
@@ -210,6 +216,13 @@ export async function run(argv, options = {}) {
     return 0;
   }
 
+  // A referencia do Design e local e deve funcionar mesmo fora de um
+  // workspace provisionado, assim como o handshake do MCP.
+  if (command === 'design' && rest[0] === 'reference') {
+    out(JSON.stringify(designReference(rest[1] ?? 'quickstart'), null, 2));
+    return 0;
+  }
+
   // O MCP e global no Codex e pode subir fora de um workspace Orkestrai.
   // Resolve token/URL apenas quando uma tool realmente tocar a bridge; assim
   // o handshake nunca morre por falta de .orkestrai/workspace.json.
@@ -251,6 +264,12 @@ export async function run(argv, options = {}) {
         }
         if (data.portals?.length) {
           out(`Controle o portal com: orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>`);
+        }
+        for (const design of data.designs ?? []) {
+          out(`Design conectado: ${design.title} (${design.id})`);
+        }
+        if (data.designs?.length) {
+          out('Edite com tools MCP design_* (preferencial) ou orkestrai design read/apply. Leia a revisao novamente apos cada alteracao.');
         }
       }
       return 0;
@@ -357,15 +376,161 @@ export async function run(argv, options = {}) {
       }
       throw new Error(`Acao de nota desconhecida: ${action}`);
     }
+    case 'api': {
+      const [action, nodeId, requestId] = rest;
+      if (action === 'list') {
+        const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/api-clients${query}`);
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else {
+          for (const client of data) {
+            out(`- ${client.title} (${client.nodeId})`);
+            for (const request of client.requests ?? []) out(`  ${request.method} ${request.name} (${request.requestId}) ${request.url}`);
+          }
+          if (!data.length) out('(nenhum cliente de API conectado)');
+        }
+        return 0;
+      }
+      if (action === 'run' && nodeId && requestId) {
+        let variables = {};
+        if (flags.variables) {
+          variables = JSON.parse(String(flags.variables));
+          if (!variables || Array.isArray(variables) || typeof variables !== 'object') throw new Error('--variables deve ser um objeto JSON.');
+        }
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}/execute`, { requestId, variables, from: selfAgent });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else {
+          out(`${data.status} ${data.statusText} · ${data.durationMs} ms · ${data.size} bytes`);
+          if (data.body) out(data.body);
+        }
+        return data.ok ? 0 : 2;
+      }
+      throw new Error('Uso: orkestrai api <list|run <nodeId> <requestId>> [--variables <json>]');
+    }
+    case 'design': {
+      const [action, nodeId, ...values] = rest;
+      if (action === 'list') {
+        const data = await bridge(config, 'GET', '/api/agent-room/bridge/designs');
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else {
+          for (const design of data) out(`- ${design.title} [rev ${design.revision}, ${design.elements} elementos] (${design.nodeId})`);
+          if (!data.length) out('(nenhum documento de design)');
+        }
+        return 0;
+      }
+      if (action === 'read' && nodeId) {
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`);
+        out(JSON.stringify(data, null, 2));
+        return 0;
+      }
+      if (action === 'audit' && nodeId) {
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/quality`);
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Auditados ${data.auditedElements} elementos: ${data.counts.error} erros, ${data.counts.warning} alertas, ${data.counts.info} informativos.`);
+        return 0;
+      }
+      if (action === 'template' && nodeId && values[0]) {
+        const baseRevision = Number(flags.revision);
+        if (!Number.isInteger(baseRevision) || baseRevision < 0) throw new Error('Uso: orkestrai design template <nodeId> <product|marketing|mobile|design-system> --revision <n>');
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/quality`, {
+          templateId: values[0], baseRevision, from: flags.from, taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Template aplicado; design atualizado para a revisao ${data.revision}.`);
+        return 0;
+      }
+      if (action === 'apply' && nodeId) {
+        const baseRevision = Number(flags.revision);
+        if (!Number.isInteger(baseRevision) || baseRevision < 0 || !values.length) {
+          throw new Error('Uso: orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>]');
+        }
+        const operations = JSON.parse(values.join(' '));
+        const data = await bridge(config, 'PATCH', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}`, {
+          baseRevision,
+          operations: Array.isArray(operations) ? operations : [operations],
+          summary: flags.summary ?? 'Agent design update',
+          from: flags.from,
+          taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Design atualizado para a revisao ${data.revision}.`);
+        return 0;
+      }
+      if (action === 'import-code' && nodeId && values[0]) {
+        const baseRevision = Number(flags.revision);
+        const format = String(flags.format ?? 'html');
+        if (!Number.isInteger(baseRevision) || baseRevision < 0 || !flags.name) {
+          throw new Error('Uso: orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]');
+        }
+        const markup = readFileSync(resolve(cwd, values[0]), 'utf8');
+        const css = flags.css ? readFileSync(resolve(cwd, String(flags.css)), 'utf8') : '';
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/delivery/import`, {
+          baseRevision,
+          format,
+          name: flags.name,
+          markup,
+          css,
+          x: flags.x === undefined ? 80 : Number(flags.x),
+          y: flags.y === undefined ? 80 : Number(flags.y),
+          parentId: flags.parent ?? null,
+          summary: flags.summary,
+          from: flags.from,
+          taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Codigo importado: ${data.elements.length} elementos, revisao ${data.revision}.`);
+        return 0;
+      }
+      if (action === 'generate' && nodeId && values.length) {
+        const framework = String(flags.framework ?? 'svelar');
+        const outputPath = String(flags.output ?? '');
+        const componentName = String(flags.name ?? '');
+        const elementIds = JSON.parse(values.join(' '));
+        if (!Array.isArray(elementIds) || !outputPath || !componentName) {
+          throw new Error('Uso: orkestrai design generate <nodeId> <elementIds-json> --framework <id> --output <path> --name <nome> [--write --revision <n>]');
+        }
+        const preview = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/delivery/preview`, {
+          framework,
+          elementIds,
+          outputPath,
+          componentName,
+        });
+        if (!flags.write) {
+          if (flags.json) out(JSON.stringify(preview, null, 2));
+          else out(preview.content);
+          return 0;
+        }
+        const baseRevision = Number(flags.revision);
+        if (!Number.isInteger(baseRevision) || baseRevision < 0) throw new Error('--write exige --revision <n>.');
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/designs/${encodeURIComponent(nodeId)}/delivery/apply`, {
+          baseRevision,
+          framework,
+          elementIds,
+          outputPath,
+          componentName,
+          expectedExistingHash: preview.existingHash,
+          summary: flags.summary,
+          from: flags.from,
+          taskId: flags.task,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Codigo ${data.status === 'unchanged' ? 'validado' : 'escrito'} em ${data.path}; design na revisao ${data.revision}.`);
+        return 0;
+      }
+      throw new Error('Uso: orkestrai design <list|read|audit|template|apply|import-code|generate> ...');
+    }
     case 'recruit': {
       const [title] = rest;
-      if (!title || !flags.from) throw new Error('Uso: orkestrai recruit <titulo> --from <maestro> [--provider id] [--role papel] [--replace agente]');
+      if (!title || !flags.from) throw new Error('Uso: orkestrai recruit <titulo> --from <maestro> [--provider id] [--model id] [--effort medium] [--role papel] [--replace agente] [--floor id]');
       const data = await bridge(config, 'POST', '/api/agent-room/bridge/recruit', {
         title,
         from: flags.from,
         provider: flags.provider,
+        model: flags.model,
+        effort: flags.effort,
         role: flags.role,
         replace: flags.replace,
+        floorId: flags.floor,
       });
       if (flags.json) out(JSON.stringify(data, null, 2));
       else out(`Recruta "${data.title}" ${data.replaced ? 'substituido' : 'criado'}: ${data.nodeId}`);
@@ -689,8 +854,12 @@ export async function run(argv, options = {}) {
     case 'notes':
     case 'portals': {
       const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
-      const data = await bridge(config, 'GET', `/api/agent-room/bridge/agents${query}`);
-      const items = command === 'notes' ? (data.notes ?? []) : (data.portals ?? []);
+      const data = command === 'notes'
+        ? await bridge(config, 'GET', `/api/agent-room/bridge/notes${query}`)
+        : await bridge(config, 'GET', `/api/agent-room/bridge/agents${query}`);
+      const items = command === 'notes'
+        ? (Array.isArray(data) ? data : (data.notes ?? []))
+        : (data.portals ?? []);
       for (const item of items) out(`- ${item.title} (${item.id ?? item.nodeId})${item.url ? ` ${item.url}` : ''}`);
       if (!items.length) out(command === 'notes' ? '(sem notas)' : '(sem portais)');
       return 0;

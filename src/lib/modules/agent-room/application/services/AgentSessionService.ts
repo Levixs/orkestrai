@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import { posix } from 'node:path';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
-import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.js';
+import { agentSessionTracker, agentSessionTrackerForRuntime } from '../../infrastructure/pty/AgentSessionTracker.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.js';
 import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
 import { floorService } from './FloorService.js';
-import { terminalExecutionRuntime } from '../../infrastructure/WslRuntime.js';
+import { preflightWslLaunch, terminalExecutionRuntime } from '../../infrastructure/WslRuntime.js';
 import type { WorkspaceExecutionRuntime } from '../../domain/types.js';
 
 type AgentNodePayload = {
@@ -60,21 +61,29 @@ export class AgentSessionService {
     const adapter = payload.provider && hasAgentAdapter(payload.provider) ? getAgentAdapter(payload.provider) : null;
     const runtime = workspace ? terminalExecutionRuntime(workspace, payload) : { kind: 'native' as const };
     const trackingStartedAt = Date.now();
-    const genericWslResumeArgs = runtime.kind === 'wsl'
-      && !payload.agentSessionId
-      && Boolean(payload.resumeRecovery || payload.sessionId)
-      ? (adapter?.resumeArgs() ?? [])
-      : [];
-    const genericWslResume = genericWslResumeArgs.length > 0;
-    const freshAgentSessionId = !genericWslResume && !payload.agentSessionId && adapter?.freshSessionArgs ? randomUUID() : null;
-    const conversationArgs = payload.agentSessionId
-      ? (adapter?.resumeArgs(payload.agentSessionId) ?? [])
-      : genericWslResume
-        ? genericWslResumeArgs
+    const wslContext = runtime.kind === 'wsl'
+      ? await preflightWslLaunch({ runtime, command: payload.command, hostCwd: cwd, workspaceRoot: workspace?.workingDir })
+      : null;
+    const tracker = wslContext && runtime.kind === 'wsl'
+      ? agentSessionTrackerForRuntime(
+          `${runtime.distribution}:${wslContext.homeHostPath}`,
+          wslContext.homeHostPath,
+          (candidate) => posix.normalize(candidate),
+        )
+      : agentSessionTracker;
+    const trackingCwd = wslContext?.linuxWorkingDir ?? cwd;
+    let resumableAgentSessionId = payload.agentSessionId ?? null;
+    if (resumableAgentSessionId && adapter) {
+      const valid = tracker.isAgentSessionResumable(adapter.sessionStorage, trackingCwd, resumableAgentSessionId);
+      if (valid === false) resumableAgentSessionId = null;
+    }
+    const freshAgentSessionId = !resumableAgentSessionId && adapter?.freshSessionArgs ? randomUUID() : null;
+    const conversationArgs = resumableAgentSessionId
+      ? (adapter?.resumeArgs(resumableAgentSessionId) ?? [])
       : freshAgentSessionId
         ? adapter!.freshSessionArgs!(freshAgentSessionId)
         : [];
-    if (freshAgentSessionId) agentSessionTracker.claim(freshAgentSessionId);
+    if (freshAgentSessionId) tracker.claim(freshAgentSessionId);
 
     const session = ptySessionManager.create({
       command: payload.command,
@@ -89,32 +98,42 @@ export class AgentSessionService {
       runtime,
       workspaceRoot: workspace?.workingDir,
     });
-    const activeAgentSessionId = payload.agentSessionId ?? freshAgentSessionId;
-    if (activeAgentSessionId) agentSessionTracker.bind(session.id, activeAgentSessionId);
+    const activeAgentSessionId = resumableAgentSessionId;
+    if (activeAgentSessionId) tracker.bind(session.id, activeAgentSessionId);
+    const nextPayload: AgentNodePayload = {
+      ...payload,
+      sessionId: session.id,
+      resumeRecovery: false,
+    };
+    if (activeAgentSessionId) nextPayload.agentSessionId = activeAgentSessionId;
+    else delete nextPayload.agentSessionId;
     await workspaceRepository.updateNode(target.id, {
-      payload: {
-        ...payload,
-        sessionId: session.id,
-        resumeRecovery: false,
-        ...(activeAgentSessionId ? { agentSessionId: activeAgentSessionId } : {}),
-      } as never,
+      payload: nextPayload as never,
     });
 
-    if (workspace?.runtimeKind !== 'wsl' && payload.provider && adapter && !activeAgentSessionId) {
-      agentSessionTracker.watch(session.id, adapter.sessionStorage, cwd, trackingStartedAt, (agentSessionId) => {
+    if (payload.provider && adapter && !activeAgentSessionId) {
+      const reportAgentSession = (agentSessionId: string) => {
+        tracker.bind(session.id, agentSessionId);
         void workspaceRepository.getNode(target.id).then((fresh) => {
           if (!fresh) return;
+          if (String((fresh.payload as AgentNodePayload | null)?.sessionId ?? '') !== session.id) return;
           return workspaceRepository.updateNode(target.id, {
             payload: { ...((fresh.payload ?? {}) as object), sessionId: session.id, agentSessionId } as never,
           });
         }).then(() => notifyWorkspaceChanged(workspaceId)).catch(() => undefined);
-      });
+      };
+      if (freshAgentSessionId) {
+        const watchingExpected = tracker.watchExpected(session.id, adapter.sessionStorage, trackingCwd, freshAgentSessionId, reportAgentSession);
+        if (!watchingExpected) reportAgentSession(freshAgentSessionId);
+      } else {
+        tracker.watch(session.id, adapter.sessionStorage, trackingCwd, trackingStartedAt, reportAgentSession);
+      }
     }
     notifyWorkspaceChanged(workspaceId);
     return {
       nodeId: target.id,
       sessionId: session.id,
-      state: payload.agentSessionId || genericWslResume ? 'resumed' : 'started',
+      state: resumableAgentSessionId ? 'resumed' : 'started',
     };
   }
 }

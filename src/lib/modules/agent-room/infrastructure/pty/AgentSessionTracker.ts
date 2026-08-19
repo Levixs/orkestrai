@@ -51,9 +51,11 @@ export class AgentSessionTracker {
       nao podem receber o mesmo session-id. */
   private claimed = new Set<string>();
   private readonly homeDir: string;
+  private readonly cwdNormalizer: ((cwd: string) => string) | null;
 
-  constructor(homeDir = homedir()) {
+  constructor(homeDir = homedir(), cwdNormalizer: ((cwd: string) => string) | null = null) {
     this.homeDir = homeDir;
+    this.cwdNormalizer = cwdNormalizer;
   }
 
   /** Marca um id como reivindicado (watch ou lookup de respawn). */
@@ -216,6 +218,7 @@ export class AgentSessionTracker {
 
   /** Caminho real do cwd (resolve symlinks como /tmp -> /private/tmp no macOS). */
   private realCwd(cwd: string): string {
+    if (this.cwdNormalizer) return this.cwdNormalizer(cwd);
     try {
       return realpathSync(cwd);
     } catch {
@@ -546,7 +549,8 @@ export class AgentSessionTracker {
       }
     };
     walk(dir, 0);
-    return best?.path ?? null;
+    const result = best as { path: string; mtime: number } | null;
+    return result?.path ?? null;
   }
 
   private newestFile(dir: string, since: number, match: (name: string) => boolean): string | null {
@@ -597,12 +601,23 @@ export class AgentSessionTracker {
       }
     };
     walk(dir, 0);
-    return best?.path ?? null;
+    const result = best as { path: string; mtime: number } | null;
+    return result?.path ?? null;
   }
 }
 
 const trackerGlobal = globalThis as typeof globalThis & {
   __orkestraiAgentSessionTracker?: AgentSessionTracker;
+  __orkestraiRuntimeSessionTrackers?: Map<string, AgentSessionTracker>;
 };
 
 export const agentSessionTracker = trackerGlobal.__orkestraiAgentSessionTracker ??= new AgentSessionTracker();
+
+export function agentSessionTrackerForRuntime(key: string, homeDir: string, normalizeCwd: (cwd: string) => string): AgentSessionTracker {
+  const trackers = trackerGlobal.__orkestraiRuntimeSessionTrackers ??= new Map();
+  const existing = trackers.get(key);
+  if (existing) return existing;
+  const tracker = new AgentSessionTracker(homeDir, normalizeCwd);
+  trackers.set(key, tracker);
+  return tracker;
+}

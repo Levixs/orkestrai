@@ -17,6 +17,7 @@ export class AgentCanvasNode extends Model {
     'z_index',
     'payload_json',
     'floor_id',
+    'archived_at',
   ];
 
   static casts = {
@@ -40,6 +41,7 @@ export class AgentCanvasNode extends Model {
   declare z_index: number;
   declare payload_json: string | null;
   declare floor_id: string | null;
+  declare archived_at: string | null;
   declare created_at: Date;
   declare updated_at: Date;
 }

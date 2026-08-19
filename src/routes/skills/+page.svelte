@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ArrowLeft, Blocks, Download, Plug, Search, Trash2 } from '@lucide/svelte';
+  import { ArrowLeft, Blocks, Download, ExternalLink, Plug, Search, Trash2 } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
@@ -30,6 +30,10 @@
     envs?: McpEnvVar[];
   };
   type McpServer = { name: string; command: string; args: string[]; env: Record<string, string>; url?: string; builtin: boolean };
+
+  function mcpDescription(entry: McpEntry): string {
+    return entry.key === 'figma' ? m['skills.figma_mcp_market_description']() : entry.description;
+  }
 
   let tab = $state<'skills' | 'mcps'>('skills');
   let mcpQuery = $state('');
@@ -339,7 +343,9 @@
               <div class="item-info">
                 <span class="item-name">{server.name}{#if server.builtin} <span class="builtin-tag">{m['skills.builtin_tag']()}</span>{/if}</span>
                 <span class="item-desc">{server.url ?? `${server.command} ${server.args.join(' ')}`}</span>
+                {#if server.name === 'figma'}<span class="item-source">{m['skills.figma_mcp_auth_status']()}</span>{/if}
               </div>
+              {#if server.name === 'figma'}<a class="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]" href="https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/" target="_blank" rel="noreferrer" aria-label={m['skills.figma_mcp_auth_help']()} title={m['skills.figma_mcp_auth_help']()}><ExternalLink size={13} /></a>{/if}
               {#if !server.builtin}
                 <Button variant="ghost" size="sm" onclick={() => removeMcp(server.name)} aria-label={m['skills.remove_label']({ name: server.name })}>
                   <Trash2 size={13} />
@@ -394,7 +400,7 @@
                   <Badge variant="outline">{entry.source === 'curadoria' ? m['skills.badge_curated']() : 'registry'}</Badge>
                   {#if entry.url}<Badge variant="outline">{m['skills.badge_one_click']()}</Badge>{/if}
                 </div>
-                <span class="item-desc">{entry.description}</span>
+                <span class="item-desc">{mcpDescription(entry)}</span>
                 <span class="item-source">{entry.url ?? `${entry.command ?? ''} ${(entry.args ?? []).join(' ')}`.trim()}</span>
               </div>
               {#if isMcpInstalled(entry)}

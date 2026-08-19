@@ -23,7 +23,9 @@ Descarga los instaladores más recientes desde
 
 - **Lienzo de agentes en vivo:** organiza terminales PTY reales, notas, tableros
   de tareas, portales de navegador, árboles de archivos, loops y formas. Las
-  conexiones muestran la colaboración entre agentes mientras ocurre.
+  conexiones muestran la colaboración entre agentes mientras ocurre. Duplica
+  formas estilizadas con Cmd/Ctrl+D o copia y pega arreglos visuales completos
+  conservando su distribución relativa.
 - **Workbench configurable:** mantén abiertas terminales, tableros, notas,
   portales, archivos, flujos y uso en pestañas verticales por defecto u
   horizontales opcionales, y organiza hasta ocho artefactos en vivo en divisiones
@@ -33,6 +35,14 @@ Descarga los instaladores más recientes desde
   pestañas locales, y la esfera de voz sigue el workspace activo.
   El pie mantiene visibles todas las ventanas de cuota informadas por Claude,
   Codex y Kimi sin abrir otro panel.
+- **Cliente de API nativo:** crea y ejecuta solicitudes HTTP junto al equipo, con
+  encabezados, autenticación Bearer/Basic, cuerpo JSON/texto/XML o formulario URL encoded, `{{variables}}`,
+  estado, duración, tamaño y
+  respuesta formateada. Importa carpetas Bruno mediante el parser oficial de
+  Bruno o JSON Postman Collection v2.1 y vuelve a abrir el origen en la aplicación
+  instalada cuando sea necesario. El mismo nodo persiste en Canvas y Workbench;
+  los agentes conectados listan y ejecutan solicitudes guardadas mediante tools
+  MCP tipadas sin exponer secretos de autenticación en el inventario.
 - **Dispositivos móviles integrados:** agrega un nodo persistente de Dispositivo
   móvil desde la barra del Canvas; Workbench lista y abre el mismo nodo y la misma
   sesión. Controla iPhone y iPad Simulators en Macs Apple Silicon o AVDs Android
@@ -64,6 +74,32 @@ Descarga los instaladores más recientes desde
   atención, revisa su captura recortada y contexto visual seguro y registra el
   feedback en una tarea nueva para revisión del líder, una tarea asignada o una
   tarea existente. Los secretos y el estado oculto se excluyen.
+- **Modo Diseño nativo:** crea documentos de interfaz en Canvas y abre el mismo
+  artefacto en Workbench. Dibuja paths vectoriales editables, combina formas,
+  usa máscaras, gradientes, efectos, ajuste, guías, auto layout, grids y
+  constraints responsivas; importa imágenes o SVG reutilizables por selector,
+  pegado o arrastre y exporta SVG, PNG, JPEG, WebP o PDF. Crea tokens con presets,
+  modos, aliases, importación DTCG/CSS, exportación DTCG/CSS/Tailwind y auditoría.
+  Convierte frames en componentes con instancias, propiedades, variantes, slots y
+  overrides; publica bibliotecas versionadas solo para workspaces autorizados y
+  extrae CSS variables, Tailwind y contratos Svelte, React o Vue sin ejecutar
+  código del proyecto. Diseñador y líder editan la misma revisión mediante tools
+  tipadas mientras la UI se actualiza en vivo. Componentes y tokens están en la
+  búsqueda; documentos, assets, miniaturas e historial quedan en
+  `.orkestrai/designs` dentro del workspace.
+- **Interoperabilidad oficial con Figma:** el MCP oficial administrado ofrece
+  contexto de diseño a los agentes compatibles, mientras la pestaña Figma
+  nativa inspecciona enlaces e importa páginas o frames, vectores, assets,
+  estilos, variables, componentes, variantes, instancias e identidades de
+  bibliotecas externas seleccionadas al mismo
+  documento Orkestrai. Los orígenes vinculados comparan hashes remotos y locales
+  antes de una sincronización selectiva, y los mappings de Code Connect forman
+  la relación nodo Figma → capa Orkestrai → código. Un plugin propio incluido en
+  la app y restringido al loopback transfiere selecciones en vivo, SVG editable
+  o JSON estructural, abre un documento Orkestrai con recursos nativos en una
+  nueva página de Figma y envía solo cambios locales vinculados y revisados de
+  vuelta al archivo actual. La credencial
+  REST queda cifrada en la bóveda del sistema operativo.
 - **Decisiones con Council:** abre Consejo desde la barra del Canvas, el workspace
   en Workbench o `Cmd/Ctrl+K` y pide perspectivas independientes y limitadas por
   presupuesto a entre dos y cinco agentes reales sobre una tarea u objetivo,

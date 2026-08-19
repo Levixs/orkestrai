@@ -1,0 +1,6 @@
+{
+  "name": "@orkestrai/figma-design-bridge",
+  "version": "0.12.0",
+  "private": true,
+  "description": "First-party local bridge between Figma selections and Orkestrai native design documents."
+}

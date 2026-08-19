@@ -6,7 +6,7 @@ import { boardColumnService } from '$lib/modules/agent-room/application/services
 import { floorService } from '$lib/modules/agent-room/application/services/FloorService.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { filesystemService } from '$lib/modules/agent-room/application/services/FilesystemService.js';
-import { bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
+import { bridgeDesignApplySchema, bridgeFigmaSelectionSchema, bridgeReassignSchema, bridgeRoleEditSchema, bridgeRoleWriteSchema, bridgeFloorCreateSchema, bridgeFloorLandSchema, bridgeNoteCreateSchema } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { portalService } from '$lib/modules/agent-room/application/services/PortalService.js';
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
@@ -26,6 +26,22 @@ import {
   BridgeActivityRequest,
 } from '$lib/modules/agent-room/interface/http/requests/BridgeRequests.js';
 import { DeviceCommandRequest } from '$lib/modules/agent-room/interface/http/requests/DeviceCommandRequest.js';
+import { ApplyDesignOperationsDto } from '$lib/modules/agent-room/application/dto/DesignDtos.js';
+import { DesignRevisionConflictError, designDocumentService } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
+import { designFigmaService } from '$lib/modules/agent-room/application/services/DesignFigmaService.js';
+import { ApplyDesignFigmaSyncDto, ImportDesignFigmaDto, InspectDesignFigmaDto, PreviewDesignFigmaSyncDto } from '$lib/modules/agent-room/application/dto/DesignFigmaDtos.js';
+import { acknowledgeDesignFigmaPushSchema, applyDesignFigmaSyncSchema, importDesignFigmaSchema, inspectDesignFigmaSchema, previewDesignFigmaSyncSchema } from '$lib/modules/agent-room/contracts/schemas/designFigmaSchemas.js';
+import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
+import { designDeliveryService } from '$lib/modules/agent-room/application/services/DesignDeliveryService.js';
+import { DesignLeaseConflictError } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
+import { auditDesignDocument } from '$lib/modules/agent-room/domain/design-quality.js';
+import { createDesignTemplate, designTemplateIds } from '$lib/modules/agent-room/domain/design-templates.js';
+import { uuidv7 } from '@beeblock/svelar/support';
+import { isDesignExplorationPayload } from '$lib/modules/agent-room/domain/design-exploration.js';
+import { apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
+import { ExecuteSavedApiClientRequest } from '$lib/modules/agent-room/interface/http/requests/ApiClientRequests.js';
+import { ExecuteSavedApiClientRequestDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
+import { ExecuteSavedApiClientRequestAction } from '$lib/modules/agent-room/application/actions/ExecuteSavedApiClientRequestAction.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -42,7 +58,10 @@ export class BridgeController extends Controller {
       const portals = agentNodeId
         ? await bridgeService.portalsForAgent(workspace.id, agentNodeId).catch(() => [] as Array<{ id: string; title: string; url: string }>)
         : [];
-      return this.json({ data: { workspace: { id: workspace.id, name: workspace.name }, agents, notes, portals } });
+      const designs = agentNodeId
+        ? await bridgeService.designsForAgent(workspace.id, agentNodeId).catch(() => [] as Array<{ id: string; title: string }>)
+        : [];
+      return this.json({ data: { workspace: { id: workspace.id, name: workspace.name }, agents, notes, portals, designs } });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao listar agentes.', 401);
     }
@@ -56,6 +75,40 @@ export class BridgeController extends Controller {
       return this.json({ data: buildUsageRoutingReport(await usageService.getAll(false), policy) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao consultar uso dos providers.', 401);
+    }
+  }
+
+  async listNotes(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const agentNodeId = String(event.url.searchParams.get('agentNodeId') ?? '').trim();
+      return this.json({ data: await bridgeService.listNotes(workspace.id, agentNodeId || null) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar notas.', 401);
+    }
+  }
+
+  async listApiClients(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const agentNodeId = String(event.url.searchParams.get('agentNodeId') ?? '').trim();
+      return this.json({ data: await apiClientService.list(workspace.id, agentNodeId || null) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar clientes de API.', 401);
+    }
+  }
+
+  async executeApiClientRequest(event: any) {
+    try {
+      const input = await ExecuteSavedApiClientRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await new ExecuteSavedApiClientRequestAction().execute({
+        workspaceId: workspace.id,
+        nodeId: event.params.nodeId,
+        dto: ExecuteSavedApiClientRequestDto.from(input),
+      }) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao executar request salvo.');
     }
   }
 
@@ -78,6 +131,271 @@ export class BridgeController extends Controller {
       }) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao controlar dispositivo.');
+    }
+  }
+
+  async listDesigns(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const designs = (await workspaceRepository.listNodes(workspace.id)).filter((node) => node.type === 'design');
+      const data = await Promise.all(designs.map(async (node) => {
+        const document = await designDocumentService.get(workspace.id, node.id);
+        const payload = node.payload as Record<string, unknown>;
+        const work = (payload.explorationWork ?? {}) as Record<string, unknown>;
+        const review = (payload.visualReview ?? {}) as Record<string, unknown>;
+        const lastProgressAt = typeof work.lastProgressAt === 'string' ? work.lastProgressAt : document.updatedAt;
+        const stalled = work.phase === 'active'
+          && Date.now() - Date.parse(lastProgressAt) >= 5 * 60 * 1_000;
+        const reviewStatus = review.status === 'approved' && review.revision === document.revision
+          ? 'approved'
+          : review.status === 'changes_requested' && review.revision === document.revision
+            ? 'changes_requested'
+            : document.revision > 0
+              ? 'pending'
+              : 'empty';
+        return {
+          nodeId: node.id,
+          title: node.title || document.name,
+          revision: document.revision,
+          pages: document.pages.length,
+          elements: document.elements.length,
+          updatedAt: document.updatedAt,
+          workflowKind: isDesignExplorationPayload(payload) ? 'design-exploration' : payload.workflowKind ?? null,
+          direction: payload.direction ?? null,
+          progress: stalled ? 'stalled' : work.phase ?? null,
+          lastProgressAt,
+          reviewStatus,
+          reviewRevision: review.revision ?? null,
+          reviewNote: review.note ?? '',
+        };
+      }));
+      return this.json({ data });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao listar documentos de design.', 401);
+    }
+  }
+
+  async readDesign(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await designDocumentService.get(workspace.id, event.params.nodeId) });
+    } catch (error) {
+      return this.errorResponse(error, 'Documento de design nao encontrado.', 404);
+    }
+  }
+
+  async auditDesign(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const document = await designDocumentService.get(workspace.id, event.params.nodeId);
+      return this.json({ data: auditDesignDocument(document) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao auditar documento de design.', 404);
+    }
+  }
+
+  async applyDesignTemplate(event: any) {
+    try {
+      const input = z.object({
+        templateId: z.enum(designTemplateIds as [typeof designTemplateIds[number], ...typeof designTemplateIds[number][]]),
+        baseRevision: z.number().int().min(0),
+        token: z.string().optional(),
+        from: z.string().trim().max(120).optional(),
+        taskId: z.string().uuid().nullable().optional(),
+      }).parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
+      const current = await designDocumentService.get(workspace.id, event.params.nodeId);
+      if (current.revision !== input.baseRevision) throw new DesignRevisionConflictError(current);
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        createDesignTemplate(input.templateId, current, uuidv7),
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        `Apply ${input.templateId} design template`,
+        input.from ?? null,
+      ));
+      return this.json({ data: document });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Falha ao aplicar template de design.');
+    }
+  }
+
+  async applyDesign(event: any) {
+    try {
+      const input = bridgeDesignApplySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        input.operations,
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        input.summary,
+        input.from ?? null,
+      ));
+      return this.json({ data: document });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) {
+        return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      }
+      if (error instanceof DesignLeaseConflictError) return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
+      return this.errorResponse(error, 'Falha ao alterar documento de design.');
+    }
+  }
+
+  async previewDesignCode(event: any) {
+    try {
+      const input = previewDesignDeliverySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await designDeliveryService.preview(workspace.id, event.params.nodeId, input) });
+    } catch (error) {
+      return this.errorResponse(error, 'Failed to preview generated design code.');
+    }
+  }
+
+  async applyDesignCode(event: any) {
+    try {
+      const input = bridgeApplyDesignDeliverySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const current = await designDocumentService.get(workspace.id, event.params.nodeId);
+      if (current.revision !== input.baseRevision) throw new DesignRevisionConflictError(current);
+      const applied = await designDeliveryService.apply(workspace.id, event.params.nodeId, input);
+      const existing = current.codeArtifacts.find((artifact) => artifact.path === applied.artifact.path);
+      const { id: _generatedId, ...artifactChanges } = applied.artifact;
+      const operation = existing
+        ? { kind: 'update-code-artifact' as const, artifactId: existing.id, changes: artifactChanges }
+        : { kind: 'add-code-artifact' as const, artifact: applied.artifact };
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        [operation],
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        input.summary ?? `Generate ${input.framework} code at ${applied.path}`,
+        input.from ?? null,
+      ));
+      return this.json({ data: { ...applied, revision: document.revision } });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      if (error instanceof DesignLeaseConflictError) return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
+      return this.errorResponse(error, 'Failed to write generated design code.');
+    }
+  }
+
+  async importDesignCode(event: any) {
+    try {
+      const input = bridgeImportDesignMarkupSchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const imported = await designDeliveryService.import(workspace.id, event.params.nodeId, input);
+      const document = await designDocumentService.apply(new ApplyDesignOperationsDto(
+        workspace.id,
+        event.params.nodeId,
+        input.baseRevision,
+        imported.operations,
+        { kind: 'agent', id: input.from ?? null, name: input.from ?? null, taskId: input.taskId ?? null },
+        input.summary ?? `Import ${input.format} as ${input.name}`,
+        input.from ?? null,
+      ));
+      return this.json({ data: { ...imported, revision: document.revision } });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      if (error instanceof DesignLeaseConflictError) return this.json({ error: 'design_lease_conflict', data: error.lease }, 423);
+      return this.errorResponse(error, 'Failed to import code into the design.');
+    }
+  }
+
+  async importFigmaSelection(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const contentLength = Number(event.request.headers.get('content-length') ?? 0);
+      if (contentLength > 60 * 1024 * 1024) throw new Error('Figma plugin payload exceeds the 60 MB limit.');
+      const input = bridgeFigmaSelectionSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.importPluginSelection({
+        workspaceId: workspace.id,
+        nodeId: event.params.nodeId,
+        ...input,
+      }) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to import the Figma plugin selection.');
+    }
+  }
+
+  async inspectFigma(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = inspectDesignFigmaSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.inspect(InspectDesignFigmaDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      return this.errorResponse(error, 'Failed to inspect the Figma file.');
+    }
+  }
+
+  async importFigma(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = importDesignFigmaSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.import(ImportDesignFigmaDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to import the Figma selection.');
+    }
+  }
+
+  async previewFigmaSync(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = previewDesignFigmaSyncSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.preview(PreviewDesignFigmaSyncDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      return this.errorResponse(error, 'Failed to preview Figma synchronization.');
+    }
+  }
+
+  async applyFigmaSync(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = applyDesignFigmaSyncSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.applySync(ApplyDesignFigmaSyncDto.from(workspace.id, event.params.nodeId, input)) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to synchronize the Figma source.');
+    }
+  }
+
+  async acknowledgeFigmaPush(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const input = acknowledgeDesignFigmaPushSchema.parse(await event.request.json());
+      return this.json({ data: await designFigmaService.acknowledgePush(
+        workspace.id,
+        event.params.nodeId,
+        input.linkId,
+        input.baseRevision,
+        input.nodeIds,
+      ) });
+    } catch (error) {
+      if (error instanceof DesignRevisionConflictError) return this.json({ error: 'design_revision_conflict', data: error.current }, 409);
+      return this.errorResponse(error, 'Failed to acknowledge Figma plugin updates.');
+    }
+  }
+
+  async readFigmaAsset(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const asset = await designDocumentService.readAsset(workspace.id, event.params.nodeId, event.params.assetId);
+      return new Response(Uint8Array.from(asset.bytes).buffer, {
+        headers: {
+          'Content-Type': asset.mimeType,
+          'Content-Length': String(asset.bytes.byteLength),
+          'Cache-Control': 'private, max-age=300',
+          'Content-Disposition': `inline; filename="${asset.name.replace(/["\\]/g, '_')}"`,
+        },
+      });
+    } catch (error) {
+      return this.errorResponse(error, 'Design asset not found.', 404);
     }
   }
 
@@ -168,10 +486,13 @@ export class BridgeController extends Controller {
         from: input.from,
         title: input.title,
         provider: input.provider,
+        model: input.model,
+        effort: input.effort,
         role: input.role,
         x: input.x,
         y: input.y,
         replace: input.replace,
+        floorId: input.floorId,
       });
       return this.json({ data: result }, 201);
     } catch (error) {

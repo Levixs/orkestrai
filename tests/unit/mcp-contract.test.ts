@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { PassThrough } from 'node:stream';
-import { runMcpServer } from '../../packages/orkestrai-cli/src/mcp.js';
+import { MCP_TOOLS, runMcpServer } from '../../packages/orkestrai-cli/src/mcp.js';
 import {
   bridgeAskSchema,
+  bridgeDesignApplySchema,
   bridgeNoteCreateSchema,
   bridgeNoteEditSchema,
   bridgeNoteWriteSchema,
@@ -13,6 +14,7 @@ import {
   bridgeFloorLandSchema,
 } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
+import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
 import { z } from 'zod';
 
 /**
@@ -36,6 +38,11 @@ const portalCreateSchema = z.object({
   title: z.string().trim().nullish(),
   connect: z.string().trim().nullish(),
 });
+const apiClientExecuteSchema = z.object({
+  requestId: z.string().trim().min(1).max(200),
+  variables: z.record(z.string(), z.string().max(100_000)).default({}),
+  from: z.string().trim().min(1).max(200).nullish(),
+}).strict();
 
 type Expectation = { method: string; path: RegExp; schema?: z.ZodTypeAny };
 
@@ -43,10 +50,29 @@ const EXPECTED: Record<string, Expectation> = {
   list: { method: 'GET', path: /\/bridge\/agents\?/ },
   usage: { method: 'GET', path: /\/bridge\/usage$/ },
   ask: { method: 'POST', path: /\/bridge\/ask$/, schema: bridgeAskSchema },
+  note_list: { method: 'GET', path: /\/bridge\/notes\?agentNodeId=/ },
   note_read: { method: 'GET', path: /\/bridge\/notes\/n1$/ },
   note_write: { method: 'PUT', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteWriteSchema },
   note_edit: { method: 'PATCH', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteEditSchema },
   note_create: { method: 'POST', path: /\/bridge\/notes$/, schema: bridgeNoteCreateSchema },
+  api_client_list: { method: 'GET', path: /\/bridge\/api-clients\?agentNodeId=/ },
+  api_client_execute: { method: 'POST', path: /\/bridge\/api-clients\/n1\/execute$/, schema: apiClientExecuteSchema },
+  design_list: { method: 'GET', path: /\/bridge\/designs$/ },
+  design_read: { method: 'GET', path: /\/bridge\/designs\/n1$/ },
+  design_audit: { method: 'GET', path: /\/bridge\/designs\/n1\/quality$/ },
+  design_apply_template: { method: 'POST', path: /\/bridge\/designs\/n1\/quality$/ },
+  design_apply_operations: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_create_elements: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_apply_blueprint: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_comment: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_propose: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_decide_proposal: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_import_code: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/import$/, schema: bridgeImportDesignMarkupSchema },
+  design_generate_code_preview: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/preview$/, schema: previewDesignDeliverySchema },
+  design_generate_code_apply: { method: 'POST', path: /\/bridge\/designs\/n1\/delivery\/apply$/, schema: bridgeApplyDesignDeliverySchema },
+  design_create_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_update_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
+  design_delete_element: { method: 'PATCH', path: /\/bridge\/designs\/n1$/, schema: bridgeDesignApplySchema },
   task_list: { method: 'GET', path: /\/bridge\/tasks$/ },
   task_add: { method: 'POST', path: /\/bridge\/tasks$/, schema: bridgeBoardTaskSchema },
   task_done: { method: 'PATCH', path: /\/bridge\/tasks\/t1$/, schema: bridgeBoardTaskUpdateSchema },
@@ -71,6 +97,143 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   note_write: { nodeId: 'n1', content: 'x' },
   note_edit: { nodeId: 'n1', oldText: 'a', newText: 'b' },
   note_create: { title: 'T', content: 'c' },
+  api_client_execute: { nodeId: 'n1', requestId: 'r1', variables: { baseUrl: 'https://example.test' } },
+  design_read: { nodeId: 'n1' },
+  design_audit: { nodeId: 'n1' },
+  design_apply_template: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    templateId: 'product',
+  },
+  design_apply_operations: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    summary: 'Create color collection',
+    operations: [{
+      kind: 'add-variable-collection',
+      collection: {
+        id: '00000000-0000-7000-8000-000000000010',
+        name: 'Brand',
+        modes: [{ id: '00000000-0000-7000-8000-000000000011', name: 'Light' }],
+        defaultModeId: '00000000-0000-7000-8000-000000000011',
+        order: 0,
+      },
+    }],
+  },
+  design_create_elements: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    pageId: '00000000-0000-7000-8000-000000000001',
+    summary: 'Create complete screen',
+    elements: [{
+      id: '00000000-0000-7000-8000-000000000002',
+      type: 'frame',
+      name: 'Desktop',
+      x: 80,
+      y: 80,
+      width: 1440,
+      height: 1024,
+    }],
+  },
+  design_apply_blueprint: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    pageId: '00000000-0000-7000-8000-000000000001',
+    summary: 'Create typed design foundation',
+    elements: [{
+      id: '00000000-0000-7000-8000-000000000002',
+      type: 'frame',
+      name: 'Desktop',
+      x: 80,
+      y: 80,
+      width: 1440,
+      height: 1024,
+    }],
+    variableCollections: [{
+      id: '00000000-0000-7000-8000-000000000010',
+      name: 'Brand',
+      modes: [{ id: '00000000-0000-7000-8000-000000000011', name: 'Light' }],
+    }],
+    variables: [{
+      id: '00000000-0000-7000-8000-000000000012',
+      collectionId: '00000000-0000-7000-8000-000000000010',
+      name: 'Surface/default',
+      type: 'color',
+      values: { '00000000-0000-7000-8000-000000000011': { kind: 'color', value: '#ffffff' } },
+    }],
+    bindings: [{ elementId: '00000000-0000-7000-8000-000000000002', property: 'fill', variableId: '00000000-0000-7000-8000-000000000012' }],
+    components: [{
+      id: '00000000-0000-7000-8000-000000000020',
+      name: 'Desktop shell',
+      rootElementId: '00000000-0000-7000-8000-000000000002',
+    }],
+    prototypeFlows: [{
+      id: '00000000-0000-7000-8000-000000000030',
+      name: 'Primary flow',
+      startFrameId: '00000000-0000-7000-8000-000000000002',
+    }],
+    presentation: { defaultFlowId: '00000000-0000-7000-8000-000000000030' },
+  },
+  design_comment: {
+    nodeId: 'n1', baseRevision: 1,
+    pageId: '00000000-0000-7000-8000-000000000001',
+    elementId: '00000000-0000-7000-8000-000000000002',
+    body: 'Review this layer.',
+  },
+  design_propose: {
+    nodeId: 'n1', baseRevision: 2, title: 'Increase emphasis', description: 'Refine hierarchy.',
+    operations: [{ kind: 'update', elementId: '00000000-0000-7000-8000-000000000002', changes: { opacity: 0.9 } }],
+  },
+  design_decide_proposal: {
+    nodeId: 'n1', baseRevision: 3,
+    proposalId: '00000000-0000-7000-8000-000000000003', status: 'approved', note: 'Reviewed.',
+  },
+  design_import_code: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    format: 'html',
+    name: 'Account card',
+    markup: '<article class="p-4"><h2>Account</h2></article>',
+  },
+  design_generate_code_preview: {
+    nodeId: 'n1',
+    framework: 'svelar',
+    elementIds: ['00000000-0000-7000-8000-000000000001'],
+    outputPath: 'src/lib/AccountCard.svelte',
+    componentName: 'AccountCard',
+  },
+  design_generate_code_apply: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    framework: 'svelar',
+    elementIds: ['00000000-0000-7000-8000-000000000001'],
+    outputPath: 'src/lib/AccountCard.svelte',
+    componentName: 'AccountCard',
+    expectedExistingHash: null,
+  },
+  design_create_element: {
+    nodeId: 'n1',
+    baseRevision: 0,
+    pageId: '00000000-0000-7000-8000-000000000001',
+    type: 'frame',
+    name: 'Mobile frame',
+    x: 24,
+    y: 24,
+    width: 390,
+    height: 844,
+  },
+  design_update_element: {
+    nodeId: 'n1',
+    baseRevision: 1,
+    elementId: '00000000-0000-7000-8000-000000000002',
+    changes: { x: 48 },
+    taskId: '00000000-0000-7000-8000-000000000003',
+  },
+  design_delete_element: {
+    nodeId: 'n1',
+    baseRevision: 2,
+    elementId: '00000000-0000-7000-8000-000000000002',
+  },
   task_add: { title: 'tarefa' },
   task_done: { taskId: 't1' },
   portal_create: { url: 'localhost:3000' },
@@ -82,11 +245,40 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   floor_preview: { floorId: 'f1' },
   floor_land: { floorId: 'f1' },
   notify: { message: 'oi', kind: 'project', title: 'Projeto Atlas' },
-  recruit: { title: 'Novo' },
+  recruit: { title: 'Novo', floorId: 'f1' },
   dismiss: { agent: 'Velho' },
 };
 
 describe('contrato MCP x bridge (todas as tools)', () => {
+  it('publica referencia local e schemas de lote sem tocar a bridge', async () => {
+    const referenceTool = MCP_TOOLS.find((tool) => tool.name === 'design_reference') as any;
+    const elementBatchTool = MCP_TOOLS.find((tool) => tool.name === 'design_create_elements') as any;
+    const blueprintTool = MCP_TOOLS.find((tool) => tool.name === 'design_apply_blueprint') as any;
+    expect(referenceTool.inputSchema.properties.topic.enum).toContain('elements');
+    expect(referenceTool.inputSchema.properties.topic.enum).toContain('concept');
+    expect(elementBatchTool.inputSchema.properties.elements.items.required).toEqual(['type', 'name', 'x', 'y', 'width', 'height']);
+    expect(blueprintTool.inputSchema.properties.variables.items.required).toContain('values');
+
+    const input = new PassThrough();
+    const chunks: string[] = [];
+    let bridgeCalled = false;
+    const done = runMcpServer({
+      input,
+      write: (chunk: string) => chunks.push(chunk),
+      bridge: async () => {
+        bridgeCalled = true;
+        return {};
+      },
+      findFreePort: async () => 45678,
+    });
+    send(input, { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'design_reference', arguments: { topic: 'elements' } } });
+    const response = await waitFor(chunks, 1);
+    input.end();
+    await done;
+    expect(bridgeCalled).toBe(false);
+    expect(response.result?.content?.[0]?.text).toContain('design_create_elements');
+  });
+
   it('cada tool chama a rota certa com corpo que passa no schema', async () => {
     for (const [tool, expected] of Object.entries(EXPECTED)) {
       const input = new PassThrough();

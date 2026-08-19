@@ -1,15 +1,15 @@
 import type { CollaborationRole, CollaborationScope } from '../types.js';
 
 const ROLE_SCOPES: Record<CollaborationRole, readonly CollaborationScope[]> = {
-  viewer: ['workspace.view', 'activity.view', 'tasks.view', 'approvals.view'],
-  collaborator: ['workspace.view', 'activity.view', 'tasks.view', 'tasks.write', 'approvals.view'],
+  viewer: ['workspace.view', 'activity.view', 'tasks.view', 'approvals.view', 'design.view'],
+  collaborator: ['workspace.view', 'activity.view', 'tasks.view', 'tasks.write', 'approvals.view', 'design.view', 'design.comment', 'design.propose'],
   operator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
-    'approvals.view', 'approvals.decide', 'leader.message', 'voice.transcribe', 'agents.message',
+    'approvals.view', 'approvals.decide', 'design.view', 'design.comment', 'design.propose', 'design.decide', 'leader.message', 'voice.transcribe', 'agents.message',
   ],
   administrator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
-    'approvals.view', 'approvals.decide', 'leader.message', 'voice.transcribe', 'agents.message',
+    'approvals.view', 'approvals.decide', 'design.view', 'design.comment', 'design.propose', 'design.decide', 'design.edit', 'leader.message', 'voice.transcribe', 'agents.message',
     'agents.invoke', 'peers.manage',
   ],
 };
@@ -18,6 +18,12 @@ const COMMAND_SCOPE = {
   'task.create': 'tasks.write',
   'task.update': 'tasks.write',
   'review.decide': 'approvals.decide',
+  'design.comment.create': 'design.comment',
+  'design.comment.reply': 'design.comment',
+  'design.comment.resolve': 'design.comment',
+  'design.proposal.create': 'design.propose',
+  'design.proposal.decide': 'design.decide',
+  'design.element.update': 'design.edit',
   'leader.message': 'leader.message',
   'agent.message': 'agents.message',
   'agent.invoke': 'agents.invoke',
@@ -36,8 +42,20 @@ export class CollaborationPolicy {
     return COMMAND_SCOPE[type];
   }
 
-  scopesForApproval(role: CollaborationRole, terminalAccess: boolean): CollaborationScope[] {
-    const scopes = this.scopesForRole(role);
+  scopesForApproval(
+    role: CollaborationRole,
+    terminalAccess: boolean,
+    designAccess: 'inherited' | 'none' | 'view' | 'comment' | 'propose' | 'edit' = 'inherited',
+  ): CollaborationScope[] {
+    let scopes = this.scopesForRole(role);
+    if (designAccess !== 'inherited') {
+      const designScopes = new Set<CollaborationScope>(['design.view', 'design.comment', 'design.propose', 'design.decide', 'design.edit']);
+      scopes = scopes.filter((scope) => !designScopes.has(scope));
+      if (designAccess !== 'none') scopes.push('design.view');
+      if (designAccess === 'comment' || designAccess === 'propose' || designAccess === 'edit') scopes.push('design.comment');
+      if (designAccess === 'propose' || designAccess === 'edit') scopes.push('design.propose');
+      if (designAccess === 'edit') scopes.push('design.decide', 'design.edit');
+    }
     if (terminalAccess && role === 'administrator') scopes.push('terminal.control');
     return scopes;
   }

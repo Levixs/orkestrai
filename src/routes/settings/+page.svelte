@@ -25,6 +25,8 @@
   } from '$lib/modules/agent-room/domain/voice.js';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import AppThemeSettings from '$lib/components/agent-room/AppThemeSettings.svelte';
+  import AudioDeviceSettings from '$lib/components/agent-room/AudioDeviceSettings.svelte';
+  import { playAudioBlob } from '$lib/components/agent-room/audio-devices.js';
   import { applyAppTheme } from '$lib/components/agent-room/app-themes.js';
 
   let settings = $state<Record<string, string>>({});
@@ -132,17 +134,11 @@
         }),
       });
       if (!response.ok) throw new Error('preview_failed');
-      const url = URL.createObjectURL(await response.blob());
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const audio = new Audio(url);
-          audio.onended = () => resolve();
-          audio.onerror = () => reject(new Error('play_failed'));
-          audio.play().catch(reject);
-        });
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      const playback = await playAudioBlob(await response.blob(), settings.audioOutputDeviceId);
+      if (playback.fallback) {
+        settings = { ...settings, audioOutputDeviceId: 'default' };
+        toast.warning(m['settings.audio_device_removed']());
+      } else if (playback.unsupported) toast.warning(m['settings.audio_output_unsupported']());
     } catch {
       toast.error(m['settings.tts_preview_failed']());
     } finally {
@@ -548,6 +544,8 @@
         <p>{m['settings.section_voice_desc']()}</p>
       </div>
     </header>
+
+    <AudioDeviceSettings {settings} onChange={(next) => (settings = next)} />
 
     <div class="grid-fields">
       <div class="field">

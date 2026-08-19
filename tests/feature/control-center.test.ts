@@ -4,6 +4,8 @@ import { controlCenterService } from '$lib/modules/agent-room/application/servic
 import { controlCenterRepository } from '$lib/modules/agent-room/infrastructure/repositories/ControlCenterRepository.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
+import { AgentFloor } from '$lib/modules/agent-room/domain/models/AgentFloor.js';
+import { uuidv7 } from '@beeblock/svelar/support';
 
 describe('ControlCenterService', () => {
   useSvelarTest({ refreshDatabase: true });
@@ -103,6 +105,34 @@ describe('ControlCenterService', () => {
 
     expect(ptySessionManager.list()).toHaveLength(sessionsBefore);
     expect(snapshot.agents[0].state).toBe('disconnected');
+  });
+
+  it('mostra o andar de agentes ativos e ignora registros de andares encerrados', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'floors', workingDir: '/tmp' });
+    const floor = await AgentFloor.create({
+      id: uuidv7(),
+      workspace_id: workspace.id,
+      name: 'Feature checkout',
+      branch: 'orkestrai/feature-checkout',
+      path: '/tmp/feature-checkout',
+      status: 'active',
+    });
+    const agent = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      floorId: String(floor.getAttribute('id')),
+      type: 'terminal',
+      title: 'Frontend',
+      payload: { provider: 'codex' },
+    });
+
+    expect((await controlCenterService.snapshot(workspace.id)).agents[0]).toMatchObject({
+      nodeId: agent.id,
+      floorId: floor.getAttribute('id'),
+      floorName: 'Feature checkout',
+    });
+
+    await AgentFloor.query().where('id', floor.getAttribute('id')).update({ status: 'landed' });
+    expect((await controlCenterService.snapshot(workspace.id)).agents).toEqual([]);
   });
 
   it('remove a telemetria antes de apagar o workspace', async () => {

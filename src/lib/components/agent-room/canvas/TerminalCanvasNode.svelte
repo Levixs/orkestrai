@@ -6,7 +6,7 @@
   import NodeShell from './NodeShell.svelte';
   import TerminalNode from '../TerminalNode.svelte';
   import VoiceConfirmDialog from '../VoiceConfirmDialog.svelte';
-  import { getAppSettings } from '../app-settings.svelte.js';
+  import { appSettingsStore, getAppSettings } from '../app-settings.svelte.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { voiceModelsReadyForUse } from '../voice-model-status.js';
   import { speakText } from '../voice-speech.js';
@@ -74,6 +74,17 @@
   let runtimeProviders = $state<AgentProviderInfo[]>([]);
   let providerRequest = 0;
   const isWindows = typeof navigator !== 'undefined' && navigator.platform.startsWith('Win');
+  const isPureNativeShell = $derived(!data.payload.provider && data.executionRuntime.kind === 'native');
+  const launchWorkingDir = $derived(
+    isPureNativeShell && data.payload.currentWorkingDir
+      ? data.payload.currentWorkingDir
+      : data.workingDir
+  );
+
+  function persistWorkingDirectory(cwd: string) {
+    if (!isPureNativeShell || !cwd || cwd === data.payload.currentWorkingDir) return;
+    data.onPayloadChange?.(id, { currentWorkingDir: cwd });
+  }
 
   $effect(() => {
     const runtimeKey = data.executionRuntime.kind === 'wsl'
@@ -105,7 +116,8 @@
         respawnAgentSessionId = result.data?.agentSessionId ?? null;
         if (respawnAgentSessionId) data.onAgentSessionFound?.(id, respawnAgentSessionId);
       } catch {
-        // sem id: cai no resume generico do provider
+        // Sem um id confirmado, WSL inicia limpo em vez de adivinhar a
+        // conversa mais recente de outra distribuicao ou terminal.
       }
     }
     forceRespawn = true;
@@ -360,7 +372,7 @@
   function handleAgentReply(payload: { to: string; from: string | null; text: string }) {
     if (payload.to !== id || !voiceOn || !payload.text.trim()) return;
     voiceError = '';
-    speakText(payload.text).catch((error) => {
+    speakText(payload.text, appSettingsStore.values.audioOutputDeviceId).catch((error) => {
       voiceError = error instanceof Error ? error.message : m['term.voice_error']();
       setTimeout(() => (voiceError = ''), 6_000);
     });
@@ -381,13 +393,13 @@
       return {
         command: data.payload.command ?? '',
         args: [...(data.payload.args ?? []), ...exactArgs],
-        cwd: data.workingDir,
+        cwd: launchWorkingDir,
         env: agentEnv,
         runtime: data.executionRuntime,
         workspaceRoot: data.workspaceRoot,
       };
     }
-    const genericArgs = data.resumeArgsFor?.() ?? null;
+    const genericArgs = data.executionRuntime.kind === 'wsl' ? null : (data.resumeArgsFor?.() ?? null);
     return {
       command: data.payload.command ?? '',
       args:
@@ -397,7 +409,7 @@
       freshSessionArgs: !exactId && (!genericArgs || genericArgs.length === 0)
         ? (data.freshSessionArgsFor?.() ?? undefined)
         : undefined,
-      cwd: data.workingDir,
+      cwd: launchWorkingDir,
       env: agentEnv,
       runtime: data.executionRuntime,
       workspaceRoot: data.workspaceRoot,
@@ -417,7 +429,7 @@
       command: payload.command ?? '',
       args: [...(payload.args ?? []), ...(payload.initialRoleArgs ?? [])],
       freshSessionArgs: data.freshSessionArgsFor?.() ?? undefined,
-      cwd: data.workingDir,
+      cwd: launchWorkingDir,
       env: agentEnv,
       runtime: data.executionRuntime,
       workspaceRoot: data.workspaceRoot,
@@ -600,6 +612,7 @@
         sessionStorage={data.sessionStorageFor?.() ?? undefined}
         onRespawn={resolveRespawn}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
+        onWorkingDirectoryChange={persistWorkingDirectory}
         onTalking={data.onTalking}
         onAgentReply={handleAgentReply}
         {voiceOn}
@@ -618,6 +631,7 @@
         provider={data.payload.provider}
         sessionStorage={data.sessionStorageFor?.() ?? undefined}
         onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
+        onWorkingDirectoryChange={persistWorkingDirectory}
         onTalking={data.onTalking}
         onAgentReply={handleAgentReply}
         {voiceOn}

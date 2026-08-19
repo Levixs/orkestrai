@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildWslLaunch,
+  guestWorkingDirectory,
   inferWslRuntimeFromPath,
   parseWslDistributionList,
   wslHostPath,
@@ -124,5 +125,13 @@ describe('WSL workspace runtime', () => {
     });
 
     expect(launch.args.at(-1)).toBe('/home/raoni/project/.orkestrai/roles/qa/AGENTS.md');
+  });
+
+  it('maps a floor path to the same relative directory inside WSL', () => {
+    expect(guestWorkingDirectory(
+      { kind: 'wsl', distribution: 'Ubuntu-24.04', linuxWorkingDir: '/home/raoni/project' },
+      '\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\project\\.orkestrai\\floors\\qa',
+      '\\\\wsl.localhost\\Ubuntu-24.04\\home\\raoni\\project',
+    )).toBe('/home/raoni/project/.orkestrai/floors/qa');
   });
 });

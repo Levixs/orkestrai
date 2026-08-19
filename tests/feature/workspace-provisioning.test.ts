@@ -81,6 +81,13 @@ describe('WorkspaceService — provisionamento da ponte', () => {
       const config = JSON.parse(readFileSync(join(dir, path), 'utf8'));
       expect(config.mcpServers.orkestrai.command).toBe(process.execPath);
       expect(config.mcpServers.orkestrai.args.at(-1)).toBe('mcp');
+      if (path === '.mcp.json') {
+        expect(config.mcpServers.figma).toEqual({ type: 'http', url: 'https://mcp.figma.com/mcp' });
+      } else if (path === '.cursor/mcp.json') {
+        expect(config.mcpServers.figma).toEqual({ url: 'https://mcp.figma.com/mcp' });
+      } else {
+        expect(config.mcpServers.figma).toBeUndefined();
+      }
     }
   });
 
@@ -110,6 +117,7 @@ describe('WorkspaceService — provisionamento da ponte', () => {
     const config = JSON.parse(readFileSync(join(dir, '.cursor', 'mcp.json'), 'utf8'));
     expect(config.mcpServers.custom).toEqual({ command: 'custom-server', args: ['serve'] });
     expect(config.mcpServers.orkestrai.command).toBe(process.execPath);
+    expect(config.mcpServers.figma.url).toBe('https://mcp.figma.com/mcp');
   });
 
   it('repara skill e token ao abrir workspace antigo (sem provisionamento)', async () => {
