@@ -458,6 +458,7 @@ export const DOCS_EN: DocsCatalog = {
       items: [
         'Every Linux release now publishes an RPM alongside the existing AppImage.',
         'The package includes the public maintainer metadata required by native Linux installers.',
+        'RPM files use the same stable Orkestrai product naming as the other installers.',
         'The release pipeline verifies the RPM and its latest-linux.yml updater entry before publishing any assets.',
         'Installed RPM builds use the package-aware Linux update path.',
       ],

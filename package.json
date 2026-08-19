@@ -253,6 +253,7 @@
       "icon": "electron/resources/icons"
     },
     "rpm": {
+      "artifactName": "${productName}-${version}.${arch}.${ext}",
       "depends": [
         "gtk3",
         "libnotify",

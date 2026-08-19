@@ -79,6 +79,7 @@ describe('release artifact validation', () => {
   it('declares the maintainer metadata required by native Linux packages', () => {
     const packageJson = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
     expect(packageJson.build?.linux?.maintainer).toMatch(/^[^<>]+ <[^<>\s]+@[^<>\s]+>$/);
+    expect(packageJson.build?.rpm?.artifactName).toBe('${productName}-${version}.${arch}.${ext}');
   });
 
   it('accepts complete cross-platform artifacts with valid manifests', () => {
