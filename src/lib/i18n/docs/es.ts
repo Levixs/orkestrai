@@ -484,7 +484,6 @@ export const DOCS_ES: DocsCatalog = {
     {
       date: '15 ago 2026 · 0.12.0',
       items: [
-        'Añadido empaquetado RPM para Linux (Fedora/RHEL/CentOS). El pipeline de release ahora genera y publica .rpm junto al AppImage existente, y los scripts de validación y auditoría verifican el nuevo artefacto.',
         'Orkestrai 0.12.0 permite combinar Windows nativo y múltiples distribuciones WSL en un mismo equipo. El workspace define el runtime predeterminado, cada terminal puede heredarlo o seleccionar su propio entorno, y detección/modelos del provider, PTY, reanudación, Council, reclutamiento y puente siguen el runtime efectivo. El cambio reinicia solo la terminal afectada y valida distribución, ruta y CLI sin fallback silencioso.',
         'El servidor empaquetado ahora incluye los módulos necesarios del runtime WSL, lo que permite crear, restaurar y ejecutar workspaces WSL también en la aplicación instalada.',
         'Al crear o editar un workspace WSL, Orkestrai deriva y bloquea automáticamente la carpeta visible desde Windows a partir de la ruta Linux, sin exigir una segunda ruta equivalente ni rechazar la configuración por error.',
@@ -727,7 +726,7 @@ export const DOCS_ES: DocsCatalog = {
         'La release solo se hace pública después de validar instaladores, blockmaps, manifests latest-*.yml, tamaños y SHA-512; macOS exige ZIPs de update para ambas arquitecturas y el instalador de Windows usa exactamente el nombre referenciado por latest.yml.',
         '“Verificar ahora” devuelve el estado real y ya no queda trabado en “Verificando”; los eventos del inicio tampoco se pierden si la pantalla monta después.',
         'Un fallo temporal al consultar GitHub ya no abre el diálogo manual. El fallback aparece solo si una actualización encontrada falla al descargar o instalar.',
-        'Windows NSIS, Linux AppImage y Linux RPM actualizan sin firma; en macOS sin certificado Apple, la app mantiene la descarga manual segura.',
+        'Windows NSIS y Linux AppImage actualizan sin firma; en macOS sin certificado Apple, la app mantiene la descarga manual segura.',
       ],
     },
     {

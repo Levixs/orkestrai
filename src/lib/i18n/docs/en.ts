@@ -484,7 +484,6 @@ export const DOCS_EN: DocsCatalog = {
     {
       date: 'Aug 15, 2026 · 0.12.0',
       items: [
-        'Added RPM packaging for Linux (Fedora/RHEL/CentOS). The release pipeline now builds and publishes .rpm alongside the existing AppImage, and the validation and audit scripts verify the new artifact.',
         'Orkestrai 0.12.0 lets one team combine native Windows and multiple WSL distributions. The workspace defines the default runtime, each terminal can inherit it or select its own environment, and provider detection/models, PTY, resume, Council, recruitment, and the bridge follow the effective runtime. A change restarts only the affected terminal and validates the distribution, path, and CLI without silent fallback.',
         'The packaged server now includes the required WSL runtime modules, allowing the installed desktop app to create, restore, and run WSL-backed workspaces.',
         'When creating or editing a WSL workspace, Orkestrai now derives and locks the Windows-visible folder from the Linux path automatically, without requiring a second equivalent path or rejecting the configuration by mistake.',
@@ -727,7 +726,7 @@ export const DOCS_EN: DocsCatalog = {
         'A release becomes public only after validating installers, blockmaps, latest-*.yml manifests, sizes and SHA-512; macOS requires update ZIPs for both architectures and the Windows installer uses the exact filename referenced by latest.yml.',
         '“Check now” returns the actual result and no longer stays stuck on “Checking”; boot events are also retained when the screen mounts later.',
         'A temporary GitHub check failure no longer opens the manual update dialog. The fallback appears only after a found update fails to download or install.',
-        'Windows NSIS, Linux AppImage and Linux RPM update unsigned; on macOS without an Apple certificate, the app keeps the safe manual download fallback.',
+        'Windows NSIS and Linux AppImage update unsigned; on macOS without an Apple certificate, the app keeps the safe manual download fallback.',
       ],
     },
     {

@@ -85,9 +85,9 @@ fi
 
 if [[ "$TARGET" == "linux-rpm" || "$TARGET" == "all" ]]; then
   echo "==> Linux (RPM x64 — Fedora/RHEL/CentOS)"
-  # rpm-build nao vem na imagem electronuserland/builder:latest (CentOS-based).
+  # rpm nao vem na imagem Debian/Ubuntu do electronuserland/builder:latest.
   run_builder electronuserland/builder:latest \
-    "yum install -y rpm-build && npm install -g $NPM_PIN && cd /project && npm ci --no-audit --no-fund && npx electron-builder --linux rpm --x64 --publish never"
+    "apt-get update && apt-get install --no-install-recommends -y rpm && npm install -g $NPM_PIN && cd /project && npm ci --no-audit --no-fund && npx electron-builder --linux rpm --x64 --publish never"
 fi
 
 if [[ "$TARGET" == "windows" || "$TARGET" == "windows-zip" || "$TARGET" == "all" ]]; then

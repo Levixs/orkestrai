@@ -96,6 +96,15 @@ describe('release artifact validation', () => {
     );
     expect(() => validateReleaseArtifacts(directory, VERSION)).toThrow(/Intel update ZIP/);
   });
+
+  it('rejects a Linux manifest without the RPM installer', () => {
+    const directory = fixture();
+    writeFileSync(
+      path.join(directory, 'latest-linux.yml'),
+      stringify({ version: VERSION, files: [manifestEntry(directory, `Orkestrai-${VERSION}.AppImage`)] }),
+    );
+    expect(() => validateReleaseArtifacts(directory, VERSION)).toThrow(/RPM/);
+  });
 });
 
 describe('release notes', () => {
