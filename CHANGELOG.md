@@ -5,6 +5,15 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.14.0 - 2026-08-19
+
+### Added
+
+- Added RPM packaging for Linux (Fedora, RHEL, CentOS, and compatible
+  distributions). The release pipeline now publishes `.rpm` alongside the
+  existing AppImage, and validates both the installer and its entry in
+  `latest-linux.yml` before publication (thanks to @rlevidev).
+
 ## 0.13.0 - 2026-08-18
 
 ### Added
@@ -225,9 +234,6 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
-- Added RPM packaging for Linux (Fedora/RHEL/CentOS). The release pipeline now
-  builds and publishes `.rpm` alongside the existing AppImage, and the validation
-  and audit scripts verify the new artifact (thanks to @rlevidev).
 - Added mixed Windows and WSL execution inside the same workspace. The
   workspace runtime remains the default, while every terminal can inherit it,
   force native Windows, or target an exact installed WSL distribution and Linux

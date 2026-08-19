@@ -452,6 +452,16 @@ export const DOCS_ES: DocsCatalog = {
   ],
   changelog: [
     {
+      date: '19 ago 2026 · 0.14.0',
+      title: 'Paquetes RPM nativos para Linux',
+      summary: 'Fedora, RHEL, CentOS y distribuciones compatibles ahora cuentan con un instalador nativo de Orkestrai.',
+      items: [
+        'Cada release de Linux ahora publica un RPM junto con el AppImage existente.',
+        'El pipeline de release verifica el RPM y su entrada en latest-linux.yml antes de publicar cualquier artefacto.',
+        'Las instalaciones RPM usan el flujo de actualización de Linux compatible con el gestor de paquetes.',
+      ],
+    },
+    {
       date: '18 ago 2026 · 0.13.0',
       items: [
         'Orkestrai 0.13.0 mantiene la entrada de teclado del terminal aislada de los atajos de accesibilidad del Canvas. Escape llega correctamente a Vim, editores de merge/rebase, paginadores y otras TUIs sin deseleccionar el nodo ni quitar el foco de xterm; la búsqueda y el dictado siguen siendo locales al terminal.',
