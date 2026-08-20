@@ -463,6 +463,8 @@ export const DOCS_PT: DocsCatalog = {
   changelog: [
     {
       date: '20 ago 2026 · 0.15.0',
+      title: 'Orkestrai 0.15.0: comandos reutilizáveis e Cliente de API multiprotocolo',
+      summary: 'A inicialização dos shells fica repetível enquanto o Cliente de API cobre edição, execução, segurança, respostas e sincronização no fluxo diário.',
       items: [
         'Scripts pré-request ou pós-resposta inválidos agora identificam a etapa exata do request ou da coleção e a linha de origem, em vez de reduzir falhas do QuickJS a um erro genérico de execução da API.',
         'O Cliente de API nativo agora executa requests HTTP/REST, GraphQL, WebSocket e gRPC. GraphQL inclui query, variáveis e seleção de operação; WebSocket adiciona fila de mensagens, reconexão, keepalive e transcript bidirecional; gRPC carrega arquivos proto locais e oferece os quatro modos de streaming.',
