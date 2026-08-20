@@ -27,7 +27,7 @@ test.describe('Portal Design Mode', () => {
       const portalNode = page.locator('.canvas-portal');
       await expect(portalNode).toBeVisible();
       await portalNode.getByRole('button', { name: 'Design inspection is available in the installed desktop app.' }).click();
-      await expect(page.getByText('Design inspection is available in the installed desktop app.')).toBeVisible();
+      await expect(page.getByLabel('Notifications').getByText('Design inspection is available in the installed desktop app.')).toBeVisible();
     } finally {
       await page.goto('about:blank');
       await request.put('/api/agent-room/settings', { data: originalSettings });

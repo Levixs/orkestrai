@@ -11,6 +11,7 @@ import { bridgeService } from './BridgeService.js';
 import { designDocumentService } from './DesignDocumentService.js';
 import { roleService } from './RoleService.js';
 import { floorService } from './FloorService.js';
+import { controlCenterService } from './ControlCenterService.js';
 import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
 import type {
   CreateCanvasEdgeDto,
@@ -211,6 +212,8 @@ export class WorkspaceService {
   }
 
   async remove(id: string) {
+    ptySessionManager.killWorkspace(id);
+    await controlCenterService.settleWorkspace(id);
     const deleted = await workspaceRepository.deleteWorkspace(id);
     if (!deleted) throw new Error('Workspace nao encontrado.');
     return { deleted: true };

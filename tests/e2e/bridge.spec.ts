@@ -166,6 +166,9 @@ test.describe('ponte CLI (bridge)', () => {
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+    // A selecao tambem detecta os providers locais. Esperar apenas "zero notas"
+    // aceitava falsamente a tela vazia enquanto o workspace ainda carregava.
+    await expect(page.locator('.toolbar')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.canvas-note')).toHaveCount(0);
 
     // Cria uma nota via bridge (como um agente faz) — precisa aparecer sozinha.

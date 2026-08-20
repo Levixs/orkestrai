@@ -6,8 +6,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('orkestraiDesktop', {
   /** Abre o seletor nativo de pastas (com opcao de criar nova pasta). */
   pickDirectory: () => ipcRenderer.invoke('orkestrai:pick-directory'),
-  /** Seleciona uma collection JSON/YAML/Bru local para o API Client. */
+  /** Seleciona uma collection, contrato OpenAPI ou ambiente local para o API Client. */
   pickApiCollection: (kind) => ipcRenderer.invoke('orkestrai:pick-api-collection', kind),
+  /** Seleciona onde criar uma nova collection Bruno/OpenCollection exportada. */
+  pickApiExportDirectory: () => ipcRenderer.invoke('orkestrai:pick-api-export-directory'),
   /** Abre a origem importada no Bruno/Postman instalado. */
   openApiCollection: (kind, path) => ipcRenderer.invoke('orkestrai:open-api-collection', kind, path),
   platform: process.platform,

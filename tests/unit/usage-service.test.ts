@@ -52,7 +52,7 @@ describe('UsageService', () => {
     const usage = await service.getUsage('claude');
     expect(usage.error).toBeNull();
     expect(usage.windows).toHaveLength(2);
-    expect(usage.windows[0]).toMatchObject({ kind: '5h', label: '5 horas', usedPercent: 42 });
+    expect(usage.windows[0]).toMatchObject({ kind: '5h', label: '5 hours', usedPercent: 42 });
     expect(usage.windows[1]).toMatchObject({ kind: 'weekly', usedPercent: 10, resetsAt: '2026-08-05T00:00:00Z' });
   });
 
@@ -72,7 +72,7 @@ describe('UsageService', () => {
   it('claude: sem credencial retorna erro amigavel', async () => {
     const service = new UsageService(fakeFetch({}), homeWith({}), async () => null);
     const usage = await service.getUsage('claude');
-    expect(usage.error).toContain('Credenciais do Claude Code');
+    expect(usage.error).toBe('credentials_missing');
     expect(usage.windows).toHaveLength(0);
   });
 
@@ -161,7 +161,7 @@ describe('UsageService', () => {
     const expired = (async () => ({ ok: false, status: 401, json: async () => ({}) }) as Response) as typeof fetch;
     const service = new UsageService(expired, home);
     const usage = await service.getUsage('codex');
-    expect(usage.error).toContain('expirada');
+    expect(usage.error).toBe('credential_expired');
   });
 
   it('cache: protege os providers por 5 minutos e permite refresh manual', async () => {

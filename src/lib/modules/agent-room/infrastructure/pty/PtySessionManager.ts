@@ -348,6 +348,19 @@ export class PtySessionManager {
     return true;
   }
 
+  /** Encerra processos efêmeros antes de remover o estado persistido deles. */
+  killWorkspace(workspaceId: string): number {
+    const sessions = [...this.sessions.values()]
+      .filter((session) => session.workspaceId === workspaceId);
+    const ids = sessions.map((session) => session.id);
+    for (const session of sessions) {
+      session.workspaceId = null;
+      session.nodeId = null;
+    }
+    for (const id of ids) this.kill(id);
+    return ids.length;
+  }
+
   /**
    * Texto + Enter em writes separados (~200ms): TUIs como o Codex tratam o
    * \r colado ao texto como quebra de linha no composer em vez de submit.

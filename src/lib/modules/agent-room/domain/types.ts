@@ -1,3 +1,5 @@
+import type { SavedTerminalCommand } from './terminal-commands.js';
+
 /**
  * Identificador de um provider/agente registrado no registry de adapters
  * (`application/adapters/registry.ts`). Os ids embutidos 'codex' e 'claude'
@@ -345,6 +347,8 @@ export type TerminalNodePayload = {
   maestro?: boolean;
   /** Identificador de um tema xterm embutido. */
   theme?: string;
+  /** Comandos salvos exclusivamente para este node terminal. */
+  savedCommands?: SavedTerminalCommand[];
 };
 
 export type NoteNodePayload = {
@@ -361,10 +365,31 @@ export type UsageNodePayload = {
   thresholdPercent?: number;
 };
 
-export type ApiClientHeader = {
+export type ApiClientKeyValue = {
   id: string;
   name: string;
   value: string;
+  enabled: boolean;
+};
+
+export type ApiClientHeader = ApiClientKeyValue;
+
+export type ApiClientProtocol = 'http' | 'graphql' | 'websocket' | 'grpc';
+
+export type ApiClientMessage = {
+  id: string;
+  name: string;
+  content: string;
+  type: 'text' | 'json' | 'binary';
+  enabled: boolean;
+};
+
+export type ApiClientAssertion = {
+  id: string;
+  source: 'status' | 'body' | 'header' | 'responseTime';
+  property: string;
+  operator: 'equals' | 'notEquals' | 'contains' | 'exists' | 'matches' | 'lt' | 'lte' | 'gt' | 'gte';
+  expected: string;
   enabled: boolean;
 };
 
@@ -372,25 +397,148 @@ export type ApiClientRequest = {
   id: string;
   name: string;
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+  protocol?: ApiClientProtocol;
   url: string;
+  folder?: string;
+  folderId?: string | null;
+  sequence?: number;
+  params?: ApiClientKeyValue[];
   headers: ApiClientHeader[];
   auth: {
-    type: 'none' | 'bearer' | 'basic';
+    type: 'none' | 'bearer' | 'basic' | 'apiKey' | 'oauth2';
     token: string;
     username: string;
     password: string;
+    key?: string;
+    value?: string;
+    placement?: 'header' | 'query';
+    oauth2?: {
+      grantType: 'authorization_code' | 'client_credentials' | 'password' | 'refresh_token';
+      authorizationUrl: string;
+      tokenUrl: string;
+      clientId: string;
+      clientSecret: string;
+      scope: string;
+      audience: string;
+      username: string;
+      password: string;
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresAt: string | null;
+      usePkce: boolean;
+      clientAuthentication: 'header' | 'body';
+    };
   };
   body: string;
-  bodyMode: 'none' | 'json' | 'text' | 'xml' | 'form';
+  bodyMode: 'none' | 'json' | 'text' | 'xml' | 'form' | 'multipart';
+  formFields?: ApiClientKeyValue[];
+  preRequestScript?: string;
+  postResponseScript?: string;
+  assertions?: ApiClientAssertion[];
+  documentation?: string;
+  timeoutMs?: number;
+  followRedirects?: boolean;
+  graphql?: { query: string; variables: string; operationName: string };
+  websocket?: {
+    messages: ApiClientMessage[];
+    protocols: string[];
+    autoReconnect: boolean;
+    reconnectAttempts: number;
+    keepAliveIntervalMs: number;
+  };
+  grpc?: {
+    protoPath: string;
+    service: string;
+    method: string;
+    methodType: 'unary' | 'serverStreaming' | 'clientStreaming' | 'bidirectional';
+    messages: ApiClientMessage[];
+    useTls: boolean;
+  };
   sourcePath?: string | null;
+  sourceData?: {
+    kind: 'bruno' | 'postman' | 'openapi';
+    data: Record<string, unknown>;
+  } | null;
+};
+
+export type ApiClientFolder = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sequence: number;
+  sourceData?: {
+    kind: 'bruno' | 'postman' | 'openapi';
+    data: Record<string, unknown>;
+  } | null;
+};
+
+export type ApiClientRunner = {
+  id: string;
+  name: string;
+  requestIds: string[];
+  environment: string | null;
+  iterations: number;
+  delayMs: number;
+  stopOnFailure: boolean;
+  sequence: number;
+};
+
+export type ApiClientHistoryEntry = {
+  id: string;
+  requestId: string;
+  requestName: string;
+  method: ApiClientRequest['method'];
+  protocol?: ApiClientProtocol;
+  url: string;
+  status: number;
+  ok: boolean;
+  durationMs: number;
+  size: number;
+  testPassed: number;
+  testFailed: number;
+  executedAt: string;
 };
 
 export type ApiClientNodePayload = {
-  sourceKind?: 'bruno' | 'postman' | null;
+  formatVersion?: 1;
+  sourceKind?: 'bruno' | 'postman' | 'openapi' | 'openCollection' | null;
   sourcePath?: string | null;
+  sourceCollection?: Record<string, unknown> | null;
   requests?: ApiClientRequest[];
+  folders?: ApiClientFolder[];
+  runners?: ApiClientRunner[];
+  selectedRunnerId?: string | null;
   selectedRequestId?: string | null;
   variables?: Record<string, string>;
+  environments?: Record<string, Record<string, string>>;
+  activeEnvironment?: string | null;
+  history?: ApiClientHistoryEntry[];
+  collectionPreRequestScript?: string;
+  collectionPostResponseScript?: string;
+  compatibilityWarnings?: Array<{
+    code: string;
+    count?: number;
+  }>;
+  network?: {
+    cookieJarEnabled: boolean;
+    cookies: Array<{ key: string; value: string; domain: string; path: string; expires: string | null; secure: boolean; httpOnly: boolean; hostOnly: boolean }>;
+    proxyUrl: string;
+    caPath: string;
+    clientCertificatePath: string;
+    clientKeyPath: string;
+    clientPfxPath: string;
+    clientKeyPassphrase: string;
+    rejectUnauthorized: boolean;
+  };
+  sync?: {
+    mode: 'manual' | 'watch';
+    conflictPolicy: 'ask' | 'orkestrai' | 'filesystem';
+    lastSyncedAt: string | null;
+    sourceFingerprint: string | null;
+    localFingerprint: string | null;
+    managedFiles: string[];
+  };
 };
 
 export type CanvasNodePayload = TerminalNodePayload | NoteNodePayload | ApiClientNodePayload | Record<string, unknown>;

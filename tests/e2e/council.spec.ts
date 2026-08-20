@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { selectCanvasTool } from './helpers.js';
 
 test.describe('Council', () => {
   test('opens from a task with an accessible, bounded comparison form', async ({ page, request }) => {
@@ -34,7 +35,7 @@ test.describe('Council', () => {
       }));
       await page.goto('/canvas');
       await page.getByRole('button', { name: workspace.name }).click();
-      await page.getByRole('button', { name: 'Council', exact: true }).click();
+      await selectCanvasTool(page, 'Council');
 
       const directDialog = page.getByTestId('council-dialog');
       await expect(directDialog).toBeVisible();

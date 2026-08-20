@@ -18,6 +18,7 @@
   import { ROUTABLE_USAGE_PROVIDERS, usageProviderDefinition, type UsageDiagnostic } from '$lib/modules/agent-room/domain/usage-providers.js';
   import type { UsageNodePayload } from '$lib/modules/agent-room/domain/types.js';
   import { refreshUsage, retainUsageFeed, usageStore } from '../usage-store.svelte.js';
+  import { usageErrorText } from '../usage-i18n.js';
 
   export type UsageNodeData = {
     title: string;
@@ -182,7 +183,7 @@
             <span class="status" style:color={statusColor(provider.status)}>{statusLabel(provider.status)}</span>
           </div>
           {#if provider.error}
-            <p class="provider-error"><TriangleAlert size={11} aria-hidden="true" /> {provider.error}</p>
+            <p class="provider-error"><TriangleAlert size={11} aria-hidden="true" /> {usageErrorText(provider.error, meta.name)}</p>
           {:else if provider.diagnostic}
             <p class="provider-error diagnostic">
               <span>{diagnosticText(provider.diagnostic)}</span>

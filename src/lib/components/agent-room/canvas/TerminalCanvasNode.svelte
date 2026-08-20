@@ -1,12 +1,14 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowLeftRight, BadgeCheck, Ellipsis, MonitorCog, Paperclip, RotateCcw, Scale, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { ArrowLeftRight, BadgeCheck, Ellipsis, Globe2, History, ListRestart, MonitorCog, Paperclip, RotateCcw, Scale, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { toast } from '@beeblock/svelar/ui';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import NodeShell from './NodeShell.svelte';
   import TerminalNode from '../TerminalNode.svelte';
   import VoiceConfirmDialog from '../VoiceConfirmDialog.svelte';
-  import { appSettingsStore, getAppSettings } from '../app-settings.svelte.js';
+  import { appSettingsStore, getAppSettings, updateAppSettings } from '../app-settings.svelte.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { voiceModelsReadyForUse } from '../voice-model-status.js';
   import { speakText } from '../voice-speech.js';
@@ -22,6 +24,14 @@
   } from '../workspace-attachments.js';
   import CouncilDialog from '../CouncilDialog.svelte';
   import TerminalRuntimeDialog from './TerminalRuntimeDialog.svelte';
+  import TerminalCommandsDialog from './TerminalCommandsDialog.svelte';
+  import {
+    normalizeSavedTerminalCommands,
+    resumeTerminalCommandInput,
+    savedTerminalCommandInput,
+    terminalCommandFingerprint,
+    type SavedTerminalCommand,
+  } from '$lib/modules/agent-room/domain/terminal-commands.js';
 
   export type MentionTarget = { id: string; title: string; type: string };
 
@@ -53,7 +63,7 @@
     onToggleMaestro?: (id: string) => void;
     onOpenFile?: (path: string) => void;
     onThemeChange?: (id: string, theme: TerminalThemeName) => void;
-    onPayloadChange?: (id: string, partial: Record<string, unknown>) => void;
+    onPayloadChange?: (id: string, partial: Record<string, unknown>) => void | Promise<void>;
     onRename?: (id: string, title: string) => void;
     /** Nome do workspace (notificacao de fim de sessao). */
     workspaceName?: string;
@@ -62,6 +72,9 @@
   };
 
   let { id, data, selected } = $props<NodeProps & { data: TerminalNodeData }>();
+  let terminalNode = $state<{ focus: () => void; write: (input: string) => void } | undefined>();
+  let ownsCreatedSession = $state(untrack(() => !data.payload.sessionId));
+  let restartGeneration = $state(0);
 
   // Quando a sessao morre (restart do app), recria com os args de resume do
   // provider para retomar o contexto da conversa anterior.
@@ -71,15 +84,24 @@
   let respawnAgentSessionId = $state<string | null>(null);
   let councilOpen = $state(false);
   let runtimeOpen = $state(false);
+  let commandsOpen = $state(false);
+  let actionsOpen = $state(false);
   let runtimeProviders = $state<AgentProviderInfo[]>([]);
   let providerRequest = 0;
   const isWindows = typeof navigator !== 'undefined' && navigator.platform.startsWith('Win');
+  const isPureShell = $derived(!data.payload.provider);
   const isPureNativeShell = $derived(!data.payload.provider && data.executionRuntime.kind === 'native');
   const launchWorkingDir = $derived(
     isPureNativeShell && data.payload.currentWorkingDir
       ? data.payload.currentWorkingDir
       : data.workingDir
   );
+
+  $effect(() => {
+    if (!actionsOpen) return;
+    loadRoles();
+    void getAppSettings();
+  });
 
   function persistWorkingDirectory(cwd: string) {
     if (!isPureNativeShell || !cwd || cwd === data.payload.currentWorkingDir) return;
@@ -120,16 +142,64 @@
         // conversa mais recente de outra distribuicao ou terminal.
       }
     }
+    ownsCreatedSession = false;
     forceRespawn = true;
   }
 
   async function persistCreatedSession(sessionId: string) {
     const payload = data.payload as TerminalNodePayload;
     const resumed = forceRespawn || Boolean(payload.agentSessionId) || Boolean(payload.resumeRecovery);
+    ownsCreatedSession = true;
     await data.onSessionCreated(id, sessionId, { resumed });
     // Mantem o terminal criador montado ate o payload persistido apontar para
     // a nova sessao; liberar antes reanexaria por um instante ao id antigo.
     forceRespawn = false;
+    if (selected) requestAnimationFrame(() => requestAnimationFrame(() => terminalNode?.focus()));
+  }
+
+  function terminalCommands(): SavedTerminalCommand[] {
+    return normalizeSavedTerminalCommands((data.payload as TerminalNodePayload).savedCommands);
+  }
+
+  function globalCommands(): SavedTerminalCommand[] {
+    return normalizeSavedTerminalCommands(appSettingsStore.values.terminalGlobalCommands);
+  }
+
+  async function openSavedCommands() {
+    commandsOpen = true;
+    await getAppSettings(true);
+  }
+
+  async function saveTerminalCommands(commands: SavedTerminalCommand[]) {
+    await data.onPayloadChange?.(id, { savedCommands: normalizeSavedTerminalCommands(commands) });
+  }
+
+  async function saveGlobalCommands(commands: SavedTerminalCommand[]) {
+    await updateAppSettings({ terminalGlobalCommands: JSON.stringify(normalizeSavedTerminalCommands(commands)) });
+  }
+
+  function runSavedCommand(command: SavedTerminalCommand) {
+    terminalNode?.write(savedTerminalCommandInput(command.command));
+    toast.success(m['term.commands_executed']());
+    requestAnimationFrame(() => terminalNode?.focus());
+  }
+
+  async function handleSessionReady(sessionId: string) {
+    if (!isPureShell || !sessionId || !terminalNode) return;
+    await getAppSettings();
+    const input = resumeTerminalCommandInput(
+      [...globalCommands(), ...terminalCommands()],
+      data.payload.command ?? '',
+    );
+    if (!input) return;
+    const marker = `orkestrai.terminal-autoexec:${id}:${terminalCommandFingerprint(input)}`;
+    try {
+      if (sessionStorage.getItem(marker)) return;
+      sessionStorage.setItem(marker, '1');
+    } catch {
+      // A sessão do terminal ainda executa; só perde a proteção entre views.
+    }
+    terminalNode.write(input);
   }
 
   // -- Recarregar terminal (reinicia a sessao COM o contexto) -------------------
@@ -137,6 +207,9 @@
     await fetch(`/api/agent-room/workspaces/${data.workspaceId}/nodes/${id}/reload`, { method: 'POST' }).catch(() => {});
     // sessionId null no payload -> o no cai no caminho de criacao, que usa o
     // resume exato (agentSessionId permanece no payload).
+    ownsCreatedSession = false;
+    forceRespawn = true;
+    restartGeneration += 1;
     data.onPayloadChange?.(id, { sessionId: null });
   }
 
@@ -156,6 +229,15 @@
       : m['dlg.runtime_native'](),
   );
   const currentTheme = $derived(normalizeTerminalTheme((data.payload as TerminalNodePayload).theme));
+  const createSessionKey = $derived([
+    restartGeneration,
+    data.payload.command,
+    data.payload.provider ?? '',
+    JSON.stringify(data.payload.args ?? []),
+    data.executionRuntime.kind === 'wsl'
+      ? `${data.executionRuntime.distribution}:${data.executionRuntime.linuxWorkingDir}`
+      : 'native',
+  ].join(':'));
   let switchingProvider = $state(false);
   let providerError = $state('');
 
@@ -471,7 +553,7 @@
         <Star size={12} fill="currentColor" />
       </span>
     {/if}
-    <DropdownMenu.Root onOpenChange={(open: boolean) => open && loadRoles()}>
+    <DropdownMenu.Root bind:open={actionsOpen}>
       <DropdownMenu.Trigger
         class="node-action-btn"
         aria-label={m['term.actions']()}
@@ -554,6 +636,41 @@
             </DropdownMenu.RadioGroup>
           </DropdownMenu.SubContent>
         </DropdownMenu.Sub>
+        <DropdownMenu.Sub>
+          <DropdownMenu.SubTrigger>
+            <ListRestart size={14} />
+            <span class="min-w-0 flex-1">{m['term.commands']()}</span>
+            <span class="text-[9px] tabular-nums text-[var(--app-text-muted)]">{terminalCommands().length + globalCommands().length}</span>
+          </DropdownMenu.SubTrigger>
+          <DropdownMenu.SubContent sideOffset={6} class="max-h-80 w-64 overflow-y-auto">
+            <DropdownMenu.Label>{m['term.commands_scope_terminal']()}</DropdownMenu.Label>
+            {#each terminalCommands() as command (command.id)}
+              <DropdownMenu.Item onclick={() => runSavedCommand(command)}>
+                <SquareTerminal size={13} />
+                <span class="min-w-0 flex-1"><span class="block truncate">{command.name}</span><code class="block truncate text-[9px] text-[var(--app-text-muted)]">{command.command}</code></span>
+                {#if command.runOnResume}<History size={12} aria-label={m['term.commands_resume']()} />{/if}
+              </DropdownMenu.Item>
+            {:else}
+              <DropdownMenu.Item disabled>{m['term.commands_empty_terminal']()}</DropdownMenu.Item>
+            {/each}
+            <DropdownMenu.Separator />
+            <DropdownMenu.Label>{m['term.commands_scope_global']()}</DropdownMenu.Label>
+            {#each globalCommands() as command (command.id)}
+              <DropdownMenu.Item onclick={() => runSavedCommand(command)}>
+                <Globe2 size={13} />
+                <span class="min-w-0 flex-1"><span class="block truncate">{command.name}</span><code class="block truncate text-[9px] text-[var(--app-text-muted)]">{command.command}</code></span>
+                {#if command.runOnResume}<History size={12} aria-label={m['term.commands_resume']()} />{/if}
+              </DropdownMenu.Item>
+            {:else}
+              <DropdownMenu.Item disabled>{m['term.commands_empty_global']()}</DropdownMenu.Item>
+            {/each}
+            <DropdownMenu.Separator />
+            <DropdownMenu.Item onclick={() => void openSavedCommands()}>
+              <ListRestart size={14} />
+              {m['term.commands_manage']()}
+            </DropdownMenu.Item>
+          </DropdownMenu.SubContent>
+        </DropdownMenu.Sub>
         <DropdownMenu.Separator />
         {#if data.payload.maestro}
           <DropdownMenu.Item onclick={() => (councilOpen = true)}>
@@ -599,8 +716,9 @@
     ondragleave={() => (attachmentDropActive = false)}
     ondrop={handleAttachmentDrop}
   >
-    {#if data.payload.sessionId && !forceRespawn}
+    {#if data.payload.sessionId && !forceRespawn && !ownsCreatedSession}
       <TerminalNode
+        bind:this={terminalNode}
         sessionId={data.payload.sessionId}
         workspaceId={data.workspaceId}
         nodeId={id}
@@ -615,28 +733,33 @@
         onWorkingDirectoryChange={persistWorkingDirectory}
         onTalking={data.onTalking}
         onAgentReply={handleAgentReply}
+        onSessionReady={handleSessionReady}
         {voiceOn}
         onToggleVoice={toggleVoice}
       />
     {:else if data.payload.command}
-      <TerminalNode
-        {createRequest}
-        workspaceId={data.workspaceId}
-        nodeId={id}
-        sessionLabel={data.title}
-        workspaceName={data.workspaceName}
-        onSessionCreated={persistCreatedSession}
-        onOpenPath={(path) => data.onOpenFile?.(path)}
-        themeName={currentTheme}
-        provider={data.payload.provider}
-        sessionStorage={data.sessionStorageFor?.() ?? undefined}
-        onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
-        onWorkingDirectoryChange={persistWorkingDirectory}
-        onTalking={data.onTalking}
-        onAgentReply={handleAgentReply}
-        {voiceOn}
-        onToggleVoice={toggleVoice}
-      />
+      {#key createSessionKey}
+        <TerminalNode
+          bind:this={terminalNode}
+          {createRequest}
+          workspaceId={data.workspaceId}
+          nodeId={id}
+          sessionLabel={data.title}
+          workspaceName={data.workspaceName}
+          onSessionCreated={persistCreatedSession}
+          onOpenPath={(path) => data.onOpenFile?.(path)}
+          themeName={currentTheme}
+          provider={data.payload.provider}
+          sessionStorage={data.sessionStorageFor?.() ?? undefined}
+          onAgentSession={(agentSessionId) => data.onAgentSessionFound?.(id, agentSessionId)}
+          onWorkingDirectoryChange={persistWorkingDirectory}
+          onTalking={data.onTalking}
+          onAgentReply={handleAgentReply}
+          onSessionReady={handleSessionReady}
+          {voiceOn}
+          onToggleVoice={toggleVoice}
+        />
+      {/key}
     {:else}
       <p class="terminal-empty">{m['term.no_command']()}</p>
     {/if}
@@ -656,6 +779,17 @@
     override={runtimeOverride}
     onSave={changeRuntime}
     onClose={() => (runtimeOpen = false)}
+  />
+  <TerminalCommandsDialog
+    open={commandsOpen}
+    terminalTitle={data.title}
+    pureShell={isPureShell}
+    terminalCommands={terminalCommands()}
+    globalCommands={globalCommands()}
+    onSaveTerminal={saveTerminalCommands}
+    onSaveGlobal={saveGlobalCommands}
+    onRun={runSavedCommand}
+    onClose={() => (commandsOpen = false)}
   />
 
   <div

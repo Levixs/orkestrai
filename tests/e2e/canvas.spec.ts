@@ -2,6 +2,187 @@ import { expect, test } from '@playwright/test';
 import { createNodeOnCanvas } from './helpers.js';
 
 test.describe('canvas de workspaces', () => {
+  test('ignora atalhos globais cujo alvo não é um elemento', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+
+    await page.goto('/canvas');
+    await page.evaluate(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift' }));
+    });
+
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('mantém ações do terminal clicáveis quando um cliente de API sobrepõe sua borda', async ({ page, request }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    const workspaceName = `E2E API overlap ${Date.now()}`;
+    const created = await request.post('/api/agent-room/workspaces', {
+      data: { name: workspaceName, workingDir: '/tmp' },
+    });
+    const workspace = (await created.json()).data as { id: string };
+
+    await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: {
+        type: 'terminal', title: 'Overlapped shell', x: 80, y: 80, width: 560, height: 340,
+        zIndex: 5, payload: { command: '/bin/zsh', args: [] },
+      },
+    });
+    await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: {
+        type: 'apiClient', title: 'Overlapping API', x: 600, y: 80, width: 820, height: 560,
+        zIndex: 0, payload: { requests: [], selectedRequestId: null, variables: {} },
+      },
+    });
+
+    try {
+      await page.goto(`/canvas?workspace=${workspace.id}`);
+      const terminal = page.locator('.canvas-terminal');
+      await expect(terminal).toBeVisible();
+      const apiClient = page.locator('.canvas-api-client');
+      await expect(apiClient).toBeVisible();
+
+      // Regressão exata: depois de criar uma request, o foco do input do
+      // cliente não pode elevar a área invisível inteira acima dos vizinhos.
+      await apiClient.locator('button[aria-label="Adicionar item à coleção"]').click();
+      await page.getByRole('menuitem', { name: 'Adicionar request' }).click();
+      await expect(apiClient.getByRole('textbox', { name: 'Nome do request' })).toBeVisible();
+
+      // A região esquerda continua acessível e seleciona o terminal; o menu
+      // fica justamente na faixa em que os dois nodes se sobrepõem.
+      await terminal.locator('.node-header').click({ position: { x: 48, y: 12 } });
+      await expect(page.locator('.svelte-flow__node-terminal')).toHaveClass(/selected/);
+      await terminal.getByTestId('terminal-actions-menu').click();
+      await expect(page.getByRole('menuitem', { name: 'Comandos salvos' })).toBeVisible();
+      expect(pageErrors).toEqual([]);
+    } finally {
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+    }
+  });
+
+  test('organiza requests em pastas sem arrastar o node e salva runners independentes', async ({ page, request }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    const created = await request.post('/api/agent-room/workspaces', { data: { name: `E2E API tree ${Date.now()}`, workingDir: '/tmp' } });
+    const workspace = (await created.json()).data as { id: string };
+    const nodeResponse = await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: { type: 'apiClient', title: 'Project API', x: 120, y: 90, width: 820, height: 560, payload: { requests: [], variables: {} } },
+    });
+    const apiNode = (await nodeResponse.json()).data as { id: string };
+
+    try {
+      await page.goto(`/canvas?workspace=${workspace.id}`);
+      const client = page.locator('.canvas-api-client');
+      await expect(client).toBeVisible();
+      const canvasNode = page.locator('.svelte-flow__node-apiClient');
+      const originalBox = await canvasNode.boundingBox();
+
+      await client.getByRole('button', { name: 'Adicionar item à coleção' }).click();
+      await page.getByRole('menuitem', { name: 'Adicionar pasta' }).click();
+      const folderDialog = page.getByTestId('api-client-folder-dialog');
+      await folderDialog.getByRole('textbox').fill('Users');
+      await folderDialog.getByRole('button', { name: 'Criar pasta' }).click();
+
+      await client.getByRole('button', { name: 'Adicionar item à coleção' }).click();
+      await page.getByRole('menuitem', { name: 'Adicionar request' }).click();
+
+      await client.getByRole('textbox', { name: 'URL' }).fill('http://127.0.0.1:5199/api/admin/health');
+      await client.getByRole('tab', { name: 'Body' }).click();
+      await client.getByRole('button', { name: 'JSON', exact: true }).click();
+      const bodyEditor = client.locator('.cm-editor').first();
+      await expect(bodyEditor).toBeVisible();
+      await bodyEditor.locator('.cm-content').click();
+      await page.keyboard.insertText('{"hello":"world"}');
+      await client.getByRole('button', { name: 'Formatar código' }).click();
+      await expect(bodyEditor.locator('.cm-content')).toContainText('hello');
+      await client.getByRole('button', { name: 'Nenhum', exact: true }).click();
+
+      await client.getByRole('tab', { name: 'Scripts' }).click();
+      await expect(client.locator('.cm-editor')).toHaveCount(2);
+      await client.getByRole('button', { name: 'Enviar', exact: true }).click();
+      const responseTab = client.getByRole('tab', { name: 'Resposta', exact: true });
+      await expect(responseTab).toHaveAttribute('data-state', 'active');
+      await expect(client.getByRole('tree', { name: 'Resposta estruturada' })).toBeVisible();
+
+      const nodesBeforeDrag = await (await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes`)).json();
+      const beforePayload = (nodesBeforeDrag.data as Array<{ id: string; payload: any }>).find((node) => node.id === apiNode.id)!.payload;
+      const folderId = beforePayload.folders[0].id as string;
+      const requestId = beforePayload.requests[0].id as string;
+      await client.getByTestId(`api-request-drag-${requestId}`).dragTo(client.getByTestId(`api-folder-${folderId}`));
+      await expect.poll(async () => {
+        const result = await (await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes`)).json();
+        return (result.data as Array<{ id: string; payload: any }>).find((node) => node.id === apiNode.id)!.payload.requests[0].folderId;
+      }).toBe(folderId);
+
+      const movedBox = await canvasNode.boundingBox();
+      expect(movedBox?.x).toBeCloseTo(originalBox?.x ?? 0, 0);
+      expect(movedBox?.y).toBeCloseTo(originalBox?.y ?? 0, 0);
+
+      await client.getByTestId(`api-folder-${folderId}`).click({ button: 'right' });
+      await page.getByRole('menuitem', { name: 'Adicionar request' }).click();
+      const nodesWithSecondRequest = await (await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes`)).json();
+      const requestsInFolder = (nodesWithSecondRequest.data as Array<{ id: string; payload: any }>)
+        .find((node) => node.id === apiNode.id)!.payload.requests
+        .filter((item: { folderId?: string }) => item.folderId === folderId);
+      const secondRequestId = requestsInFolder.find((item: { id: string }) => item.id !== requestId).id as string;
+      const dragHandle = client.getByTestId(`api-request-drag-${requestId}`);
+      const dropTarget = client.getByTestId(`api-request-${secondRequestId}`);
+      const dragBox = await dragHandle.boundingBox();
+      const targetBox = await dropTarget.boundingBox();
+      if (!dragBox || !targetBox) throw new Error('Request drag geometry is unavailable');
+      await page.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + dragBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height - 2, { steps: 8 });
+      await expect(client.getByTestId(`api-drop-after-${secondRequestId}`)).toBeVisible();
+      await page.mouse.up();
+      await expect.poll(async () => {
+        const result = await (await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes`)).json();
+        return (result.data as Array<{ id: string; payload: any }>).find((node) => node.id === apiNode.id)!.payload.requests
+          .filter((item: { folderId?: string }) => item.folderId === folderId)
+          .sort((a: { sequence: number }, b: { sequence: number }) => a.sequence - b.sequence)
+          .map((item: { id: string }) => item.id);
+      }).toEqual([secondRequestId, requestId]);
+
+      await client.getByRole('button', { name: 'Runners da coleção' }).click();
+      const runnerDialog = page.getByTestId('api-client-runner-dialog');
+      await runnerDialog.getByRole('button', { name: 'Adicionar runner' }).click();
+      const runnerFooter = runnerDialog.getByTestId('api-client-runner-footer');
+      await expect(runnerFooter).toBeVisible();
+      await expect(runnerFooter.getByRole('button', { name: 'Duplicar' })).toBeVisible();
+      await expect(runnerFooter.getByRole('button', { name: 'Excluir' })).toBeVisible();
+      await expect(runnerFooter.getByRole('button', { name: 'Executar runner' })).toBeVisible();
+      const dialogBox = await runnerDialog.boundingBox();
+      const footerBox = await runnerFooter.boundingBox();
+      expect((footerBox?.y ?? 0) + (footerBox?.height ?? 0)).toBeLessThanOrEqual((dialogBox?.y ?? 0) + (dialogBox?.height ?? 0) + 1);
+      expect((footerBox?.y ?? 0) + (footerBox?.height ?? 0)).toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);
+      await runnerDialog.getByRole('button', { name: 'Salvar runners' }).click();
+      await expect.poll(async () => {
+        const result = await (await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes`)).json();
+        return (result.data as Array<{ id: string; payload: any }>).find((node) => node.id === apiNode.id)!.payload.runners?.length ?? 0;
+      }).toBe(1);
+
+      await client.getByTestId(`api-folder-${folderId}`).click({ button: 'right' });
+      await expect(page.getByRole('menuitem', { name: 'Executar pasta' })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await client.getByRole('button', { name: 'Importar coleção' }).click();
+      await page.getByRole('menuitem', { name: 'Importar coleção' }).hover();
+      await expect(page.getByRole('menuitem', { name: 'Importar coleção do Orkestrai' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Importar OpenAPI / Swagger' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Importar OpenCollection YAML' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Importar ambiente do Postman' })).toBeVisible();
+      await page.keyboard.press('ArrowLeft');
+      await page.getByRole('menuitem', { name: 'Exportar' }).hover();
+      await expect(page.getByRole('menuitem', { name: 'Exportar coleção Bruno' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Exportar OpenAPI 3.1 YAML' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Exportar OpenCollection YAML' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Exportar coleção Orkestrai' })).toBeVisible();
+      expect(pageErrors).toEqual([]);
+    } finally {
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+    }
+  });
+
   test('cria no de fluxo pela toolbar e persiste apos reload', async ({ page, request }) => {
     const workspaceName = `E2E flow ${Date.now()}`;
 
@@ -11,6 +192,7 @@ test.describe('canvas de workspaces', () => {
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+    await expect(page.locator('.workspace-list li.active')).toContainText(workspaceName);
 
     await createNodeOnCanvas(page, 'Fluxo');
     await expect(page.locator('.canvas-flow')).toBeVisible();
@@ -129,13 +311,13 @@ test.describe('canvas de workspaces', () => {
       data: { sourceNodeId: canvasNodes[0].id, targetNodeId: canvasNodes[1].id },
     });
 
-    await page.reload();
+    await page.goto(`/canvas?workspace=${created.id}`);
     await expect(page.locator('.canvas-note')).toHaveCount(2);
     await expect(page.locator('.svelte-flow__edge')).toHaveCount(1);
 
     // Ao apagar um no, a aresta some junto
     await request.delete(`/api/agent-room/workspaces/${created.id}/nodes/${canvasNodes[0].id}`);
-    await page.reload();
+    await page.goto(`/canvas?workspace=${created.id}`);
     await expect(page.locator('.svelte-flow__edge')).toHaveCount(0);
 
     await request.delete(`/api/agent-room/workspaces/${created.id}`);
@@ -210,6 +392,8 @@ test.describe('canvas de workspaces', () => {
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+    await expect(page.locator('.workspace-list li.active')).toContainText(workspaceName);
+    await expect(page.locator('.svelte-flow__pane')).toBeVisible();
 
     await createNodeOnCanvas(page, 'Nota');
     await expect(page.locator('.canvas-note')).toHaveCount(1);

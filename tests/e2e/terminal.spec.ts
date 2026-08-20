@@ -1,7 +1,94 @@
 import { expect, test } from '@playwright/test';
+import { rmSync } from 'node:fs';
 import { selectAgentTool } from './helpers.js';
 
 test.describe('terminais PTY', () => {
+  test('salva comandos locais e globais e autoexecuta apenas uma vez ao retomar o shell', async ({ page, request }) => {
+    test.setTimeout(90_000);
+    test.skip(process.platform === 'win32', 'A prova de autoexec usa sintaxe POSIX; PowerShell e WSL são cobertos no domínio');
+    const runId = Date.now();
+    const workspaceName = `E2E comandos salvos ${runId}`;
+    const counterFile = `/tmp/orkestrai-command-auto-${runId}`;
+    const settingsResponse = await request.get('/api/agent-room/settings');
+    const originalSettings = (await settingsResponse.json()).data as Record<string, string>;
+    const workspaceResponse = await request.post('/api/agent-room/workspaces', {
+      data: { name: workspaceName, workingDir: '/tmp' },
+    });
+    const workspace = (await workspaceResponse.json()).data as { id: string };
+    const terminalResponse = await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      data: {
+        type: 'terminal',
+        title: 'Shell com atalhos',
+        x: 120,
+        y: 100,
+        width: 640,
+        height: 380,
+        payload: { command: '/bin/sh', args: [] },
+      },
+    });
+    const terminalNode = (await terminalResponse.json()).data as { id: string };
+
+    try {
+      await request.put('/api/agent-room/settings', {
+        data: { terminalGlobalCommands: '[]' },
+      });
+      await page.goto(`/canvas?workspace=${workspace.id}`);
+      const terminal = page.locator('.canvas-terminal');
+      await expect(terminal.locator('.xterm-helper-textarea')).toBeAttached({ timeout: 15_000 });
+
+      await terminal.getByTestId('terminal-actions-menu').click();
+      await page.getByRole('menuitem', { name: /Comandos salvos/ }).hover();
+      await page.getByRole('menuitem', { name: 'Criar e gerenciar comandos…' }).click();
+      const dialog = page.getByTestId('terminal-commands-dialog');
+      await expect(dialog).toBeVisible();
+      await dialog.getByLabel('Nome', { exact: true }).fill('Preparar ambiente');
+      await dialog.getByLabel('Comando', { exact: true }).fill(
+        `n=$(cat ${counterFile} 2>/dev/null || echo 0); n=$((n+1)); echo $n > ${counterFile}; echo ORKESTRAI_AUTO_COUNT_$n`,
+      );
+      await dialog.getByRole('switch', { name: 'Executar ao retomar' }).click();
+      await dialog.getByRole('button', { name: 'Salvar comando' }).click();
+
+      await expect.poll(async () => {
+        const response = await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes/${terminalNode.id}`);
+        const node = (await response.json()).data as { payload?: { savedCommands?: Array<{ name: string; runOnResume: boolean }> } };
+        return node.payload?.savedCommands?.[0];
+      }).toEqual({
+        id: expect.any(String),
+        name: 'Preparar ambiente',
+        command: expect.stringContaining('ORKESTRAI_AUTO_COUNT_'),
+        runOnResume: true,
+      });
+
+      await dialog.getByRole('tab', { name: 'Globais' }).click();
+      await dialog.getByLabel('Nome', { exact: true }).fill('Diagnóstico global');
+      await dialog.getByLabel('Comando', { exact: true }).fill(`echo GLOBAL_COMMAND_${runId}`);
+      await dialog.getByRole('button', { name: 'Salvar comando' }).click();
+      await expect.poll(async () => {
+        const response = await request.get('/api/agent-room/settings');
+        const settings = (await response.json()).data as Record<string, string>;
+        return JSON.parse(settings.terminalGlobalCommands) as Array<{ name: string }>;
+      }).toEqual([
+        expect.objectContaining({ name: 'Diagnóstico global' }),
+      ]);
+
+      await dialog.getByRole('button', { name: 'Executar', exact: true }).click();
+      await expect(terminal.locator('.terminal-container')).toContainText(`GLOBAL_COMMAND_${runId}`, { timeout: 10_000 });
+
+      await page.reload();
+      await expect(terminal.locator('.terminal-container')).toContainText('ORKESTRAI_AUTO_COUNT_1', { timeout: 15_000 });
+      await page.reload();
+      await expect(terminal.locator('.xterm-helper-textarea')).toBeAttached({ timeout: 15_000 });
+      await page.waitForTimeout(1_000);
+      await expect(terminal.locator('.terminal-container')).not.toContainText('ORKESTRAI_AUTO_COUNT_2');
+    } finally {
+      rmSync(counterFile, { force: true });
+      await request.put('/api/agent-room/settings', {
+        data: { terminalGlobalCommands: originalSettings.terminalGlobalCommands ?? '[]' },
+      });
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+    }
+  });
+
   test('entrega Escape a TUIs sem perder o foco do terminal no Canvas', async ({ page, request }) => {
     test.skip(process.platform === 'win32', 'O probe raw usa o runtime POSIX do runner');
     const workspaceName = `E2E terminal Escape ${Date.now()}`;
@@ -22,7 +109,6 @@ test.describe('terminais PTY', () => {
           payload: { command: '/bin/sh', args: [] },
         },
       });
-
       await page.goto(`/canvas?workspace=${workspace.id}`);
       const terminal = page.locator('.canvas-terminal');
       const input = terminal.locator('.xterm-helper-textarea');
@@ -125,7 +211,7 @@ test.describe('terminais PTY', () => {
       });
       const note = (await noteResponse.json()).data as { id: string };
 
-      await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+      const shellResponse = await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
         data: {
           type: 'terminal',
           title: shellTitle,
@@ -136,6 +222,7 @@ test.describe('terminais PTY', () => {
           payload: { command: process.platform === 'win32' ? 'powershell.exe' : '/bin/sh', args: [] },
         },
       });
+      const shell = (await shellResponse.json()).data as { id: string };
       const leaderResponse = await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
         data: {
           type: 'terminal',
@@ -179,7 +266,8 @@ test.describe('terminais PTY', () => {
       await expect(terminal.locator('.terminal-container')).toContainText(marker, { timeout: 10_000 });
 
       await page.getByTestId('terminal-open-canvas').click();
-      await expect(page.locator('.canvas-terminal.selected')).toContainText(shellTitle);
+      await expect(page).toHaveURL(new RegExp(`/canvas\\?workspace=${workspace.id}&node=${shell.id}`));
+      await expect(page.locator('.canvas-terminal').filter({ hasText: shellTitle })).toBeVisible();
       await page.getByRole('link', { name: 'Workbench' }).click();
       await expect(page).toHaveURL(new RegExp(`/terminal\\?workspace=${workspace.id}.*node=`));
       await expect(page.getByTestId('workbench-pane-secondary')).toBeVisible();
@@ -223,8 +311,8 @@ test.describe('terminais PTY', () => {
       const openCanvas = page.getByTestId('terminal-open-canvas');
       await expect(openCanvas.locator('svg')).toHaveCount(1);
       await openCanvas.click();
-      await expect(page).toHaveURL(new RegExp(`/canvas\\?workspace=${workspace.id}.*node=`));
-      await expect(page.locator('.canvas-terminal.selected')).toContainText(leaderTitle);
+      await expect(page).toHaveURL(new RegExp(`/canvas\\?workspace=${workspace.id}&node=${leader.id}`));
+      await expect(page.locator('.canvas-terminal').filter({ hasText: leaderTitle })).toBeVisible();
     } finally {
       await request.put('/api/agent-room/settings', {
         data: { ...originalSettings, workbenchTabPlacement: originalSettings.workbenchTabPlacement ?? 'vertical' },

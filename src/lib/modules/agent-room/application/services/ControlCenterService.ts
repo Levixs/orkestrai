@@ -101,7 +101,15 @@ export class ControlCenterService {
       const action = input.action?.trim() || null;
       const taskId = input.taskId ?? null;
       if (previous?.state === input.state && previous.action === action && previous.taskId === taskId) return null;
-      const event = await controlCenterRepository.appendActivity({ ...input, action, taskId });
+      const node = await workspaceRepository.getNode(input.nodeId);
+      if (!node || node.workspaceId !== input.workspaceId) return null;
+      let event: AgentActivity;
+      try {
+        event = await controlCenterRepository.appendActivity({ ...input, action, taskId });
+      } catch (error) {
+        if ((error as { code?: string }).code === 'SQLITE_CONSTRAINT_FOREIGNKEY') return null;
+        throw error;
+      }
       this.latest.set(key, event);
       broadcast({ type: 'controlCenterChanged', workspaceId: input.workspaceId, nodeId: input.nodeId, event });
       return event;
@@ -125,6 +133,20 @@ export class ControlCenterService {
       event,
     });
     return event;
+  }
+
+  async settleWorkspace(workspaceId: string): Promise<void> {
+    const prefix = `${workspaceId}:`;
+    while (true) {
+      const pending = [...this.writes.entries()]
+        .filter(([key]) => key.startsWith(prefix))
+        .map(([, write]) => write);
+      if (pending.length === 0) break;
+      await Promise.allSettled(pending);
+    }
+    for (const key of this.latest.keys()) {
+      if (key.startsWith(prefix)) this.latest.delete(key);
+    }
   }
 
   async snapshot(workspaceId: string, includeCommunications = true): Promise<ControlCenterSnapshot> {

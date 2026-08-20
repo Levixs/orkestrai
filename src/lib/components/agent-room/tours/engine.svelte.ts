@@ -3,6 +3,7 @@ import { TOURS_PT } from './catalog/pt-BR.js';
 import { TOURS_EN } from './catalog/en.js';
 import { TOURS_ES } from './catalog/es.js';
 import { localeState } from '$lib/i18n/locale.svelte.js';
+import * as m from '$lib/paraglide/messages.js';
 import { checkPasses, isTourComplete } from './checks.js';
 import { goto } from '$app/navigation';
 import { getCsrfToken } from '@beeblock/svelar/http';
@@ -360,10 +361,24 @@ async function runAction(action: TourAction): Promise<void> {
         await goto(`/canvas?workspace=${encodeURIComponent(String(workspaceId))}&node=${encodeURIComponent(nodeId)}&design=1`);
         break;
       }
-      case 'openDesignExploration': {
-        window.dispatchEvent(new CustomEvent('orkestrai:open-design-exploration', {
-          detail: { workspaceId },
-        }));
+      case 'createDesignExploration': {
+        const created = await api(`/api/agent-room/workspaces/${workspaceId}/design-explorations`, {
+          method: 'POST',
+          body: JSON.stringify({
+            title: action.title,
+            objective: action.objective,
+            audience: action.audience,
+            platform: 'responsive-web',
+            codeTarget: 'svelar',
+            constraints: '',
+            references: '',
+            includeDarkMode: true,
+            executionMode: 'manual',
+            leaderNodeId: null,
+            locale: localeState.current,
+          }),
+        });
+        if (!created) throw new Error(m['design.exploration_create_error']());
         break;
       }
       case 'openPage': {

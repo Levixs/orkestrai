@@ -198,17 +198,27 @@ test.describe('Native Design Mode', () => {
 
       await penButton.click();
       const pageSvg = editor.locator('svg[role="application"]');
-      const bounds = await pageSvg.boundingBox();
-      expect(bounds).not.toBeNull();
-      const curveStart = { x: bounds!.x + bounds!.width * 0.58, y: bounds!.y + bounds!.height * 0.28 };
+      const svgBounds = await pageSvg.boundingBox();
+      const viewportBounds = await editor.locator('main').boundingBox();
+      expect(svgBounds).not.toBeNull();
+      expect(viewportBounds).not.toBeNull();
+      const bounds = {
+        x: Math.max(svgBounds!.x, viewportBounds!.x),
+        y: Math.max(svgBounds!.y, viewportBounds!.y),
+        width: Math.min(svgBounds!.x + svgBounds!.width, viewportBounds!.x + viewportBounds!.width) - Math.max(svgBounds!.x, viewportBounds!.x),
+        height: Math.min(svgBounds!.y + svgBounds!.height, viewportBounds!.y + viewportBounds!.height) - Math.max(svgBounds!.y, viewportBounds!.y),
+      };
+      expect(bounds.width).toBeGreaterThan(240);
+      expect(bounds.height).toBeGreaterThan(180);
+      const curveStart = { x: bounds.x + bounds.width * 0.28, y: bounds.y + bounds.height * 0.28 };
       await page.mouse.move(curveStart.x, curveStart.y);
       await page.mouse.down();
       await page.mouse.move(curveStart.x + 34, curveStart.y - 22, { steps: 6 });
       await page.mouse.up();
       await page.waitForTimeout(80);
-      await page.mouse.click(bounds!.x + bounds!.width * 0.78, bounds!.y + bounds!.height * 0.42);
+      await page.mouse.click(bounds.x + bounds.width * 0.68, bounds.y + bounds.height * 0.42);
       await page.waitForTimeout(80);
-      await page.mouse.click(bounds!.x + bounds!.width * 0.64, bounds!.y + bounds!.height * 0.64);
+      await page.mouse.click(bounds.x + bounds.width * 0.44, bounds.y + bounds.height * 0.64);
       const pathCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
       await page.keyboard.press('Enter');
       await pathCreated;
@@ -268,7 +278,7 @@ test.describe('Native Design Mode', () => {
 
       const textCreated = page.waitForResponse((response) => response.request().method() === 'PATCH' && response.url().includes(`/designs/${node.id}`));
       await editor.getByRole('button', { name: 'Text', exact: true }).click();
-      await page.mouse.click(bounds!.x + bounds!.width * 0.32, bounds!.y + bounds!.height * 0.72);
+      await page.mouse.click(bounds.x + bounds.width * 0.32, bounds.y + bounds.height * 0.72);
       await textCreated;
       await page.keyboard.press('Enter');
       const textEditor = editor.locator('[data-design-text-editor]');

@@ -9,7 +9,7 @@ export class UsageController extends Controller {
       const usage = await usageService.getAll(forceRefresh);
       return this.json({ data: usage });
     } catch (error) {
-      return this.errorResponse(error, 'Falha ao consultar uso dos providers.');
+      return this.errorResponse(error, 'usage_fetch_failed');
     }
   }
 }

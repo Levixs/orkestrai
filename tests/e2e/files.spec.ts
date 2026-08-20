@@ -1,53 +1,62 @@
 import { expect, test } from '@playwright/test';
 import { createNodeOnCanvas } from './helpers.js';
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-test.describe('arquivos e editor no canvas', () => {
-  test('abre arquivo da arvore no editor, edita e salva', async ({ page, request }) => {
+test.describe('arquivos e editor do workspace', () => {
+  test('abre arquivo da arvore no Workbench, edita e salva', async ({ page, request }) => {
+    test.setTimeout(90_000);
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-e2e-fs-'));
     mkdirSync(join(dir, 'src'));
     writeFileSync(join(dir, 'src', 'hello.ts'), 'export const hello = "ola";\n');
     const workspaceName = `E2E fs ${Date.now()}`;
 
-    await page.goto('/canvas');
-    await page.getByRole('button', { name: 'Novo workspace' }).click();
-    await page.getByPlaceholder('Nome').fill(workspaceName);
-    await page.getByPlaceholder('Diretório de trabalho').fill(dir);
-    await page.getByRole('button', { name: 'Criar' }).click();
-    await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
-    await expect(page.locator('.workspace-list li.active')).toContainText(workspaceName);
+    let workspaceId: string | undefined;
 
-    // Abre a arvore de arquivos e navega ate src/hello.ts
-    await createNodeOnCanvas(page, 'Arquivos');
-    const tree = page.locator('.canvas-filetree');
-    await expect(tree).toBeVisible();
-    await tree.getByText('src').click();
-    await tree.getByText('hello.ts').dblclick();
+    try {
+      await page.goto('/canvas');
+      await page.getByRole('button', { name: 'Novo workspace' }).click();
+      await page.getByPlaceholder('Nome').fill(workspaceName);
+      await page.getByPlaceholder('Diretório de trabalho').fill(dir);
+      await page.getByRole('button', { name: 'Criar' }).click();
+      await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
+      await expect(page.locator('.workspace-list li.active')).toContainText(workspaceName);
 
-    // Editor abre com o conteudo
-    const editor = page.locator('.canvas-editor');
-    await expect(editor).toBeVisible();
-    await expect(editor.locator('.cm-content')).toContainText('export const hello = "ola";', { timeout: 10_000 });
+      const list = await request.get('/api/agent-room/workspaces');
+      const workspaces = (await list.json()).data as Array<{ id: string; name: string }>;
+      workspaceId = workspaces.find((workspace) => workspace.name === workspaceName)?.id;
+      expect(workspaceId).toBeTruthy();
 
-    // Edita e salva com Ctrl+S
-    await editor.locator('.cm-content').click();
-    await page.keyboard.press('End');
-    await page.keyboard.type('// editado');
-    await page.keyboard.press('Control+s');
-    await expect(editor.locator('.dirty-badge')).toHaveCount(0, { timeout: 5_000 });
+      // Abre a arvore de arquivos e navega ate src/hello.ts.
+      await createNodeOnCanvas(page, 'Arquivos');
+      const tree = page.locator('.canvas-filetree');
+      await expect(tree).toBeVisible();
+      await tree.getByText('src').click();
+      await tree.getByText('hello.ts').dblclick();
 
-    expect(readFileSync(join(dir, 'src', 'hello.ts'), 'utf8')).toContain('// editado');
+      // Arquivos agora abrem no Monaco integrado ao Workbench.
+      await expect(page).toHaveURL(new RegExp(`/terminal\\?workspace=${workspaceId}`));
+      const fileView = page.getByTestId('workbench-file-view');
+      await expect(fileView.locator('.monaco-editor')).toBeVisible({ timeout: 30_000 });
+      const editor = fileView.getByRole('textbox', { name: 'Editor content' });
+      await expect(editor).toHaveValue(/export const hello = "ola";/);
 
-    // Persiste como no do canvas
-    await page.reload();
-    await expect(page.locator('.canvas-editor')).toBeVisible();
+      await editor.focus();
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
+      await editor.pressSequentially('// editado', { delay: 5 });
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s');
 
-    const list = await request.get('/api/agent-room/workspaces');
-    const workspaces = (await list.json()).data as Array<{ id: string; name: string }>;
-    const created = workspaces.find((workspace) => workspace.name === workspaceName);
-    if (created) await request.delete(`/api/agent-room/workspaces/${created.id}`);
+      await expect.poll(() => readFileSync(join(dir, 'src', 'hello.ts'), 'utf8')).toContain('// editado');
+
+      // A aba e o arquivo aberto sobrevivem ao reload do Workbench.
+      await page.reload();
+      await expect(fileView.locator('.monaco-editor')).toBeVisible({ timeout: 30_000 });
+      await expect(fileView.getByRole('textbox', { name: 'Editor content' })).toHaveValue(/\/\/ editado/);
+    } finally {
+      if (workspaceId) await request.delete(`/api/agent-room/workspaces/${workspaceId}`);
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('arvore mostra branch e status git', async ({ page, request }) => {

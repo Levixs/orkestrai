@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createNodeOnCanvas } from './helpers.js';
+import { createNodeOnCanvas, selectCanvasTool } from './helpers.js';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -64,7 +64,7 @@ test.describe('andares e rotinas', () => {
     await cleanup(request, workspaceName);
   });
 
-  test('rotina dispara prompt no terminal alvo', async ({ page, request }) => {
+  test('automacao manual dispara prompt no terminal alvo', async ({ page, request }) => {
     const dir = mkdtempSync(join(tmpdir(), 'orkestrai-e2e-routine-'));
     const workspaceName = `E2E routine ${Date.now()}`;
     await createWorkspaceIn(page, workspaceName, dir);
@@ -75,19 +75,21 @@ test.describe('andares e rotinas', () => {
     // Aguarda a sessao PTY ser criada e o payload.sessionId ser persistido
     await page.waitForTimeout(2_500);
 
-    // Cria rotina com prompt marcador e roda agora
-    await page.getByRole('button', { name: 'Rotinas' }).click();
-    const panel = page.locator('.side-panel');
+    // Cria uma automacao manual com prompt marcador e executa agora.
+    await selectCanvasTool(page, 'Automações');
+    const panel = page.getByTestId('automation-workspace');
     await expect(panel).toBeVisible();
     const marker = `rotina-${Date.now()}`;
-    // Select shadcn: abre o trigger e escolhe a opcao pelo texto
-    await panel.locator('[data-slot="select-trigger"]').click();
-    await page.locator('[data-slot="select-item"]', { hasText: 'Shell' }).click();
-    await panel.locator('textarea').fill(`echo ${marker}`);
-    await panel.getByRole('button', { name: 'Criar rotina' }).click();
-    await expect(panel.locator('.routine-item')).toHaveCount(1);
+    await panel.getByRole('button', { name: 'Nova automação' }).click();
+    await panel.getByLabel('Nome').fill(marker);
+    await panel.getByRole('button', { name: 'Agente de destino', exact: true }).click();
+    await page.locator('[data-slot="select-item"]').filter({ hasText: 'Shell' }).click();
+    await panel.getByRole('textbox', { name: 'Prompt', exact: true }).fill(`echo ${marker}`);
+    await panel.getByRole('button', { name: 'Salvar automação' }).click();
+    const automation = panel.getByRole('article').filter({ hasText: marker });
+    await expect(automation).toBeVisible();
 
-    await panel.locator('.routine-item').first().getByRole('button', { name: 'Rodar agora' }).click();
+    await automation.getByRole('button', { name: 'Executar agora' }).click();
     await expect(page.locator('.canvas-terminal .terminal-container')).toContainText(marker, { timeout: 10_000 });
 
     await cleanup(request, workspaceName);

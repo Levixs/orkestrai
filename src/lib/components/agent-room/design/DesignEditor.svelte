@@ -105,6 +105,7 @@
   } from '$lib/modules/agent-room/domain/design-viewport.js';
   import { defaultPrototypeFlow, exportMotionCss, prototypeFrames } from '$lib/modules/agent-room/domain/design-prototype.js';
   import * as m from '$lib/paraglide/messages.js';
+  import { eventTargetMatches } from '$lib/components/agent-room/event-target.js';
   import DesignColorTools from './DesignColorTools.svelte';
   import DesignCollaborationPanel from './DesignCollaborationPanel.svelte';
   import DesignComponentsPanel from './DesignComponentsPanel.svelte';
@@ -2504,8 +2505,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
 
   function keyboard(event: KeyboardEvent) {
     if (!editorRoot?.contains(globalThis.document?.activeElement ?? null)) return;
-    const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, [contenteditable="true"]')) return;
+    if (eventTargetMatches(event.target, 'input, textarea, [contenteditable="true"]')) return;
     if (event.code === 'Space') {
       event.preventDefault();
       spacePressed = true;
@@ -2603,8 +2603,7 @@ function interaction(e,type){const el=e.target.closest?.('[data-design-element]'
   }
 
   function focusEditor(event: PointerEvent) {
-    const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, button, select, [contenteditable="true"]')) return;
+    if (eventTargetMatches(event.target, 'input, textarea, button, select, [contenteditable="true"]')) return;
     editorRoot?.focus({ preventScroll: true });
   }
 

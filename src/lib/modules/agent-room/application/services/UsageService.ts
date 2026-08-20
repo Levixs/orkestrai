@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
+import { USAGE_REFRESH_INTERVAL_MS, type UsageErrorCode } from '$lib/modules/agent-room/domain/usage.js';
 import { USAGE_PROVIDERS, usageProviderDefinition, type UsageDiagnostic } from '$lib/modules/agent-room/domain/usage-providers.js';
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -25,17 +25,28 @@ export type ProviderUsage = {
   provider: string;
   plan: string | null;
   windows: UsageWindow[];
-  error: string | null;
+  error: UsageErrorCode | null;
   diagnostic?: UsageDiagnostic | null;
   helpUrl?: string | null;
   fetchedAt: string;
 };
 
 const WINDOW_LABELS: Record<UsageWindowKind, string> = {
-  '5h': '5 horas',
-  weekly: 'Semanal',
-  monthly: 'Mensal',
+  '5h': '5 hours',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
 };
+
+class UsageCollectionError extends Error {
+  constructor(readonly code: UsageErrorCode) {
+    super(code);
+    this.name = 'UsageCollectionError';
+  }
+}
+
+function usageError(code: UsageErrorCode): UsageCollectionError {
+  return new UsageCollectionError(code);
+}
 
 function windowOf(kind: UsageWindowKind, usedPercent: number, resetsAt: string | null): UsageWindow {
   return { kind, label: WINDOW_LABELS[kind], usedPercent: Math.max(0, Math.min(100, Math.round(usedPercent))), resetsAt };
@@ -100,20 +111,20 @@ export class UsageService {
           provider,
           plan: null,
           windows: [],
-          error: definition.diagnostic ? null : 'Provider desconhecido.',
+          error: definition.diagnostic ? null : 'unknown_provider',
           diagnostic: definition.diagnostic,
           helpUrl: definition.helpUrl,
           fetchedAt: new Date().toISOString(),
         };
       }
     } catch (error) {
-      usage = this.failure(provider, error instanceof Error ? error.message : 'Falha ao consultar uso.');
+      usage = this.failure(provider, error instanceof UsageCollectionError ? error.code : 'unexpected');
     }
     this.cache.set(provider, { at: Date.now(), usage });
     return usage;
   }
 
-  private failure(provider: string, error: string): ProviderUsage {
+  private failure(provider: string, error: UsageErrorCode): ProviderUsage {
     return { provider, plan: null, windows: [], error, diagnostic: null, helpUrl: usageProviderDefinition(provider).helpUrl, fetchedAt: new Date().toISOString() };
   }
 
@@ -133,7 +144,7 @@ export class UsageService {
         if (token) return token as string;
       }
     }
-    throw new Error('Credenciais do Claude Code nao encontradas.');
+    throw usageError('credentials_missing');
   }
 
   private async claudeUsage(): Promise<ProviderUsage> {
@@ -154,10 +165,10 @@ export class UsageService {
 
   private async codexUsage(): Promise<ProviderUsage> {
     const filePath = join(this.home, '.codex', 'auth.json');
-    if (!existsSync(filePath)) throw new Error('auth.json do Codex nao encontrado.');
+    if (!existsSync(filePath)) throw usageError('credentials_missing');
     const auth = JSON.parse(readFileSync(filePath, 'utf8'));
     const token = auth?.tokens?.access_token;
-    if (!token) throw new Error('Token do Codex ausente no auth.json.');
+    if (!token) throw usageError('access_token_missing');
 
     const data = await this.fetchJson('https://chatgpt.com/backend-api/wham/usage', {
       authorization: `Bearer ${token}`,
@@ -215,11 +226,11 @@ export class UsageService {
       scope?: string;
       token_type?: string;
     };
-    if (!creds.access_token) throw new Error('Token do kimi-code ausente.');
+    if (!creds.access_token) throw usageError('access_token_missing');
     // Sem expires_at registrado: usa o token como esta (so renova quando sabe que venceu).
     const expiresAtMs = Number(creds.expires_at ?? 0) * 1000; // expires_at e em SEGUNDOS
     if (!creds.expires_at || expiresAtMs > Date.now() + 60_000) return creds.access_token;
-    if (!creds.refresh_token) throw new Error('Refresh token do kimi-code ausente — abra a CLI e faca login.');
+    if (!creds.refresh_token) throw usageError('refresh_token_missing');
 
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
@@ -232,7 +243,7 @@ export class UsageService {
       body,
       signal: AbortSignal.timeout(15_000),
     });
-    if (!response.ok) throw new Error(`Refresh do kimi falhou (HTTP ${response.status}) — abra a CLI e faca login.`);
+    if (!response.ok) throw usageError('refresh_failed');
     const data = (await response.json()) as {
       access_token: string;
       refresh_token: string;
@@ -255,7 +266,7 @@ export class UsageService {
 
   private async kimiUsage(): Promise<ProviderUsage> {
     const filePath = join(this.home, '.kimi-code', 'credentials', 'kimi-code.json');
-    if (!existsSync(filePath)) throw new Error('Credenciais do kimi-code nao encontradas.');
+    if (!existsSync(filePath)) throw usageError('credentials_missing');
     const token = await this.kimiToken(filePath);
 
     const data = await this.fetchJson('https://api.kimi.com/coding/v1/usages', {
@@ -288,12 +299,14 @@ export class UsageService {
     try {
       const response = await this.fetchFn(url, { headers, signal: controller.signal });
       if (response.status === 401 || response.status === 403) {
-        throw new Error('Credencial expirada — abra a CLI do provider e faca login de novo.');
+        throw usageError('credential_expired');
       }
-      if (!response.ok) throw new Error(`API respondeu HTTP ${response.status}.`);
+      if (!response.ok) throw usageError('api_request_failed');
       return (await response.json()) as Record<string, unknown>;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') throw new Error('API demorou demais para responder.');
+      if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+        throw usageError('api_timeout');
+      }
       throw error;
     } finally {
       clearTimeout(timeout);

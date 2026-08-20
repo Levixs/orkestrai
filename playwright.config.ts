@@ -3,6 +3,7 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: 'tests/e2e',
   testMatch: '**/*.spec.ts',
+  globalSetup: './tests/e2e/global-setup.ts',
   snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}{ext}',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -22,6 +23,9 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run build && PORT=5199 node scripts/orkestrai-server.mjs',
+    env: {
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, '--max-old-space-size=8192'].filter(Boolean).join(' '),
+    },
     url: 'http://127.0.0.1:5199',
     timeout: 180_000,
     reuseExistingServer: !process.env.CI,

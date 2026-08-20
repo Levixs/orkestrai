@@ -15,7 +15,12 @@
   function target(path: '/canvas' | '/terminal'): string {
     const params = new URLSearchParams();
     if (workspaceId) params.set('workspace', workspaceId);
-    if (nodeId) params.set('node', nodeId);
+    let targetNodeId = nodeId;
+    if (!targetNodeId && active === 'canvas' && workspaceId && typeof location !== 'undefined') {
+      const current = new URLSearchParams(location.search);
+      if (current.get('workspace') === workspaceId) targetNodeId = current.get('node');
+    }
+    if (targetNodeId) params.set('node', targetNodeId);
     const query = params.toString();
     return query ? `${path}?${query}` : path;
   }

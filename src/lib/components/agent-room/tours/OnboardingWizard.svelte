@@ -7,11 +7,12 @@
   import { Input } from '$lib/components/ui/input';
   import * as m from '$lib/paraglide/messages.js';
   import {
-    Activity, ArrowLeft, Cable, FileCode2, FolderPlus, GitBranch, GitPullRequestArrow, Languages, Layers, LayoutGrid, LayoutTemplate, Mic, Palette, PanelLeftOpen, Paperclip, Pin, RadioTower, Repeat, Rocket, Scale, ScanSearch, Search, Smartphone, Sparkles, Users, Workflow,
+    Activity, ArrowLeft, Cable, FileCode2, FolderPlus, GitBranch, GitPullRequestArrow, Languages, Layers, LayoutGrid, LayoutTemplate, ListRestart, Mic, Palette, PanelLeftOpen, Paperclip, Pin, RadioTower, Repeat, Rocket, Scale, ScanSearch, Search, Smartphone, Sparkles, Users, Workflow,
   } from '@lucide/svelte';
   import { toursCatalog, startTour } from './engine.svelte.js';
   import type { Tour } from './types.js';
   import { getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
+  import { localeState } from '$lib/i18n/locale.svelte.js';
 
   type Workspace = { id: string; name: string };
 
@@ -28,7 +29,7 @@
 
   let { open, onClose, onCreateWorkspace, activeWorkspaceId, requestedTourId = null }: Props = $props();
 
-  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, GitPullRequestArrow, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, Palette, PanelLeftOpen, FileCode2, Paperclip, Pin, RadioTower, Mic, Languages, Activity, Scale, ScanSearch, Smartphone };
+  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, GitPullRequestArrow, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, ListRestart, Palette, PanelLeftOpen, FileCode2, Paperclip, Pin, RadioTower, Mic, Languages, Activity, Scale, ScanSearch, Smartphone };
 
   type WizardStep = 'language' | 'welcome' | 'workspace' | 'usecase';
   type UiLanguage = 'pt-BR' | 'en' | 'es';
@@ -71,6 +72,7 @@
 
   async function chooseLanguage(language: UiLanguage) {
     if (languageSaving) return;
+    const changesLocale = localeState.current !== language;
     languageSaving = language;
     try {
       // Grave o proximo passo antes do PUT: getAppSettings troca o locale e
@@ -87,8 +89,13 @@
       });
       if (!response.ok) throw new Error('language_save_failed');
       invalidateAppSettings();
+      // O portal do Dialog e desmontado com a arvore de locale. Um reload
+      // reabre o wizard a partir das flags gravadas acima, sem perder o workspace.
+      if (changesLocale) {
+        location.reload();
+        return;
+      }
       await getAppSettings(true);
-      // Quando o idioma escolhido ja era o atual, nao ha remount.
       step = 'welcome';
     } catch {
       try { sessionStorage.removeItem('orkestrai.onboarding-step'); } catch {}
@@ -131,7 +138,7 @@
   });
 </script>
 
-<Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+<Dialog.Root {open} onOpenChange={(isOpen) => !isOpen && !languageSaving && onClose()}>
   <Dialog.Content class="{step === 'usecase' ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} wizard-content">
     {#if step === 'language'}
       <div class="wizard-center">

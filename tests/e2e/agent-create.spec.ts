@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { selectAgentTool } from './helpers.js';
+import { selectAgentTool, selectCanvasTool } from './helpers.js';
 
 test.describe('dialogo de criacao de agente', () => {
   test('desenhar terminal abre dialogo com nome/modelo/esforco/lider', async ({ page, request }) => {
@@ -31,7 +31,9 @@ test.describe('dialogo de criacao de agente', () => {
       await page.locator('[role="option"]').nth(1).click();
     }
     await expect(dialog.locator('[role="checkbox"]')).toHaveAttribute('data-state', 'checked');
-    await dialog.getByRole('button', { name: 'Criar agente' }).click();
+    const createAgent = dialog.getByRole('button', { name: 'Criar agente' });
+    await expect(createAgent).toBeEnabled();
+    await createAgent.click();
 
     await expect(page.locator('.canvas-terminal')).toHaveCount(1);
 
@@ -59,7 +61,7 @@ test.describe('dialogo de criacao de agente', () => {
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
 
-    await page.locator(".toolbar").getByRole("button", { name: "Shell", exact: true }).click();
+    await selectCanvasTool(page, 'Shell');
     await page.locator('.svelte-flow__pane').click({ position: { x: 600, y: 350 } });
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();

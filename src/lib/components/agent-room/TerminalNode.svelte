@@ -56,6 +56,7 @@
     workspaceName?: string;
     onExit?: (exitCode: number) => void;
     onSessionCreated?: (sessionId: string) => void | Promise<void>;
+    onSessionReady?: (sessionId: string, mode: 'created' | 'attached') => void | Promise<void>;
     /** Cmd/Ctrl+clique num caminho de arquivo detectado no output. */
     onOpenPath?: (path: string) => void;
     /** Sessao PTY nao existe mais (servidor reiniciou) — recriar/retomar. */
@@ -77,7 +78,7 @@
     themeName?: TerminalThemeName;
   };
 
-  let { sessionId, createRequest, provider, sessionStorage, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onOpenPath, onRespawn, onAgentSession, onWorkingDirectoryChange, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
+  let { sessionId, createRequest, provider, sessionStorage, workspaceId, nodeId, sessionLabel, workspaceName, onExit, onSessionCreated, onSessionReady, onOpenPath, onRespawn, onAgentSession, onWorkingDirectoryChange, onTalking, onAgentReply, voiceOn = false, onToggleVoice, themeName = 'dark' }: Props = $props();
 
   let container: HTMLDivElement;
   let xtermInstance: Terminal | null = null;
@@ -321,6 +322,14 @@
     return waiting;
   }
 
+  export function focus() {
+    xtermInstance?.focus();
+  }
+
+  export function write(data: string) {
+    sendInput?.(data);
+  }
+
   onMount(() => {
     let fontSize = 13;
     let fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -419,6 +428,7 @@
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
     let resizeFrame: number | null = null;
+    const pendingInput: string[] = [];
 
     const handleLeaderDictation = (event: Event) => {
       const detail = (event as CustomEvent<LeaderDictationCommandDetail>).detail;
@@ -433,6 +443,20 @@
 
     let createdSessionId: string | undefined;
     const currentSessionId = () => createdSessionId ?? sessionId;
+    const sendTerminalInput = (data: string) => {
+      const id = currentSessionId();
+      if (!id || socket?.readyState !== WebSocket.OPEN) {
+        pendingInput.push(data);
+        while (pendingInput.join('').length > 16_384) pendingInput.shift();
+        return;
+      }
+      send({ type: 'input', sessionId: id, data });
+    };
+    const flushPendingInput = () => {
+      const id = currentSessionId();
+      if (!id || socket?.readyState !== WebSocket.OPEN) return;
+      for (const data of pendingInput.splice(0)) send({ type: 'input', sessionId: id, data });
+    };
 
     const fitAndReportSize = () => {
       if (disposed) return;
@@ -490,11 +514,14 @@
       switch (message.type) {
         case 'created':
           createdSessionId = message.session.id;
-          onSessionCreated?.(message.session.id);
+          void Promise.resolve(onSessionCreated?.(message.session.id))
+            .then(() => onSessionReady?.(message.session.id, 'created'))
+            .catch(() => undefined);
           if (message.scrollback) terminal.write(message.scrollback);
           statusMessage = '';
           reconnectAttempts = 0;
           scheduleFitAndReportSize();
+          flushPendingInput();
           break;
         case 'attached':
           if (message.scrollback) terminal.write(message.scrollback);
@@ -503,6 +530,11 @@
           waiting = Boolean(message.session?.waiting);
           if (message.session?.exited) exited = message.session.exitCode ?? 0;
           scheduleFitAndReportSize();
+          flushPendingInput();
+          {
+            const attachedSessionId = String(message.session?.id ?? sessionId ?? '');
+            if (attachedSessionId) void onSessionReady?.(attachedSessionId, 'attached');
+          }
           break;
         case 'output':
           terminal.write(message.data);
@@ -596,13 +628,13 @@
     connect();
 
     terminal.onData((data) => {
-      send({ type: 'input', sessionId: currentSessionId(), data });
+      sendTerminalInput(data);
       // Enter depois de um ditado: agora sim arma a captura da resposta.
       if (pendingDictation && data.includes('\r')) {
         armDictationReplyCapture();
       }
     });
-    sendInput = (data) => send({ type: 'input', sessionId: currentSessionId(), data });
+    sendInput = sendTerminalInput;
 
     const resizeObserver = new ResizeObserver(scheduleFitAndReportSize);
     resizeObserver.observe(container);

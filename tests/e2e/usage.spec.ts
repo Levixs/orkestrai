@@ -4,14 +4,34 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 test.describe('usage dos providers', () => {
-  test('endpoint retorna os 3 providers com janelas ou erro amigavel', async ({ request }) => {
+  test('endpoint retorna todos os providers com janelas ou orientação oficial', async ({ request }) => {
     const response = await request.get('/api/agent-room/usage');
     expect(response.ok()).toBe(true);
-    const usages = (await response.json()).data as Array<{ provider: string; windows: unknown[]; error: string | null }>;
-    expect(usages.map((usage) => usage.provider).sort()).toEqual(['claude', 'codex', 'kimi']);
+    const usages = (await response.json()).data as Array<{
+      provider: string;
+      windows: unknown[];
+      error: string | null;
+      diagnostic: string | null;
+      helpUrl: string | null;
+    }>;
+    expect(usages.map((usage) => usage.provider).sort()).toEqual([
+      'antigravity',
+      'claude',
+      'cline',
+      'codex',
+      'cursor',
+      'devin',
+      'kimi',
+      'opencode',
+    ]);
     for (const usage of usages) {
-      // Ou tem janelas de uso ou um erro amigavel (ambiente sem login da CLI).
-      expect(usage.windows.length > 0 || Boolean(usage.error)).toBe(true);
+      // Providers sem telemetria oficial expõem diagnóstico e documentação,
+      // em vez de inventar uma porcentagem de uso.
+      expect(
+        usage.windows.length > 0
+        || Boolean(usage.error)
+        || Boolean(usage.diagnostic && usage.helpUrl)
+      ).toBe(true);
     }
   });
 
@@ -29,11 +49,11 @@ test.describe('usage dos providers', () => {
       await page.getByRole('button', { name: /Usage/ }).click();
 
       await expect(page.locator('.usage-panel h3')).toHaveText('Uso dos providers');
-      await expect(page.locator('.usage-card')).toHaveCount(3, { timeout: 15_000 });
-      // Cada card mostra janelas com barra ou mensagem de erro amigavel.
+      await expect(page.locator('.usage-card')).toHaveCount(8, { timeout: 15_000 });
+      // Cada card mostra janelas, erro ou orientação oficial do provider.
       const cards = page.locator('.usage-card');
       for (const card of await cards.all()) {
-        await expect(card.locator('.window-row, .usage-error, .hint').first()).toBeVisible();
+        await expect(card.locator('.window-row, .usage-error, .usage-diagnostic, .hint').first()).toBeVisible();
       }
 
       await page.getByRole('button', { name: /Adicionar Uso ao canvas/i }).click();
@@ -48,6 +68,50 @@ test.describe('usage dos providers', () => {
         thresholdPercent: 90,
       });
     } finally {
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+    }
+  });
+
+  test('traduz erros coletados pelo backend para o idioma ativo', async ({ page, request }) => {
+    const settingsResponse = await request.get('/api/agent-room/settings');
+    const originalSettings = (await settingsResponse.json()).data as Record<string, unknown>;
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-e2e-usage-locale-'));
+    const workspaceName = `E2E usage locale ${Date.now()}`;
+    const created = await request.post('/api/agent-room/workspaces', {
+      data: { name: workspaceName, workingDir: dir },
+    });
+    const workspace = (await created.json()).data as { id: string };
+
+    await page.route('**/api/agent-room/usage**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: [{
+            provider: 'claude',
+            plan: null,
+            windows: [],
+            error: 'credentials_missing',
+            diagnostic: null,
+            helpUrl: null,
+            fetchedAt: new Date().toISOString(),
+          }],
+        }),
+      });
+    });
+
+    try {
+      await request.put('/api/agent-room/settings', {
+        data: { ...originalSettings, uiLanguage: 'en' },
+      });
+      await page.goto(`/canvas?workspace=${workspace.id}`);
+      await page.getByRole('button', { name: /Usage/ }).click();
+      await expect(page.locator('.usage-error')).toHaveText(
+        'No local credentials were found for Claude. Open its CLI and sign in.',
+      );
+      await expect(page.locator('.usage-panel')).not.toContainText(/Credencial|encontrad|faça login/i);
+    } finally {
+      await request.put('/api/agent-room/settings', { data: originalSettings });
       await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
     }
   });

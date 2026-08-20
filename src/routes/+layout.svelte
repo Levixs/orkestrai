@@ -10,6 +10,7 @@
   import DesktopTitlebar from '$lib/components/agent-room/DesktopTitlebar.svelte';
   import GlobalCommandPalette from '$lib/components/agent-room/GlobalCommandPalette.svelte';
   import TourGuidePanel from '$lib/components/agent-room/tours/TourGuidePanel.svelte';
+  import * as m from '$lib/paraglide/messages.js';
   import { initLocaleRuntime, localeState } from '$lib/i18n/locale.svelte.js';
   import { appSettingsStore } from '$lib/components/agent-room/app-settings.svelte.js';
   import { applyAppTheme } from '$lib/components/agent-room/app-themes.js';
@@ -100,7 +101,7 @@
 <!-- Site-wide SEO defaults — override per page with another <Seo> -->
 <Seo
   title="Orkestrai Agent Room"
-  description="Orquestrador local para conversa entre usuario, Codex e Claude."
+  description={m['app.seo_description']()}
   ogSiteName="Orkestrai Agent Room"
   ogType="website"
 />

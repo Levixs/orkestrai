@@ -52,6 +52,7 @@
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
   import WorkspacePermissionNotice from '$lib/components/agent-room/WorkspacePermissionNotice.svelte';
   import { isWorkspacePermissionError } from '$lib/components/agent-room/workspace-permission.js';
+  import { isTypingTarget } from '$lib/components/agent-room/event-target.js';
   import {
     readProviderCache,
     readWorkspaceListCache,
@@ -964,17 +965,17 @@
       edges = cached.edges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
     }
     try {
-      const [workspace, canvasNodes, canvasEdges, floorList, providerStatus] = await Promise.all([
+      const providerStatusRequest = api<{ providers: AgentProviderInfo[] }>(
+        `/api/agent-room/status?workspaceId=${encodeURIComponent(id)}`
+      );
+      const [workspace, canvasNodes, canvasEdges, floorList] = await Promise.all([
         api<Workspace>(`/api/agent-room/workspaces/${id}`),
         api<CanvasNode[]>(`/api/agent-room/workspaces/${id}/nodes`),
         api<CanvasEdge[]>(`/api/agent-room/workspaces/${id}/edges`),
         api<Floor[]>(`/api/agent-room/workspaces/${id}/floors`),
-        api<{ providers: AgentProviderInfo[] }>(`/api/agent-room/status?workspaceId=${encodeURIComponent(id)}`),
       ]);
       if (requestId !== selectionRequestId) return;
       activeWorkspace = workspace;
-      providers = providerStatus.providers ?? [];
-      writeProviderCache(providers);
       localStorage.setItem('orkestrai.activeWorkspaceId', workspace.id);
       if (changingWorkspace) {
         leaderDictationState = 'idle';
@@ -994,6 +995,12 @@
       const visibleIds = new Set(nodes.map((node) => node.id));
       edges = canvasEdges.map(toFlowEdge).filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target));
       writeWorkspaceViewCache({ workspace, nodes: canvasNodes, edges: canvasEdges, floors: floorList });
+      void providerStatusRequest.then((providerStatus) => {
+        if (requestId !== selectionRequestId || activeWorkspace?.id !== id) return;
+        providers = providerStatus.providers ?? [];
+        writeProviderCache(providers);
+        nodes = nodes.map((node) => ({ ...node, data: { ...node.data, providers } }));
+      }).catch(() => undefined);
     } catch (error) {
       if (isWorkspacePermissionError(error)) {
         permissionWorkspace = workspaces.find((workspace) => workspace.id === id) ?? null;
@@ -1637,6 +1644,12 @@
     nodes = nodes.map((item) => ({ ...item, selected: item.id === nodeId }));
   }
 
+  function canvasRouteNodeId(): string | null {
+    if (typeof location === 'undefined') return null;
+    const nodeId = new URLSearchParams(location.search).get('node');
+    return nodeId && nodes.some((node) => node.id === nodeId) ? nodeId : null;
+  }
+
   const paletteActions = $derived<PaletteAction[]>([
     { id: 'shell', label: m['canvas.palette_new_shell'](), hint: m['canvas.hint_action'](), run: () => (pendingAgentCreation = { provider: null }) },
     { id: 'design', label: m['tool.design'](), hint: m['canvas.hint_action'](), run: () => void addDesignNode() },
@@ -1685,12 +1698,6 @@
     { id: 'group', label: m['canvas.palette_group'](), hint: m['canvas.hint_selection'](), run: () => groupSelection() },
     { id: 'zoom-sel', label: m['canvas.palette_zoom_sel'](), hint: m['canvas.hint_view'](), run: zoomToSelection },
   ]);
-
-  function isTypingTarget(target: EventTarget | null): boolean {
-    const el = target as HTMLElement | null;
-    if (!el) return false;
-    return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable || el.closest('.cm-editor') !== null;
-  }
 
   function handleGlobalKeydown(event: KeyboardEvent) {
     const mod = event.metaKey || event.ctrlKey;
@@ -1912,7 +1919,7 @@
         <WorkspaceModeSwitch
           active="canvas"
           workspaceId={activeWorkspace?.id ?? null}
-          nodeId={nodes.find((node) => node.selected)?.id ?? null}
+          nodeId={nodes.find((node) => node.selected)?.id ?? canvasRouteNodeId()}
         />
       </div>
     {/if}

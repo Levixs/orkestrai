@@ -47,8 +47,8 @@ test.describe('quadro de tarefas (kanban)', () => {
     expect(tasks).toHaveLength(2);
     expect(tasks.map((task) => task.status).sort()).toEqual(['doing', 'todo']);
 
-    // Remove uma tarefa (icone de lixeira no cartao)
-    await board.locator('.tb-card').first().locator('.tb-icon-btn').first().click();
+    // Remove uma tarefa pela acao nomeada (outros icones podem vir antes dela).
+    await board.locator('.tb-card').first().getByRole('button', { name: 'Remover tarefa' }).click();
     await expect(board.locator('.tb-card')).toHaveCount(1);
 
     await request.delete(`/api/agent-room/workspaces/${workspace.id}`);

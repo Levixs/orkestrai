@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildUsageRoutingReport, normalizeUsageRoutingPolicy } from '$lib/modules/agent-room/domain/usage-routing.js';
 import type { ProviderUsage } from '$lib/modules/agent-room/application/services/UsageService.js';
 
-const usage = (provider: ProviderUsage['provider'], usedPercent: number, error: string | null = null): ProviderUsage => ({
+const usage = (provider: ProviderUsage['provider'], usedPercent: number, error: ProviderUsage['error'] = null): ProviderUsage => ({
   provider,
   plan: null,
   windows: error ? [] : [{ kind: '5h', label: '5 hours', usedPercent, resetsAt: null }],
@@ -25,7 +25,7 @@ describe('usage routing', () => {
   });
 
   it('nao recomenda destino indisponivel nem politica desativada', () => {
-    expect(buildUsageRoutingReport([usage('claude', 100), usage('codex', 0, 'sem credencial')]).shouldFallback).toBe(false);
+    expect(buildUsageRoutingReport([usage('claude', 100), usage('codex', 0, 'credentials_missing')]).shouldFallback).toBe(false);
     expect(buildUsageRoutingReport([usage('claude', 100), usage('codex', 10)], { enabled: false }).shouldFallback).toBe(false);
   });
 

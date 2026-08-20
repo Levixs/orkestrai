@@ -139,15 +139,15 @@ function deleteAutomationSecret(key) {
 const MENU_COPY = {
   'pt-BR': {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Central de Providers', remote: 'Entrar em workspace remoto', newWorkspace: 'Novo workspace', presets: 'Biblioteca de presets', floors: 'Andares', roles: 'Responsabilidades', usage: 'Uso', ports: 'Portas',
-    settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', notifications: (count) => `${count} notificações`,
+    settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', exportApiCollection: 'Escolher destino da coleção Bruno', notifications: (count) => `${count} notificações`,
   },
   en: {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Provider Center', remote: 'Join remote workspace', newWorkspace: 'New workspace', presets: 'Preset library', floors: 'Floors', roles: 'Roles', usage: 'Usage', ports: 'Ports',
-    settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', notifications: (count) => `${count} notifications`,
+    settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', exportApiCollection: 'Choose Bruno collection destination', notifications: (count) => `${count} notifications`,
   },
   es: {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Central de Providers', remote: 'Entrar a workspace remoto', newWorkspace: 'Nuevo workspace', presets: 'Biblioteca de presets', floors: 'Pisos', roles: 'Roles', usage: 'Uso', ports: 'Puertos',
-    settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', notifications: (count) => `${count} notificaciones`,
+    settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', exportApiCollection: 'Elegir destino de la colección Bruno', notifications: (count) => `${count} notificaciones`,
   },
 };
 
@@ -522,11 +522,44 @@ ipcMain.handle('orkestrai:pick-directory', async () => {
 ipcMain.handle('orkestrai:pick-api-collection', async (_event, kind) => {
   if (!mainWindow) return null;
   const isPostman = kind === 'postman';
+  const isNative = kind === 'native';
+  const isOpenApi = kind === 'openapi';
+  const isPostmanEnvironment = kind === 'postmanEnvironment';
+  const isOpenCollection = kind === 'openCollection';
+  const isProto = kind === 'proto';
+  const isCertificate = kind === 'certificate';
+  const isPrivateKey = kind === 'privateKey';
+  const isPfx = kind === 'pfx';
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
-    filters: isPostman
+    filters: isCertificate
+      ? [{ name: 'Certificate', extensions: ['pem', 'crt', 'cer'] }]
+      : isPfx
+        ? [{ name: 'PKCS#12', extensions: ['p12', 'pfx'] }]
+      : isPrivateKey
+        ? [{ name: 'Private key', extensions: ['pem', 'key'] }]
+      : isProto
+      ? [{ name: 'Protocol Buffer', extensions: ['proto'] }]
+      : isPostman
       ? [{ name: 'Postman Collection', extensions: ['json'] }]
-      : [{ name: 'Bruno / OpenCollection', extensions: ['bru', 'yml', 'yaml'] }],
+      : isPostmanEnvironment
+        ? [{ name: 'Postman Environment', extensions: ['json'] }]
+      : isOpenApi
+        ? [{ name: 'OpenAPI / Swagger', extensions: ['json', 'yml', 'yaml'] }]
+      : isOpenCollection
+        ? [{ name: 'OpenCollection YAML', extensions: ['yml', 'yaml'] }]
+      : isNative
+        ? [{ name: 'Orkestrai API Collection', extensions: ['json'] }]
+        : [{ name: 'Bruno / OpenCollection', extensions: ['bru', 'yml', 'yaml'] }],
+  });
+  return result.canceled ? null : (result.filePaths[0] ?? null);
+});
+
+ipcMain.handle('orkestrai:pick-api-export-directory', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: MENU_COPY[menuLocale].exportApiCollection,
+    properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
   });
   return result.canceled ? null : (result.filePaths[0] ?? null);
 });

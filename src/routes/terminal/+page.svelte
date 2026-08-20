@@ -326,16 +326,11 @@
     const cached = readWorkspaceViewCache(workspaceId);
     if (cached) applyWorkspaceData(workspaceId, cached.nodes, cached.edges, cached.floors);
     const request = (async () => {
-      const [nodes, edges, floors, providerStatus] = await Promise.all([
+      const [nodes, edges, floors] = await Promise.all([
         api<CanvasNode[]>(`/api/agent-room/workspaces/${workspaceId}/nodes`),
         api<CanvasEdge[]>(`/api/agent-room/workspaces/${workspaceId}/edges`),
         api<Floor[]>(`/api/agent-room/workspaces/${workspaceId}/floors`).catch(() => []),
-        api<{ providers: AgentProviderInfo[] }>(`/api/agent-room/status?workspaceId=${encodeURIComponent(workspaceId)}`),
       ]);
-      if (selectedWorkspaceId === workspaceId) {
-        providers = providerStatus.providers ?? [];
-        writeProviderCache(providers);
-      }
       applyWorkspaceData(workspaceId, nodes, edges, floors);
       const workspace = workspaces.find((item) => item.id === workspaceId);
       if (workspace) {
@@ -343,6 +338,7 @@
       }
       if (permissionWorkspaceId === workspaceId) permissionWorkspaceId = null;
       errorMessage = '';
+      void refreshProviders(workspaceId);
     })().catch((error) => {
       if (isWorkspacePermissionError(error)) {
         permissionWorkspaceId = workspaceId;
@@ -868,10 +864,9 @@
               });
             } else {
               const requestedPaneId = params.get('pane');
-              const requestedPane = requestedPaneId && workbenchPane(layout, requestedPaneId)
-                ? requestedPaneId
-                : layout.activePaneId;
-              layout = openWorkbenchNode(layout, requestedNode, { paneId: requestedPane });
+              layout = requestedPaneId && workbenchPane(layout, requestedPaneId)
+                ? openWorkbenchNode(layout, requestedNode, { paneId: requestedPaneId })
+                : openWorkbenchNode(layout, requestedNode);
             }
           }
           if (pendingFile?.workspaceId === initialWorkspace.id && pendingFile.path) {
@@ -884,13 +879,6 @@
         loading = false;
         await tick();
         connectEvents();
-        void api<{ providers: AgentProviderInfo[] }>(`/api/agent-room/status?workspaceId=${encodeURIComponent(initialWorkspace.id)}`)
-          .then((status) => {
-            if (destroyed) return;
-            providers = status.providers ?? [];
-            writeProviderCache(providers);
-          })
-          .catch(() => undefined);
       } catch (error) {
         if (!destroyed && !permissionWorkspaceId) {
           errorMessage = error instanceof Error ? error.message : m['terminal_browser.load_error']();

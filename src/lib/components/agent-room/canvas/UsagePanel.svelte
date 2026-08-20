@@ -9,6 +9,7 @@
   import type { UsageWindow } from '$lib/modules/agent-room/application/services/UsageService.js';
   import { USAGE_PROVIDERS, usageProviderDefinition, type UsageDiagnostic } from '$lib/modules/agent-room/domain/usage-providers.js';
   import { refreshUsage, retainUsageFeed, usageStore } from '../usage-store.svelte.js';
+  import { usageErrorText } from '../usage-i18n.js';
 
   type Props = {
     onClose: () => void;
@@ -121,7 +122,7 @@
       </div>
 
       {#if usage.error}
-        <p class="usage-error"><TriangleAlert size={12} /> {usage.error}</p>
+        <p class="usage-error"><TriangleAlert size={12} /> {usageErrorText(usage.error, meta.name)}</p>
       {:else if usage.diagnostic}
         <div class="usage-diagnostic">
           <p>{diagnosticText(usage.diagnostic)}</p>

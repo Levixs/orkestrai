@@ -30,7 +30,7 @@ export const automationFormSchema = z.object({
   notificationMessage: z.string().trim().max(2_000).nullish(),
   enabled: z.boolean().default(true),
   recipeId: z.string().trim().max(80).nullish(),
-}).strict().superRefine((value, context) => {
+}).superRefine((value, context) => {
   if (value.triggerType === 'schedule' && !value.intervalMinutes) {
     context.addIssue({ code: 'custom', path: ['intervalMinutes'], message: 'Interval is required.' });
   }
@@ -60,10 +60,10 @@ export const automationFormSchema = z.object({
   }
 });
 
-export const automationEnabledSchema = z.object({ enabled: z.boolean() }).strict();
+export const automationEnabledSchema = z.object({ enabled: z.boolean() });
 export const githubIntegrationSchema = z.object({
   owner: z.string().trim().min(1).max(100),
   repo: z.string().trim().min(1).max(100),
-}).strict();
+});
 
 export type AutomationFormInput = z.infer<typeof automationFormSchema>;

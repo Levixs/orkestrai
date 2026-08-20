@@ -117,6 +117,11 @@
     const mode = runtimeMode;
     const distribution = wslDistribution;
     const path = wslWorkingDir;
+    if (mode === 'default') {
+      runtimeProvider = provider;
+      runtimeChecking = false;
+      return;
+    }
     if (mode === 'wsl' && !distribution) {
       runtimeChecking = false;
       return;
