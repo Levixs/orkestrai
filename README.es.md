@@ -35,14 +35,21 @@ Descarga los instaladores más recientes desde
   pestañas locales, y la esfera de voz sigue el workspace activo.
   El pie mantiene visibles todas las ventanas de cuota informadas por Claude,
   Codex y Kimi sin abrir otro panel.
-- **Cliente de API nativo:** crea y ejecuta solicitudes HTTP junto al equipo, con
-  encabezados, autenticación Bearer/Basic, cuerpo JSON/texto/XML o formulario URL encoded, `{{variables}}`,
-  estado, duración, tamaño y
-  respuesta formateada. Importa carpetas Bruno mediante el parser oficial de
-  Bruno o JSON Postman Collection v2.1 y vuelve a abrir el origen en la aplicación
-  instalada cuando sea necesario. El mismo nodo persiste en Canvas y Workbench;
+- **Cliente de API nativo:** crea y ejecuta solicitudes HTTP/REST, GraphQL,
+  WebSocket y gRPC junto al equipo, con autenticación Bearer/Basic/clave API u
+  OAuth 2.0 asistido, cookies, proxy, CA y certificados del cliente. JSON,
+  JavaScript, GraphQL y XML usan editores con sintaxis y formato; las respuestas
+  estructuradas se expanden y contraen. Importa Bruno, OpenCollection YAML, Postman Collection
+  v2.1, Swagger 2.0 u OpenAPI 3.x y exporta Bruno, OpenCollection, Postman u
+  OpenAPI 3.1 JSON/YAML, preservando metadatos REST y mostrando notas explícitas
+  de fidelidad. Los orígenes Bruno/OpenCollection vinculados permiten pull,
+  push, vigilancia y resolución explícita de conflictos. Los entornos Postman se importan y exportan por separado. El formato versionado
+  `.orkestrai-api.json` guarda la colección nativa completa, con carpetas, runners,
+  entornos, scripts e historial. El mismo nodo persiste en Canvas y Workbench;
   los agentes conectados listan y ejecutan solicitudes guardadas mediante tools
-  MCP tipadas sin exponer secretos de autenticación en el inventario.
+  MCP tipadas sin exponer secretos de autenticación en el inventario. Las solicitudes
+  GraphQL, WebSocket y gRPC hacen round trip con Bruno/OpenCollection; los runtimes
+  sin restricciones de Postman/Bruno siguen fuera de la compatibilidad.
 - **Dispositivos móviles integrados:** agrega un nodo persistente de Dispositivo
   móvil desde la barra del Canvas; Workbench lista y abre el mismo nodo y la misma
   sesión. Controla iPhone y iPad Simulators en Macs Apple Silicon o AVDs Android

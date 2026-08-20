@@ -421,8 +421,8 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open-exploration',
         title: 'Define the outcome once',
-        body: 'Open the guided UI exploration from the Design menu. Describe the objective, audience, platform, stack, constraints, references, and visual modes. Choose manual work or delegate the first stage to the active workspace leader.',
-        action: { kind: 'openDesignExploration' },
+        body: 'Use Do it for me to create a complete guided exploration with a brief, tasks, and three editable directions. From the Design menu, you can also describe the objective, audience, platform, stack, constraints, references, and visual modes before creating it.',
+        action: { kind: 'createDesignExploration', title: 'Guided UI exploration', objective: 'Explore three complete visual directions for an interface that is clear, distinctive, and ready for implementation.', audience: 'People who will use the product on desktop and mobile.' },
         check: { kind: 'nodeExists', nodeType: 'group' },
       },
       {
@@ -1384,17 +1384,19 @@ export const TOURS_EN: Tour[] = [
     id: 'api-client',
     icon: 'FileCode2',
     title: 'Test an API in the Canvas',
-    tagline: 'Bruno and Postman requests beside the team, without app switching.',
+    tagline: 'HTTP, GraphQL, WebSocket, and gRPC beside the team, without app switching.',
     steps: [
       {
         id: 'create-client',
         title: 'Add the API Client',
-        body: 'I create a persistent node with requests, headers, body, variables, and responses in the same workspace.',
+        body: 'I create a persistent API collection with folders, HTTP, GraphQL, WebSocket and gRPC requests, environments, scripts, tests, responses, and history in the same workspace.',
         action: { kind: 'createApiClient', title: 'Project API' },
         check: { kind: 'nodeExists', nodeType: 'apiClient', titleIncludes: 'Project API' },
       },
-      { id: 'import-collection', title: 'Bring your existing work', body: 'From the node menu, import a Bruno folder or Postman v2.1 collection. Requests and variables enter the native client, while Open in original app remains available.' },
-      { id: 'send-request', title: 'Edit and send', body: 'Choose the method and URL, use {{name}} variables, adjust headers and body, then click Send. Status, duration, size, type, and content appear under Response.' },
+      { id: 'import-collection', title: 'Bring in a contract or collection', body: 'Import Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, OpenAPI 3.x, or a complete Orkestrai backup. OpenAPI local references remain inside the contract folder and visible notes identify any simplified REST feature.' },
+      { id: 'prepare-request', title: 'Prepare a protocol and credentials', body: 'Choose HTTP, GraphQL, WebSocket, or gRPC. Configure environments, headers, API-key/Bearer/Basic auth, or obtain an OAuth 2.0 token through the assisted browser and PKCE flow. Network settings hold cookies, proxy, CA, client certificate, and TLS verification.' },
+      { id: 'automate-and-test', title: 'Edit, format, run, and synchronize', body: 'Use the colored code editors for JSON, GraphQL, XML, and scripts. Save runners and chain variables between requests. The Sync tab pulls or pushes linked Bruno/OpenCollection files, watches changes, and asks before resolving a conflict.' },
+      { id: 'send-request', title: 'Inspect and share the result', body: 'Expand or collapse structured JSON/XML responses, inspect WebSocket and gRPC message transcripts, headers, tests, console, timing, size, and history. Export Bruno, OpenCollection, Postman, OpenAPI 3.1, an environment, or the native collection.' },
     ],
   },
   {
@@ -1417,6 +1419,29 @@ export const TOURS_EN: Tour[] = [
         id: 'set-linux-path',
         title: 'Select distribution and path',
         body: 'Choose the installation that contains the CLI and confirm the matching Linux project folder. Ubuntu-22.04, Ubuntu-24.04, and Debian remain independent; saving restarts only that terminal in the selected environment.',
+      },
+    ],
+  },
+  {
+    id: 'saved-terminal-commands',
+    icon: 'ListRestart',
+    title: 'Save and reuse terminal commands',
+    tagline: 'Per-terminal shortcuts, global commands, and safe shell auto-run.',
+    steps: [
+      {
+        id: 'open-saved-commands',
+        title: 'Open saved commands',
+        body: 'Open a terminal options menu and expand Saved commands. Local and global commands are listed there for immediate execution; choose Create and manage commands to add or edit them.',
+      },
+      {
+        id: 'save-and-run-command',
+        title: 'Save and run manually',
+        body: 'Give it a clear name, enter the command, and save. Search matches names and contents; Run submits it to the current terminal. Manual execution works in shells and agents.',
+      },
+      {
+        id: 'configure-safe-resume',
+        title: 'Automate shells only',
+        body: 'In a pure shell, enable Run on resume. The command runs once when that session is created or restored, without repeating as you switch between Canvas and Workbench. Agents never receive auto-run text. Do not save passwords or tokens in commands.',
       },
     ],
   },

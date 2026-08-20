@@ -421,8 +421,8 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'open-exploration',
         title: 'Define el resultado una sola vez',
-        body: 'Abre la exploración guiada de UI desde el menú Diseño. Describe objetivo, público, plataforma, stack, restricciones, referencias y modos visuales. Elige trabajo manual o delega la primera etapa al líder activo del workspace.',
-        action: { kind: 'openDesignExploration' },
+        body: 'Usa Hacerlo por mí para crear una exploración guiada completa con briefing, tareas y tres direcciones editables. Desde el menú Diseño también puedes describir objetivo, público, plataforma, stack, restricciones, referencias y modos visuales antes de crearla.',
+        action: { kind: 'createDesignExploration', title: 'Exploración guiada de UI', objective: 'Explorar tres direcciones visuales completas para una interfaz clara, diferenciada y lista para implementación.', audience: 'Personas que usarán el producto en escritorio y móvil.' },
         check: { kind: 'nodeExists', nodeType: 'group' },
       },
       {
@@ -1384,17 +1384,19 @@ export const TOURS_ES: Tour[] = [
     id: 'api-client',
     icon: 'FileCode2',
     title: 'Probar una API en el Canvas',
-    tagline: 'Solicitudes Bruno y Postman junto al equipo, sin cambiar de aplicación.',
+    tagline: 'HTTP, GraphQL, WebSocket y gRPC junto al equipo, sin cambiar de aplicación.',
     steps: [
       {
         id: 'create-client',
         title: 'Agrega el Cliente de API',
-        body: 'Creo un nodo persistente con solicitudes, encabezados, cuerpo, variables y respuestas en el mismo workspace.',
+        body: 'Creo una colección API persistente con carpetas, solicitudes HTTP, GraphQL, WebSocket y gRPC, entornos, scripts, pruebas, respuestas e historial en el mismo workspace.',
         action: { kind: 'createApiClient', title: 'API del proyecto' },
         check: { kind: 'nodeExists', nodeType: 'apiClient', titleIncludes: 'API del proyecto' },
       },
-      { id: 'import-collection', title: 'Trae lo que ya utilizas', body: 'Desde el menú del nodo, importa una carpeta Bruno o una colección Postman v2.1. Solicitudes y variables entran al cliente nativo; Abrir en la aplicación original sigue disponible.' },
-      { id: 'send-request', title: 'Edita y envía', body: 'Elige método y URL, usa variables {{nombre}}, ajusta encabezados y cuerpo y pulsa Enviar. Estado, duración, tamaño, tipo y contenido aparecen en Respuesta.' },
+      { id: 'import-collection', title: 'Trae un contrato o colección', body: 'Importa Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, OpenAPI 3.x o una copia completa de Orkestrai. Las referencias OpenAPI locales quedan en la carpeta del contrato y notas visibles identifican cualquier función REST simplificada.' },
+      { id: 'prepare-request', title: 'Prepara protocolo y credenciales', body: 'Elige HTTP, GraphQL, WebSocket o gRPC. Configura entornos, encabezados, clave API/Bearer/Basic u obtén un token OAuth 2.0 mediante el flujo asistido en el navegador con PKCE. La pestaña Red guarda cookies, proxy, CA, certificado del cliente y verificación TLS.' },
+      { id: 'automate-and-test', title: 'Edita, formatea, ejecuta y sincroniza', body: 'Usa los editores con color para JSON, GraphQL, XML y scripts. Guarda runners y encadena variables. La pestaña Sincronización trae o envía archivos Bruno/OpenCollection vinculados, vigila cambios y pregunta antes de resolver conflictos.' },
+      { id: 'send-request', title: 'Revisa y comparte el resultado', body: 'Expande o contrae respuestas JSON/XML estructuradas y revisa transcripciones WebSocket/gRPC, encabezados, pruebas, consola, tiempo, tamaño e historial. Exporta Bruno, OpenCollection, Postman, OpenAPI 3.1, un entorno o la colección nativa.' },
     ],
   },
   {
@@ -1417,6 +1419,29 @@ export const TOURS_ES: Tour[] = [
         id: 'set-linux-path',
         title: 'Selecciona distribución y ruta',
         body: 'Elige la instalación que contiene la CLI y confirma la carpeta Linux correspondiente al proyecto. Ubuntu-22.04, Ubuntu-24.04 y Debian siguen independientes; al guardar, solo esa terminal reinicia en el entorno elegido.',
+      },
+    ],
+  },
+  {
+    id: 'saved-terminal-commands',
+    icon: 'ListRestart',
+    title: 'Guardar y reutilizar comandos de terminal',
+    tagline: 'Atajos por terminal, comandos globales y autoejecución segura en shells.',
+    steps: [
+      {
+        id: 'open-saved-commands',
+        title: 'Abre los comandos guardados',
+        body: 'Abre el menú de opciones de una terminal y expande Comandos guardados. Los comandos locales y globales aparecen allí para ejecución inmediata; elige Crear y administrar comandos para agregar o editar.',
+      },
+      {
+        id: 'save-and-run-command',
+        title: 'Guarda y ejecuta manualmente',
+        body: 'Asigna un nombre claro, escribe el comando y guárdalo. La búsqueda encuentra nombre y contenido; Ejecutar lo envía a la terminal actual. La ejecución manual funciona en shells y agentes.',
+      },
+      {
+        id: 'configure-safe-resume',
+        title: 'Automatiza solamente shells',
+        body: 'En un shell puro, activa Ejecutar al reanudar. El comando se ejecuta una vez al crear o restaurar esa sesión, sin repetirse al cambiar entre Canvas y Workbench. Los agentes nunca reciben texto automático. No guardes contraseñas ni tokens en comandos.',
       },
     ],
   },

@@ -115,8 +115,13 @@ Este projeto roda dentro de um workspace do Orkestrai. Você tem a CLI `orkestra
 - `orkestrai usage` — cotas reais e recomendação do nó Usage; líderes consultam antes de delegar e roteiam novas tarefas ao recommendedProvider quando shouldFallback=true.
 - `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.
 - `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.
+- `orkestrai design list/read/reference/apply` — documentos visuais nativos. Em exploração, produza primeiro 1 desktop + 1 mobile com design_import_code ou lote pequeno, entregue a primeira revisão em até 5 minutos e espere o gate visual humano. Só expanda a direção aprovada com blueprint completo. design list sinaliza stalled e o reviewStatus da revisão atual.
+- `design_comment` / `design_propose` / `design_decide_proposal` — colaboracao visual com autoria e revisao: propostas ficam pendentes ate decisao explicita e podem ser comparadas em Floors/Council.
+- `design_import_code` / `design_generate_code_preview/apply` — importacao estrutural de HTML/Svelte/React/Vue e entrega para Svelar/Svelte, React/Next, Vue ou HTML/Tailwind; sempre revise o preview e preserve os component mappings antes de aplicar.
+- `design_figma_inspect/import/sync_preview/sync_apply` — interoperabilidade estrutural com Figma; combine com o MCP oficial `figma`, sempre revise conflitos antes de sincronizar e preserve Code Connect.
 - `orkestrai task list/columns/add/move/done` — quadro do time; consulte `task columns` e respeite as etapas personalizadas pelo usuário.
 - `orkestrai floor create/preview/land` — andares (worktrees git) isolados por frente.
+- `orkestrai device list/attach/tap/swipe/pinch/type/permissions/tree/screenshot/stop` — device mobile visivel no Workbench; aparelhos Android fisicos so podem ser anexados pelo usuario apos confirmacao na UI.
 - `orkestrai ask "<Agente>" "<mensagem>"` — só afirme que falou/consultou alguém quando a ponte retornar uma resposta confirmada; timeout ou erro NÃO contam como conversa.
 - `orkestrai task done <id>` — conclui a tarefa, avisa o líder e envia uma notificação identificada; não duplique com notify.
 - `orkestrai notify "<msg>" --kind attention|project` — atenção ou conclusão do projeto inteiro (somente após conferir o quadro).

@@ -5,6 +5,111 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.15.0 - 2026-08-20
+
+### Added
+
+- Added reusable saved commands to every terminal. Commands can belong to one
+  terminal or be global, are searchable and manually executable in shells and
+  agent terminals, and can optionally run once whenever a pure shell is created
+  or restored. Automatic execution is deliberately disabled for agent TUIs so
+  saved text is never submitted to a conversation without confirmation. The
+  terminal menu now lists local and global commands for one-click execution and
+  provides an explicit entry point to create or manage them.
+- Expanded the native API Client into a collection workspace with nested
+  folders, node-safe drag-and-drop, right-click actions, query parameters,
+  URL-encoded and multipart fields, API key authentication, environments,
+  bounded request and collection scripts, response assertions, execution
+  history, cURL copy, and Postman export. Collections can now persist multiple
+  runners with independent request selection and order, environment, iterations,
+  delay, and stop-on-failure behavior; script variables chain into every next
+  request in the run.
+- Added versioned `.orkestrai-api.json` import/export for lossless native
+  collection backups, including folders, runners, environments, scripts, and
+  history. Bruno collections now export through Bruno's official serializer,
+  including `collection.bru`, environments, requests, and folder metadata.
+- Preserved non-editable Postman and Bruno REST metadata across import/export,
+  including Postman examples and folder configuration plus Bruno request,
+  collection, environment, and `folder.bru` settings.
+- Added Swagger 2.0 and OpenAPI 3.x import with bounded local `$ref` resolution,
+  generated request examples, authentication mapping, and localized fidelity
+  notes. The API Client now exports OpenAPI 3.1 JSON/YAML and OpenCollection
+  YAML, and imports or exports Postman environments independently without
+  replacing the active collection.
+- Added executable GraphQL, WebSocket, and gRPC requests. GraphQL includes query,
+  variables, and operation name; WebSocket includes subprotocols, message queues,
+  reconnect, keepalive, and a bidirectional transcript; gRPC loads local proto
+  files and supports unary, client-streaming, server-streaming, and bidirectional
+  methods.
+- Added assisted OAuth 2.0 authorization code with state and PKCE, direct client
+  credentials/password/refresh grants, shared HTTP/WebSocket cookies, proxy,
+  custom CA, PEM and PKCS#12 client certificates, and TLS verification controls.
+- Added guarded file synchronization for linked Bruno and OpenCollection sources
+  with pull, push, five-second watch mode, fingerprints, stale-file cleanup, and
+  explicit conflict resolution. Postman and OpenAPI sources remain pull-only.
+- Added syntax-aware JSON, JavaScript, GraphQL, and XML editors with search,
+  wrapping, and formatting, plus expandable JSON/XML response trees and clear
+  active states for request, script, and response views.
+
+### Fixed
+
+- API request failures caused by invalid pre-request or post-response scripts
+  now identify the exact request or collection script and source line. QuickJS
+  errors are normalized across runtime boundaries instead of collapsing into a
+  generic execution message.
+- Kept the API collection runner footer fully inside its dialog at shorter
+  viewport heights, with responsive button wrapping and a separately scrollable
+  configuration body.
+- Added precise before/after insertion indicators while reordering API requests
+  and folders, with a distinct inside-folder target state that matches the
+  persisted result.
+- Fixed root-level Bruno/OpenCollection exports creating an artificial `Folder`
+  directory, and blocked OpenAPI references from escaping the selected contract
+  directory or fetching remote URLs during import.
+- Made the active local/global scope unmistakable in the saved terminal command
+  manager, deduplicated identical resume commands across both scopes, and keyed
+  auto-run protection to the command set instead of a transient PTY session id
+  so a shell respawn cannot submit the same startup command twice.
+
+- Made English the true startup default, including the Electron splash shown
+  before persisted settings load, while keeping the saved language authoritative
+  as soon as the application is ready.
+- Replaced Portuguese Usage backend errors with stable error codes translated
+  in pt-BR, English, and Spanish across the panel and Canvas routing node.
+- Prevented focused controls inside an overlapping Canvas node from raising its
+  entire hit area above explicitly higher neighbors. Creating an API request no
+  longer leaves an invisible layer that blocks terminal menus or Canvas tools.
+- Hardened Canvas and Design Studio keyboard handling so browser events whose
+  target is `Window`, a text node, or another non-element target cannot crash
+  global shortcuts with `closest is not a function`.
+- Made the production E2E suite establish and restore an explicit locale,
+  keeping translated selectors deterministic regardless of the app default or
+  settings left by another test.
+- Fixed Automation forms rejecting every create, edit, enable, or GitHub
+  integration request because route parameters were treated as unknown fields.
+- Kept onboarding open on the welcome step after changing its language, even
+  when the locale switch remounts the application tree.
+- Workspace deletion now stops its live terminal processes before removing
+  their persisted nodes, preventing late activity events and orphaned PTYs.
+- Switching back to Workbench from a Canvas deep link now preserves the exact
+  selected node in its existing pane instead of dropping the split layout.
+- Agent creation now reuses the provider status already verified for the
+  workspace runtime, avoiding a redundant full CLI scan and disabled submit.
+- Canvas and Workbench nodes now render without waiting for the slower provider inventory;
+  newly created selected terminals recover focus after session persistence,
+  and Canvas/Workbench links retain their node during asynchronous loading.
+- Terminal input typed during the PTY handshake is now buffered and delivered
+  to the created session, while xterm stays mounted as its ID is persisted.
+- The guided UI exploration tour now creates its brief, task board, and three
+  editable directions through "Do it for me" instead of stopping behind an
+  unsubmitted setup dialog.
+
+### Security
+
+- Updated DOMPurify to 3.4.14 and enforced the patched version inside Monaco's
+  transitive dependency tree. `npm audit` now reports zero known
+  vulnerabilities without downgrading or replacing the editor.
+
 ## 0.14.0 - 2026-08-19
 
 ### Added

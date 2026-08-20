@@ -37,14 +37,27 @@ Download the latest installers from
   label. The global
   voice orb follows its active workspace and leader. Its footer keeps every
   reported Claude, Codex, and Kimi quota window visible without opening a panel.
-- **Native API client:** create and execute HTTP requests beside the team, with
-  headers, Bearer/Basic authentication, JSON/text/XML or URL-encoded form bodies, `{{variables}}`,
-  status, timing, size, and a
-  formatted response preview. Import Bruno folders through Bruno's official
-  parser or Postman Collection v2.1 JSON, then reopen the source in its original
-  installed application when needed. The same node persists in Canvas and
-  Workbench, and connected agents can list and execute its saved requests through
-  typed MCP tools without exposing authentication secrets in the inventory.
+- **Native API client:** organize HTTP/REST, GraphQL, WebSocket, and gRPC requests
+  in nested folders with isolated drag-and-drop and context menus. Configure
+  Bearer/Basic/API-key or assisted OAuth 2.0 authentication, cookies, proxy,
+  custom CA and client certificates, protocol-specific messages, environments,
+  sandboxed pre/post scripts, and assertions. JSON, JavaScript, GraphQL, and XML
+  use syntax-aware editors; structured responses are expandable. Persist any
+  number of collection runners with a selected request order, environment,
+  iterations, delay, and stop-on-failure policy; variables produced by one
+  response flow directly into the next request.
+  Copy cURL; import Bruno, OpenCollection YAML, Postman Collection v2.1,
+  Swagger 2.0, or OpenAPI 3.x; and export Bruno, OpenCollection, Postman, or
+  OpenAPI 3.1 JSON/YAML while preserving unsupported REST metadata and showing
+  explicit fidelity notes. Linked Bruno/OpenCollection sources support guarded
+  pull, push, watch mode, and explicit conflict resolution. Postman environments
+  import and export independently.
+  A versioned `.orkestrai-api.json` format backs up the complete
+  native collection, including folders, runners, environments, scripts, and
+  history. The same node persists in Canvas and Workbench, and
+  connected agents use typed MCP tools without receiving stored secrets in the
+  inventory. Bruno/OpenCollection GraphQL, WebSocket, and gRPC requests round-trip;
+  unrestricted Postman/Bruno script runtimes remain outside the compatibility claim.
 - **Integrated mobile devices:** add a persistent Mobile Device node from the
   Canvas toolbar; Workbench lists and opens that same node and session. Control
   iPhone and iPad Simulators on Apple Silicon Macs, or Android AVDs and explicitly
@@ -233,6 +246,10 @@ Download the latest installers from
   one and edit semantic tokens with live preview and JSON import/export.
 - **Readable terminals:** choose 1 of 10 complete ANSI palettes from the compact
   terminal options menu, alongside provider, role, reload, and Maestro controls.
+- **Reusable terminal commands:** save searchable commands for one terminal or
+  globally, execute them manually in any terminal, or opt pure shells into a
+  once-per-session startup command. Agent conversations never auto-run saved
+  text, and the UI warns against storing credentials in plain-text commands.
 - **Operational controls:** manage local portal ports, configure recurring
   routines, and install skills from the marketplace.
 - **Provider Center:** detect all eight supported CLIs locally, follow OS-aware
