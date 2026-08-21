@@ -29,4 +29,15 @@ describe('global documentation search', () => {
     expect(results).toHaveLength(3);
     expect(results[0]?.title.toLowerCase()).toContain('agents');
   });
+
+  it('indexes API Client examples and compatibility boundaries', () => {
+    const postman = searchDocsCatalog(DOCS_EN, 'pm.environment.set', { quickstart: 'Quickstart', changelog: 'Changelog' });
+    expect(postman.some((entry) => entry.hash === 'api-client-scripts')).toBe(true);
+
+    const bruno = searchDocsCatalog(DOCS_PT, 'bru.setVar', { quickstart: 'Comece', changelog: 'Changelog' });
+    expect(bruno.some((entry) => entry.hash === 'api-client-scripts')).toBe(true);
+
+    const unsupported = searchDocsCatalog(DOCS_ES, 'pm.sendRequest', { quickstart: 'Inicio', changelog: 'Cambios' });
+    expect(unsupported.some((entry) => entry.hash === 'api-client-scripts')).toBe(true);
+  });
 });

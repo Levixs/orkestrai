@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { Component } from 'svelte';
   import {
-    Activity, ArrowLeft, BookOpen, Bot, Cable, ChevronDown, FolderPlus, Gauge, GitBranch, GitPullRequestArrow,
+    Activity, ArrowLeft, BookOpen, Bot, Cable, Check, ChevronDown, Copy, FolderPlus, Gauge, GitBranch, GitPullRequestArrow,
     History, Layers, Link2, MessageSquare, Palette, PanelLeftOpen, Paperclip, PlayCircle, RadioTower, Repeat,
     Rocket, Scale, ScanSearch, Search, Smartphone, SquareKanban, SquareTerminal, StickyNote, Users, Workflow,
   } from '@lucide/svelte';
@@ -12,6 +12,7 @@
   import { DOCS_PT } from '$lib/i18n/docs/pt-BR.js';
   import { DOCS_EN } from '$lib/i18n/docs/en.js';
   import { DOCS_ES } from '$lib/i18n/docs/es.js';
+  import { docsSectionSearchText } from '$lib/i18n/docs/search.js';
   import { tourIdForUseCase } from '$lib/components/agent-room/tours/use-case-links.js';
 
   // Conteudo longo (topicos, casos de uso, quickstart, changelog) vive em
@@ -31,6 +32,7 @@
     'review-center': GitPullRequestArrow,
     'portal-design-mode': ScanSearch,
     'mobile-device': Smartphone,
+    'api-client-scripts': SquareTerminal,
     notas: StickyNote,
     tarefas: SquareKanban,
     imagens: StickyNote,
@@ -107,11 +109,12 @@
   }
 
   let query = $state('');
+  let copiedSnippetId = $state<string | null>(null);
 
   const filtered = $derived.by(() => {
     const term = query.trim().toLowerCase();
     if (!term) return sections;
-    return sections.filter((section) => `${section.title} ${section.body}`.toLowerCase().includes(term));
+    return sections.filter((section) => `${section.title} ${docsSectionSearchText(section)}`.toLowerCase().includes(term));
   });
 
   // -- Paleta de busca (Cmd/Ctrl+K): cobre topicos, casos de uso e changelog --
@@ -125,7 +128,7 @@
     const items: PaletteItem[] = [
       { kind: 'topico', title: m['docs.quickstart_title'](), body: quickstart.join(' '), href: '#comece' },
       ...useCases.map((useCase) => ({ kind: 'caso' as const, title: useCase.title, body: useCase.body, href: `#usecase-${useCase.id}` })),
-      ...sections.map((section) => ({ kind: 'topico' as const, title: section.title, body: section.body, href: `#${section.id}` })),
+      ...sections.map((section) => ({ kind: 'topico' as const, title: section.title, body: docsSectionSearchText(section), href: `#${section.id}` })),
       { kind: 'topico', title: m['docs.changelog_title'](), body: changelog.map((entry) => `${entry.date} ${entry.items.join(' ')}`).join(' '), href: '#changelog' },
     ];
     if (!term) return items;
@@ -168,6 +171,18 @@
     paletteOpen = false;
     location.hash = item.href;
     document.querySelector(item.href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function copySnippet(id: string, code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      copiedSnippetId = id;
+      window.setTimeout(() => {
+        if (copiedSnippetId === id) copiedSnippetId = null;
+      }, 1_800);
+    } catch {
+      copiedSnippetId = null;
+    }
   }
 
 </script>
@@ -261,6 +276,47 @@
             <a href={`#${section.id}`} class="anchor-link" aria-label={m['docs.anchor_aria']({ title: section.title })}>#</a>
           </header>
           <p>{section.body}</p>
+          {#if section.bullets?.length}
+            <ul class="mt-5 grid gap-2.5 border-t border-[var(--line)] pt-5">
+              {#each section.bullets as item (item)}
+                <li class="grid grid-cols-[18px_minmax(0,1fr)] gap-2.5 text-[12.5px] leading-5 text-[var(--copy-soft)]">
+                  <Check size={14} class="mt-0.5 text-[var(--cyan)]" aria-hidden="true" />
+                  <span>{item}</span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          {#if section.examples?.length}
+            <div class="mt-6 border-t border-[var(--line)]">
+              {#each section.examples as example (example.id)}
+                <section class="border-t border-[var(--line)] py-6 first:border-t-0">
+                  <h3 class="m-0 font-['Sora_Variable'] text-[14px] font-semibold text-[var(--copy)]">{example.title}</h3>
+                  <p class="mt-1.5 text-[12.5px] leading-5 text-[var(--copy-muted)]">{example.description}</p>
+                  <div class="mt-4 grid gap-4">
+                    {#each example.snippets as snippet (snippet.id)}
+                      {@const snippetId = `${section.id}:${example.id}:${snippet.id}`}
+                      <div class="min-w-0 overflow-hidden rounded-md border border-[var(--line)] bg-[#0d0d17]">
+                        <div class="flex min-h-9 items-center justify-between gap-3 border-b border-white/10 px-3">
+                          <span class="min-w-0 truncate font-mono text-[10.5px] font-semibold text-[#aeadbd]">{snippet.title}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            class="text-[#aeadbd] hover:bg-white/10 hover:text-white"
+                            title={copiedSnippetId === snippetId ? m['docs.example_copied']() : m['docs.copy_example']()}
+                            aria-label={copiedSnippetId === snippetId ? m['docs.example_copied']() : m['docs.copy_example']()}
+                            onclick={() => copySnippet(snippetId, snippet.code)}
+                          >
+                            {#if copiedSnippetId === snippetId}<Check size={13} aria-hidden="true" />{:else}<Copy size={13} aria-hidden="true" />{/if}
+                          </Button>
+                        </div>
+                        <pre class="m-0 overflow-x-auto p-4 font-mono text-[11.5px] leading-5 text-[#e3e2ec]"><code translate="no">{snippet.code}</code></pre>
+                      </div>
+                    {/each}
+                  </div>
+                </section>
+              {/each}
+            </div>
+          {/if}
         </article>
       {/each}
 

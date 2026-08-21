@@ -75,6 +75,145 @@ export const DOCS_PT: DocsCatalog = {
       body: `Adicione Cliente de API pela barra do Canvas para trabalhar com HTTP/REST, GraphQL, WebSocket e gRPC sem alternar de aplicativo. Crie pastas aninhadas, arraste requests pela alça dedicada e use ações contextuais sem mover o node. Configure query, headers e autenticação Bearer, Basic, chave de API ou OAuth 2.0; o fluxo de código de autorização abre o navegador do sistema com state e PKCE opcional, enquanto client credentials, senha e refresh token rodam diretamente. HTTP e WebSocket compartilham armazenamento de cookies, proxy, CA personalizada, certificado/chave PEM ou PKCS#12 do cliente e verificação TLS. GraphQL possui editores de query, variáveis e operação; WebSocket suporta subprotocolos, várias mensagens texto/JSON/binárias, keepalive, reconexão e transcrição bidirecional; gRPC carrega arquivos proto locais e executa métodos unary, client streaming, server streaming ou bidirecionais com metadata e TLS. Campos JSON, JavaScript, GraphQL e XML usam editores com cores de sintaxe, busca, quebra de linha e formatação. Respostas JSON e XML aparecem como árvores expansíveis com cópia, mantendo fallback para texto ou binário. Scripts pré/pós de request e coleção continuam num sandbox QuickJS limitado com APIs bru/req/res do Bruno e APIs pm comuns do Postman, sem acesso a arquivos, processos ou rede. Variáveis escritas por scripts alimentam a request seguinte e runners mantêm ordem, ambiente, iterações, intervalo e regra de parada próprios. Importe Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0 ou OpenAPI 3.x; referências OpenAPI locais ficam na pasta do contrato e referências remotas nunca são baixadas. Bruno e OpenCollection preservam requests GraphQL, WebSocket e gRPC executáveis no round trip. Origens Bruno/OpenCollection vinculadas podem receber pull ou push manual, ser monitoradas a cada cinco segundos e exigir resolução explícita quando disco e Orkestrai mudaram; vínculos Postman e OpenAPI são somente para pull. Exporte Bruno, OpenCollection, Postman, OpenAPI 3.1, ambientes Postman ou um backup Orkestrai versionado e sem perdas. Notas de compatibilidade continuam explícitas quando o formato contém comportamento que o Orkestrai não executa, como runtimes irrestritos do Postman/Bruno. O mesmo node persiste no Canvas e Workbench, e agentes conectados usam api_client_list e api_client_execute sem receber credenciais salvas no inventário.`,
     },
     {
+      id: 'api-client-scripts',
+      title: 'Scripts e testes do Cliente de API',
+      body: 'Use esta referência nos editores Scripts da coleção ou da request e na aba Testes. O Orkestrai executa um subconjunto seguro das APIs mais usadas de Postman e Bruno, além de assertions declarativas nativas. Os exemplos abaixo são compatíveis com o runtime atual e podem ser copiados diretamente.',
+      bullets: [
+        'A ordem é: pré-request da coleção, pré-request da request, chamada de rede, pós-resposta da request, pós-resposta da coleção e assertions nativas.',
+        'Variáveis da coleção e do ambiente ativo são mescladas; o ambiente prevalece. Use {{nome}} na URL, parâmetros, headers, body e autenticação. Valores gravados em scripts persistem e alimentam a próxima request do runner.',
+        'O sandbox QuickJS limita cada script a 750 ms, 12 MB de memória e 512 KB de stack. Não há acesso a filesystem, processos, require, fetch ou rede fora da request configurada.',
+        'A compatibilidade é intencionalmente parcial: pm.sendRequest, pm.globals, pm.iterationData, bru.runRequest, res.getStatus, o test global do Bruno e o Chai completo não estão disponíveis. Imports preservam scripts como texto, mas não transpilem APIs incompatíveis.',
+      ],
+      examples: [
+        {
+          id: 'postman',
+          title: 'Scripts compatíveis com Postman',
+          description: 'Cole o primeiro bloco em Pré-request e o segundo em Pós-resposta da request. pm.variables, pm.environment e pm.collectionVariables usam o mapa efetivo de variáveis do Orkestrai.',
+          snippets: [
+            {
+              id: 'pre-request',
+              title: 'Request · Pré-request',
+              code: `const requestId = 'req-' + Date.now();
+
+pm.variables.set('requestId', requestId);
+pm.request.headers.upsert({
+  key: 'X-Request-Id',
+  value: requestId,
+});
+
+console.log('Request preparada:', requestId);`,
+            },
+            {
+              id: 'post-response',
+              title: 'Request · Pós-resposta',
+              code: `let body;
+
+pm.test('Status é 200', () => {
+  pm.expect(pm.response.code).to.equal(200);
+});
+
+pm.test('Body é um JSON válido', () => {
+  body = pm.response.json();
+});
+
+if (body) {
+  pm.test('Resposta contém access_token', () => {
+    pm.expect(body).to.have.property('access_token');
+  });
+
+  pm.test('Resposta contém o id do usuário', () => {
+    pm.expect(body).to.have.property('user');
+    pm.expect(body.user).to.have.property('id');
+  });
+
+  if (body.access_token) {
+    pm.environment.set('accessToken', body.access_token);
+  }
+
+  if (body.user?.id) {
+    pm.environment.set('userId', body.user.id);
+  }
+
+  console.log('Usuário autenticado:', body.user?.id);
+}`,
+            },
+            {
+              id: 'next-request',
+              title: 'Request seguinte · uso das variáveis',
+              code: `GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+X-Request-Id: {{requestId}}`,
+            },
+          ],
+        },
+        {
+          id: 'bruno',
+          title: 'Scripts compatíveis com Bruno',
+          description: 'Cole cada bloco no editor correspondente. O objeto res é a resposta simples do Orkestrai; use res.status e JSON.parse(res.body), não res.getStatus().',
+          snippets: [
+            {
+              id: 'pre-request',
+              title: 'Request · Pré-request',
+              code: `const token = bru.getVar('accessToken');
+
+if (!token) {
+  throw new Error('A variável accessToken não foi definida');
+}
+
+req.setHeader('Authorization', 'Bearer ' + token);
+req.setHeader('Accept', 'application/json');
+
+console.log('Request autenticada');`,
+            },
+            {
+              id: 'post-response',
+              title: 'Request · Pós-resposta',
+              code: `const body = JSON.parse(res.body);
+
+if (res.status !== 201) {
+  throw new Error('Status esperado: 201; recebido: ' + res.status);
+}
+
+if (!body.id) {
+  throw new Error('A resposta não contém um id');
+}
+
+bru.setVar('createdUserId', body.id);
+bru.setVar('lastStatus', res.status);
+
+console.log('Usuário criado:', body.id);`,
+            },
+          ],
+        },
+        {
+          id: 'orkestrai-native',
+          title: 'Orkestrai nativo: testes sem JavaScript',
+          description: 'Na aba Testes, crie assertions estruturadas. Não existe orkestrai.expect: para testes em script use pm.test/pm.expect ou o alias global expect; para o fluxo nativo prefira as linhas declarativas abaixo.',
+          snippets: [
+            {
+              id: 'declarative-tests',
+              title: 'Aba Testes · assertions',
+              code: `Fonte          Caminho          Operador       Esperado
+Status         —                Igual           200
+Body           data.user.id     Existe          —
+Header         content-type     Contém          application/json
+Tempo resposta —                Menor que       1000`,
+            },
+            {
+              id: 'variables',
+              title: 'Ambiente e template nativos',
+              code: `Variável da coleção: baseUrl = https://api.example.com
+Variável do ambiente: accessToken = <token do ambiente ativo>
+Variável criada por script: userId = 42
+
+URL: {{baseUrl}}/users/{{userId}}
+Header: Authorization = Bearer {{accessToken}}`,
+            },
+          ],
+        },
+      ],
+    },
+    {
       id: 'notas',
       title: 'Notas como canais de trabalho',
       body: `Notas são markdown vivo compartilhado com os agentes. A convenção: conecte a nota a quem deve lê-la/escrevê-la e diga o propósito no título e no conteúdo. Ex.: nota “Backlog (líder escreve)” conectada ao líder — você escreve “quebre em tarefas para o time” e ele lê com orkestrai note read e distribui no quadro. Nota “Para mim (humano)” — peça ao líder para registrar status/decisões nela com orkestrai note write/edit, e você acompanha formatado (ícone de olho). Duplo-clique no título renomeia a nota. Solte, cole ou selecione imagens, PDFs, outros arquivos e links HTTP/HTTPS; arquivos de até 10 MB ficam em .orkestrai/attachments/ e a referência markdown entra no cursor. Ao remover um anexo pelo X, a referência também sai da nota e o arquivo armazenado no workspace é apagado.`,
@@ -461,6 +600,12 @@ export const DOCS_PT: DocsCatalog = {
     },
   ],
   changelog: [
+    {
+      date: 'Próxima versão',
+      items: [
+        'A documentação agora possui uma referência completa e pesquisável de scripts do Cliente de API, com exemplos copiáveis e separados para o subconjunto Postman, o subconjunto Bruno e os testes declarativos nativos do Orkestrai.',
+      ],
+    },
     {
       date: '20 ago 2026 · 0.15.0',
       title: 'Orkestrai 0.15.0: comandos reutilizáveis e Cliente de API multiprotocolo',

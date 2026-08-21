@@ -1,4 +1,4 @@
-import type { DocsCatalog } from './types.js';
+import type { DocsCatalog, DocsSection } from './types.js';
 
 export type DocsSearchEntry = {
   id: string;
@@ -33,6 +33,18 @@ function relevance(title: string, searchable: string, query: string): number {
   return searchable.includes(query) ? 500 : 0;
 }
 
+export function docsSectionSearchText(section: DocsSection): string {
+  return [
+    section.body,
+    ...(section.bullets ?? []),
+    ...(section.examples ?? []).flatMap((example) => [
+      example.title,
+      example.description,
+      ...example.snippets.flatMap((snippet) => [snippet.title, snippet.code]),
+    ]),
+  ].join(' ');
+}
+
 export function searchDocsCatalog(
   catalog: DocsCatalog,
   rawQuery: string,
@@ -53,7 +65,7 @@ export function searchDocsCatalog(
     ...catalog.sections.map((section) => ({
       id: `section:${section.id}`,
       title: section.title,
-      body: section.body,
+      body: docsSectionSearchText(section),
       extra: '',
       hash: section.id,
     })),

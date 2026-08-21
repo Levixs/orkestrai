@@ -350,6 +350,8 @@
   "docs.kind_topic": "tema",
   "docs.palette_empty": "Nada para “{query}”.",
   "docs.palette_hint": "↑↓ navega · Enter abre · Esc cierra",
+  "docs.copy_example": "Copiar ejemplo",
+  "docs.example_copied": "Ejemplo copiado",
   "note.color_yellow": "Amarillo",
   "note.color_blue": "Azul",
   "note.color_green": "Verde",

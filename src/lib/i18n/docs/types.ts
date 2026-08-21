@@ -1,8 +1,23 @@
+export interface DocsCodeSnippet {
+  id: string;
+  title: string;
+  code: string;
+}
+
+export interface DocsExample {
+  id: string;
+  title: string;
+  description: string;
+  snippets: DocsCodeSnippet[];
+}
+
 /** Estrutura do catalogo de conteudo da pagina /docs (por locale). */
 export interface DocsSection {
   id: string;
   title: string;
   body: string;
+  bullets?: string[];
+  examples?: DocsExample[];
 }
 
 export interface DocsUseCase {
@@ -14,6 +29,8 @@ export interface DocsUseCase {
 
 export interface ChangelogEntry {
   date: string;
+  title?: string;
+  summary?: string;
   items: string[];
 }
 

@@ -5,6 +5,16 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Documentation
+
+- Added a complete API Client scripting reference with separate, copyable
+  examples for the supported Postman subset, Bruno subset, and Orkestrai's
+  native declarative tests. The guide documents execution order, variable
+  chaining, sandbox boundaries, and unsupported runtime APIs without implying
+  full Postman or Bruno compatibility.
+
 ## 0.15.0 - 2026-08-20
 
 ### Added
