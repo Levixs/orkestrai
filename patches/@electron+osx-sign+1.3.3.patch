@@ -1,0 +1,100 @@
+diff --git a/node_modules/@electron/osx-sign/dist/cjs/util.js b/node_modules/@electron/osx-sign/dist/cjs/util.js
+index 77e64b5..bca0bee 100644
+--- a/node_modules/@electron/osx-sign/dist/cjs/util.js
++++ b/node_modules/@electron/osx-sign/dist/cjs/util.js
+@@ -36,6 +36,25 @@ exports.debugLog = (0, debug_1.default)('electron-osx-sign');
+ exports.debugLog.log = console.log.bind(console);
+ exports.debugWarn = (0, debug_1.default)('electron-osx-sign:warn');
+ exports.debugWarn.log = console.warn.bind(console);
++const binaryFileCheckLimit = 64;
++let activeBinaryFileChecks = 0;
++const pendingBinaryFileChecks = [];
++async function acquireBinaryFileCheck() {
++    if (activeBinaryFileChecks < binaryFileCheckLimit) {
++        activeBinaryFileChecks += 1;
++        return;
++    }
++    await new Promise(resolve => pendingBinaryFileChecks.push(resolve));
++}
++function releaseBinaryFileCheck() {
++    const next = pendingBinaryFileChecks.shift();
++    if (next) {
++        next();
++    }
++    else {
++        activeBinaryFileChecks -= 1;
++    }
++}
+ const removePassword = function (input) {
+     return input.replace(/(-P |pass:|\/p|-pass )([^ ]+)/, function (_, p1) {
+         return `${p1}***`;
+@@ -102,10 +121,16 @@ exports.detectElectronPlatform = detectElectronPlatform;
+  * This function returns a promise resolving the file path if file binary.
+  */
+ async function getFilePathIfBinary(filePath) {
+-    if (await (0, isbinaryfile_1.isBinaryFile)(filePath)) {
+-        return filePath;
++    await acquireBinaryFileCheck();
++    try {
++        if (await (0, isbinaryfile_1.isBinaryFile)(filePath)) {
++            return filePath;
++        }
++        return null;
++    }
++    finally {
++        releaseBinaryFileCheck();
+     }
+-    return null;
+ }
+ /**
+  * This function returns a promise validating opts.app, the application to be signed or flattened.
+diff --git a/node_modules/@electron/osx-sign/dist/esm/util.js b/node_modules/@electron/osx-sign/dist/esm/util.js
+index d3f66d5..aa91d82 100644
+--- a/node_modules/@electron/osx-sign/dist/esm/util.js
++++ b/node_modules/@electron/osx-sign/dist/esm/util.js
+@@ -7,6 +7,25 @@ export const debugLog = debug('electron-osx-sign');
+ debugLog.log = console.log.bind(console);
+ export const debugWarn = debug('electron-osx-sign:warn');
+ debugWarn.log = console.warn.bind(console);
++const binaryFileCheckLimit = 64;
++let activeBinaryFileChecks = 0;
++const pendingBinaryFileChecks = [];
++async function acquireBinaryFileCheck() {
++    if (activeBinaryFileChecks < binaryFileCheckLimit) {
++        activeBinaryFileChecks += 1;
++        return;
++    }
++    await new Promise(resolve => pendingBinaryFileChecks.push(resolve));
++}
++function releaseBinaryFileCheck() {
++    const next = pendingBinaryFileChecks.shift();
++    if (next) {
++        next();
++    }
++    else {
++        activeBinaryFileChecks -= 1;
++    }
++}
+ const removePassword = function (input) {
+     return input.replace(/(-P |pass:|\/p|-pass )([^ ]+)/, function (_, p1) {
+         return `${p1}***`;
+@@ -68,10 +87,16 @@ export async function detectElectronPlatform(opts) {
+  * This function returns a promise resolving the file path if file binary.
+  */
+ async function getFilePathIfBinary(filePath) {
+-    if (await isBinaryFile(filePath)) {
+-        return filePath;
++    await acquireBinaryFileCheck();
++    try {
++        if (await isBinaryFile(filePath)) {
++            return filePath;
++        }
++        return null;
++    }
++    finally {
++        releaseBinaryFileCheck();
+     }
+-    return null;
+ }
+ /**
+  * This function returns a promise validating opts.app, the application to be signed or flattened.

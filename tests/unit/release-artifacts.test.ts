@@ -130,6 +130,7 @@ describe('packaged updater', () => {
   it('requires trusted signing for releases while preserving the local ad-hoc fallback', () => {
     const packageJson = JSON.parse(readFileSync(path.resolve('package.json'), 'utf8'));
     const packageScript = readFileSync(path.resolve('scripts/package-macos.sh'), 'utf8');
+    const signerPatch = readFileSync(path.resolve('patches/@electron+osx-sign+1.3.3.patch'), 'utf8');
     const workflow = readFileSync(path.resolve('.github/workflows/release.yml'), 'utf8');
     const preflight = readFileSync(path.resolve('.agents/skills/orkestrai-release/scripts/preflight.sh'), 'utf8');
     expect(packageJson.build?.mac?.notarize).toBe(true);
@@ -141,6 +142,11 @@ describe('packaged updater', () => {
     expect(packageScript).toContain('ORKESTRAI_MAC_OPEN_FILE_LIMIT:-unlimited');
     expect(packageScript).toContain('ulimit -n "$requested_open_file_limit"');
     expect(packageScript).toContain('macOS open-file limit: %s');
+    expect(packageJson.scripts?.postinstall).toBe('patch-package');
+    expect(packageJson.devDependencies?.['patch-package']).toBeTruthy();
+    expect(signerPatch).toContain('const binaryFileCheckLimit = 64;');
+    expect(signerPatch).toContain('await acquireBinaryFileCheck();');
+    expect(signerPatch).toContain('releaseBinaryFileCheck();');
     expect(workflow).toContain("ORKESTRAI_REQUIRE_MAC_SIGNING: 'true'");
     expect(workflow).toContain('scripts/package-macos.sh --arm64 --x64');
     expect(workflow).toContain('codesign --verify --deep --strict');
