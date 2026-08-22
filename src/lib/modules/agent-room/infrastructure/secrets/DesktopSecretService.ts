@@ -35,9 +35,10 @@ if (!state.__orkestraiSecretListenerReady && typeof process.on === 'function') {
 }
 
 export class DesktopSecretService {
-  async get(key: string): Promise<string | null> {
+  private async request(type: 'orkestrai:secret:get' | 'orkestrai:secret:set' | 'orkestrai:secret:delete', key: string, value?: string): Promise<string | null> {
     if (!/^automation:[a-z0-9:_-]{1,240}$/i.test(key)) throw new Error('Invalid automation secret key.');
     if (typeof process.send !== 'function') {
+      if (type !== 'orkestrai:secret:get') return null;
       if (key.includes(':github:')) return process.env.ORKESTRAI_GITHUB_TOKEN ?? process.env.GITHUB_TOKEN ?? null;
       if (key.includes(':figma:')) return process.env.ORKESTRAI_FIGMA_TOKEN ?? process.env.FIGMA_ACCESS_TOKEN ?? null;
       return null;
@@ -50,9 +51,13 @@ export class DesktopSecretService {
       }, 5_000);
       timer.unref?.();
       pending.set(requestId, { resolve, reject, timer });
-      process.send?.({ type: 'orkestrai:secret:get', requestId, key });
+      process.send?.({ type, requestId, key, ...(value === undefined ? {} : { value }) });
     });
   }
+
+  get(key: string): Promise<string | null> { return this.request('orkestrai:secret:get', key); }
+  async set(key: string, value: string): Promise<void> { await this.request('orkestrai:secret:set', key, value); }
+  async delete(key: string): Promise<void> { await this.request('orkestrai:secret:delete', key); }
 }
 
 export const desktopSecretService = new DesktopSecretService();

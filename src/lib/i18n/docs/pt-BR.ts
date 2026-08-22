@@ -72,36 +72,43 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'api-client',
       title: 'Cliente de API para contratos e coleções REST',
-      body: `Adicione Cliente de API pela barra do Canvas para trabalhar com HTTP/REST, GraphQL, WebSocket e gRPC sem alternar de aplicativo. Crie pastas aninhadas, arraste requests pela alça dedicada e use ações contextuais sem mover o node. Configure query, headers e autenticação Bearer, Basic, chave de API ou OAuth 2.0; o fluxo de código de autorização abre o navegador do sistema com state e PKCE opcional, enquanto client credentials, senha e refresh token rodam diretamente. HTTP e WebSocket compartilham armazenamento de cookies, proxy, CA personalizada, certificado/chave PEM ou PKCS#12 do cliente e verificação TLS. GraphQL possui editores de query, variáveis e operação; WebSocket suporta subprotocolos, várias mensagens texto/JSON/binárias, keepalive, reconexão e transcrição bidirecional; gRPC carrega arquivos proto locais e executa métodos unary, client streaming, server streaming ou bidirecionais com metadata e TLS. Campos JSON, JavaScript, GraphQL e XML usam editores com cores de sintaxe, busca, quebra de linha e formatação. Respostas JSON e XML aparecem como árvores expansíveis com cópia, mantendo fallback para texto ou binário. Scripts pré/pós de request e coleção continuam num sandbox QuickJS limitado com APIs bru/req/res do Bruno e APIs pm comuns do Postman, sem acesso a arquivos, processos ou rede. Variáveis escritas por scripts alimentam a request seguinte e runners mantêm ordem, ambiente, iterações, intervalo e regra de parada próprios. Importe Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0 ou OpenAPI 3.x; referências OpenAPI locais ficam na pasta do contrato e referências remotas nunca são baixadas. Bruno e OpenCollection preservam requests GraphQL, WebSocket e gRPC executáveis no round trip. Origens Bruno/OpenCollection vinculadas podem receber pull ou push manual, ser monitoradas a cada cinco segundos e exigir resolução explícita quando disco e Orkestrai mudaram; vínculos Postman e OpenAPI são somente para pull. Exporte Bruno, OpenCollection, Postman, OpenAPI 3.1, ambientes Postman ou um backup Orkestrai versionado e sem perdas. Notas de compatibilidade continuam explícitas quando o formato contém comportamento que o Orkestrai não executa, como runtimes irrestritos do Postman/Bruno. O mesmo node persiste no Canvas e Workbench, e agentes conectados usam api_client_list e api_client_execute sem receber credenciais salvas no inventário.`,
+      body: `Adicione Cliente de API pela barra do Canvas para trabalhar com HTTP/REST, GraphQL, WebSocket e gRPC sem alternar de aplicativo. Crie pastas aninhadas, arraste requests pela alça dedicada e configure query, headers, autenticação Bearer, Basic, chave de API ou OAuth 2.0, cookies, proxy, CA, certificados de cliente e TLS. GraphQL possui editores de query, variáveis e operação; WebSocket oferece mensagens, keepalive, reconexão e transcript; gRPC carrega proto local e executa os quatro modos de streaming. Campos estruturados usam editores com sintaxe e as respostas JSON/XML aparecem em árvores expansíveis. Em Scripts, escolha Orkestrai nativo, Postman ou Bruno. Coleções Postman usam o Postman Runtime oficial; scripts Bruno e OpenCollection usam o runtime QuickJS seguro oficial do Bruno. APIs de escopo, helpers de request e response, callbacks de rede, cookies, controle de fluxo, testes, Chai e visualizações executam sem traduzir o script. O vault fica criptografado no app desktop. Runners mantêm ordem, ambiente, dados de iteração, intervalo e regra de parada. Importe Bruno, OpenCollection, Postman v2.1, Swagger 2.0 ou OpenAPI 3.x e exporte Bruno, OpenCollection, Postman, OpenAPI 3.1, ambientes Postman ou o backup Orkestrai sem perdas. Origens Bruno/OpenCollection possuem sincronização protegida; Postman e OpenAPI são pull-only. Serviços exclusivamente hospedados do Postman, como Package Library de time e datasets, exigem o backend Postman e não são comportamento portátil da coleção. O mesmo node persiste no Canvas e Workbench, e agentes conectados usam api_client_list e api_client_execute sem receber credenciais salvas no inventário.`,
     },
     {
       id: 'api-client-scripts',
       title: 'Scripts e testes do Cliente de API',
-      body: 'Use esta referência nos editores Scripts da coleção ou da request e na aba Testes. O Orkestrai executa um subconjunto seguro das APIs mais usadas de Postman e Bruno, além de assertions declarativas nativas. Os exemplos abaixo são compatíveis com o runtime atual e podem ser copiados diretamente.',
+      body: 'Use esta referência nos editores Scripts da coleção ou da request e na aba Testes. Selecione o runtime de origem: o Orkestrai executa scripts Postman pelo Postman Runtime oficial, scripts Bruno pelo runtime QuickJS seguro oficial do Bruno e também oferece assertions declarativas nativas. Os exemplos abaixo podem ser copiados diretamente.',
       bullets: [
-        'A ordem é: pré-request da coleção, pré-request da request, chamada de rede, pós-resposta da request, pós-resposta da coleção e assertions nativas.',
-        'Variáveis da coleção e do ambiente ativo são mescladas; o ambiente prevalece. Use {{nome}} na URL, parâmetros, headers, body e autenticação. Valores gravados em scripts persistem e alimentam a próxima request do runner.',
-        'O sandbox QuickJS limita cada script a 750 ms, 12 MB de memória e 512 KB de stack. Não há acesso a filesystem, processos, require, fetch ou rede fora da request configurada.',
-        'A compatibilidade é intencionalmente parcial: pm.sendRequest, pm.globals, pm.iterationData, bru.runRequest, res.getStatus, o test global do Bruno e o Chai completo não estão disponíveis. Imports preservam scripts como texto, mas não transpilem APIs incompatíveis.',
+        'A ordem é: pré-request da coleção, pré-request das pastas da raiz até a folha, pré-request da request, chamada de rede, pós-resposta da request, pós-resposta das pastas da folha até a raiz, pós-resposta da coleção e assertions nativas.',
+        'Os escopos Postman permanecem separados em pm.globals, pm.collectionVariables, pm.environment, pm.iterationData e pm.variables. O Bruno expõe os equivalentes de ambiente, global, coleção, runtime, secrets e iteração do runner. Use {{nome}} em qualquer campo da request.',
+        'Postman oferece pm.sendRequest, pm.execution.runRequest/setNextRequest/skipRequest, cookies, vault, visualizer, APIs legadas, pm.require para bibliotecas incluídas, metadados corretos de iteração em pm.info e o Chai completo incluído. Bruno oferece bru.sendRequest/runRequest, helpers req/res, variáveis de request e pasta, blocos de variáveis pós-resposta, assertions declarativas, blocos tests, cookies, fluxo do runner, visualizações, bibliotecas incluídas e test/expect/assert globais.',
+        'Os scripts importados são preservados e executados pelo runtime de origem selecionado, sem transpilar JavaScript. Package Library de time, datasets hospedados, mocks e outros estados em nuvem do Postman exigem os serviços Postman e não fazem parte de um arquivo de coleção portátil. O Bruno permanece no runtime QuickJS seguro oficial: o acesso NodeVM inseguro ao filesystem, aos processos e a módulos locais arbitrários da máquina fica deliberadamente desabilitado. O .orkestrai-api.json continua sendo o backup sem perdas do estado exclusivo do Orkestrai.',
       ],
       examples: [
         {
           id: 'postman',
           title: 'Scripts compatíveis com Postman',
-          description: 'Cole o primeiro bloco em Pré-request e o segundo em Pós-resposta da request. pm.variables, pm.environment e pm.collectionVariables usam o mapa efetivo de variáveis do Orkestrai.',
+          description: 'Selecione o runtime Postman e cole o primeiro bloco em Pré-request e o segundo em Pós-resposta. Os escopos permanecem separados e cada linha do runner alimenta pm.iterationData.',
           snippets: [
             {
               id: 'pre-request',
               title: 'Request · Pré-request',
               code: `const requestId = 'req-' + Date.now();
 
+const tenant = pm.iterationData.get('tenant');
+
 pm.variables.set('requestId', requestId);
+pm.globals.set('lastTenant', tenant);
 pm.request.headers.upsert({
   key: 'X-Request-Id',
   value: requestId,
 });
 
-console.log('Request preparada:', requestId);`,
+pm.vault.get('apiKey').then((apiKey) => {
+  pm.request.headers.upsert({ key: 'X-API-Key', value: apiKey });
+});
+
+console.log('Request preparada:', requestId, tenant);`,
             },
             {
               id: 'post-response',
@@ -134,6 +141,7 @@ if (body) {
     pm.environment.set('userId', body.user.id);
   }
 
+  pm.execution.setNextRequest('Buscar usuário');
   console.log('Usuário autenticado:', body.user?.id);
 }`,
             },
@@ -149,12 +157,13 @@ X-Request-Id: {{requestId}}`,
         {
           id: 'bruno',
           title: 'Scripts compatíveis com Bruno',
-          description: 'Cole cada bloco no editor correspondente. O objeto res é a resposta simples do Orkestrai; use res.status e JSON.parse(res.body), não res.getStatus().',
+          description: 'Selecione o runtime Bruno e cole cada bloco no editor correspondente. As APIs oficiais bru, req, res, test, expect e assert ficam disponíveis no runtime QuickJS seguro.',
           snippets: [
             {
               id: 'pre-request',
               title: 'Request · Pré-request',
-              code: `const token = bru.getVar('accessToken');
+              code: `const login = await bru.runRequest('Auth / Login');
+const token = login.data.access_token || bru.getVar('accessToken');
 
 if (!token) {
   throw new Error('A variável accessToken não foi definida');
@@ -168,18 +177,16 @@ console.log('Request autenticada');`,
             {
               id: 'post-response',
               title: 'Request · Pós-resposta',
-              code: `const body = JSON.parse(res.body);
+              code: `const body = res.getBody();
 
-if (res.status !== 201) {
-  throw new Error('Status esperado: 201; recebido: ' + res.status);
-}
-
-if (!body.id) {
-  throw new Error('A resposta não contém um id');
-}
+test('Usuário foi criado', () => {
+  expect(res.getStatus()).to.equal(201);
+  expect(body).to.have.property('id');
+});
 
 bru.setVar('createdUserId', body.id);
-bru.setVar('lastStatus', res.status);
+bru.setVar('lastStatus', res.getStatus());
+bru.setNextRequest('Buscar usuário');
 
 console.log('Usuário criado:', body.id);`,
             },
@@ -601,9 +608,12 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Próxima versão',
+      date: '22 ago 2026 · 0.16.0',
+      title: 'Orkestrai 0.16.0: runtimes oficiais de scripts Postman e Bruno',
+      summary: 'O Cliente de API nativo executa automações importadas com runtimes oficiais compatíveis com a origem, escopos portáteis e segredos criptografados.',
       items: [
-        'A documentação agora possui uma referência completa e pesquisável de scripts do Cliente de API, com exemplos copiáveis e separados para o subconjunto Postman, o subconjunto Bruno e os testes declarativos nativos do Orkestrai.',
+        'Scripts do Cliente de API agora rodam pelo Postman Runtime oficial ou pelo runtime QuickJS seguro oficial do Bruno, com escopos separados, sendRequest/runRequest, cookies, controle de fluxo, visualizações, bibliotecas incluídas, testes Chai completos e vault criptografado pelo sistema operacional. Variáveis, assertions e blocos tests importados do Bruno executam nativamente, enquanto runners expõem dados e metadados corretos de iteração.',
+        'A documentação agora possui uma referência completa e pesquisável de scripts do Cliente de API, com exemplos copiáveis e separados para Postman Runtime, Bruno QuickJS e testes declarativos nativos, além do limite explícito dos serviços exclusivos da nuvem Postman.',
       ],
     },
     {

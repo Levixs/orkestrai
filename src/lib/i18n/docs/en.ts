@@ -68,36 +68,43 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'api-client',
       title: 'API client for REST contracts and collections',
-      body: `Add API Client from the Canvas toolbar to work with HTTP/REST, GraphQL, WebSocket, and gRPC without switching applications. Build nested folders, drag requests by their dedicated handle, and use contextual run actions without moving the Canvas node. Configure query parameters, headers, Bearer, Basic, API-key, or OAuth 2.0 authentication; authorization-code flows open the system browser with state and optional PKCE, while client credentials, password, and refresh-token grants run directly. HTTP and WebSocket connections share a cookie jar, proxy, custom CA, client PEM/key or PKCS#12 certificate, and TLS verification controls. GraphQL has query, variables, and operation editors; WebSocket supports subprotocols, multiple text/JSON/binary messages, keepalive, reconnect, and a bidirectional transcript; gRPC loads local proto files and executes unary, client-streaming, server-streaming, or bidirectional methods with metadata and TLS. JSON, JavaScript, GraphQL, and XML fields use code editors with syntax color, search, wrapping, and formatting. Responses render JSON and XML as expandable trees with copy controls and preserve a text or binary fallback. Request and collection pre/post scripts still run in a bounded QuickJS sandbox with Bruno-style bru/req/res and common Postman pm APIs but no filesystem, process, or network access. Variables written by a script persist into the next request and saved runners keep their own order, environment, iterations, delay, and stop policy. Import Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, or OpenAPI 3.x; local OpenAPI references stay inside the selected contract directory and remote references are never fetched. Bruno and OpenCollection retain executable GraphQL, WebSocket, and gRPC requests on round trip. Linked Bruno/OpenCollection sources can be pulled or pushed manually, watched every five seconds, and resolved explicitly when disk and Orkestrai both changed; Postman and OpenAPI links are pull-only. Export Bruno, OpenCollection, Postman, OpenAPI 3.1, Postman environments, or a lossless versioned Orkestrai backup. Compatibility notes remain explicit where a source format contains behavior Orkestrai cannot execute, including unrestricted Postman/Bruno runtimes. The same node persists in Canvas and Workbench, and connected agents list and execute saved requests through api_client_list and api_client_execute without receiving stored credentials in inventory responses.`,
+      body: `Add API Client from the Canvas toolbar to work with HTTP/REST, GraphQL, WebSocket, and gRPC without switching applications. Build nested folders, drag requests by their dedicated handle, and use contextual run actions without moving the Canvas node. Configure query parameters, headers, Bearer, Basic, API-key, or OAuth 2.0 authentication; authorization-code flows open the system browser with state and optional PKCE, while client credentials, password, and refresh-token grants run directly. HTTP and WebSocket connections share a cookie jar, proxy, custom CA, client PEM/key or PKCS#12 certificate, and TLS verification controls. GraphQL has query, variables, and operation editors; WebSocket supports subprotocols, multiple text/JSON/binary messages, keepalive, reconnect, and a bidirectional transcript; gRPC loads local proto files and executes unary, client-streaming, server-streaming, or bidirectional methods with metadata and TLS. JSON, JavaScript, GraphQL, and XML fields use code editors with syntax color, search, wrapping, and formatting. Responses render JSON and XML as expandable trees with copy controls and preserve a text or binary fallback. Choose Native Orkestrai, Postman, or Bruno in Scripts. Postman collections execute with the official Postman Runtime; Bruno and OpenCollection scripts execute with Bruno's official safe QuickJS runtime. Their scope APIs, request helpers, network callbacks, cookies, flow control, tests, Chai assertions, and visualizers run without translating the source script. Vault values are encrypted by the installed desktop app. Saved runners keep their own order, environment, iteration data, delay, and stop policy. Import Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, or OpenAPI 3.x; local OpenAPI references stay inside the selected contract directory and remote references are never fetched. Bruno and OpenCollection retain executable GraphQL, WebSocket, and gRPC requests on round trip. Linked Bruno/OpenCollection sources can be pulled or pushed manually, watched every five seconds, and resolved explicitly when disk and Orkestrai both changed; Postman and OpenAPI links are pull-only. Export Bruno, OpenCollection, Postman, OpenAPI 3.1, Postman environments, or a lossless versioned Orkestrai backup. Postman cloud-only services such as team Package Library and hosted datasets still require Postman's backend and are not portable collection behavior. The same node persists in Canvas and Workbench, and connected agents list and execute saved requests through api_client_list and api_client_execute without receiving stored credentials in inventory responses.`,
     },
     {
       id: 'api-client-scripts',
       title: 'API Client scripts and tests',
-      body: 'Use this reference in the collection or request Script editors and in the Tests tab. Orkestrai runs a safe subset of the most useful Postman and Bruno APIs plus native declarative assertions. The examples below match the current runtime and can be copied directly.',
+      body: 'Use this reference in the collection or request Script editors and in the Tests tab. Select the source runtime: Orkestrai runs Postman scripts through the official Postman Runtime, Bruno scripts through Bruno’s official safe QuickJS runtime, and also provides native declarative assertions. The examples below can be copied directly.',
       bullets: [
-        'Execution order is collection pre-request, request pre-request, network call, request post-response, collection post-response, then native assertions.',
-        'Collection variables merge with the active environment, and the environment wins. Use {{name}} in URLs, parameters, headers, bodies, and authentication. Values written by scripts persist and feed the runner’s next request.',
-        'The QuickJS sandbox limits each script to 750 ms, 12 MB of memory, and a 512 KB stack. It provides no filesystem, process, require, fetch, or network access outside the configured request.',
-        'Compatibility is deliberately partial: pm.sendRequest, pm.globals, pm.iterationData, bru.runRequest, res.getStatus, Bruno’s global test function, and complete Chai are unavailable. Imports preserve scripts as text but do not transpile incompatible APIs.',
+        'Execution order is collection pre-request, folder pre-request from root to leaf, request pre-request, network call, request post-response, folder post-response from leaf to root, collection post-response, then native assertions.',
+        'Postman scopes remain separate as pm.globals, pm.collectionVariables, pm.environment, pm.iterationData, and pm.variables. Bruno exposes the equivalent environment, global, collection, runtime, secret, and runner iteration APIs. Use {{name}} in every request field.',
+        'Postman supports pm.sendRequest, pm.execution.runRequest/setNextRequest/skipRequest, cookies, vault, visualizer, legacy globals, pm.require for bundled libraries, accurate pm.info iteration metadata, and the complete bundled Chai API. Bruno supports bru.sendRequest/runRequest, req/res helpers, request and folder variables, post-response variable blocks, declarative assertions, tests blocks, cookies, runner flow, visualizations, bundled libraries, and global test/expect/assert.',
+        'Imported scripts are preserved and executed by their selected source runtime, so no JavaScript transpilation is needed. Postman team Package Library, hosted datasets, mocks, and other cloud-owned state require Postman services; they are not contained in a portable collection file. Bruno stays in its official safe QuickJS runtime: unsafe NodeVM access to the host filesystem, processes, and arbitrary local modules is deliberately disabled. The native .orkestrai-api.json format remains the lossless backup for Orkestrai-only state.',
       ],
       examples: [
         {
           id: 'postman',
           title: 'Postman-compatible scripts',
-          description: 'Paste the first block into request Pre-request and the second into Post-response. pm.variables, pm.environment, and pm.collectionVariables share Orkestrai’s effective variable map.',
+          description: 'Select Postman Runtime, then paste the first block into request Pre-request and the second into Post-response. Scopes remain separate and runner rows feed pm.iterationData.',
           snippets: [
             {
               id: 'pre-request',
               title: 'Request · Pre-request',
               code: `const requestId = 'req-' + Date.now();
 
+const tenant = pm.iterationData.get('tenant');
+
 pm.variables.set('requestId', requestId);
+pm.globals.set('lastTenant', tenant);
 pm.request.headers.upsert({
   key: 'X-Request-Id',
   value: requestId,
 });
 
-console.log('Request prepared:', requestId);`,
+pm.vault.get('apiKey').then((apiKey) => {
+  pm.request.headers.upsert({ key: 'X-API-Key', value: apiKey });
+});
+
+console.log('Request prepared:', requestId, tenant);`,
             },
             {
               id: 'post-response',
@@ -130,6 +137,7 @@ if (body) {
     pm.environment.set('userId', body.user.id);
   }
 
+  pm.execution.setNextRequest('Load user');
   console.log('Authenticated user:', body.user?.id);
 }`,
             },
@@ -145,12 +153,13 @@ X-Request-Id: {{requestId}}`,
         {
           id: 'bruno',
           title: 'Bruno-compatible scripts',
-          description: 'Paste each block into its matching editor. res is Orkestrai’s plain response object; use res.status and JSON.parse(res.body), not res.getStatus().',
+          description: 'Select Bruno Runtime and paste each block into its matching editor. The official bru, req, res, test, expect, and assert APIs are available in the safe QuickJS runtime.',
           snippets: [
             {
               id: 'pre-request',
               title: 'Request · Pre-request',
-              code: `const token = bru.getVar('accessToken');
+              code: `const login = await bru.runRequest('Auth / Login');
+const token = login.data.access_token || bru.getVar('accessToken');
 
 if (!token) {
   throw new Error('The accessToken variable is missing');
@@ -164,18 +173,16 @@ console.log('Authenticated request');`,
             {
               id: 'post-response',
               title: 'Request · Post-response',
-              code: `const body = JSON.parse(res.body);
+              code: `const body = res.getBody();
 
-if (res.status !== 201) {
-  throw new Error('Expected status 201; received ' + res.status);
-}
-
-if (!body.id) {
-  throw new Error('The response did not include an id');
-}
+test('User was created', () => {
+  expect(res.getStatus()).to.equal(201);
+  expect(body).to.have.property('id');
+});
 
 bru.setVar('createdUserId', body.id);
-bru.setVar('lastStatus', res.status);
+bru.setVar('lastStatus', res.getStatus());
+bru.setNextRequest('Load user');
 
 console.log('Created user:', body.id);`,
             },
@@ -597,9 +604,12 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Next release',
+      date: 'Aug 22, 2026 · 0.16.0',
+      title: 'Orkestrai 0.16.0: official Postman and Bruno scripting runtimes',
+      summary: 'The native API Client executes imported automation with source-compatible official runtimes, portable scopes, and encrypted secrets.',
       items: [
-        'Documentation now includes a complete, searchable API Client scripting reference with separate copyable examples for the Postman subset, Bruno subset, and native Orkestrai declarative tests.',
+        'API Client scripts now run through the official Postman Runtime or Bruno’s official safe QuickJS runtime with separate scopes, sendRequest/runRequest, cookies, flow control, visualizers, bundled libraries, complete Chai tests, and an operating-system-encrypted vault. Imported Bruno variables, assertions and tests blocks execute natively, while runners expose accurate iteration data and metadata.',
+        'Documentation now includes a complete, searchable API Client scripting reference with separate copyable examples for Postman Runtime, Bruno QuickJS, and native Orkestrai declarative tests, plus the explicit boundary around Postman cloud-only services.',
       ],
     },
     {

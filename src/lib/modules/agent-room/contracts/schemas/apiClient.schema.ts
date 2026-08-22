@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const apiClientMethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 export const apiClientProtocolSchema = z.enum(['http', 'graphql', 'websocket', 'grpc']);
+export const apiClientScriptDialectSchema = z.enum(['orkestrai', 'postman', 'bruno']);
 
 export const apiClientKeyValueSchema = z.object({
   id: z.string().trim().min(1).max(100),
@@ -131,6 +132,7 @@ export const apiClientRunnerSchema = z.object({
   requestIds: z.array(z.string().trim().min(1).max(200)).max(500),
   environment: z.string().trim().max(500).nullable(),
   iterations: z.coerce.number().int().min(1).max(1_000),
+  iterationData: z.array(z.record(z.string(), z.unknown())).max(1_000).default([]),
   delayMs: z.coerce.number().int().min(0).max(120_000),
   stopOnFailure: z.boolean(),
   sequence: z.coerce.number().int().min(0).max(100_000),
@@ -196,6 +198,10 @@ export const apiClientNativePayloadSchema = z.object({
   selectedRequestId: z.string().max(200).nullable().default(null),
   variables: z.record(z.string(), z.string().max(100_000)).default({}),
   environments: z.record(z.string(), z.record(z.string(), z.string().max(100_000))).default({}),
+  globalVariables: z.record(z.string(), z.string().max(100_000)).default({}),
+  runtimeVariables: z.record(z.string(), z.string().max(100_000)).default({}),
+  scriptDialect: apiClientScriptDialectSchema.default('orkestrai'),
+  vaultKeys: z.array(z.string().trim().min(1).max(500)).max(500).default([]),
   activeEnvironment: z.string().max(500).nullable().default(null),
   history: z.array(apiClientHistoryEntrySchema).max(50).default([]),
   collectionPreRequestScript: z.string().max(100_000).default(''),
@@ -220,6 +226,14 @@ export const executeApiClientRequestSchema = z.object({
   nodeId: z.string().trim().min(1),
   request: apiClientRequestSchema,
   variables: z.record(z.string(), z.string().max(100_000)).default({}),
+  collectionVariables: z.record(z.string(), z.unknown()).optional(),
+  environmentVariables: z.record(z.string(), z.unknown()).optional(),
+  globalVariables: z.record(z.string(), z.unknown()).optional(),
+  runtimeVariables: z.record(z.string(), z.unknown()).optional(),
+  iterationData: z.record(z.string(), z.unknown()).optional(),
+  iterationIndex: z.coerce.number().int().min(0).max(100_000).optional(),
+  iterationCount: z.coerce.number().int().min(1).max(1_000).optional(),
+  scriptDialect: apiClientScriptDialectSchema.optional(),
   timeoutMs: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
   collectionPreRequestScript: z.string().max(100_000).optional(),
   collectionPostResponseScript: z.string().max(100_000).optional(),

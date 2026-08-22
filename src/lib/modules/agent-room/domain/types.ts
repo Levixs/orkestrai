@@ -479,6 +479,7 @@ export type ApiClientRunner = {
   requestIds: string[];
   environment: string | null;
   iterations: number;
+  iterationData: Array<Record<string, unknown>>;
   delayMs: number;
   stopOnFailure: boolean;
   sequence: number;
@@ -512,6 +513,10 @@ export type ApiClientNodePayload = {
   selectedRequestId?: string | null;
   variables?: Record<string, string>;
   environments?: Record<string, Record<string, string>>;
+  globalVariables?: Record<string, string>;
+  runtimeVariables?: Record<string, string>;
+  scriptDialect?: 'orkestrai' | 'postman' | 'bruno';
+  vaultKeys?: string[];
   activeEnvironment?: string | null;
   history?: ApiClientHistoryEntry[];
   collectionPreRequestScript?: string;

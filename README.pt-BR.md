@@ -36,19 +36,20 @@ Baixe os instaladores mais recentes em
   O rodapé mantém visíveis todas as janelas de cota reportadas por Claude, Codex
   e Kimi sem exigir a abertura de outro painel.
 - **Cliente de API nativo:** crie e execute requests HTTP/REST, GraphQL, WebSocket
-  e gRPC ao lado do time, com autenticação Bearer/Basic/chave de API ou OAuth 2.0
-  assistido, cookies, proxy, CA e certificados do cliente. JSON, JavaScript,
-  GraphQL e XML usam editores com sintaxe e formatação; respostas estruturadas
-  permitem expandir e recolher. Importe Bruno, OpenCollection YAML, Postman Collection
-  v2.1, Swagger 2.0 ou OpenAPI 3.x e exporte Bruno, OpenCollection, Postman ou
-  OpenAPI 3.1 JSON/YAML, preservando metadados REST e mostrando notas explícitas
-  de fidelidade. Origens Bruno/OpenCollection vinculadas permitem pull, push,
-  monitoramento e resolução explícita de conflitos. Ambientes Postman são importados e exportados separadamente. O formato versionado
-  `.orkestrai-api.json` guarda a coleção nativa completa, com pastas, runners,
-  ambientes, scripts e histórico. O mesmo node persiste no Canvas e Workbench; agentes conectados
-  listam e executam requests salvos por tools MCP tipadas sem expor segredos de
-  autenticação no inventário. Requests GraphQL, WebSocket e gRPC fazem round trip
-  com Bruno/OpenCollection; runtimes irrestritos de script do Postman/Bruno continuam fora da compatibilidade.
+  e gRPC ao lado do time, com autenticação Bearer/Basic/chave de API ou OAuth 2.0,
+  cookies, proxy, CA e certificados. Scripts importados do Postman rodam no
+  Postman Runtime oficial; Bruno e OpenCollection usam o runtime QuickJS seguro
+  oficial do Bruno. Escopos separados, sendRequest/runRequest, cookies, fluxo da
+  coleção, visualizações, bibliotecas incluídas, Chai e APIs legadas continuam disponíveis, enquanto o
+  vault guarda valores criptografados pelo sistema operacional. Runners aceitam
+  dados JSON por iteração. Importe e exporte Bruno, OpenCollection, Postman,
+  OpenAPI e o backup `.orkestrai-api.json` sem perdas. O mesmo node persiste no
+  Canvas e Workbench e agentes conectados executam requests por tools MCP sem
+  receber credenciais. Package Library, datasets e outros serviços em nuvem do
+  Postman continuam dependentes do backend Postman, pois não fazem parte do
+  arquivo portátil da coleção. Scripts Bruno permanecem deliberadamente no
+  runtime QuickJS seguro oficial: o acesso NodeVM inseguro ao filesystem, aos
+  processos e a módulos locais arbitrários da máquina não é habilitado.
 - **Dispositivos móveis integrados:** adicione um node persistente de Dispositivo
   móvel pela barra do Canvas; o Workbench lista e abre o mesmo node e a mesma
   sessão. Controle iPhone e iPad Simulators em Macs Apple Silicon ou AVDs Android

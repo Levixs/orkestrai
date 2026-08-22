@@ -750,6 +750,70 @@ message WatchReply { string event = 1; }
     expect(result.scriptLogs).toEqual(['collection pre', 'request status 200', 'collection post 200']);
   });
 
+  it('executes imported Bruno variables, assertions, and tests with source scope precedence', async () => {
+    const { workspace, node } = await fixture();
+    let visited = '';
+    server = createServer((request, response) => {
+      visited = request.url ?? '';
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ ok: true }));
+    });
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Bruno compatibility server did not bind.');
+
+    const request = apiClientRequestSchema.parse({
+      id: 'bruno-compatible',
+      name: 'Bruno compatible',
+      method: 'GET',
+      protocol: 'http',
+      url: '{{baseUrl}}/{{folderSegment}}/{{requestSegment}}',
+      folderId: 'folder',
+      headers: [],
+      auth: { type: 'none' },
+      sourcePath: join(tempDir!, 'request.bru'),
+      sourceData: {
+        kind: 'bruno',
+        data: {
+          request: {
+            vars: {
+              req: [{ name: 'requestSegment', value: 'request', enabled: true }],
+              res: [{ name: 'capturedStatus', value: 'res.status', enabled: true }],
+            },
+            assertions: [
+              { name: 'res.status', value: 'eq 200', enabled: true },
+              { name: 'res.body.ok', value: 'isTruthy', enabled: true },
+            ],
+            tests: `test('Bruno tests block works', () => expect(res.getStatus()).to.equal(200));\nbru.setVar('fromTests', 'yes');`,
+          },
+        },
+      },
+    });
+    await workspaceRepository.updateNode(node.id, {
+      payload: {
+        sourceKind: 'bruno',
+        sourcePath: tempDir,
+        scriptDialect: 'bruno',
+        variables: { baseUrl: `http://127.0.0.1:${address.port}` },
+        folders: [{
+          id: 'folder', name: 'Folder', parentId: null, sequence: 0,
+          sourceData: { kind: 'bruno', data: { request: { vars: { req: [{ name: 'folderSegment', value: 'folder', enabled: true }] } } } },
+        }],
+        requests: [request],
+      },
+    });
+
+    const result = await apiClientService.executeSaved(workspace.id, node.id, request.id, {});
+
+    expect(visited).toBe('/folder/request');
+    expect(result.variables).toMatchObject({ capturedStatus: '200', fromTests: 'yes' });
+    expect(result.tests).toEqual(expect.arrayContaining([
+      expect.objectContaining({ passed: true, label: 'Bruno tests block works' }),
+      expect.objectContaining({ passed: true }),
+      expect.objectContaining({ passed: true }),
+    ]));
+  });
+
   it('passes variables produced by one request into the next request', async () => {
     const { workspace, node } = await fixture();
     const visited: string[] = [];

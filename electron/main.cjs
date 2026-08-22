@@ -375,12 +375,14 @@ async function startServer(port) {
   });
 
   serverProcess.on('message', (message) => {
-    if (!message || message.type !== 'orkestrai:secret:get' || !message.requestId) return;
+    if (!message || !['orkestrai:secret:get', 'orkestrai:secret:set', 'orkestrai:secret:delete'].includes(message.type) || !message.requestId) return;
     try {
+      if (message.type === 'orkestrai:secret:set') saveAutomationSecret(message.key, message.value);
+      if (message.type === 'orkestrai:secret:delete') deleteAutomationSecret(message.key);
       serverProcess?.send?.({
         type: 'orkestrai:secret:result',
         requestId: message.requestId,
-        value: readAutomationSecret(message.key),
+        value: message.type === 'orkestrai:secret:get' ? readAutomationSecret(message.key) : null,
       });
     } catch (error) {
       serverProcess?.send?.({

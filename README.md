@@ -41,11 +41,17 @@ Download the latest installers from
   in nested folders with isolated drag-and-drop and context menus. Configure
   Bearer/Basic/API-key or assisted OAuth 2.0 authentication, cookies, proxy,
   custom CA and client certificates, protocol-specific messages, environments,
-  sandboxed pre/post scripts, and assertions. JSON, JavaScript, GraphQL, and XML
-  use syntax-aware editors; structured responses are expandable. Persist any
-  number of collection runners with a selected request order, environment,
-  iterations, delay, and stop-on-failure policy; variables produced by one
-  response flow directly into the next request.
+  source-compatible pre/post scripts, and assertions. Imported Postman
+  JavaScript runs through the official Postman Runtime; Bruno and OpenCollection
+  JavaScript runs through Bruno's official safe QuickJS runtime. Their separate
+  scopes, sendRequest/runRequest callbacks, cookies, collection flow,
+  visualizers, bundled Chai APIs, and legacy helpers remain available, while
+  secret values stay in the operating-system-encrypted desktop vault. JSON,
+  JavaScript, GraphQL, and XML use syntax-aware editors; structured responses
+  are expandable. Persist any number of collection runners with a selected
+  request order, environment, iterations with JSON data rows, delay, and
+  stop-on-failure policy; variables produced by one response flow directly into
+  the next request.
   Copy cURL; import Bruno, OpenCollection YAML, Postman Collection v2.1,
   Swagger 2.0, or OpenAPI 3.x; and export Bruno, OpenCollection, Postman, or
   OpenAPI 3.1 JSON/YAML while preserving unsupported REST metadata and showing
@@ -56,8 +62,13 @@ Download the latest installers from
   native collection, including folders, runners, environments, scripts, and
   history. The same node persists in Canvas and Workbench, and
   connected agents use typed MCP tools without receiving stored secrets in the
-  inventory. Bruno/OpenCollection GraphQL, WebSocket, and gRPC requests round-trip;
-  unrestricted Postman/Bruno script runtimes remain outside the compatibility claim.
+  inventory. Bruno/OpenCollection GraphQL, WebSocket, and gRPC requests
+  round-trip. Both source runtimes expose their bundled script libraries;
+  Postman team Package Library, hosted datasets, mocks, and other
+  cloud-owned state still require Postman's backend because they are not stored
+  in a portable collection file. Bruno scripts deliberately stay in its official
+  safe QuickJS runtime: unsafe NodeVM access to the host filesystem, processes,
+  and arbitrary local modules is not enabled.
 - **Integrated mobile devices:** add a persistent Mobile Device node from the
   Canvas toolbar; Workbench lists and opens that same node and session. Control
   iPhone and iPad Simulators on Apple Silicon Macs, or Android AVDs and explicitly

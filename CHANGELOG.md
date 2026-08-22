@@ -5,15 +5,33 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
-## Unreleased
+## 0.16.0 - 2026-08-22
+
+### Added
+
+- Added source-compatible API scripting through the official Postman Runtime
+  and Bruno's official safe QuickJS runtime. Imported scripts now execute with
+  separate global, collection, environment, runtime, iteration, and vault
+  scopes; request and response helpers; nested request callbacks; cookies;
+  collection flow; visualizers; legacy Postman globals; bundled libraries via
+  `pm.require`/Bruno `require`; and complete bundled Chai assertions. Collection
+  runners accept a JSON data row per iteration.
+- Imported Bruno request and folder variables, post-response variable blocks,
+  declarative assertions, and `tests {}` blocks now execute through Bruno's
+  official Vars, Assert, and Test runtimes. Postman runner scripts receive the
+  actual `pm.info.iteration` and `pm.info.iterationCount` for each Orkestrai row.
+- Added an operating-system-encrypted API vault. Only secret names enter the
+  workspace payload; values remain in Electron safe storage and are available
+  to `pm.vault` and Bruno secret-variable APIs.
 
 ### Documentation
 
-- Added a complete API Client scripting reference with separate, copyable
-  examples for the supported Postman subset, Bruno subset, and Orkestrai's
-  native declarative tests. The guide documents execution order, variable
-  chaining, sandbox boundaries, and unsupported runtime APIs without implying
-  full Postman or Bruno compatibility.
+- Updated the complete API Client scripting reference with separate, copyable
+  examples for Postman Runtime, Bruno QuickJS, and Orkestrai's native
+  declarative tests. It now documents folder script order, scope precedence,
+  iteration data, encrypted secrets, collection flow, and the explicit boundary
+  around Postman services that require its hosted backend and Bruno's unsafe
+  NodeVM access, which remains disabled in favor of the official safe runtime.
 
 ## 0.15.0 - 2026-08-20
 

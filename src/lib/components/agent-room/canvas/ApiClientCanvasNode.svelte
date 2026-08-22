@@ -44,6 +44,17 @@
     body: string;
     binary: boolean;
     variables: Record<string, string>;
+    scopes?: {
+      collection: Record<string, string>;
+      environment: Record<string, string>;
+      globals: Record<string, string>;
+      runtime: Record<string, string>;
+      iteration: Record<string, unknown>;
+    };
+    flow?: { nextRequest?: string | null; skipRequest: boolean; stopExecution: boolean };
+    visualizations?: Array<{ type: 'html' | 'table'; content: string; data?: unknown }>;
+    skipped?: boolean;
+    vaultKeys?: string[];
     scriptLogs: string[];
     tests: Array<{ id: string; label: string; passed: boolean; actual: string; expected: string }>;
     protocol?: 'websocket' | 'grpc';
@@ -65,6 +76,8 @@
     openApiCollection?: (kind: 'bruno' | 'postman', path: string) => Promise<boolean>;
     openExternal?: (url: string) => Promise<void>;
     openPath?: (path: string) => Promise<string>;
+    saveAutomationSecret?: (key: string, value: string) => Promise<{ stored: boolean }>;
+    deleteAutomationSecret?: (key: string) => Promise<{ deleted: boolean }>;
   };
 
   let { id, data, selected } = $props<{ id: string; data: ApiClientNodeData; selected?: boolean }>();
@@ -75,13 +88,20 @@
   let selectedRequestId = $state<string | null>(null);
   let variables = $state<Record<string, string>>({});
   let environments = $state<Record<string, Record<string, string>>>({});
+  let globalVariables = $state<Record<string, string>>({});
+  let runtimeVariables = $state<Record<string, string>>({});
+  let scriptDialect = $state<'orkestrai' | 'postman' | 'bruno'>('orkestrai');
+  let vaultKeys = $state<string[]>([]);
+  let variableEditorScope = $state<'collection' | 'environment' | 'globals' | 'runtime' | 'vault'>('collection');
+  let vaultName = $state('');
+  let vaultValue = $state('');
   let activeEnvironment = $state<string | null>(null);
   let history = $state<ApiClientHistoryEntry[]>([]);
   let activeTab = $state('body');
   let scriptScope = $state<'request' | 'collection'>('request');
   let collectionPreRequestScript = $state('');
   let collectionPostResponseScript = $state('');
-  let responseView = $state<'body' | 'messages' | 'headers' | 'tests' | 'console'>('body');
+  let responseView = $state<'body' | 'messages' | 'headers' | 'tests' | 'console' | 'visualizer'>('body');
   let sending = $state(false);
   let running = $state(false);
   let runProgress = $state({ completed: 0, total: 0, failed: 0 });
@@ -157,6 +177,10 @@
     selectedRequestId = payload.selectedRequestId ?? structure.requests[0]?.id ?? null;
     variables = $state.snapshot(payload.variables ?? {});
     environments = $state.snapshot(payload.environments ?? {});
+    globalVariables = $state.snapshot(payload.globalVariables ?? {});
+    runtimeVariables = $state.snapshot(payload.runtimeVariables ?? {});
+    scriptDialect = payload.scriptDialect ?? (payload.sourceKind === 'postman' ? 'postman' : payload.sourceKind === 'bruno' || payload.sourceKind === 'openCollection' ? 'bruno' : 'orkestrai');
+    vaultKeys = $state.snapshot(payload.vaultKeys ?? []);
     activeEnvironment = payload.activeEnvironment && payload.environments?.[payload.activeEnvironment]
       ? payload.activeEnvironment
       : null;
@@ -182,6 +206,10 @@
       selectedRequestId,
       variables: $state.snapshot(variables),
       environments: $state.snapshot(environments),
+      globalVariables: $state.snapshot(globalVariables),
+      runtimeVariables: $state.snapshot(runtimeVariables),
+      scriptDialect,
+      vaultKeys: $state.snapshot(vaultKeys),
       activeEnvironment,
       history: $state.snapshot(history),
       collectionPreRequestScript,
@@ -197,6 +225,7 @@
       ...$state.snapshot(data.payload),
       requests: $state.snapshot(requests), folders: $state.snapshot(folders), runners: $state.snapshot(runners),
       selectedRunnerId, selectedRequestId, variables: $state.snapshot(variables), environments: $state.snapshot(environments),
+      globalVariables: $state.snapshot(globalVariables), runtimeVariables: $state.snapshot(runtimeVariables), scriptDialect, vaultKeys: $state.snapshot(vaultKeys),
       activeEnvironment, history: $state.snapshot(history), collectionPreRequestScript, collectionPostResponseScript,
       compatibilityWarnings: $state.snapshot(compatibilityWarnings), network: $state.snapshot(network), sync: $state.snapshot(sync),
     };
@@ -212,6 +241,10 @@
     selectedRequestId = payload.selectedRequestId ?? requests[0]?.id ?? null;
     variables = $state.snapshot(payload.variables ?? {});
     environments = $state.snapshot(payload.environments ?? {});
+    globalVariables = $state.snapshot(payload.globalVariables ?? {});
+    runtimeVariables = $state.snapshot(payload.runtimeVariables ?? {});
+    scriptDialect = payload.scriptDialect ?? 'orkestrai';
+    vaultKeys = $state.snapshot(payload.vaultKeys ?? []);
     activeEnvironment = payload.activeEnvironment ?? null;
     collectionPreRequestScript = payload.collectionPreRequestScript ?? '';
     collectionPostResponseScript = payload.collectionPostResponseScript ?? '';
@@ -607,7 +640,8 @@
   }
 
   function addVariable() {
-    const current = activeEnvironment ? (environments[activeEnvironment] ?? {}) : variables;
+    if (variableEditorScope === 'vault') return;
+    const current = currentVariables();
     let index = Object.keys(current).length + 1;
     while (`variable${index}` in current) index += 1;
     setCurrentVariables({ ...current, [`variable${index}`]: '' });
@@ -615,11 +649,14 @@
   }
 
   function currentVariables(): Record<string, string> {
-    return activeEnvironment ? (environments[activeEnvironment] ?? {}) : variables;
+    if (variableEditorScope === 'globals') return globalVariables;
+    if (variableEditorScope === 'runtime') return runtimeVariables;
+    if (variableEditorScope === 'environment') return activeEnvironment ? (environments[activeEnvironment] ?? {}) : {};
+    return variables;
   }
 
   function effectiveVariables(environmentName: string | null = activeEnvironment): Record<string, string> {
-    return { ...variables, ...(environmentName ? environments[environmentName] : {}) };
+    return { ...globalVariables, ...variables, ...(environmentName ? environments[environmentName] : {}), ...runtimeVariables };
   }
 
   function applyExecutionVariables(next: Record<string, string>, environmentName: string | null) {
@@ -634,8 +671,17 @@
     environments = { ...environments, [environmentName]: nextEnvironment };
   }
 
+  function applyExecutionScopes(scopes: NonNullable<ApiResponse['scopes']>, environmentName: string | null) {
+    variables = { ...scopes.collection };
+    globalVariables = { ...scopes.globals };
+    runtimeVariables = { ...scopes.runtime };
+    if (environmentName) environments = { ...environments, [environmentName]: { ...scopes.environment } };
+  }
+
   function setCurrentVariables(next: Record<string, string>) {
-    if (activeEnvironment) environments = { ...environments, [activeEnvironment]: next };
+    if (variableEditorScope === 'globals') globalVariables = next;
+    else if (variableEditorScope === 'runtime') runtimeVariables = next;
+    else if (variableEditorScope === 'environment' && activeEnvironment) environments = { ...environments, [activeEnvironment]: next };
     else variables = next;
   }
 
@@ -665,6 +711,7 @@
     if (!name || environments[name]) return;
     environments = { ...environments, [name]: {} };
     activeEnvironment = name;
+    variableEditorScope = 'environment';
     newEnvironmentName = '';
     persist();
   }
@@ -675,6 +722,31 @@
     delete next[activeEnvironment];
     environments = next;
     activeEnvironment = null;
+    if (variableEditorScope === 'environment') variableEditorScope = 'collection';
+    persist();
+  }
+
+  async function vaultSecretKey(name: string) {
+    const bytes = new TextEncoder().encode(name);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('').slice(0, 32);
+    return `automation:api-vault:${data.workspaceId}:${id}:${hash}`;
+  }
+
+  async function saveVaultVariable() {
+    const name = vaultName.trim();
+    if (!name || !vaultValue || !desktop?.saveAutomationSecret) return;
+    await desktop.saveAutomationSecret(await vaultSecretKey(name), vaultValue);
+    if (!vaultKeys.includes(name)) vaultKeys = [...vaultKeys, name].sort();
+    vaultName = '';
+    vaultValue = '';
+    persist();
+    toast.success(m['api_client.vault_saved']());
+  }
+
+  async function removeVaultVariable(name: string) {
+    await desktop?.deleteAutomationSecret?.(await vaultSecretKey(name));
+    vaultKeys = vaultKeys.filter((key) => key !== name);
     persist();
   }
 
@@ -708,9 +780,17 @@
 
   function scriptStageLabel(stage: unknown): string {
     if (stage === 'collectionPreRequest') return m['api_client.collection_pre_request_script']();
+    if (stage === 'folderPreRequest') return m['api_client.folder_pre_request_script']();
     if (stage === 'requestPostResponse') return m['api_client.post_response_script']();
+    if (stage === 'folderPostResponse') return m['api_client.folder_post_response_script']();
     if (stage === 'collectionPostResponse') return m['api_client.collection_post_response_script']();
     return m['api_client.pre_request_script']();
+  }
+
+  function scriptRuntimeHint(): string {
+    if (scriptDialect === 'postman') return m['api_client.script_hint_postman']();
+    if (scriptDialect === 'bruno') return m['api_client.script_hint_bruno']();
+    return m['api_client.script_hint_orkestrai']();
   }
 
   function executionErrorMessage(payload: ApiClientErrorPayload): string {
@@ -740,6 +820,9 @@
     showResponse = true,
     executionVariables = effectiveVariables(),
     environmentName: string | null = activeEnvironment,
+    iterationIndex = 0,
+    iterationCount = 1,
+    iterationData: Record<string, unknown> = {},
   ): Promise<ApiResponse> {
     error = '';
     if (showResponse) response = null;
@@ -751,6 +834,14 @@
         nodeId: id,
         request,
         variables: executionVariables,
+        collectionVariables: variables,
+        environmentVariables: environmentName ? (environments[environmentName] ?? {}) : {},
+        globalVariables,
+        runtimeVariables,
+        iterationData,
+        iterationIndex,
+        iterationCount,
+        scriptDialect,
         timeoutMs: request.timeoutMs ?? 30_000,
         collectionPreRequestScript,
         collectionPostResponseScript,
@@ -759,8 +850,10 @@
     const payload = await result.json().catch(() => ({}));
     if (!result.ok || payload.error) throw new Error(executionErrorMessage(payload));
     const apiResponse = payload.data as ApiResponse;
-    if (apiResponse.variables) applyExecutionVariables(apiResponse.variables, environmentName);
+    if (apiResponse.scopes) applyExecutionScopes(apiResponse.scopes, environmentName);
+    else if (apiResponse.variables) applyExecutionVariables(apiResponse.variables, environmentName);
     if (apiResponse.cookies) network = { ...network, cookies: $state.snapshot(apiResponse.cookies) };
+    if (apiResponse.vaultKeys) vaultKeys = $state.snapshot(apiResponse.vaultKeys);
     const passed = apiResponse.tests.filter((test) => test.passed).length;
     const entry: ApiClientHistoryEntry = {
       id: crypto.randomUUID(), requestId: request.id, requestName: request.name, method: request.method, protocol: request.protocol ?? 'http',
@@ -772,7 +865,7 @@
     if (showResponse) {
       response = apiResponse;
       activeTab = 'response';
-      responseView = apiResponse.messages?.length ? 'messages' : 'body';
+      responseView = apiResponse.visualizations?.length ? 'visualizer' : apiResponse.messages?.length ? 'messages' : 'body';
     }
     return apiResponse;
   }
@@ -791,28 +884,55 @@
 
   async function runRequests(
     selectedRequests: ApiClientRequest[],
-    options: Pick<ApiClientRunner, 'environment' | 'iterations' | 'delayMs' | 'stopOnFailure'> = { environment: activeEnvironment, iterations: 1, delayMs: 0, stopOnFailure: false },
+    options: Pick<ApiClientRunner, 'environment' | 'iterations' | 'iterationData' | 'delayMs' | 'stopOnFailure'> = { environment: activeEnvironment, iterations: 1, iterationData: [], delayMs: 0, stopOnFailure: false },
   ) {
     if (running || !selectedRequests.length) return;
     running = true;
     const total = selectedRequests.length * options.iterations;
     runProgress = { completed: 0, total, failed: 0 };
+    runtimeVariables = {};
     let chainVariables = effectiveVariables(options.environment);
     let shouldStop = false;
     try {
       for (let iteration = 0; iteration < options.iterations && !shouldStop; iteration += 1) {
-        for (const request of selectedRequests) {
+        let cursor = 0;
+        let steps = 0;
+        while (cursor < selectedRequests.length && !shouldStop) {
+          const request = selectedRequests[cursor];
           let failed = false;
+          let execution: ApiResponse | null = null;
           try {
-            const result = await executeRequest(request, request.id === selectedRequestId, chainVariables, options.environment);
-            chainVariables = result.variables ?? chainVariables;
-            failed = !result.ok || result.tests.some((test) => !test.passed);
+            execution = await executeRequest(
+              request,
+              request.id === selectedRequestId,
+              chainVariables,
+              options.environment,
+              iteration,
+              options.iterations,
+              options.iterationData[iteration] ?? {},
+            );
+            chainVariables = execution.variables ?? chainVariables;
+            failed = !execution.ok || execution.tests.some((test) => !test.passed);
           } catch {
             failed = true;
           }
           if (failed) runProgress.failed += 1;
           runProgress.completed += 1;
           if (failed && options.stopOnFailure) {
+            shouldStop = true;
+            break;
+          }
+          if (execution?.flow?.stopExecution || execution?.flow?.nextRequest === null) {
+            shouldStop = true;
+            break;
+          }
+          if (typeof execution?.flow?.nextRequest === 'string') {
+            const requestedIndex = selectedRequests.findIndex((candidate) => candidate.id === execution?.flow?.nextRequest || candidate.name === execution?.flow?.nextRequest);
+            cursor = requestedIndex >= 0 ? requestedIndex : cursor + 1;
+          } else cursor += 1;
+          steps += 1;
+          if (steps >= 10_000) {
+            toast.error(m['api_client.run_flow_limit']());
             shouldStop = true;
             break;
           }
@@ -1156,6 +1276,10 @@
       selectedRequestId = imported.selectedRequestId ?? requests[0]?.id ?? null;
       variables = $state.snapshot(imported.variables ?? {});
       environments = $state.snapshot(imported.environments ?? {});
+      globalVariables = $state.snapshot(imported.globalVariables ?? {});
+      runtimeVariables = $state.snapshot(imported.runtimeVariables ?? {});
+      scriptDialect = imported.scriptDialect ?? (imported.sourceKind === 'postman' ? 'postman' : imported.sourceKind === 'bruno' || imported.sourceKind === 'openCollection' ? 'bruno' : 'orkestrai');
+      vaultKeys = $state.snapshot(imported.vaultKeys ?? []);
       activeEnvironment = imported.activeEnvironment ?? null;
       history = $state.snapshot(imported.history ?? []);
       collectionPreRequestScript = imported.collectionPreRequestScript ?? '';
@@ -1698,27 +1822,54 @@
           <Tabs.Content value="variables" class="m-0 min-h-0 flex-1 overflow-auto p-2">
             <p class="mb-2 text-[10px] text-[var(--app-text-muted)]">{m['api_client.variables_hint']()}</p>
             <div class="mb-3 flex flex-wrap items-center gap-2 border-b border-[var(--app-border)] pb-3">
-              <NativeSelect.Root class="w-40" size="sm" aria-label={m['api_client.environment']()} value={activeEnvironment ?? '__base__'} onchange={(event: Event) => { const value = inputValue(event); activeEnvironment = value === '__base__' ? null : value; persist(); }}>
-                <NativeSelect.Option value="__base__">{m['api_client.collection_variables']()}</NativeSelect.Option>
+              <NativeSelect.Root class="w-40" size="sm" aria-label={m['api_client.active_environment']()} value={activeEnvironment ?? '__none__'} onchange={(event: Event) => { const value = inputValue(event); activeEnvironment = value === '__none__' ? null : value; if (activeEnvironment) variableEditorScope = 'environment'; persist(); }}>
+                <NativeSelect.Option value="__none__">{m['api_client.no_environment']()}</NativeSelect.Option>
                 {#each Object.keys(environments).sort() as environment}<NativeSelect.Option value={environment}>{environment}</NativeSelect.Option>{/each}
               </NativeSelect.Root>
               <Input bind:value={newEnvironmentName} class="h-8 w-36 text-[11px]" aria-label={m['api_client.new_environment']()} placeholder={m['api_client.new_environment']()} onkeydown={(event: KeyboardEvent) => event.key === 'Enter' && addEnvironment()} />
               <Button size="sm" variant="outline" class="h-8" disabled={!newEnvironmentName.trim()} onclick={addEnvironment}><Plus size={12} />{m['api_client.add_environment']()}</Button>
               {#if activeEnvironment}<Button size="sm" variant="ghost" class="h-8 text-[var(--app-danger)]" onclick={deleteEnvironment}><Trash2 size={12} />{m['api_client.delete_environment']()}</Button>{/if}
             </div>
-            {#each Object.entries(currentVariables()) as [name, value] (name)}
-              <div class="mb-1 grid grid-cols-[minmax(100px,0.8fr)_minmax(120px,1.2fr)_28px] gap-1">
-                <Input value={name} name="variable-name" autocomplete="off" spellcheck="false" aria-label={m['api_client.variable_name']()} class="h-7 font-mono text-[10px]" onblur={(event: Event) => renameVariable(name, inputValue(event))} />
-                <Input value={value} name="variable-value" autocomplete="off" spellcheck="false" aria-label={m['api_client.variable_value']()} class="h-7 font-mono text-[10px]" oninput={(event: Event) => updateVariable(name, inputValue(event))} onblur={() => persist()} />
-                <button class="grid size-7 place-items-center rounded text-[var(--app-text-muted)] hover:bg-[var(--app-danger-soft)] hover:text-[var(--app-danger)]" aria-label={m['api_client.remove_variable']()} onclick={() => removeVariable(name)}><Trash2 size={12} /></button>
+            <div class="mb-3 flex flex-wrap items-center gap-1" role="group" aria-label={m['api_client.variable_scope']()}>
+              {#each [
+                { id: 'collection', label: m['api_client.collection_variables']() },
+                { id: 'environment', label: m['api_client.environment_variables']() },
+                { id: 'globals', label: m['api_client.global_variables']() },
+                { id: 'runtime', label: m['api_client.runtime_variables']() },
+                { id: 'vault', label: m['api_client.vault_variables']() },
+              ] as scope}
+                <button disabled={scope.id === 'environment' && !activeEnvironment} aria-pressed={variableEditorScope === scope.id} class={`rounded border px-2 py-1 text-[10px] transition-colors disabled:opacity-40 ${variableEditorScope === scope.id ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (variableEditorScope = scope.id as typeof variableEditorScope)}>{scope.label}</button>
+              {/each}
+            </div>
+            {#if variableEditorScope === 'vault'}
+              <div class="mb-3 grid grid-cols-[minmax(100px,0.8fr)_minmax(120px,1.2fr)_auto] gap-1">
+                <Input bind:value={vaultName} autocomplete="off" spellcheck="false" aria-label={m['api_client.variable_name']()} placeholder={m['api_client.variable_name']()} class="h-8 font-mono text-[10px]" />
+                <Input type="password" bind:value={vaultValue} autocomplete="new-password" aria-label={m['api_client.variable_value']()} placeholder={m['api_client.variable_value']()} class="h-8 font-mono text-[10px]" onkeydown={(event: KeyboardEvent) => event.key === 'Enter' && void saveVaultVariable()} />
+                <Button size="sm" class="h-8" disabled={!vaultName.trim() || !vaultValue || !desktop?.saveAutomationSecret} onclick={() => void saveVaultVariable()}>{m['api_client.save_secret']()}</Button>
               </div>
-            {/each}
-            <Button size="sm" variant="outline" class="mt-1 h-7 text-[10px]" onclick={addVariable}><Plus size={12} /> {m['api_client.add_variable']()}</Button>
+              {#each vaultKeys as name (name)}
+                <div class="mb-1 grid grid-cols-[minmax(100px,0.8fr)_minmax(120px,1.2fr)_28px] items-center gap-1">
+                  <code class="truncate px-2 text-[10px]">{name}</code><span class="px-2 font-mono text-[10px] text-[var(--app-text-muted)]">••••••••</span>
+                  <button class="grid size-7 place-items-center rounded text-[var(--app-text-muted)] hover:bg-[var(--app-danger-soft)] hover:text-[var(--app-danger)]" aria-label={m['api_client.remove_variable']()} onclick={() => void removeVaultVariable(name)}><Trash2 size={12} /></button>
+                </div>
+              {/each}
+              {#if !desktop?.saveAutomationSecret}<p class="text-[10px] text-[var(--app-warning)]">{m['api_client.vault_desktop_required']()}</p>{/if}
+            {:else}
+              {#each Object.entries(currentVariables()) as [name, value] (name)}
+                <div class="mb-1 grid grid-cols-[minmax(100px,0.8fr)_minmax(120px,1.2fr)_28px] gap-1">
+                  <Input value={name} name="variable-name" autocomplete="off" spellcheck="false" aria-label={m['api_client.variable_name']()} class="h-7 font-mono text-[10px]" onblur={(event: Event) => renameVariable(name, inputValue(event))} />
+                  <Input value={value} name="variable-value" autocomplete="off" spellcheck="false" aria-label={m['api_client.variable_value']()} class="h-7 font-mono text-[10px]" oninput={(event: Event) => updateVariable(name, inputValue(event))} onblur={() => persist()} />
+                  <button class="grid size-7 place-items-center rounded text-[var(--app-text-muted)] hover:bg-[var(--app-danger-soft)] hover:text-[var(--app-danger)]" aria-label={m['api_client.remove_variable']()} onclick={() => removeVariable(name)}><Trash2 size={12} /></button>
+                </div>
+              {/each}
+              <Button size="sm" variant="outline" class="mt-1 h-7 text-[10px]" onclick={addVariable}><Plus size={12} /> {m['api_client.add_variable']()}</Button>
+            {/if}
           </Tabs.Content>
           <Tabs.Content value="scripts" class="m-0 min-h-0 flex-1 overflow-auto p-2">
-            <div class="mb-2 flex items-center gap-1 border-b border-[var(--app-border)] pb-2">
+            <div class="mb-2 flex flex-wrap items-center gap-1 border-b border-[var(--app-border)] pb-2">
               <button aria-pressed={scriptScope === 'request'} class={`rounded border px-2 py-1 text-[10px] transition-colors ${scriptScope === 'request' ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (scriptScope = 'request')}>{m['api_client.request_scripts']()}</button>
               <button aria-pressed={scriptScope === 'collection'} class={`rounded border px-2 py-1 text-[10px] transition-colors ${scriptScope === 'collection' ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (scriptScope = 'collection')}>{m['api_client.collection_scripts']()}</button>
+              <label class="ml-auto flex items-center gap-2 text-[10px] text-[var(--app-text-muted)]"><span>{m['api_client.script_runtime']()}</span><NativeSelect.Root class="w-32" size="sm" value={scriptDialect} onchange={(event: Event) => { scriptDialect = inputValue(event) as typeof scriptDialect; persist(); }}><NativeSelect.Option value="orkestrai">Orkestrai</NativeSelect.Option><NativeSelect.Option value="postman">Postman</NativeSelect.Option><NativeSelect.Option value="bruno">Bruno</NativeSelect.Option></NativeSelect.Root></label>
             </div>
             <div class="grid min-h-full grid-cols-2 gap-2 max-[720px]:grid-cols-1">
               {#if scriptScope === 'request'}
@@ -1729,7 +1880,7 @@
                 <ApiCodeEditor value={collectionPostResponseScript} language="javascript" label={m['api_client.collection_post_response_script']()} minHeight={220} onchange={(value) => (collectionPostResponseScript = value)} onblur={() => persist()} />
               {/if}
             </div>
-            <p class="mt-2 text-[10px] leading-4 text-[var(--app-text-muted)]">{m['api_client.script_hint']()}</p>
+            <p class="mt-2 text-[10px] leading-4 text-[var(--app-text-muted)]">{scriptRuntimeHint()}</p>
           </Tabs.Content>
           <Tabs.Content value="tests" class="m-0 min-h-0 flex-1 overflow-auto p-2">
             {#each selectedRequest.assertions ?? [] as assertion (assertion.id)}
@@ -1822,12 +1973,22 @@
                 {#if response.tests.length}<span class:text-emerald-500={response.tests.every((test) => test.passed)} class:text-red-500={response.tests.some((test) => !test.passed)}>{response.tests.filter((test) => test.passed).length}/{response.tests.length} {m['api_client.tests_passed']()}</span>{/if}
               </div>
               <div class="mb-2 flex items-center gap-1 border-b border-[var(--app-border)] pb-2">
-                {#each ['body', ...(response.messages?.length ? ['messages'] : []), 'headers', 'tests', 'console'] as view}
-                  <button aria-pressed={responseView === view} class={`rounded border px-2 py-1 text-[10px] transition-colors ${responseView === view ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (responseView = view as typeof responseView)}>{view === 'body' ? m['api_client.response_body']() : view === 'messages' ? m['api_client.messages']() : view === 'headers' ? m['api_client.response_headers']() : view === 'tests' ? m['api_client.tests']() : m['api_client.script_console']()}</button>
+                {#each ['body', ...(response.visualizations?.length ? ['visualizer'] : []), ...(response.messages?.length ? ['messages'] : []), 'headers', 'tests', 'console'] as view}
+                  <button aria-pressed={responseView === view} class={`rounded border px-2 py-1 text-[10px] transition-colors ${responseView === view ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (responseView = view as typeof responseView)}>{view === 'body' ? m['api_client.response_body']() : view === 'visualizer' ? m['api_client.visualizer']() : view === 'messages' ? m['api_client.messages']() : view === 'headers' ? m['api_client.response_headers']() : view === 'tests' ? m['api_client.tests']() : m['api_client.script_console']()}</button>
                 {/each}
               </div>
               {#if responseView === 'body'}
                 {#if response.binary}<p class="text-[11px] text-[var(--app-text-muted)]">{m['api_client.binary_response']()}</p>{:else}<ApiResponseViewer body={response.body} contentType={response.contentType} />{/if}
+              {:else if responseView === 'visualizer'}
+                <div class="space-y-2">
+                  {#each response.visualizations ?? [] as visualization}
+                    {#if visualization.type === 'html'}
+                      <iframe sandbox="" title={m['api_client.visualizer']()} srcdoc={visualization.content} class="h-[420px] w-full rounded border border-[var(--app-border)] bg-white"></iframe>
+                    {:else}
+                      <ApiResponseViewer body={JSON.stringify(visualization.data ?? {}, null, 2)} contentType="application/json" />
+                    {/if}
+                  {/each}
+                </div>
               {:else if responseView === 'messages'}
                 <div class="space-y-1.5">
                   {#each response.messages ?? [] as message}

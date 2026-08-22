@@ -1,4 +1,5 @@
 import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { uuidv7 } from '@beeblock/svelar/support';
@@ -11,6 +12,10 @@ import { runApiClientScript, type ApiClientScriptResponse, type ApiClientScriptS
 import { executeHttpTransport } from '../../infrastructure/api-client/ApiClientHttpTransport.js';
 import { executeGrpcTransport, executeWebSocketTransport, type ApiClientTransportMessage } from '../../infrastructure/api-client/ApiClientTransports.js';
 import { apiClientManagedSourceFiles, apiClientPayloadFingerprint, apiClientSourceFingerprint, apiClientSourceRoot } from '../../infrastructure/api-client/ApiClientSyncFiles.js';
+import { runBrunoAssertions, runBrunoPostResponseVariables, runBrunoScript, runBrunoTests } from '../../infrastructure/api-client/BrunoScriptRuntime.js';
+import { runPostmanRequest } from '../../infrastructure/api-client/PostmanScriptRuntime.js';
+import { mergeScriptScopes, type ApiClientScriptDialect, type ApiClientScriptFlow, type ApiClientScriptScopes, type ApiClientScriptVisualization } from '../../infrastructure/api-client/ApiClientScriptRuntimeTypes.js';
+import { desktopSecretService } from '../../infrastructure/secrets/DesktopSecretService.js';
 import type { ApiClientFolder, ApiClientNodePayload } from '../../domain/types.js';
 import { importOpenApiDocument } from '../../domain/api-client-openapi.js';
 
@@ -27,6 +32,8 @@ type ImportedCollection = {
   collectionPostResponseScript: string;
   sourceCollection: Record<string, unknown> | null;
   compatibilityWarnings: Array<{ code: string; count?: number }>;
+  scriptDialect: ApiClientScriptDialect;
+  globalVariables: Record<string, string>;
   nativePayload?: ApiClientNodePayload;
 };
 
@@ -40,8 +47,13 @@ type ApiClientTestResult = {
 
 export type ApiClientExecutionResult = ApiClientScriptResponse & {
   variables: Record<string, string>;
+  scopes?: ApiClientScriptScopes;
   scriptLogs: string[];
   tests: ApiClientTestResult[];
+  flow?: ApiClientScriptFlow;
+  visualizations?: ApiClientScriptVisualization[];
+  skipped?: boolean;
+  vaultKeys?: string[];
   protocol?: 'websocket' | 'grpc';
   messages?: ApiClientTransportMessage[];
   cookies?: NonNullable<ApiClientNodePayload['network']>['cookies'];
@@ -172,6 +184,49 @@ function variableRecord(value: unknown): Record<string, string> {
       .map((entry: any) => [String(entry.name ?? entry.key), String(entry.value ?? '')]));
   }
   return {};
+}
+
+function apiVaultKey(workspaceId: string, nodeId: string, name: string): string {
+  const digest = createHash('sha256').update(name).digest('hex').slice(0, 32);
+  return `automation:api-vault:${workspaceId}:${nodeId}:${digest}`;
+}
+
+async function apiVaultSecrets(workspaceId: string, nodeId: string, names: string[]): Promise<Record<string, string>> {
+  const entries = await Promise.all(names.map(async (name) => [name, await desktopSecretService.get(apiVaultKey(workspaceId, nodeId, name))] as const));
+  return Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => typeof entry[1] === 'string'));
+}
+
+function apiClientStringRecord(values: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value ?? '')]));
+}
+
+function effectiveScriptVariables(scopes: ApiClientScriptScopes): Record<string, string> {
+  return apiClientStringRecord({ ...scopes.globals, ...scopes.collection, ...scopes.environment, ...scopes.iteration, ...scopes.runtime });
+}
+
+function mergeApiClientFlow(target: ApiClientScriptFlow, source: ApiClientScriptFlow) {
+  if (source.nextRequest !== undefined) target.nextRequest = source.nextRequest;
+  target.skipRequest ||= source.skipRequest;
+  target.stopExecution ||= source.stopExecution;
+}
+
+function normalizeScriptScopes(scopes: ApiClientScriptScopes): ApiClientScriptScopes {
+  return {
+    collection: apiClientStringRecord(scopes.collection),
+    environment: apiClientStringRecord(scopes.environment),
+    globals: apiClientStringRecord(scopes.globals),
+    runtime: apiClientStringRecord(scopes.runtime),
+    iteration: { ...scopes.iteration },
+  }
+}
+
+async function persistApiVaultSecrets(workspaceId: string, nodeId: string, previous: Record<string, string>, next: Record<string, string>) {
+  for (const [name, value] of Object.entries(next)) {
+    if (previous[name] !== value) await desktopSecretService.set(apiVaultKey(workspaceId, nodeId, name), value);
+  }
+  for (const name of Object.keys(previous)) {
+    if (!Object.hasOwn(next, name)) await desktopSecretService.delete(apiVaultKey(workspaceId, nodeId, name));
+  }
 }
 
 function brunoAuth(request: any): ApiClientRequestInput['auth'] {
@@ -449,6 +504,71 @@ function requestFolderSegments(folders: ApiClientFolder[], request: ApiClientReq
   return request.folder.split(/\s*\/\s*/).map((part) => safePathSegment(part, 'Folder')).filter(Boolean);
 }
 
+function requestFolderLineage(folders: ApiClientFolder[], request: ApiClientRequestInput): ApiClientFolder[] {
+  const output: ApiClientFolder[] = [];
+  const visited = new Set<string>();
+  let current = folders.find((folder) => folder.id === request.folderId);
+  while (current && !visited.has(current.id)) {
+    visited.add(current.id);
+    output.unshift(current);
+    current = folders.find((folder) => folder.id === current?.parentId);
+  }
+  return output;
+}
+
+function brunoFolderScripts(folders: ApiClientFolder[], request: ApiClientRequestInput, phase: 'req' | 'res'): string[] {
+  const lineage = requestFolderLineage(folders, request);
+  if (phase === 'res') lineage.reverse();
+  return lineage.map((folder) => {
+    const source = folder.sourceData?.kind === 'bruno' ? folder.sourceData.data as any : null;
+    return String(source?.request?.script?.[phase] ?? source?.script?.[phase] ?? '');
+  }).filter((script) => script.trim());
+}
+
+function brunoRequestDocument(request: ApiClientRequestInput): any | null {
+  return request.sourceData?.kind === 'bruno' ? request.sourceData.data as any : null;
+}
+
+function brunoCollectionDocument(payload: ApiClientNodePayload): any | null {
+  if (!payload.sourceCollection || !['bruno', 'openCollection'].includes(payload.sourceKind ?? '')) return null;
+  const source = payload.sourceCollection as any;
+  return source.collectionRoot ?? source;
+}
+
+function brunoFolderDocuments(folders: ApiClientFolder[], request: ApiClientRequestInput, reverse = false): any[] {
+  const lineage = requestFolderLineage(folders, request);
+  if (reverse) lineage.reverse();
+  return lineage.flatMap((folder) => folder.sourceData?.kind === 'bruno' ? [folder.sourceData.data as any] : []);
+}
+
+function brunoFolderVariables(folders: ApiClientFolder[], request: ApiClientRequestInput): Record<string, string> {
+  return Object.assign({}, ...brunoFolderDocuments(folders, request).map((source) => variableRecord(source?.request?.vars?.req)));
+}
+
+function brunoRequestVariables(request: ApiClientRequestInput): Record<string, string> {
+  return variableRecord(brunoRequestDocument(request)?.request?.vars?.req);
+}
+
+function brunoResponseLayers(payload: ApiClientNodePayload, request: ApiClientRequestInput): any[] {
+  return [
+    brunoRequestDocument(request)?.request,
+    ...brunoFolderDocuments(payload.folders ?? [], request, true).map((source) => source?.request),
+    brunoCollectionDocument(payload)?.request,
+  ].filter(Boolean);
+}
+
+function brunoEffectiveVariables(scopes: ApiClientScriptScopes, folderVariables: Record<string, string>, requestVariables: Record<string, string>): Record<string, string> {
+  return apiClientStringRecord({
+    ...scopes.globals,
+    ...scopes.collection,
+    ...scopes.environment,
+    ...folderVariables,
+    ...requestVariables,
+    ...scopes.iteration,
+    ...scopes.runtime,
+  });
+}
+
 function toBrunoAuth(request: ApiClientRequestInput, original: any): any {
   if (request.auth.type === 'bearer') return { mode: 'bearer', bearer: { token: request.auth.token } };
   if (request.auth.type === 'basic') return { mode: 'basic', basic: { username: request.auth.username, password: request.auth.password } };
@@ -645,48 +765,256 @@ export class ApiClientService {
   }
 
   async execute(workspaceId: string, dto: ExecuteApiClientRequestDto): Promise<ApiClientExecutionResult> {
+    return this.executeInternal(workspaceId, dto, 0);
+  }
+
+  private async executeInternal(workspaceId: string, dto: ExecuteApiClientRequestDto, nestedDepth: number): Promise<ApiClientExecutionResult> {
     const node = await this.requireNode(workspaceId, dto.input.nodeId);
     const payload = (node.payload ?? {}) as ApiClientNodePayload;
     const collectionPreRequestScript = dto.input.collectionPreRequestScript ?? payload.collectionPreRequestScript;
     const collectionPostResponseScript = dto.input.collectionPostResponseScript ?? payload.collectionPostResponseScript;
-    // Round-trip metadata belongs to persistence/export and never enters the
-    // script VM or the HTTP execution path.
+    const persistedRequest = (payload.requests ?? []).find((candidate) => candidate.id === dto.input.request.id) ?? dto.input.request;
+    // Round-trip metadata stays outside request transport, but Bruno's official
+    // runtime still receives its declared folder/request variables and tests.
     let request = requestDefaults({ ...dto.input.request, sourceData: null });
-    let variables = { ...dto.input.variables };
+    const dialect = dto.input.scriptDialect ?? payload.scriptDialect ?? (payload.sourceKind === 'postman' ? 'postman' : payload.sourceKind === 'bruno' || payload.sourceKind === 'openCollection' ? 'bruno' : 'orkestrai');
+    const sourceRequest = requestDefaults(persistedRequest);
+    const folderVariables = dialect === 'bruno' ? brunoFolderVariables(payload.folders ?? [], sourceRequest) : {};
+    const requestVariables = dialect === 'bruno' ? brunoRequestVariables(sourceRequest) : {};
+    let runtimeCollectionPath = payload.sourcePath;
+    if (dialect === 'bruno' && payload.sourcePath) {
+      runtimeCollectionPath = await apiClientSourceRoot(payload.sourcePath, payload.sourceKind).catch(() => payload.sourcePath);
+    }
+    let scopes = mergeScriptScopes({
+      collection: dto.input.collectionVariables ?? payload.variables ?? {},
+      environment: dto.input.environmentVariables ?? dto.input.variables,
+      globals: dto.input.globalVariables ?? payload.globalVariables ?? {},
+      runtime: dto.input.runtimeVariables ?? payload.runtimeVariables ?? {},
+      iteration: dto.input.iterationData ?? {},
+    });
+    let variables = dialect === 'orkestrai'
+      ? { ...dto.input.variables }
+      : dialect === 'bruno'
+        ? brunoEffectiveVariables(scopes, folderVariables, requestVariables)
+        : effectiveScriptVariables(scopes);
     const scriptLogs: string[] = [];
     const scriptTests: ApiClientTestResult[] = [];
+    const visualizations: ApiClientScriptVisualization[] = [];
+    const flow: ApiClientScriptFlow = { nextRequest: undefined, skipRequest: false, stopExecution: false };
+    let network = apiClientNetworkSchema.parse(payload.network ?? {});
+    const secrets = dialect === 'orkestrai' ? {} : await apiVaultSecrets(workspaceId, dto.input.nodeId, payload.vaultKeys ?? []);
+    const collectionRequests = (payload.requests ?? [])
+      .filter((candidate) => candidate.url?.trim())
+      .map((candidate) => requestDefaults({ ...candidate, sourceData: null }));
+
+    if (dialect === 'postman') {
+      if (request.protocol === 'websocket' || request.protocol === 'grpc') throw new Error('Postman scripts are supported for HTTP and GraphQL requests.');
+      const executed = await runPostmanRequest({
+        stage: 'requestPreRequest',
+        script: '',
+        request,
+        scopes,
+        collectionName: node.title ?? 'Orkestrai API',
+        collectionPath: payload.sourcePath,
+        iterationIndex: dto.input.iterationIndex,
+        iterationCount: dto.input.iterationCount,
+        requests: collectionRequests,
+        folders: payload.folders ?? [],
+        collectionPreRequestScript,
+        collectionPostResponseScript,
+        network,
+        secrets,
+      });
+      const result = executed.response ?? {
+        status: 0,
+        statusText: executed.flow.skipRequest ? 'Skipped' : '',
+        ok: executed.flow.skipRequest,
+        durationMs: 0,
+        size: 0,
+        contentType: '',
+        headers: {},
+        body: '',
+        binary: false,
+      };
+      const normalizedScopes = normalizeScriptScopes(executed.scopes);
+      const effective = effectiveScriptVariables(normalizedScopes);
+      const nextSecrets = executed.secrets ?? secrets;
+      await persistApiVaultSecrets(workspaceId, dto.input.nodeId, secrets, nextSecrets);
+      const vaultKeys = Object.keys(nextSecrets).sort();
+      if (JSON.stringify(vaultKeys) !== JSON.stringify([...(payload.vaultKeys ?? [])].sort())) {
+        await workspaceRepository.updateNode(node.id, { payload: { ...payload, vaultKeys } });
+      }
+      return {
+        ...result,
+        variables: effective,
+        scopes: normalizedScopes,
+        scriptLogs: executed.logs,
+        tests: executed.flow.skipRequest
+          ? executed.tests
+          : [...executed.tests, ...testAssertions(executed.request, result)],
+        flow: executed.flow,
+        visualizations: executed.visualizations,
+        skipped: executed.flow.skipRequest,
+        cookies: executed.cookies,
+        vaultKeys,
+      };
+    }
+
+    const executeBrunoReference = async (reference: string) => {
+      if (nestedDepth >= 5) throw new Error('bru.runRequest exceeded the maximum nesting depth of 5.');
+      const normalized = reference.replaceAll('\\', '/').replace(/\.bru$/i, '');
+      const target = collectionRequests.find((candidate) => candidate.id === reference || candidate.name === reference || candidate.sourcePath?.replaceAll('\\', '/').replace(/\.bru$/i, '').endsWith(normalized));
+      if (!target) throw new Error(`Collection request not found: ${reference}`);
+      const nested = await this.executeInternal(workspaceId, new ExecuteApiClientRequestDto({
+        ...dto.input,
+        request: target,
+        variables,
+        collectionVariables: scopes.collection,
+        environmentVariables: scopes.environment,
+        globalVariables: scopes.globals,
+        runtimeVariables: scopes.runtime,
+        iterationData: scopes.iteration,
+        scriptDialect: dialect,
+      }), nestedDepth + 1);
+      return {
+        request: target,
+        response: nested,
+        scopes: nested.scopes ?? scopes,
+        logs: nested.scriptLogs,
+        tests: nested.tests,
+        flow: nested.flow ?? { nextRequest: undefined, skipRequest: false, stopExecution: false },
+        visualizations: nested.visualizations ?? [],
+        cookies: nested.cookies,
+      };
+    };
+    const runScript = async (script: string, stage: ApiClientScriptStage, response?: ApiClientScriptResponse) => {
+      if (dialect === 'bruno') {
+        const result = await runBrunoScript({
+          stage,
+          script,
+          request,
+          response,
+          scopes,
+          collectionName: node.title ?? 'Orkestrai API',
+          collectionPath: runtimeCollectionPath,
+          iterationIndex: dto.input.iterationIndex,
+          iterationCount: dto.input.iterationCount,
+          folderVariables,
+          requestVariables,
+          requests: collectionRequests,
+          network,
+          secrets,
+          runRequest: executeBrunoReference,
+        });
+        request = apiClientRequestSchema.parse(result.request);
+        scopes = result.scopes;
+        scopes = normalizeScriptScopes(scopes);
+        variables = brunoEffectiveVariables(scopes, folderVariables, requestVariables);
+        scriptLogs.push(...result.logs);
+        scriptTests.push(...result.tests);
+        visualizations.push(...result.visualizations);
+        mergeApiClientFlow(flow, result.flow);
+        if (result.cookies) network = { ...network, cookies: result.cookies };
+        return result.response ?? response;
+      }
+      const result = await runApiClientScript({ script, request, variables, response, stage });
+      request = apiClientRequestSchema.parse(result.request);
+      variables = result.variables;
+      scopes.runtime = { ...result.variables };
+      scriptLogs.push(...result.logs);
+      scriptTests.push(...result.tests);
+      return response;
+    };
     const preRequestScripts: Array<{ script: string | undefined; stage: ApiClientScriptStage }> = [
       { script: collectionPreRequestScript, stage: 'collectionPreRequest' },
+      ...(dialect === 'bruno' ? brunoFolderScripts(payload.folders ?? [], request, 'req').map((script) => ({ script, stage: 'folderPreRequest' as const })) : []),
       { script: request.preRequestScript, stage: 'requestPreRequest' },
     ];
     for (const { script, stage } of preRequestScripts) {
       if (!script?.trim()) continue;
-      const result = await runApiClientScript({ script, request, variables, stage });
-      request = apiClientRequestSchema.parse(result.request);
-      variables = result.variables;
-      scriptLogs.push(...result.logs);
-      scriptTests.push(...result.tests);
+      await runScript(script, stage);
     }
 
     const finalize = async (result: ApiClientScriptResponse & { protocol?: 'websocket' | 'grpc'; messages?: ApiClientTransportMessage[]; cookies?: NonNullable<ApiClientNodePayload['network']>['cookies'] }): Promise<ApiClientExecutionResult> => {
+      let finalResult = result;
+      if (result.cookies) network = { ...network, cookies: result.cookies };
       const postResponseScripts: Array<{ script: string | undefined; stage: ApiClientScriptStage }> = [
         { script: request.postResponseScript, stage: 'requestPostResponse' },
+        ...(dialect === 'bruno' ? brunoFolderScripts(payload.folders ?? [], request, 'res').map((script) => ({ script, stage: 'folderPostResponse' as const })) : []),
         { script: collectionPostResponseScript, stage: 'collectionPostResponse' },
       ];
       for (const { script, stage } of postResponseScripts) {
         if (!script?.trim()) continue;
-        const scripted = await runApiClientScript({ script, request, variables, response: result, stage });
-        request = apiClientRequestSchema.parse(scripted.request);
-        variables = scripted.variables;
-        scriptLogs.push(...scripted.logs);
-        scriptTests.push(...scripted.tests);
+        finalResult = (await runScript(script, stage, finalResult) ?? finalResult) as typeof finalResult;
       }
-      const tests = [...scriptTests, ...testAssertions(request, result)];
-      return { ...result, variables, scriptLogs, tests };
+      if (dialect === 'bruno') {
+        const layers = brunoResponseLayers(payload, sourceRequest);
+        const context = (script = '') => ({
+          stage: 'requestPostResponse' as const,
+          script,
+          request,
+          response: finalResult,
+          scopes,
+          collectionName: node.title ?? 'Orkestrai API',
+          collectionPath: runtimeCollectionPath,
+          iterationIndex: dto.input.iterationIndex,
+          iterationCount: dto.input.iterationCount,
+          folderVariables,
+          requestVariables,
+          requests: collectionRequests,
+          network,
+          secrets,
+          runRequest: executeBrunoReference,
+        });
+        for (const layer of layers) {
+          const values = Array.isArray(layer?.vars?.res) ? layer.vars.res : [];
+          if (!values.length) continue;
+          scopes = normalizeScriptScopes(runBrunoPostResponseVariables(context(), values));
+          variables = brunoEffectiveVariables(scopes, folderVariables, requestVariables);
+        }
+        for (const layer of layers) {
+          const assertions = Array.isArray(layer?.assertions) ? layer.assertions : [];
+          if (assertions.length) scriptTests.push(...runBrunoAssertions(context(), assertions));
+        }
+        for (const layer of layers) {
+          const testsScript = String(layer?.tests ?? '');
+          if (!testsScript.trim()) continue;
+          const tested = await runBrunoTests(context(testsScript));
+          request = apiClientRequestSchema.parse(tested.request);
+          scopes = normalizeScriptScopes(tested.scopes);
+          variables = brunoEffectiveVariables(scopes, folderVariables, requestVariables);
+          scriptLogs.push(...tested.logs);
+          scriptTests.push(...tested.tests);
+          mergeApiClientFlow(flow, tested.flow);
+          if (tested.cookies) network = { ...network, cookies: tested.cookies };
+        }
+      }
+      const tests = [...scriptTests, ...testAssertions(request, finalResult)];
+      return { ...finalResult, variables, scopes, scriptLogs, tests, flow, visualizations, skipped: flow.skipRequest, cookies: network.cookies };
     };
 
     const protocol = request.protocol ?? 'http';
-    const network = apiClientNetworkSchema.parse(payload.network ?? {});
+    if (flow.skipRequest) {
+      return {
+        status: 0,
+        statusText: 'Skipped',
+        ok: true,
+        durationMs: 0,
+        size: 0,
+        contentType: '',
+        headers: {},
+        body: '',
+        binary: false,
+        variables,
+        scopes,
+        scriptLogs,
+        tests: scriptTests,
+        flow,
+        visualizations,
+        skipped: true,
+        cookies: network.cookies,
+      };
+    }
     if (protocol === 'websocket' || protocol === 'grpc') {
       let renderedUrl = renderVariables(request.url, variables);
       if (protocol === 'websocket') {
@@ -792,6 +1120,7 @@ export class ApiClientService {
         body = form;
       } else body = renderVariables(request.body, variables);
     }
+    request = apiClientRequestSchema.parse({ ...request, url: url.toString() });
     const result = await executeHttpTransport({
       url,
       method: request.method,
@@ -838,6 +1167,9 @@ export class ApiClientService {
           folders: imported.folders,
           variables: imported.variables,
           environments: imported.environments,
+          globalVariables: imported.globalVariables,
+          runtimeVariables: {},
+          scriptDialect: imported.scriptDialect,
           activeEnvironment: Object.keys(imported.environments)[0] ?? null,
           collectionPreRequestScript: imported.collectionPreRequestScript,
           collectionPostResponseScript: imported.collectionPostResponseScript,
@@ -879,6 +1211,8 @@ export class ApiClientService {
       collectionPostResponseScript: scriptFromEvents(collection.event, 'test'),
       sourceCollection: collectionMetadata,
       compatibilityWarnings: [],
+      scriptDialect: 'postman',
+      globalVariables: {},
     };
   }
 
@@ -903,6 +1237,8 @@ export class ApiClientService {
       collectionPostResponseScript: '',
       sourceCollection: structuredClone(document),
       compatibilityWarnings: imported.warnings,
+      scriptDialect: 'orkestrai',
+      globalVariables: {},
     };
   }
 
@@ -922,6 +1258,8 @@ export class ApiClientService {
       collectionPostResponseScript: payload.collectionPostResponseScript ?? '',
       sourceCollection: payload.sourceCollection ?? null,
       compatibilityWarnings: payload.compatibilityWarnings ?? [],
+      scriptDialect: payload.scriptDialect ?? 'orkestrai',
+      globalVariables: payload.globalVariables ?? {},
       nativePayload: { ...payload, requests, variables, environments, formatVersion: 1 },
     };
   }
@@ -997,6 +1335,8 @@ export class ApiClientService {
       collectionPostResponseScript: String(collectionRoot?.request?.script?.res ?? ''),
       sourceCollection: collection ? structuredClone(collection) : null,
       compatibilityWarnings: [],
+      scriptDialect: 'bruno',
+      globalVariables: {},
     };
   }
 

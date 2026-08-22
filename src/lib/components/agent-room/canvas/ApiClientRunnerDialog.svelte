@@ -8,6 +8,7 @@
   import { Switch } from '$lib/components/ui/switch';
   import type { ApiClientRequest, ApiClientRunner } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
+  import ApiCodeEditor from './ApiCodeEditor.svelte';
 
   let {
     open,
@@ -33,6 +34,8 @@
 
   let drafts = $state<ApiClientRunner[]>([]);
   let currentId = $state<string | null>(null);
+  let iterationDataDraft = $state('[]');
+  let iterationDataError = $state('');
   let wasOpen = false;
   const current = $derived(drafts.find((runner) => runner.id === currentId) ?? null);
   const orderedRequests = $derived([...requests].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0)));
@@ -47,6 +50,7 @@
     if (open && !wasOpen) {
       drafts = $state.snapshot(runners);
       currentId = selectedRunnerId ?? drafts[0]?.id ?? null;
+      loadIterationData(drafts.find((runner) => runner.id === currentId) ?? null);
     }
     wasOpen = open;
   });
@@ -58,12 +62,14 @@
       requestIds: orderedRequests.map((request) => request.id),
       environment: null,
       iterations: 1,
+      iterationData: [],
       delayMs: 0,
       stopOnFailure: false,
       sequence: drafts.length,
     };
     drafts = [...drafts, runner];
     currentId = runner.id;
+    loadIterationData(runner);
   }
 
   function updateCurrent(changes: Partial<ApiClientRunner>) {
@@ -81,12 +87,43 @@
     };
     drafts = [...drafts, runner];
     currentId = runner.id;
+    loadIterationData(runner);
   }
 
   function deleteCurrent() {
     if (!current) return;
     drafts = drafts.filter((runner) => runner.id !== current.id).map((runner, sequence) => ({ ...runner, sequence }));
     currentId = drafts[0]?.id ?? null;
+    loadIterationData(drafts[0] ?? null);
+  }
+
+  function loadIterationData(runner: ApiClientRunner | null) {
+    iterationDataDraft = JSON.stringify(runner?.iterationData ?? [], null, 2);
+    iterationDataError = '';
+  }
+
+  function selectRunner(runner: ApiClientRunner) {
+    currentId = runner.id;
+    loadIterationData(runner);
+  }
+
+  function updateIterationData(value: string) {
+    iterationDataDraft = value;
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (!Array.isArray(parsed) || parsed.some((row) => !row || typeof row !== 'object' || Array.isArray(row))) {
+        throw new Error(m['api_client.runner_data_array_error']());
+      }
+      if (parsed.length > 1_000) throw new Error(m['api_client.runner_data_limit_error']());
+      iterationDataError = '';
+      const previousRows = current?.iterationData.length ?? 0;
+      updateCurrent({
+        iterationData: parsed as Array<Record<string, unknown>>,
+        ...(parsed.length > 0 && (current?.iterations === 1 || current?.iterations === previousRows) ? { iterations: parsed.length } : {}),
+      });
+    } catch (error) {
+      iterationDataError = error instanceof Error ? error.message : m['api_client.runner_data_invalid']();
+    }
   }
 
   function toggleRequest(requestId: string, checked: boolean) {
@@ -136,7 +173,7 @@
             class:border-transparent={runner.id !== currentId}
             class:hover:bg-muted={runner.id !== currentId}
             aria-pressed={runner.id === currentId}
-            onclick={() => (currentId = runner.id)}
+            onclick={() => selectRunner(runner)}
           >
             <ListChecks class="size-4 shrink-0" />
             <span class="min-w-0 flex-1 truncate text-xs font-medium">{runner.name}</span>
@@ -163,7 +200,7 @@
             </label>
             <label class="space-y-1.5">
               <span class="text-xs font-medium">{m['api_client.runner_iterations']()}</span>
-              <Input type="number" min="1" max="100" value={current.iterations} oninput={(event: Event) => updateCurrent({ iterations: Math.max(1, Math.min(100, Number((event.currentTarget as HTMLInputElement).value) || 1)) })} />
+              <Input type="number" min="1" max="1000" value={current.iterations} oninput={(event: Event) => updateCurrent({ iterations: Math.max(1, Math.min(1000, Number((event.currentTarget as HTMLInputElement).value) || 1)) })} />
             </label>
             <label class="space-y-1.5">
               <span class="text-xs font-medium">{m['api_client.runner_delay']()}</span>
@@ -173,6 +210,18 @@
               <span class="text-xs font-medium">{m['api_client.runner_stop_on_failure']()}</span>
               <Switch checked={current.stopOnFailure} onCheckedChange={(checked: boolean) => updateCurrent({ stopOnFailure: checked })} />
             </label>
+          </div>
+
+          <div class="mt-5 border-t border-border pt-4">
+            <ApiCodeEditor
+              value={iterationDataDraft}
+              language="json"
+              label={m['api_client.runner_iteration_data']()}
+              minHeight={140}
+              onchange={updateIterationData}
+            />
+            <p class="mt-1.5 text-[11px] leading-4 text-muted-foreground">{m['api_client.runner_iteration_data_hint']()}</p>
+            {#if iterationDataError}<p class="mt-1 text-[11px] text-destructive" role="alert">{iterationDataError}</p>{/if}
           </div>
 
           <div class="mt-5 border-t border-border pt-4">
@@ -210,8 +259,8 @@
         <Button variant="ghost" size="sm" disabled={!current} onclick={deleteCurrent}><Trash2 />{m['api_client.delete_runner']()}</Button>
       </div>
       <div class="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" size="sm" onclick={saveAndClose}><Save />{m['api_client.save_runners']()}</Button>
-        <Button size="sm" disabled={!current || !current.requestIds.length || running} onclick={() => void runCurrent()}><Play />{m['api_client.run_runner']()}</Button>
+        <Button variant="outline" size="sm" disabled={Boolean(iterationDataError)} onclick={saveAndClose}><Save />{m['api_client.save_runners']()}</Button>
+        <Button size="sm" disabled={!current || !current.requestIds.length || running || Boolean(iterationDataError)} onclick={() => void runCurrent()}><Play />{m['api_client.run_runner']()}</Button>
       </div>
     </Dialog.Footer>
   </Dialog.Content>

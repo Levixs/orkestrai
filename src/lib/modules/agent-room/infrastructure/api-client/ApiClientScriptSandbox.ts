@@ -6,8 +6,10 @@ const SCRIPT_MEMORY_BYTES = 12 * 1024 * 1024;
 
 export type ApiClientScriptStage =
   | 'collectionPreRequest'
+  | 'folderPreRequest'
   | 'requestPreRequest'
   | 'requestPostResponse'
+  | 'folderPostResponse'
   | 'collectionPostResponse';
 
 export class ApiClientScriptExecutionError extends Error {

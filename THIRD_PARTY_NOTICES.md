@@ -99,6 +99,22 @@ offline.
 This package converts SVG path commands into Orkestrai's editable native vector
 geometry. Orkestrai does not bundle or execute code from imported SVG files.
 
+## API Client Script Runtimes
+
+- `postman-runtime` and `postman-collection`: Copyright Postman, Inc. and
+  contributors, Apache License 2.0. Sources:
+  <https://github.com/postmanlabs/postman-runtime> and
+  <https://github.com/postmanlabs/postman-collection>
+- `@postman/tough-cookie`: Copyright Salesforce.com, Inc. and contributors,
+  BSD 3-Clause License. Source:
+  <https://github.com/postmanlabs/tough-cookie>
+- `@usebruno/js` and `@usebruno/requests`: Copyright Bruno contributors, MIT
+  License. Source: <https://github.com/usebruno/bruno>
+
+These packages execute imported collection scripts through their native API
+contracts. Postman and Bruno do not sponsor or endorse Orkestrai. Postman cloud
+services and the Bruno desktop application are not bundled.
+
 ## Apple Simulator Integration
 
 - `serve-sim`: Copyright Evan Bacon and contributors, Apache License 2.0.

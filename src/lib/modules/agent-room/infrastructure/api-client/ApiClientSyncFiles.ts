@@ -65,6 +65,8 @@ export function apiClientPayloadFingerprint(payload: ApiClientNodePayload): stri
     folders: payload.folders ?? [],
     variables: payload.variables ?? {},
     environments: payload.environments ?? {},
+    globalVariables: payload.globalVariables ?? {},
+    scriptDialect: payload.scriptDialect ?? 'orkestrai',
     collectionPreRequestScript: payload.collectionPreRequestScript ?? '',
     collectionPostResponseScript: payload.collectionPostResponseScript ?? '',
   };
