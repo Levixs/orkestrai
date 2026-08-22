@@ -46,6 +46,11 @@ pt-BR, English, and Spanish translations.
   targeted turns, dictation, optional local TTS, bounded transcript recovery,
   explicit remote scopes, and linked Kanban/Workstream evidence.
 
+### Fixed
+
+- Team Pack import, export, and version-publishing failures now stay localized
+  in the selected UI language instead of exposing internal server copy.
+
 ## 0.17.0 - 2026-08-22
 
 ### Added

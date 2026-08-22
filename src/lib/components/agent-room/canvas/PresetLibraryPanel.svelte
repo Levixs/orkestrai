@@ -100,7 +100,7 @@
       const anchor = document.createElement('a');
       anchor.href = url; anchor.download = `${preset.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLocaleLowerCase()}-${preset.version}.orkestrai-team-pack.json`; anchor.click();
       URL.revokeObjectURL(url);
-    } catch (error) { errorMessage = error instanceof Error ? error.message : m['team_pack.export_error'](); }
+    } catch { errorMessage = m['team_pack.export_error'](); }
   }
 
   async function importPack(event: Event): Promise<void> {
@@ -110,7 +110,7 @@
       const bundle = JSON.parse(await file.text());
       await api('/api/agent-room/presets/import', { method: 'POST', body: JSON.stringify(bundle) });
       await refresh();
-    } catch (error) { errorMessage = error instanceof Error ? error.message : m['team_pack.import_error'](); }
+    } catch { errorMessage = m['team_pack.import_error'](); }
     finally { importInput.value = ''; }
   }
 
@@ -130,7 +130,7 @@
       await refresh();
       const updated = presets.find((preset) => preset.id === detailPreset?.id);
       if (updated) await openDetails(updated);
-    } catch (error) { errorMessage = error instanceof Error ? error.message : m['team_pack.publish_error'](); }
+    } catch { errorMessage = m['team_pack.publish_error'](); }
     finally { packBusy = false; }
   }
 
