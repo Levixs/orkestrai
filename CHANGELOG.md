@@ -23,6 +23,10 @@ pt-BR, English, and Spanish translations.
 - Universal Search now indexes activity, durable messages, and attention items
   and accepts `type:`, `agent:`, `workspace:`, `status:`, `has:error`, `before:`,
   and `after:` operators.
+- Added Workstreams as a first-class Workbench view. Each Kanban task now
+  projects its assignee, active Floor and branch, semantic timeline, Councils,
+  reviews, exact Git revision, evidence, tests, risks, and linked paths into one
+  traceable delivery flow without duplicating the underlying records.
 
 ## 0.17.0 - 2026-08-22
 

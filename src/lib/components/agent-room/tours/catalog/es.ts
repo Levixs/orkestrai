@@ -1126,6 +1126,35 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'trace-delivery-workstream',
+    icon: 'Route',
+    title: 'Rastrear una entrega completa en Flujos de trabajo',
+    tagline: 'Mantén tarea, equipo, decisiones, revisión y evidencia Git en el mismo flujo.',
+    steps: [
+      {
+        id: 'open-workstreams',
+        title: 'Abre la vista de entrega',
+        body: 'Expande el workspace en Workbench y abre Flujos de trabajo o encuéntralo mediante Command/Ctrl+K. La vista proyecta registros existentes y no crea otro nodo en Canvas.',
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-workstreams:{workspace}' },
+      },
+      {
+        id: 'start-from-task',
+        title: 'Usa la tarea de Kanban como identidad',
+        body: 'Crea y asigna la tarea real en el tablero. Su columna, responsable, Piso activo, branch y actividad semántica aparecen automáticamente en el flujo.',
+      },
+      {
+        id: 'connect-decisions-and-review',
+        title: 'Mantén decisiones y revisión vinculadas',
+        body: 'Pide perspectivas del Consejo desde el flujo para que reciban el mismo briefing. Crea el registro del Centro de revisión contra esa tarea y selecciona revisión, archivos, evidencias, pruebas y riesgos exactos.',
+      },
+      {
+        id: 'inspect-delivery-trace',
+        title: 'Lee el rastro completo',
+        body: 'Compara la línea temporal, progreso del Consejo, estado de revisión y rutas Git vinculadas. Los registros sin vínculo siguen contabilizados explícitamente en lugar de atribuirse a la entrega equivocada.',
+      },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Revisar una entrega',

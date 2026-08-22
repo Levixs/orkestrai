@@ -15,6 +15,7 @@
     Activity,
     GitPullRequestArrow,
     Scale,
+    Route,
     Workflow,
   } from '@lucide/svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -31,6 +32,7 @@
   import WorkbenchUsageFooter from '$lib/components/agent-room/WorkbenchUsageFooter.svelte';
   import ControlCenterView from '$lib/components/agent-room/ControlCenterView.svelte';
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
+  import WorkbenchWorkstreams from '$lib/components/agent-room/WorkbenchWorkstreams.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
   import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
@@ -105,6 +107,11 @@
     workbenchReviewCenterItemId,
   } from '$lib/components/agent-room/workbench-review-center.js';
   import {
+    createWorkbenchWorkstreamsItem,
+    isWorkbenchWorkstreamsItemId,
+    workbenchWorkstreamsItemId,
+  } from '$lib/components/agent-room/workbench-workstreams.js';
+  import {
     createWorkbenchAutomationsItem,
     isWorkbenchAutomationsItemId,
     workbenchAutomationsItemId,
@@ -171,6 +178,7 @@
   let permissionWorkspaceId = $state<string | null>(null);
   const permissionWorkspace = $derived(workspaces.find((workspace) => workspace.id === permissionWorkspaceId) ?? null);
   let councilOpen = $state(false);
+  let councilSource = $state<{ taskId?: string; taskTitle?: string; taskDescription?: string | null; leaderNodeId?: string } | null>(null);
   let sharingOpen = $state(false);
   let leaderDictationState = $state<LeaderDictationStatus>('idle');
   let leaderDictationNodeId = $state<string | null>(null);
@@ -214,15 +222,19 @@
     const reviewCenter = workspace
       ? [createWorkbenchReviewCenterItem(workspace, m['review_center.title']())]
       : [];
+    const workstreams = workspace
+      ? [createWorkbenchWorkstreamsItem(workspace, m['workstreams.title']())]
+      : [];
     const automations = workspace
       ? [createWorkbenchAutomationsItem(workspace, m['automation.title']())]
       : [];
-    return [...controlCenter, ...reviewCenter, ...automations, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
+    return [...controlCenter, ...workstreams, ...reviewCenter, ...automations, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
   }
 
   function isVirtualWorkbenchItemId(id: string | null | undefined): boolean {
     return isWorkbenchFileItemId(id)
       || isWorkbenchControlCenterItemId(id)
+      || isWorkbenchWorkstreamsItemId(id)
       || isWorkbenchReviewCenterItemId(id)
       || isWorkbenchAutomationsItemId(id);
   }
@@ -710,8 +722,10 @@
   onMount(() => {
     const handleEditorState = () => (dirtyEditorRevision += 1);
     const handleCouncilOpen = (event: Event) => {
-      const workspaceId = (event as CustomEvent<{ workspaceId?: string }>).detail?.workspaceId;
+      const detail = (event as CustomEvent<{ workspaceId?: string; source?: typeof councilSource }>).detail;
+      const workspaceId = detail?.workspaceId;
       if (workspaceId) selectedWorkspaceId = workspaceId;
+      councilSource = detail?.source ?? null;
       councilOpen = true;
     };
     const handleSharingOpen = (event: Event) => {
@@ -954,6 +968,10 @@
             loading={loadingControlCenterIds.includes(selectedWorkspace.id)}
             onRefresh={() => void refreshControlCenter(selectedWorkspace.id)}
           />
+        {:else if isWorkbenchWorkstreamsItemId(paneNode.id)}
+          {#key `${pane.id}:${paneNode.id}`}
+            <WorkbenchWorkstreams workspaceId={selectedWorkspace.id} />
+          {/key}
         {:else if isWorkbenchReviewCenterItemId(paneNode.id)}
           {#key `${pane.id}:${paneNode.id}`}
             <WorkbenchReviewCenter workspaceId={selectedWorkspace.id} />
@@ -1129,6 +1147,16 @@
                     {/if}
                   </button>
                 </div>
+                <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchWorkstreamsItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>
+                  <button
+                    class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]"
+                    aria-current={selectedNodeId === workbenchWorkstreamsItemId(workspace.id) ? 'page' : undefined}
+                    onclick={() => selectNode(workspace.id, workbenchWorkstreamsItemId(workspace.id))}
+                  >
+                    <Route size={13} class={selectedNodeId === workbenchWorkstreamsItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
+                    <span class="min-w-0 flex-1 truncate font-medium">{m['workstreams.title']()}</span>
+                  </button>
+                </div>
                 <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchReviewCenterItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>
                   <button
                     class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]"
@@ -1145,6 +1173,7 @@
                     aria-haspopup="dialog"
                     onclick={() => {
                       selectedWorkspaceId = workspace.id;
+                      councilSource = null;
                       councilOpen = true;
                     }}
                   >
@@ -1365,7 +1394,7 @@
 </main>
 
 {#if selectedWorkspace}
-  <CouncilDialog bind:open={councilOpen} workspaceId={selectedWorkspace.id} />
+  <CouncilDialog bind:open={councilOpen} workspaceId={selectedWorkspace.id} source={councilSource} />
 {/if}
 {#if sharingOpen && selectedWorkspace}
   <WorkspaceSharingDialog workspaceId={selectedWorkspace.id} onClose={() => (sharingOpen = false)} />

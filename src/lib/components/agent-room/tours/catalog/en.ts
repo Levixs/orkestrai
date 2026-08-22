@@ -1126,6 +1126,35 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'trace-delivery-workstream',
+    icon: 'Route',
+    title: 'Trace a complete delivery in Workstreams',
+    tagline: 'Keep the task, team, decisions, review, and Git evidence in one flow.',
+    steps: [
+      {
+        id: 'open-workstreams',
+        title: 'Open the delivery view',
+        body: 'Expand the workspace in Workbench and open Workstreams, or find it through Command/Ctrl+K. The view projects existing records and does not create another Canvas node.',
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-workstreams:{workspace}' },
+      },
+      {
+        id: 'start-from-task',
+        title: 'Use the Kanban task as the identity',
+        body: 'Create and assign the real task on the board. Its column, assignee, active Floor, branch, and semantic activity appear automatically in the workstream.',
+      },
+      {
+        id: 'connect-decisions-and-review',
+        title: 'Keep decisions and review attached',
+        body: 'Ask Council perspectives from the workstream so they receive the same brief. Create the Review Center record against that task and select the exact revision, files, evidence, tests, and risks.',
+      },
+      {
+        id: 'inspect-delivery-trace',
+        title: 'Read the complete trace',
+        body: 'Compare the activity timeline, Council progress, review status, and linked Git paths. Unlinked records stay explicitly counted instead of being attributed to the wrong delivery.',
+      },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Review a delivery',

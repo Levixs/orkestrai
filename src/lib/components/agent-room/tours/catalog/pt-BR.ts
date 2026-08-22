@@ -1130,6 +1130,35 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'trace-delivery-workstream',
+    icon: 'Route',
+    title: 'Rastrear uma entrega completa em Fluxos de trabalho',
+    tagline: 'Mantenha tarefa, time, decisões, revisão e evidência Git no mesmo fluxo.',
+    steps: [
+      {
+        id: 'open-workstreams',
+        title: 'Abra a visão da entrega',
+        body: 'Expanda o workspace no Workbench e abra Fluxos de trabalho ou encontre pelo Command/Ctrl+K. A visão projeta registros existentes e não cria outro node no Canvas.',
+        action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-workstreams:{workspace}' },
+      },
+      {
+        id: 'start-from-task',
+        title: 'Use a tarefa do Kanban como identidade',
+        body: 'Crie e atribua a tarefa real no quadro. Coluna, responsável, andar ativo, branch e atividade semântica aparecem automaticamente no fluxo.',
+      },
+      {
+        id: 'connect-decisions-and-review',
+        title: 'Mantenha decisões e revisão vinculadas',
+        body: 'Peça perspectivas do Conselho pelo fluxo para que recebam o mesmo briefing. Crie o registro na Central de revisão contra essa tarefa e selecione revisão, arquivos, evidências, testes e riscos exatos.',
+      },
+      {
+        id: 'inspect-delivery-trace',
+        title: 'Leia o rastro completo',
+        body: 'Compare timeline de atividade, progresso do Conselho, estado da revisão e caminhos Git vinculados. Registros sem vínculo continuam contabilizados explicitamente em vez de serem atribuídos à entrega errada.',
+      },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Revisar uma entrega',

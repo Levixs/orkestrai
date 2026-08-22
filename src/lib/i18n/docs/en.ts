@@ -51,6 +51,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `Open Control Center at the top of each expanded workspace in the Workbench explorer. It reconstructs the state of every Ground and currently active Floor agent from an append-only history; agents from finished Floors remain historical but do not enter current counts. Floor badges distinguish active worktrees. States include starting, working, waiting for input or permission, blocked, idle, done, error, or disconnected. Each row shows the current task, latest relevant action, time in state, provider, role, and available usage. Activity presents the same history as a semantic timeline of messages, tasks, reviews, decisions, Git work, and system events; raw metadata stays collapsed for diagnostics. Communications projects every queued, sent, delivered, acknowledged, replied, and failed transition into one durable message envelope with a content fingerprint, correlation id, deduplication key, and attempt history. Repeating the same event is idempotent, while reusing an id for different content or a different recipient is rejected. The global Attention Center, opened from the bell beside Canvas/Workbench, gathers questions, permission requests, blockers, and failures from every workspace, prioritizes the current workspace, and supports read, snooze, resolve, and direct source navigation. Command/Ctrl+K searches this history with filters such as type:, agent:, workspace:, status:, has:error, before:, and after:. These states survive navigation and app restarts without waking idle terminals. Canvas edges remain the visual history of real conversations, while delivery uses the bridge and does not depend on an edge.`,
     },
     {
+      id: 'workstreams',
+      title: 'Workstreams: one trace from task to delivery',
+      body: `Open Workstreams under a workspace in the Workbench explorer or through Command/Ctrl+K. A workstream is not another project tracker: each active Kanban task is the canonical identity, and the view projects its current column, assignee, active Floor and branch, semantic activity, Councils, Review Center records, exact Git revision, evidence, tests, risks, and linked files. Backlog, active, review, blocked, and done stages are derived from those real sources. Starting a Council from the workstream carries the task brief, while opening the board or Review Center returns to the original editable record. Unlinked decisions, reviews, activity, and changed paths remain counted instead of being silently attributed to the wrong task.`,
+    },
+    {
       id: 'review-center',
       title: 'Source Control and Review Center',
       body: `Open Review Center under each workspace in the Workbench explorer to inspect staged and unstaged changes without leaving Orkestrai. The header shows the branch, upstream, and commits ahead or behind; the source list stages, unstages, commits, pulls, pushes, and discards tracked edits only after confirmation. Selecting a file opens a bounded Monaco side-by-side diff; binary and oversized files get explicit safe states. Start a review to link its exact Git revision to a task, responsible agent, summary, evidence, tests, risks, and selected files. Click either side of the diff to attach a file or line comment. When the repository changes, old comments remain visible as outdated context instead of silently pointing at a different line. Approve, request changes, or reject in plain language; requested changes are submitted directly to the responsible agent when its terminal is available, and remain persisted when it is offline.`,
@@ -582,6 +587,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Attention Center', 'cross-workspace triage', 'search operators'],
     },
     {
+      id: 'trace-delivery-workstream',
+      title: 'Trace a delivery from brief to Git evidence',
+      body: 'Create and assign the work in Kanban, then open Workstreams in Workbench. The task becomes the stable delivery identity: its agent and Floor appear automatically, Council decisions keep the same brief, Review Center links the exact revision and selected files, and the activity timeline explains every transition. Open the original board, Council, or review at any time; the workstream never replaces or duplicates those records.',
+      tags: ['Workstreams', 'end-to-end traceability', 'Kanban to Git'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Edit and inspect files without leaving the Workbench',
       body: 'Expand Files in the Workbench sidebar and open a workspace file directly in a local tab, without creating a canvas node. The Canvas file tree and Command/Ctrl+K use the same direct handoff. Monaco preserves cursor, undo, selection, and unsaved state across panes. Find or replace text, navigate symbols, format supported files, and choose minimap, wrapping, font size, or optional autosave under Settings → Appearance. Markdown switches between source and a sanitized preview; PDFs have page and zoom controls; images support zoom, pan, dimensions, and transparency; binary files show metadata and open through the system application. Files above 512 KB open a bounded read-only preview so unloaded content cannot be overwritten.',
@@ -646,6 +657,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Control Center adds a semantic Activity timeline for messages, tasks, reviews, decisions, Git work, and system events, with raw diagnostics available on demand.',
         'A global Attention Center prioritizes questions, permission requests, blockers, and failures from every workspace and supports read, snooze, resolve, and source navigation.',
         'Command/Ctrl+K now indexes activity, canonical messages, and attention with type, agent, workspace, status, error, and date operators.',
+        'Workbench adds Workstreams, a live projection from each Kanban task to its assignee, Floor, Council decisions, reviews, semantic activity, and exact Git evidence.',
       ],
     },
     {

@@ -92,6 +92,11 @@ Download the latest installers from
   from every workspace, while Command/Ctrl+K recovers them with structured filters.
   Counts include only the Ground floor and currently active Floors; historical
   floor nodes stay archived for task attribution instead of appearing as agents.
+- **Traceable Workstreams:** every active Kanban task becomes a live delivery
+  view in Workbench, combining its assignee, Floor and branch, semantic history,
+  Council decisions, Review Center evidence, exact Git revision, tests, risks,
+  and linked files. It projects the existing records instead of creating a
+  second tracker, and explicitly counts work that is not yet linked to a task.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
   session, choose a browser/mobile or installed-app invite, approve the device
   fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator

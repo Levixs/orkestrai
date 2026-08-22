@@ -55,6 +55,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `Abra a Central de controle no topo de cada workspace expandido no explorer do Workbench. Ela reconstrói o estado de cada agente do térreo e dos andares atualmente ativos a partir de um histórico append-only; agentes de andares encerrados permanecem no histórico, mas não entram nas contagens. Os badges de andar distinguem worktrees ativas. Os estados incluem iniciando, trabalhando, aguardando resposta ou permissão, bloqueado, ocioso, concluído, erro ou desconectado. Cada linha mostra tarefa atual, última ação relevante, tempo no estado, provider, role e uso disponível. Atividade apresenta o mesmo histórico como uma timeline semântica de mensagens, tarefas, revisões, decisões, Git e eventos do sistema; metadados brutos ficam recolhidos para diagnóstico. Comunicações projeta cada transição na fila, enviada, entregue, recebida, respondida ou falhou em um envelope durável com fingerprint do conteúdo, correlação, chave de deduplicação e histórico de tentativas. Repetir o mesmo evento é idempotente, enquanto reutilizar um id com outro conteúdo ou destinatário é rejeitado. A Central de atenção global, aberta pelo sino ao lado de Canvas/Workbench, reúne perguntas, pedidos de permissão, bloqueios e falhas de todos os workspaces, prioriza o atual e permite ler, adiar, resolver e abrir a origem exata. Command/Ctrl+K pesquisa esse histórico com filtros como type:, agent:, workspace:, status:, has:error, before: e after:. Esses estados sobrevivem à troca de tela e ao reinício do app sem acordar terminais ociosos. As edges continuam como histórico visual de conversas reais, mas a entrega usa a ponte e não depende de uma edge.`,
     },
     {
+      id: 'workstreams',
+      title: 'Fluxos de trabalho: um rastro da tarefa à entrega',
+      body: `Abra Fluxos de trabalho abaixo do workspace no explorer do Workbench ou pelo Command/Ctrl+K. Um fluxo não é outro gerenciador de projetos: cada tarefa ativa do Kanban é a identidade canônica, e a visão projeta coluna atual, responsável, andar e branch ativos, atividade semântica, Conselhos, registros da Central de revisão, revisão Git exata, evidências, testes, riscos e arquivos vinculados. As etapas fila, ativo, revisão, bloqueado e concluído são derivadas dessas fontes reais. Iniciar um Conselho pelo fluxo leva o briefing da tarefa, enquanto abrir quadro ou Central de revisão retorna ao registro editável original. Decisões, revisões, atividades e arquivos alterados sem vínculo continuam contabilizados em vez de serem atribuídos silenciosamente à tarefa errada.`,
+    },
+    {
       id: 'review-center',
       title: 'Controle de código e Central de revisão',
       body: `Abra a Central de revisão em cada workspace do explorer do Workbench para inspecionar alterações preparadas e não preparadas sem sair do Orkestrai. O cabeçalho mostra branch, upstream e commits à frente ou atrás; a lista permite preparar, remover da preparação, criar commit, fazer pull, push e descartar edições rastreadas somente após confirmação. Selecionar um arquivo abre um diff lado a lado e limitado no Monaco; arquivos binários ou muito grandes recebem estados seguros explícitos. Inicie uma revisão para vincular a revisão Git exata a uma tarefa, agente responsável, resumo, evidências, testes, riscos e arquivos selecionados. Clique em qualquer lado do diff para comentar no arquivo ou na linha. Quando o repositório muda, comentários antigos continuam visíveis como contexto desatualizado em vez de apontarem silenciosamente para outra linha. Aprove, solicite alterações ou rejeite em linguagem direta; alterações solicitadas são enviadas ao agente responsável quando seu terminal está disponível e permanecem salvas quando ele está offline.`,
@@ -586,6 +591,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Central de atenção', 'triagem entre workspaces', 'operadores de busca'],
     },
     {
+      id: 'trace-delivery-workstream',
+      title: 'Rastrear uma entrega do briefing à evidência Git',
+      body: 'Crie e atribua o trabalho no Kanban e abra Fluxos de trabalho no Workbench. A tarefa vira a identidade estável da entrega: agente e andar aparecem automaticamente, decisões do Conselho mantêm o mesmo briefing, a Central de revisão vincula a revisão e os arquivos exatos, e a timeline explica cada transição. Abra o quadro, Conselho ou revisão original a qualquer momento; o fluxo nunca substitui nem duplica esses registros.',
+      tags: ['Fluxos de trabalho', 'rastreabilidade ponta a ponta', 'Kanban ao Git'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Editar e inspecionar arquivos sem sair do Workbench',
       body: 'Expanda Arquivos no sidebar do Workbench e abra um arquivo do workspace diretamente em uma aba local, sem criar um nó no canvas. A árvore de arquivos do Canvas e o Command/Ctrl+K usam a mesma abertura direta. O Monaco preserva cursor, undo, seleção e estado não salvo entre painéis. Busque ou substitua texto, navegue por símbolos, formate arquivos compatíveis e escolha minimapa, quebra de linha, tamanho da fonte ou autosave opcional em Configurações → Aparência. Markdown alterna entre fonte e prévia sanitizada; PDFs têm navegação e zoom; imagens permitem zoom, pan, dimensões e transparência; binários exibem metadados e abrem no aplicativo do sistema. Arquivos acima de 512 KB abrem em uma prévia limitada e somente leitura para nunca sobrescrever conteúdo que não foi carregado.',
@@ -650,6 +661,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'A Central de controle adiciona uma timeline semântica de Atividade para mensagens, tarefas, revisões, decisões, Git e eventos do sistema, com diagnósticos brutos sob demanda.',
         'Uma Central de atenção global prioriza perguntas, pedidos de permissão, bloqueios e falhas de todos os workspaces e permite ler, adiar, resolver e abrir a origem.',
         'Command/Ctrl+K agora indexa atividade, mensagens canônicas e atenção com operadores de tipo, agente, workspace, status, erro e data.',
+        'O Workbench adiciona Fluxos de trabalho, uma projeção ao vivo de cada tarefa do Kanban até responsável, andar, decisões do Conselho, revisões, atividade semântica e evidência Git exata.',
       ],
     },
     {

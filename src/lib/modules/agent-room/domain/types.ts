@@ -201,7 +201,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'automation' | 'device' | 'design';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'workstreams' | 'automation' | 'device' | 'design';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 export type WorkspaceRuntimeKind = 'native' | 'wsl';
 export type WorkspaceExecutionRuntime =
@@ -366,6 +366,65 @@ export type ControlCenterSnapshot = {
   agents: AgentActivitySnapshot[];
   activity: AgentActivity[];
   communications: AgentMessageThread[];
+  generatedAt: string;
+};
+
+export type AgentWorkstreamStage = 'backlog' | 'active' | 'review' | 'blocked' | 'done';
+
+export type AgentWorkstream = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  description: string | null;
+  stage: AgentWorkstreamStage;
+  taskStatus: string;
+  taskStatusLabel: string;
+  taskStatusColor: string;
+  assigneeNodeId: string | null;
+  assigneeTitle: string | null;
+  floor: { id: string; name: string; branch: string } | null;
+  councils: Array<{
+    id: string;
+    title: string;
+    status: string;
+    mode: string;
+    completedPerspectives: number;
+    totalPerspectives: number;
+    updatedAt: string;
+  }>;
+  reviews: Array<{
+    id: string;
+    title: string;
+    status: string;
+    revision: string;
+    selectedPaths: string[];
+    evidenceCount: number;
+    testCount: number;
+    riskCount: number;
+    updatedAt: string;
+  }>;
+  git: {
+    revision: string | null;
+    branch: string | null;
+    paths: string[];
+    changedPaths: string[];
+  };
+  timeline: AgentActivity[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkstreamSnapshot = {
+  workspaceId: string;
+  taskBoardNodeId: string | null;
+  workstreams: AgentWorkstream[];
+  counts: Record<AgentWorkstreamStage, number>;
+  unlinked: {
+    councils: number;
+    reviews: number;
+    activities: number;
+    changedPaths: string[];
+  };
   generatedAt: string;
 };
 

@@ -36,6 +36,7 @@
   } from './workbench-open.js';
   import { workbenchControlCenterItemId } from './workbench-control-center.js';
   import { workbenchReviewCenterItemId } from './workbench-review-center.js';
+  import { workbenchWorkstreamsItemId } from './workbench-workstreams.js';
   import { workbenchAutomationsItemId } from './workbench-automations.js';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
@@ -102,6 +103,7 @@
     const workspaceCommands = workspaceId ? [
       command('council', m['global_search.command_council'](), `/canvas?workspace=${workspaceId}&council=1`),
       command('control-center', m['global_search.command_control_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchControlCenterItemId(workspaceId))}`),
+      command('workstreams', m['global_search.command_workstreams'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchWorkstreamsItemId(workspaceId))}`),
       command('review-center', m['global_search.command_review_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchReviewCenterItemId(workspaceId))}`),
       command('automations', m['global_search.command_automations'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchAutomationsItemId(workspaceId))}`),
     ] : [];
@@ -279,11 +281,13 @@
     }
     if (
       location.pathname === '/terminal'
-      && (item.id === 'command:control-center' || item.id === 'command:review-center' || item.id === 'command:automations')
+      && (item.id === 'command:control-center' || item.id === 'command:workstreams' || item.id === 'command:review-center' || item.id === 'command:automations')
       && item.workspaceId
     ) {
       const nodeId = item.id === 'command:control-center'
         ? workbenchControlCenterItemId(item.workspaceId)
+        : item.id === 'command:workstreams'
+          ? workbenchWorkstreamsItemId(item.workspaceId)
         : item.id === 'command:review-center'
           ? workbenchReviewCenterItemId(item.workspaceId)
           : workbenchAutomationsItemId(item.workspaceId);

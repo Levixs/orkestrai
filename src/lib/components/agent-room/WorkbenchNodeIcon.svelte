@@ -17,6 +17,7 @@
     Palette,
     Workflow as AutomationIcon,
     Braces,
+    Route,
   } from '@lucide/svelte';
   import type { CanvasNodeType } from '$lib/modules/agent-room/domain/types.js';
 
@@ -37,6 +38,7 @@
 {:else if type === 'usage'}<Gauge {size} aria-hidden="true" />
 {:else if type === 'controlCenter'}<Activity {size} aria-hidden="true" />
 {:else if type === 'reviewCenter'}<GitPullRequestArrow {size} aria-hidden="true" />
+{:else if type === 'workstreams'}<Route {size} aria-hidden="true" />
 {:else if type === 'device'}<Smartphone {size} aria-hidden="true" />
 {:else if type === 'design'}<Palette {size} aria-hidden="true" />
 {:else if type === 'automation'}<AutomationIcon {size} aria-hidden="true" />
