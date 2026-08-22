@@ -632,8 +632,8 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Aug 22, 2026 · Next',
-      title: 'Complete API test authoring for people and agents',
+      date: 'Aug 22, 2026 · 0.17.0',
+      title: 'Orkestrai 0.17.0: complete API test authoring for people and agents',
       summary: 'Runtime-aware JavaScript tests, completion, and protected MCP/CLI authoring now share one collection model.',
       items: [
         'The Tests tab now switches between structured assertions and a full-height JavaScript editor with contextual completion for Bruno, Postman, and native Orkestrai APIs. Test scripts execute separately from post-response automation and round-trip through Bruno and Postman exports.',

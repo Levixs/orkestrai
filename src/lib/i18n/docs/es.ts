@@ -632,8 +632,8 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: '22 ago 2026 · Próxima',
-      title: 'Autoría completa de pruebas de API para personas y agentes',
+      date: '22 ago 2026 · 0.17.0',
+      title: 'Orkestrai 0.17.0: autoría completa de pruebas de API para personas y agentes',
       summary: 'Pruebas JavaScript por runtime, autocompletado y autoría protegida por MCP/CLI comparten un único modelo de colección.',
       items: [
         'La pestaña Pruebas alterna entre assertions estructuradas y un editor JavaScript de altura completa con autocompletado contextual para Bruno, Postman y Orkestrai nativo. Los scripts de prueba se ejecutan separados de la automatización post-response y hacen round-trip en exportaciones Bruno y Postman.',
