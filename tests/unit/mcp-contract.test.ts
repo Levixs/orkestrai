@@ -15,6 +15,7 @@ import {
 } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
+import { createAgentApiClientSchema, executeAgentApiClientRunnerSchema, exportAgentApiClientSchema, replaceAgentApiClientSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
 import { z } from 'zod';
 
 /**
@@ -56,6 +57,11 @@ const EXPECTED: Record<string, Expectation> = {
   note_edit: { method: 'PATCH', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteEditSchema },
   note_create: { method: 'POST', path: /\/bridge\/notes$/, schema: bridgeNoteCreateSchema },
   api_client_list: { method: 'GET', path: /\/bridge\/api-clients\?agentNodeId=/ },
+  api_client_read: { method: 'GET', path: /\/bridge\/api-clients\/n1\?agentNodeId=n1$/ },
+  api_client_create: { method: 'POST', path: /\/bridge\/api-clients$/, schema: createAgentApiClientSchema },
+  api_client_replace: { method: 'PUT', path: /\/bridge\/api-clients\/n1$/, schema: replaceAgentApiClientSchema },
+  api_client_export: { method: 'POST', path: /\/bridge\/api-clients\/n1\/export$/, schema: exportAgentApiClientSchema },
+  api_client_run_runner: { method: 'POST', path: /\/bridge\/api-clients\/n1\/runners\/runner1\/execute$/, schema: executeAgentApiClientRunnerSchema },
   api_client_execute: { method: 'POST', path: /\/bridge\/api-clients\/n1\/execute$/, schema: apiClientExecuteSchema },
   design_list: { method: 'GET', path: /\/bridge\/designs$/ },
   design_read: { method: 'GET', path: /\/bridge\/designs\/n1$/ },
@@ -98,6 +104,11 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   note_edit: { nodeId: 'n1', oldText: 'a', newText: 'b' },
   note_create: { title: 'T', content: 'c' },
   api_client_execute: { nodeId: 'n1', requestId: 'r1', variables: { baseUrl: 'https://example.test' } },
+  api_client_read: { nodeId: 'n1' },
+  api_client_create: { title: 'Agent API', collection: { requests: [] } },
+  api_client_replace: { nodeId: 'n1', baseFingerprint: 'a'.repeat(64), collection: { requests: [] } },
+  api_client_export: { nodeId: 'n1', kind: 'postman', path: '.orkestrai/exports' },
+  api_client_run_runner: { nodeId: 'n1', runnerId: 'runner1', variables: { tenant: 'alpha' }, maxExecutions: 20 },
   design_read: { nodeId: 'n1' },
   design_audit: { nodeId: 'n1' },
   design_apply_template: {
@@ -277,6 +288,22 @@ describe('contrato MCP x bridge (todas as tools)', () => {
     await done;
     expect(bridgeCalled).toBe(false);
     expect(response.result?.content?.[0]?.text).toContain('design_create_elements');
+
+    const apiInput = new PassThrough();
+    const apiChunks: string[] = [];
+    let apiBridgeCalled = false;
+    const apiDone = runMcpServer({
+      input: apiInput,
+      write: (chunk: string) => apiChunks.push(chunk),
+      bridge: async () => { apiBridgeCalled = true; return {}; },
+      findFreePort: async () => 45678,
+    });
+    send(apiInput, { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'api_client_reference', arguments: {} } });
+    const apiResponse = await waitFor(apiChunks, 2);
+    apiInput.end();
+    await apiDone;
+    expect(apiBridgeCalled).toBe(false);
+    expect(apiResponse.result?.content?.[0]?.text).toContain('api_client_replace');
   });
 
   it('cada tool chama a rota certa com corpo que passa no schema', async () => {
@@ -312,7 +339,7 @@ describe('contrato MCP x bridge (todas as tools)', () => {
   });
 
   it('tools de maestro sem identidade (selfAgent null) dao erro claro, nao 422', async () => {
-    for (const tool of ['recruit', 'dismiss', 'portal_create']) {
+    for (const tool of ['recruit', 'dismiss', 'portal_create', 'api_client_read', 'api_client_create', 'api_client_replace', 'api_client_export', 'api_client_run_runner']) {
       const input = new PassThrough();
       const chunks: string[] = [];
       const done = runMcpServer({

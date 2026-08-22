@@ -8,10 +8,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { useSvelarTest } from '@beeblock/svelar/testing';
 import { parseCollection, parseEnvironment, parseFolder, parseRequest } from '@usebruno/filestore';
-import { apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
-import { ExportApiClientCollectionDto, ImportApiClientCollectionDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
+import { ApiClientFingerprintConflictError, apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
+import { CreateAgentApiClientDto, ExecuteAgentApiClientRunnerDto, ExportAgentApiClientDto, ExportApiClientCollectionDto, ImportApiClientCollectionDto, ReplaceAgentApiClientDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
-import { apiClientRequestSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
+import { agentApiClientCollectionSchema, apiClientRequestSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
 import {
   ExecuteApiClientRequest,
   ExecuteSavedApiClientRequest,
@@ -682,6 +682,86 @@ message WatchReply { string event = 1; }
     expect(result.size).toBeGreaterThan(0);
   });
 
+  it('lets a connected agent create, read, replace, and export complete Bruno and Postman collections safely', async () => {
+    const { workspace } = await fixture();
+    server = createServer((_request, response) => {
+      response.setHeader('content-type', 'application/json');
+      response.end('{"ok":true}');
+    });
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Test server did not bind a TCP port.');
+    const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'API QA', x: 20, y: 30, width: 500 });
+    const request = apiClientRequestSchema.parse({
+      id: 'health', name: 'Health', method: 'GET', url: '{{baseUrl}}/health', headers: [],
+      auth: { type: 'bearer', token: 'local-secret' },
+      testScript: `test('returns 200', () => expect(res.getStatus()).to.equal(200));`,
+    });
+    const collection = agentApiClientCollectionSchema.parse({
+      requests: [request],
+      folders: [],
+      runners: [{ id: 'smoke', name: 'Smoke', requestIds: ['health'], environment: 'local', iterations: 2, iterationData: [{ tenant: 'one' }, { tenant: 'two' }], delayMs: 0, stopOnFailure: true, sequence: 0 }],
+      variables: { baseUrl: 'https://api.example.test', apiToken: 'collection-secret' },
+      environments: { local: { baseUrl: `http://127.0.0.1:${address.port}`, password: 'environment-secret' } },
+      scriptDialect: 'bruno',
+      activeEnvironment: 'local',
+      collectionPreRequestScript: `bru.setVar('ready', 'yes');`,
+    });
+
+    const created = await apiClientService.createForAgent(workspace.id, CreateAgentApiClientDto.from({ title: 'Agent API', collection, from: agent.id }));
+    expect(created.collection.requests[0].auth.token).toBe('__ORKESTRAI_REDACTED__');
+    expect(created.collection.variables.apiToken).toBe('__ORKESTRAI_REDACTED__');
+    expect(created.collection.runners[0].requestIds).toEqual(['health']);
+
+    const edited = structuredClone(created.collection);
+    edited.requests[0].documentation = 'Created by the workspace agent.';
+    edited.requests[0].testScript += `\nbru.setVar('tested', 'yes');`;
+    const replaced = await apiClientService.replaceForAgent(workspace.id, created.nodeId, ReplaceAgentApiClientDto.from({
+      baseFingerprint: created.fingerprint,
+      collection: edited,
+      from: agent.id,
+    }));
+    expect(replaced.fingerprint).not.toBe(created.fingerprint);
+    const stored = await workspaceRepository.getNode(created.nodeId);
+    expect((stored?.payload as any).requests[0].auth.token).toBe('local-secret');
+    expect((stored?.payload as any).variables.apiToken).toBe('collection-secret');
+    await expect(apiClientService.replaceForAgent(workspace.id, created.nodeId, ReplaceAgentApiClientDto.from({
+      baseFingerprint: created.fingerprint,
+      collection: edited,
+      from: agent.id,
+    }))).rejects.toBeInstanceOf(ApiClientFingerprintConflictError);
+
+    const runnerResult = await apiClientService.executeRunnerForAgent(workspace.id, created.nodeId, 'smoke', ExecuteAgentApiClientRunnerDto.from({ from: agent.id, variables: {}, maxExecutions: 10 }));
+    expect(runnerResult).toMatchObject({ runnerName: 'Smoke', executions: 2, passed: true, stopped: false });
+    expect(runnerResult.runs).toEqual([
+      expect.objectContaining({ iteration: 0, requestId: 'health', status: 200, testFailed: 0 }),
+      expect.objectContaining({ iteration: 1, requestId: 'health', status: 200, testFailed: 0 }),
+    ]);
+
+    const postman = await apiClientService.exportForAgent(workspace.id, created.nodeId, ExportAgentApiClientDto.from({ kind: 'postman', path: 'exports/postman', from: agent.id }));
+    const postmanDocument = JSON.parse(await readFile(postman.path, 'utf8'));
+    expect(postmanDocument.item[0].event.find((entry: any) => entry.listen === 'test').script.exec.join('\n')).toContain('returns 200');
+    expect(postmanDocument.item[0].request.auth.bearer[0].value).toBe('__ORKESTRAI_REDACTED__');
+    const bruno = await apiClientService.exportForAgent(workspace.id, created.nodeId, ExportAgentApiClientDto.from({ kind: 'bruno', path: 'exports/bruno', from: agent.id }));
+    const parsed = parseRequest(await readFile(join(bruno.path, 'Health.bru'), 'utf8'), { format: 'bru' });
+    expect(parsed.request.tests).toContain('returns 200');
+    expect(parsed.request.auth.bearer.token).toBe('__ORKESTRAI_REDACTED__');
+
+    const disconnectedAgent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'Unrelated agent' });
+    await expect(apiClientService.readForAgent(workspace.id, created.nodeId, disconnectedAgent.id)).rejects.toThrow('not connected');
+    await expect(apiClientService.replaceForAgent(workspace.id, created.nodeId, ReplaceAgentApiClientDto.from({
+      baseFingerprint: replaced.fingerprint,
+      collection: edited,
+      from: disconnectedAgent.id,
+    }))).rejects.toThrow('not connected');
+    await expect(apiClientService.exportForAgent(workspace.id, created.nodeId, ExportAgentApiClientDto.from({
+      kind: 'postman', path: 'exports/forbidden', from: disconnectedAgent.id,
+    }))).rejects.toThrow('not connected');
+    await expect(apiClientService.executeRunnerForAgent(workspace.id, created.nodeId, 'smoke', ExecuteAgentApiClientRunnerDto.from({
+      from: disconnectedAgent.id, variables: {}, maxExecutions: 10,
+    }))).rejects.toThrow('not connected');
+  });
+
   it('runs sandboxed scripts, query/auth parameters, and response assertions', async () => {
     const { workspace, node } = await fixture();
     server = createServer((request, response) => {
@@ -730,7 +810,6 @@ message WatchReply { string event = 1; }
         collectionPostResponseScript: 'console.log("collection post", res.status);',
       },
     });
-
     const result = await apiClientService.executeSaved(workspace.id, node.id, request.id, {
       baseUrl: `http://127.0.0.1:${address.port}`,
       apiKey: 'secret',
@@ -789,6 +868,7 @@ message WatchReply { string event = 1; }
         },
       },
     });
+    delete (request as any).testScript;
     await workspaceRepository.updateNode(node.id, {
       payload: {
         sourceKind: 'bruno',

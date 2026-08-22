@@ -6,12 +6,20 @@ import {
   apiClientSyncRequestSchema,
   exportApiClientCollectionSchema,
   importApiClientCollectionSchema,
+  createAgentApiClientSchema,
+  replaceAgentApiClientSchema,
+  exportAgentApiClientSchema,
+  executeAgentApiClientRunnerSchema,
   type ExecuteApiClientRequestInput,
   type ExecuteSavedApiClientRequestInput,
   type ApiClientOAuthInput,
   type ApiClientSyncRequestInput,
   type ExportApiClientCollectionInput,
   type ImportApiClientCollectionInput,
+  type CreateAgentApiClientInput,
+  type ReplaceAgentApiClientInput,
+  type ExportAgentApiClientInput,
+  type ExecuteAgentApiClientRunnerInput,
 } from '../../../contracts/schemas/apiClient.schema.js';
 
 export class ExecuteApiClientRequest extends FormRequest {
@@ -48,4 +56,28 @@ export class ApiClientSyncRequest extends FormRequest {
   rules() { return apiClientSyncRequestSchema; }
   authorize() { return true; }
   passedValidation(data: unknown): ApiClientSyncRequestInput { return apiClientSyncRequestSchema.parse(data); }
+}
+
+export class CreateAgentApiClientRequest extends FormRequest {
+  rules() { return createAgentApiClientSchema; }
+  authorize() { return true; }
+  passedValidation(data: unknown): CreateAgentApiClientInput { return createAgentApiClientSchema.parse(data); }
+}
+
+export class ReplaceAgentApiClientRequest extends FormRequest {
+  rules() { return replaceAgentApiClientSchema; }
+  authorize() { return true; }
+  passedValidation(data: unknown): ReplaceAgentApiClientInput { return replaceAgentApiClientSchema.parse(data); }
+}
+
+export class ExportAgentApiClientRequest extends FormRequest {
+  rules() { return exportAgentApiClientSchema; }
+  authorize() { return true; }
+  passedValidation(data: unknown): ExportAgentApiClientInput { return exportAgentApiClientSchema.parse(data); }
+}
+
+export class ExecuteAgentApiClientRunnerRequest extends FormRequest {
+  rules() { return executeAgentApiClientRunnerSchema; }
+  authorize() { return true; }
+  passedValidation(data: unknown): ExecuteAgentApiClientRunnerInput { return executeAgentApiClientRunnerSchema.parse(data); }
 }

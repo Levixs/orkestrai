@@ -18,6 +18,7 @@
   import type { ApiClientAssertion, ApiClientFolder, ApiClientHeader, ApiClientHistoryEntry, ApiClientKeyValue, ApiClientMessage, ApiClientNodePayload, ApiClientProtocol, ApiClientRequest, ApiClientRunner } from '$lib/modules/agent-room/domain/types.js';
   import { apiClientDescendantFolderIds, apiClientFolderPath, apiClientTreeRows, migrateApiClientFolders, normalizeApiClientRunners, type ApiClientTreeRow } from '$lib/modules/agent-room/domain/api-client-collection.js';
   import { exportOpenApiDocument } from '$lib/modules/agent-room/domain/api-client-openapi-export.js';
+  import { postmanCollectionFilename, serializePostmanCollection } from '$lib/modules/agent-room/domain/api-client-postman.js';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
 
@@ -99,6 +100,7 @@
   let history = $state<ApiClientHistoryEntry[]>([]);
   let activeTab = $state('body');
   let scriptScope = $state<'request' | 'collection'>('request');
+  let testEditorMode = $state<'assertions' | 'javascript'>('assertions');
   let collectionPreRequestScript = $state('');
   let collectionPostResponseScript = $state('');
   let responseView = $state<'body' | 'messages' | 'headers' | 'tests' | 'console' | 'visualizer'>('body');
@@ -155,6 +157,7 @@
       formFields: request.formFields ?? [],
       preRequestScript: request.preRequestScript ?? '',
       postResponseScript: request.postResponseScript ?? '',
+      testScript: request.testScript ?? (request.sourceData?.kind === 'bruno' ? String((request.sourceData.data as any)?.request?.tests ?? '') : ''),
       assertions: request.assertions ?? [],
       documentation: request.documentation ?? '',
       timeoutMs: request.timeoutMs ?? 30_000,
@@ -432,6 +435,7 @@
       formFields: [],
       preRequestScript: '',
       postResponseScript: '',
+      testScript: '',
       assertions: [],
       documentation: '',
       timeoutMs: 30_000,
@@ -1019,122 +1023,12 @@
   }
 
   function exportPostman() {
-    type PostmanItem = { name: string; item?: PostmanItem[]; request?: Record<string, unknown>; event?: unknown[]; [key: string]: unknown };
-    const requestItem = (request: ApiClientRequest): PostmanItem => {
-      const original = request.sourceData?.kind === 'postman'
-        ? structuredClone(request.sourceData.data) as Record<string, any>
-        : {};
-      const generatedAuth = request.auth.type === 'bearer'
-        ? { type: 'bearer', bearer: [{ key: 'token', value: request.auth.token, type: 'string' }] }
-        : request.auth.type === 'basic'
-          ? { type: 'basic', basic: [{ key: 'username', value: request.auth.username, type: 'string' }, { key: 'password', value: request.auth.password, type: 'string' }] }
-          : request.auth.type === 'apiKey'
-            ? { type: 'apikey', apikey: [{ key: 'key', value: request.auth.key ?? '', type: 'string' }, { key: 'value', value: request.auth.value ?? '', type: 'string' }, { key: 'in', value: request.auth.placement === 'query' ? 'query' : 'header', type: 'string' }] }
-            : request.auth.type === 'oauth2'
-              ? { type: 'oauth2', oauth2: Object.entries(request.auth.oauth2 ?? {}).map(([key, value]) => ({ key, value, type: typeof value })) }
-            : { type: 'noauth' };
-      const originalAuth = original.request?.auth;
-      const auth = request.auth.type === 'none' && originalAuth?.type && !['noauth', 'basic', 'bearer', 'apikey'].includes(originalAuth.type)
-        ? originalAuth
-        : generatedAuth;
-      const originalBody = original.request?.body;
-      const originalFormData = Array.isArray(originalBody?.formdata) ? originalBody.formdata : [];
-      const generatedBody = request.protocol === 'graphql'
-        ? { mode: 'graphql', graphql: { query: request.graphql?.query ?? '', variables: request.graphql?.variables ?? '{}' } }
-        : request.bodyMode === 'form'
-        ? { mode: 'urlencoded', urlencoded: (request.formFields ?? []).map((field) => ({ key: field.name, value: field.value, disabled: !field.enabled, type: 'text' })) }
-        : request.bodyMode === 'multipart'
-          ? { mode: 'formdata', formdata: (request.formFields ?? []).map((field) => {
-              const previous = originalFormData.find((entry: any) => entry?.key === field.name);
-              return previous?.type === 'file'
-                ? { ...previous, key: field.name, disabled: !field.enabled, type: 'file' }
-                : { ...previous, key: field.name, value: field.value, disabled: !field.enabled, type: 'text' };
-            }) }
-          : request.bodyMode === 'none'
-            ? undefined
-            : { ...originalBody, mode: 'raw', raw: request.body, options: { ...(originalBody?.options ?? {}), raw: { ...(originalBody?.options?.raw ?? {}), language: request.bodyMode === 'json' ? 'json' : request.bodyMode === 'xml' ? 'xml' : 'text' } } };
-      const body = request.bodyMode === 'none' && originalBody?.mode && !['raw', 'urlencoded', 'formdata'].includes(originalBody.mode)
-        ? originalBody
-        : generatedBody;
-      const event = [
-        ...(Array.isArray(original.event) ? original.event.filter((entry: any) => !['prerequest', 'test'].includes(entry?.listen)) : []),
-        request.preRequestScript?.trim() ? { listen: 'prerequest', script: { type: 'text/javascript', exec: request.preRequestScript.split('\n') } } : null,
-        request.postResponseScript?.trim() ? { listen: 'test', script: { type: 'text/javascript', exec: request.postResponseScript.split('\n') } } : null,
-      ].filter(Boolean);
-      return {
-        ...original,
-        name: request.name,
-        request: {
-          ...(original.request ?? {}),
-          method: request.method,
-          header: request.headers.map((header) => ({ key: header.name, value: header.value, disabled: !header.enabled, type: 'text' })),
-          auth,
-          url: {
-            ...(typeof original.request?.url === 'object' ? original.request.url : {}),
-            raw: request.url,
-            query: (request.params ?? []).map((param) => ({ key: param.name, value: param.value, disabled: !param.enabled })),
-          },
-          body,
-          description: request.documentation ?? '',
-        },
-        event,
-      };
-    };
-    const folderLineage = (folderId: string | null | undefined): ApiClientFolder[] => {
-      const lineage: ApiClientFolder[] = [];
-      const visited = new Set<string>();
-      let folder = folders.find((candidate) => candidate.id === folderId);
-      while (folder && !visited.has(folder.id)) {
-        visited.add(folder.id);
-        lineage.unshift(folder);
-        folder = folders.find((candidate) => candidate.id === folder?.parentId);
-      }
-      return lineage;
-    };
-    const items: PostmanItem[] = [];
-    for (const request of orderedRequests) {
-      let level = items;
-      const persistedLineage = folderLineage(request.folderId);
-      const lineage = persistedLineage.length
-        ? persistedLineage
-        : (request.folder || '').split('/').map((part, sequence) => ({ id: `legacy-${sequence}-${part}`, name: part.trim(), parentId: null, sequence } as ApiClientFolder)).filter((folder) => folder.name);
-      for (const folder of lineage) {
-        const folderName = folder.name;
-        let entry = level.find((item) => item.name === folderName && item.item);
-        if (!entry) {
-          const original = folder.sourceData?.kind === 'postman'
-            ? structuredClone(folder.sourceData.data) as PostmanItem
-            : {} as PostmanItem;
-          entry = { ...original, name: folderName, item: [] };
-          level.push(entry);
-        }
-        level = entry.item!;
-      }
-      level.push(requestItem(request));
-    }
-    const originalCollection = data.payload.sourceKind === 'postman' && data.payload.sourceCollection
-      ? structuredClone(data.payload.sourceCollection)
-      : {};
-    const collection = {
-      ...originalCollection,
-      info: { ...((originalCollection as any).info ?? {}), name: data.title, schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' },
-      variable: Object.entries(variables).map(([key, value]) => {
-        const original = Array.isArray((originalCollection as any).variable)
-          ? (originalCollection as any).variable.find((entry: any) => entry?.key === key)
-          : null;
-        return { ...(original ?? {}), key, value, disabled: false };
-      }),
-      item: items,
-      event: [
-        ...(Array.isArray((originalCollection as any).event) ? (originalCollection as any).event.filter((entry: any) => !['prerequest', 'test'].includes(entry?.listen)) : []),
-        collectionPreRequestScript.trim() ? { listen: 'prerequest', script: { type: 'text/javascript', exec: collectionPreRequestScript.split('\n') } } : null,
-        collectionPostResponseScript.trim() ? { listen: 'test', script: { type: 'text/javascript', exec: collectionPostResponseScript.split('\n') } } : null,
-      ].filter(Boolean),
-    };
+    const payload = portablePayload();
+    const collection = serializePostmanCollection(data.title, payload);
     const url = URL.createObjectURL(new Blob([JSON.stringify(collection, null, 2)], { type: 'application/json' }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${data.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'collection'}.postman_collection.json`;
+    anchor.download = postmanCollectionFilename(data.title);
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -1262,6 +1156,7 @@
           },
         }, formFields: request.formFields ?? [],
         preRequestScript: request.preRequestScript ?? '', postResponseScript: request.postResponseScript ?? '',
+        testScript: request.testScript ?? (request.sourceData?.kind === 'bruno' ? String((request.sourceData.data as any)?.request?.tests ?? '') : ''),
         assertions: request.assertions ?? [], documentation: request.documentation ?? '', timeoutMs: request.timeoutMs ?? 30_000,
         followRedirects: request.followRedirects ?? true,
         graphql: { query: '', variables: '{}', operationName: '', ...(request.graphql ?? {}) },
@@ -1871,33 +1766,44 @@
               <button aria-pressed={scriptScope === 'collection'} class={`rounded border px-2 py-1 text-[10px] transition-colors ${scriptScope === 'collection' ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (scriptScope = 'collection')}>{m['api_client.collection_scripts']()}</button>
               <label class="ml-auto flex items-center gap-2 text-[10px] text-[var(--app-text-muted)]"><span>{m['api_client.script_runtime']()}</span><NativeSelect.Root class="w-32" size="sm" value={scriptDialect} onchange={(event: Event) => { scriptDialect = inputValue(event) as typeof scriptDialect; persist(); }}><NativeSelect.Option value="orkestrai">Orkestrai</NativeSelect.Option><NativeSelect.Option value="postman">Postman</NativeSelect.Option><NativeSelect.Option value="bruno">Bruno</NativeSelect.Option></NativeSelect.Root></label>
             </div>
-            <div class="grid min-h-full grid-cols-2 gap-2 max-[720px]:grid-cols-1">
+            <div class="grid h-full min-h-[260px] grid-cols-2 auto-rows-fr gap-2 max-[720px]:grid-cols-1">
               {#if scriptScope === 'request'}
-                <ApiCodeEditor value={selectedRequest.preRequestScript ?? ''} language="javascript" label={m['api_client.pre_request_script']()} minHeight={220} onchange={(value) => updateRequest({ preRequestScript: value })} onblur={() => persist()} />
-                <ApiCodeEditor value={selectedRequest.postResponseScript ?? ''} language="javascript" label={m['api_client.post_response_script']()} minHeight={220} onchange={(value) => updateRequest({ postResponseScript: value })} onblur={() => persist()} />
+                <ApiCodeEditor value={selectedRequest.preRequestScript ?? ''} language="javascript" completionProfile={scriptDialect} label={m['api_client.pre_request_script']()} minHeight={220} onchange={(value) => updateRequest({ preRequestScript: value })} onblur={() => persist()} />
+                <ApiCodeEditor value={selectedRequest.postResponseScript ?? ''} language="javascript" completionProfile={scriptDialect} label={m['api_client.post_response_script']()} minHeight={220} onchange={(value) => updateRequest({ postResponseScript: value })} onblur={() => persist()} />
               {:else}
-                <ApiCodeEditor value={collectionPreRequestScript} language="javascript" label={m['api_client.collection_pre_request_script']()} minHeight={220} onchange={(value) => (collectionPreRequestScript = value)} onblur={() => persist()} />
-                <ApiCodeEditor value={collectionPostResponseScript} language="javascript" label={m['api_client.collection_post_response_script']()} minHeight={220} onchange={(value) => (collectionPostResponseScript = value)} onblur={() => persist()} />
+                <ApiCodeEditor value={collectionPreRequestScript} language="javascript" completionProfile={scriptDialect} label={m['api_client.collection_pre_request_script']()} minHeight={220} onchange={(value) => (collectionPreRequestScript = value)} onblur={() => persist()} />
+                <ApiCodeEditor value={collectionPostResponseScript} language="javascript" completionProfile={scriptDialect} label={m['api_client.collection_post_response_script']()} minHeight={220} onchange={(value) => (collectionPostResponseScript = value)} onblur={() => persist()} />
               {/if}
             </div>
             <p class="mt-2 text-[10px] leading-4 text-[var(--app-text-muted)]">{scriptRuntimeHint()}</p>
           </Tabs.Content>
           <Tabs.Content value="tests" class="m-0 min-h-0 flex-1 overflow-auto p-2">
-            {#each selectedRequest.assertions ?? [] as assertion (assertion.id)}
-              <div class="mb-1 grid grid-cols-[24px_105px_minmax(90px,1fr)_110px_minmax(90px,1fr)_28px] gap-1">
-                <button class="grid size-7 place-items-center rounded border border-[var(--app-border)] text-[var(--app-text-muted)]" aria-label={assertion.enabled ? m['api_client.disable_test']() : m['api_client.enable_test']()} onclick={() => updateAssertion(assertion.id, { enabled: !assertion.enabled }, true)}>{#if assertion.enabled}<Check size={12} />{/if}</button>
-                <NativeSelect.Root size="sm" aria-label={m['api_client.test_source']()} value={assertion.source} onchange={(event: Event) => updateAssertion(assertion.id, { source: inputValue(event) as ApiClientAssertion['source'] }, true)}>
-                  {#each ['status', 'body', 'header', 'responseTime'] as source}<NativeSelect.Option value={source}>{testSourceLabel(source)}</NativeSelect.Option>{/each}
-                </NativeSelect.Root>
-                <Input value={assertion.property} name="assertion-property" aria-label={m['api_client.test_property']()} placeholder={m['api_client.test_property']()} class="h-7 font-mono text-[10px]" oninput={(event: Event) => updateAssertion(assertion.id, { property: inputValue(event) })} onblur={() => persist()} />
-                <NativeSelect.Root size="sm" aria-label={m['api_client.test_operator']()} value={assertion.operator} onchange={(event: Event) => updateAssertion(assertion.id, { operator: inputValue(event) as ApiClientAssertion['operator'] }, true)}>
-                  {#each ['equals', 'notEquals', 'contains', 'exists', 'matches', 'lt', 'lte', 'gt', 'gte'] as operator}<NativeSelect.Option value={operator}>{testOperatorLabel(operator)}</NativeSelect.Option>{/each}
-                </NativeSelect.Root>
-                <Input value={assertion.expected} name="assertion-expected" aria-label={m['api_client.test_expected']()} placeholder={m['api_client.test_expected']()} class="h-7 font-mono text-[10px]" disabled={assertion.operator === 'exists'} oninput={(event: Event) => updateAssertion(assertion.id, { expected: inputValue(event) })} onblur={() => persist()} />
-                <button class="grid size-7 place-items-center rounded text-[var(--app-text-muted)] hover:text-[var(--app-danger)]" aria-label={m['api_client.remove_test']()} onclick={() => removeAssertion(assertion.id)}><Trash2 size={12} /></button>
+            <div class="mb-2 flex items-center gap-1 border-b border-[var(--app-border)] pb-2">
+              <button aria-pressed={testEditorMode === 'assertions'} class={`rounded border px-2 py-1 text-[10px] transition-colors ${testEditorMode === 'assertions' ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (testEditorMode = 'assertions')}>{m['api_client.assertions']()}</button>
+              <button aria-pressed={testEditorMode === 'javascript'} class={`rounded border px-2 py-1 text-[10px] transition-colors ${testEditorMode === 'javascript' ? 'border-[var(--app-accent)]/35 bg-[var(--app-accent-soft)] font-medium text-[var(--app-accent)]' : 'border-transparent text-[var(--app-text-muted)] hover:bg-[var(--app-surface-raised)] hover:text-[var(--app-text)]'}`} onclick={() => (testEditorMode = 'javascript')}>{m['api_client.javascript_tests']()}</button>
+              <span class="ml-auto rounded bg-[var(--app-surface-raised)] px-2 py-1 font-mono text-[9px] uppercase text-[var(--app-text-muted)]">{scriptDialect}</span>
+            </div>
+            {#if testEditorMode === 'assertions'}
+              {#each selectedRequest.assertions ?? [] as assertion (assertion.id)}
+                <div class="mb-1 grid grid-cols-[24px_105px_minmax(90px,1fr)_110px_minmax(90px,1fr)_28px] gap-1">
+                  <button class="grid size-7 place-items-center rounded border border-[var(--app-border)] text-[var(--app-text-muted)]" aria-label={assertion.enabled ? m['api_client.disable_test']() : m['api_client.enable_test']()} onclick={() => updateAssertion(assertion.id, { enabled: !assertion.enabled }, true)}>{#if assertion.enabled}<Check size={12} />{/if}</button>
+                  <NativeSelect.Root size="sm" aria-label={m['api_client.test_source']()} value={assertion.source} onchange={(event: Event) => updateAssertion(assertion.id, { source: inputValue(event) as ApiClientAssertion['source'] }, true)}>
+                    {#each ['status', 'body', 'header', 'responseTime'] as source}<NativeSelect.Option value={source}>{testSourceLabel(source)}</NativeSelect.Option>{/each}
+                  </NativeSelect.Root>
+                  <Input value={assertion.property} name="assertion-property" aria-label={m['api_client.test_property']()} placeholder={m['api_client.test_property']()} class="h-7 font-mono text-[10px]" oninput={(event: Event) => updateAssertion(assertion.id, { property: inputValue(event) })} onblur={() => persist()} />
+                  <NativeSelect.Root size="sm" aria-label={m['api_client.test_operator']()} value={assertion.operator} onchange={(event: Event) => updateAssertion(assertion.id, { operator: inputValue(event) as ApiClientAssertion['operator'] }, true)}>
+                    {#each ['equals', 'notEquals', 'contains', 'exists', 'matches', 'lt', 'lte', 'gt', 'gte'] as operator}<NativeSelect.Option value={operator}>{testOperatorLabel(operator)}</NativeSelect.Option>{/each}
+                  </NativeSelect.Root>
+                  <Input value={assertion.expected} name="assertion-expected" aria-label={m['api_client.test_expected']()} placeholder={m['api_client.test_expected']()} class="h-7 font-mono text-[10px]" disabled={assertion.operator === 'exists'} oninput={(event: Event) => updateAssertion(assertion.id, { expected: inputValue(event) })} onblur={() => persist()} />
+                  <button class="grid size-7 place-items-center rounded text-[var(--app-text-muted)] hover:text-[var(--app-danger)]" aria-label={m['api_client.remove_test']()} onclick={() => removeAssertion(assertion.id)}><Trash2 size={12} /></button>
+                </div>
+              {/each}
+              <Button size="sm" variant="outline" class="mt-1 h-7 text-[10px]" onclick={addAssertion}><Plus size={12} />{m['api_client.add_test']()}</Button>
+            {:else}
+              <div class="h-[calc(100%_-_38px)] min-h-[280px]">
+                <ApiCodeEditor value={selectedRequest.testScript ?? ''} language="javascript" completionProfile={scriptDialect} label={m['api_client.test_script']()} minHeight={280} onchange={(value) => updateRequest({ testScript: value })} onblur={() => persist()} />
               </div>
-            {/each}
-            <Button size="sm" variant="outline" class="mt-1 h-7 text-[10px]" onclick={addAssertion}><Plus size={12} />{m['api_client.add_test']()}</Button>
+            {/if}
           </Tabs.Content>
           <Tabs.Content value="network" class="m-0 min-h-0 flex-1 overflow-auto p-3">
             <div class="grid gap-3">

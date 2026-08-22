@@ -435,6 +435,7 @@ export type ApiClientRequest = {
   formFields?: ApiClientKeyValue[];
   preRequestScript?: string;
   postResponseScript?: string;
+  testScript?: string;
   assertions?: ApiClientAssertion[];
   documentation?: string;
   timeoutMs?: number;

@@ -61,8 +61,12 @@ Download the latest installers from
   A versioned `.orkestrai-api.json` format backs up the complete
   native collection, including folders, runners, environments, scripts, and
   history. The same node persists in Canvas and Workbench, and
-  connected agents use typed MCP tools without receiving stored secrets in the
-  inventory. Bruno/OpenCollection GraphQL, WebSocket, and gRPC requests
+  connected agents use typed MCP/CLI tools to create, fingerprint-read/replace,
+  execute, and export complete collections without receiving stored secrets in
+  plaintext. The JavaScript editor provides runtime-aware completion for
+  `bru`, `req`/`res`, `test`/`expect`, and `pm`; scripted tests live beside
+  structured assertions and round-trip through Bruno and Postman.
+  Bruno/OpenCollection GraphQL, WebSocket, and gRPC requests
   round-trip. Both source runtimes expose their bundled script libraries;
   Postman team Package Library, hosted datasets, mocks, and other
   cloud-owned state still require Postman's backend because they are not stored

@@ -97,6 +97,7 @@ export const apiClientRequestSchema = z.object({
   formFields: z.array(apiClientKeyValueSchema).max(300).default([]),
   preRequestScript: z.string().max(100_000).default(''),
   postResponseScript: z.string().max(100_000).default(''),
+  testScript: z.string().max(100_000).default(''),
   assertions: z.array(apiClientAssertionSchema).max(300).default([]),
   documentation: z.string().max(200_000).default(''),
   timeoutMs: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
@@ -257,6 +258,54 @@ export const executeSavedApiClientRequestSchema = z.object({
   from: z.string().trim().min(1).max(200).nullish(),
 });
 
+export const agentApiClientRequestSchema = persistedApiClientRequestSchema.omit({
+  sourcePath: true,
+  sourceData: true,
+});
+
+export const agentApiClientFolderSchema = apiClientFolderSchema.omit({ sourceData: true });
+
+export const agentApiClientCollectionSchema = z.object({
+  requests: z.array(agentApiClientRequestSchema).max(500).default([]),
+  folders: z.array(agentApiClientFolderSchema).max(500).default([]),
+  runners: z.array(apiClientRunnerSchema).max(100).default([]),
+  selectedRunnerId: z.string().max(200).nullable().default(null),
+  selectedRequestId: z.string().max(200).nullable().default(null),
+  variables: z.record(z.string(), z.string().max(100_000)).default({}),
+  environments: z.record(z.string(), z.record(z.string(), z.string().max(100_000))).default({}),
+  globalVariables: z.record(z.string(), z.string().max(100_000)).default({}),
+  runtimeVariables: z.record(z.string(), z.string().max(100_000)).default({}),
+  scriptDialect: apiClientScriptDialectSchema.default('orkestrai'),
+  activeEnvironment: z.string().max(500).nullable().default(null),
+  collectionPreRequestScript: z.string().max(100_000).default(''),
+  collectionPostResponseScript: z.string().max(100_000).default(''),
+}).strict();
+
+export const createAgentApiClientSchema = z.object({
+  title: z.string().trim().min(1).max(500),
+  collection: agentApiClientCollectionSchema,
+  from: z.string().trim().min(1).max(200),
+}).strict();
+
+export const replaceAgentApiClientSchema = z.object({
+  title: z.string().trim().min(1).max(500).optional(),
+  baseFingerprint: z.string().trim().length(64),
+  collection: agentApiClientCollectionSchema,
+  from: z.string().trim().min(1).max(200),
+}).strict();
+
+export const exportAgentApiClientSchema = z.object({
+  kind: z.enum(['bruno', 'postman']),
+  path: z.string().trim().min(1).max(4_000).default('.orkestrai/exports'),
+  from: z.string().trim().min(1).max(200),
+}).strict();
+
+export const executeAgentApiClientRunnerSchema = z.object({
+  variables: z.record(z.string(), z.string().max(100_000)).default({}),
+  maxExecutions: z.coerce.number().int().min(1).max(500).default(100),
+  from: z.string().trim().min(1).max(200),
+}).strict();
+
 export const apiClientOAuthSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('authorize'),
@@ -283,5 +332,10 @@ export type ExecuteApiClientRequestInput = z.infer<typeof executeApiClientReques
 export type ImportApiClientCollectionInput = z.infer<typeof importApiClientCollectionSchema>;
 export type ExportApiClientCollectionInput = z.infer<typeof exportApiClientCollectionSchema>;
 export type ExecuteSavedApiClientRequestInput = z.infer<typeof executeSavedApiClientRequestSchema>;
+export type AgentApiClientCollectionInput = z.infer<typeof agentApiClientCollectionSchema>;
+export type CreateAgentApiClientInput = z.infer<typeof createAgentApiClientSchema>;
+export type ReplaceAgentApiClientInput = z.infer<typeof replaceAgentApiClientSchema>;
+export type ExportAgentApiClientInput = z.infer<typeof exportAgentApiClientSchema>;
+export type ExecuteAgentApiClientRunnerInput = z.infer<typeof executeAgentApiClientRunnerSchema>;
 export type ApiClientOAuthInput = z.infer<typeof apiClientOAuthSchema>;
 export type ApiClientSyncRequestInput = z.infer<typeof apiClientSyncRequestSchema>;

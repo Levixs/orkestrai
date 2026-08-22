@@ -5,6 +5,28 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Added
+
+- Added a dedicated JavaScript test editor alongside structured assertions in
+  the API Client. Bruno `test` blocks, Postman `pm.test` scripts, and native
+  `test`/`expect` aliases persist independently from post-response automation,
+  execute in the selected runtime, and round-trip through Bruno and Postman.
+- Added context-aware CodeMirror completion for the supported `bru`, `req`,
+  `res`, `test`, `expect`, and `pm` APIs. Script editors now fill the available
+  panel instead of leaving unused space below a fixed-height editor.
+- Added typed `api_client_reference`, create, read, replace, export, and execute
+  MCP/CLI workflows. Connected agents can author complete folders, requests,
+  environments, runners, scripts, and tests; fingerprint conflicts protect
+  concurrent human edits, redacted values preserve local secrets, and exports
+  are confined to the workspace.
+
+### Fixed
+
+- Centralized Postman serialization so UI, bridge, CLI, and MCP exports use the
+  same collection v2.1 representation and preserve test events consistently.
+
 ## 0.16.0 - 2026-08-22
 
 ### Added

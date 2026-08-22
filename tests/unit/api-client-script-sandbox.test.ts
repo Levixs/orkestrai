@@ -62,6 +62,27 @@ describe('ApiClientScriptSandbox', () => {
     ]);
   });
 
+  it('supports the official Bruno global test and expect syntax in native test scripts', async () => {
+    const result = await runApiClientScript({
+      script: `test('native Bruno alias works', () => expect(res.getStatus()).to.equal(200));`,
+      request: request(),
+      variables: {},
+      response: {
+        status: 200,
+        statusText: 'OK',
+        ok: true,
+        durationMs: 3,
+        size: 2,
+        contentType: 'application/json',
+        headers: {},
+        body: '{}',
+        binary: false,
+      },
+    });
+
+    expect(result.tests).toEqual([expect.objectContaining({ label: 'native Bruno alias works', passed: true })]);
+  });
+
   it('interrupts scripts that exceed the execution deadline', async () => {
     await expect(runApiClientScript({
       script: 'while (true) {}',

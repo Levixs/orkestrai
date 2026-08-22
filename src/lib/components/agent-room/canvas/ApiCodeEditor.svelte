@@ -11,6 +11,7 @@
   import { tags } from '@lezer/highlight';
   import { AlertCircle, Braces, Check, WandSparkles, WrapText } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
+  import { apiClientCompletionExtension, type ApiCodeCompletionProfile } from './api-code-completions.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type Language = 'json' | 'javascript' | 'graphql' | 'xml' | 'text';
@@ -19,6 +20,7 @@
     language = 'text',
     label,
     minHeight = 180,
+    completionProfile = 'none',
     onchange,
     onblur,
   }: {
@@ -26,6 +28,7 @@
     language?: Language;
     label: string;
     minHeight?: number;
+    completionProfile?: ApiCodeCompletionProfile;
     onchange?: (value: string) => void;
     onblur?: () => void;
   } = $props();
@@ -40,9 +43,9 @@
   const themeCompartment = new Compartment();
   const wrapCompartment = new Compartment();
 
-  function languageExtension(kind: Language) {
+  function languageExtension(kind: Language, profile: ApiCodeCompletionProfile) {
     if (kind === 'json') return json();
-    if (kind === 'javascript') return javascript();
+    if (kind === 'javascript') return [javascript(), apiClientCompletionExtension(profile)];
     if (kind === 'graphql') return graphql();
     if (kind === 'xml') return xml();
     return [];
@@ -73,6 +76,11 @@
         '.cm-panels.cm-panels-top': { borderBottom: '1px solid var(--app-border)' },
         '.cm-searchMatch': { backgroundColor: 'color-mix(in srgb, var(--app-warning) 28%, transparent)' },
         '.cm-searchMatch.cm-searchMatch-selected': { backgroundColor: 'color-mix(in srgb, var(--app-accent) 38%, transparent)' },
+        '.cm-tooltip-autocomplete': { border: '1px solid var(--app-border)', backgroundColor: 'var(--app-surface)', boxShadow: '0 10px 30px color-mix(in srgb, black 25%, transparent)' },
+        '.cm-tooltip-autocomplete > ul': { fontFamily: 'JetBrains Mono Variable, ui-monospace, monospace', fontSize: '11px', maxHeight: 'min(320px, 45vh)' },
+        '.cm-tooltip-autocomplete > ul > li': { padding: '4px 8px', color: 'var(--app-text)' },
+        '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--app-accent-soft)', color: 'var(--app-text)' },
+        '.cm-completionDetail': { color: 'var(--app-text-muted)', fontStyle: 'normal', marginLeft: '12px' },
       }, { dark }),
       syntaxHighlighting(highlight),
     ];
@@ -129,7 +137,8 @@
 
   $effect(() => {
     const next = language;
-    view?.dispatch({ effects: languageCompartment.reconfigure(languageExtension(next)) });
+    const profile = completionProfile;
+    view?.dispatch({ effects: languageCompartment.reconfigure(languageExtension(next, profile)) });
   });
 
   onMount(() => {
@@ -140,7 +149,7 @@
         doc: value,
         extensions: [
           basicSetup,
-          languageCompartment.of(languageExtension(language)),
+          languageCompartment.of(languageExtension(language, completionProfile)),
           themeCompartment.of(editorTheme()),
           wrapCompartment.of(EditorView.lineWrapping),
           EditorView.updateListener.of((update) => {
@@ -162,7 +171,7 @@
   });
 </script>
 
-<div class="overflow-hidden rounded border border-[var(--app-border)] bg-[var(--app-canvas)] shadow-sm transition-colors focus-within:border-[var(--app-accent)] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/20">
+<div class="flex h-full min-h-0 flex-col overflow-hidden rounded border border-[var(--app-border)] bg-[var(--app-canvas)] shadow-sm transition-colors focus-within:border-[var(--app-accent)] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/20">
   <div class="flex h-8 items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface-subtle)] px-2">
     <span class="flex min-w-0 items-center gap-1.5 text-[9px] font-semibold uppercase text-[var(--app-text-muted)]"><Braces size={11} /><span class="truncate">{label}</span><span class="rounded bg-[var(--app-surface-raised)] px-1.5 py-0.5 font-mono text-[8px]">{language}</span></span>
     <div class="flex items-center gap-1">
@@ -171,5 +180,5 @@
       {#if language !== 'text'}<Button size="icon-sm" variant="ghost" class="size-6" disabled={formatting} title={m['api_client.format_code']()} aria-label={m['api_client.format_code']()} onclick={() => void formatCode()}>{#if formatted}<Check size={12} />{:else}<WandSparkles size={12} />{/if}</Button>{/if}
     </div>
   </div>
-  <div class="nodrag nowheel" bind:this={host} style={`height:${minHeight}px`} aria-label={label}></div>
+  <div class="nodrag nowheel min-h-0 flex-1" bind:this={host} style={`min-height:${minHeight}px`} aria-label={label}></div>
 </div>

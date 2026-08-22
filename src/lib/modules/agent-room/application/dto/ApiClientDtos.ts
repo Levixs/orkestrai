@@ -5,6 +5,10 @@ import type {
   ApiClientSyncRequestInput,
   ExportApiClientCollectionInput,
   ImportApiClientCollectionInput,
+  CreateAgentApiClientInput,
+  ReplaceAgentApiClientInput,
+  ExportAgentApiClientInput,
+  ExecuteAgentApiClientRunnerInput,
 } from '../../contracts/schemas/apiClient.schema.js';
 
 export class ExecuteApiClientRequestDto {
@@ -35,4 +39,24 @@ export class ApiClientOAuthDto {
 export class ApiClientSyncDto {
   constructor(public readonly input: ApiClientSyncRequestInput) {}
   static from(input: ApiClientSyncRequestInput) { return new ApiClientSyncDto(input); }
+}
+
+export class CreateAgentApiClientDto {
+  constructor(public readonly input: CreateAgentApiClientInput) {}
+  static from(input: CreateAgentApiClientInput) { return new CreateAgentApiClientDto(input); }
+}
+
+export class ReplaceAgentApiClientDto {
+  constructor(public readonly input: ReplaceAgentApiClientInput) {}
+  static from(input: ReplaceAgentApiClientInput) { return new ReplaceAgentApiClientDto(input); }
+}
+
+export class ExportAgentApiClientDto {
+  constructor(public readonly input: ExportAgentApiClientInput) {}
+  static from(input: ExportAgentApiClientInput) { return new ExportAgentApiClientDto(input); }
+}
+
+export class ExecuteAgentApiClientRunnerDto {
+  constructor(public readonly input: ExecuteAgentApiClientRunnerInput) {}
+  static from(input: ExecuteAgentApiClientRunnerInput) { return new ExecuteAgentApiClientRunnerDto(input); }
 }

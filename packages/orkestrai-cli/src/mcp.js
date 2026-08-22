@@ -14,6 +14,7 @@
  */
 
 import { DESIGN_REFERENCE_TOPICS, designReference } from './design-reference.js';
+import { apiClientReference } from './api-client-reference.js';
 
 const PROTOCOL_VERSION = '2024-11-05';
 
@@ -50,6 +51,12 @@ const TOOLS = [
   { name: 'note_edit', description: 'Edicao pontual: troca um trecho da nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, oldText: { type: 'string' }, newText: { type: 'string' } }, required: ['nodeId', 'oldText', 'newText'] } },
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
   { name: 'api_client_list', description: 'Lista os requests salvos em nodes Cliente de API conectados a este agente, sem expor tokens ou senhas.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'api_client_reference', description: 'Retorna o contrato, fluxo seguro e exemplos oficiais de scripts Bruno, Postman e Orkestrai para criar colecoes completas sem tentativa e erro.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'api_client_read', description: 'Le uma colecao completa conectada, incluindo requests, pastas, runners e scripts. Segredos vem marcados; use o fingerprint ao substituir.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'api_client_create', description: 'Cria no canvas uma colecao completa conectada ao agente. Consulte api_client_reference para o contrato.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, collection: { type: 'object', description: 'Colecao nativa completa conforme api_client_reference.' } }, required: ['title', 'collection'] } },
+  { name: 'api_client_replace', description: 'Substitui atomicamente uma colecao completa. Requer o fingerprint retornado por api_client_read e preserva segredos marcados e metadados de importacao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseFingerprint: { type: 'string' }, title: { type: 'string' }, collection: { type: 'object', description: 'Colecao nativa completa conforme api_client_reference.' } }, required: ['nodeId', 'baseFingerprint', 'collection'] } },
+  { name: 'api_client_export', description: 'Exporta a colecao conectada para Bruno ou Postman dentro do workspace, preservando estrutura, scripts e testes do runtime escolhido.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, kind: { type: 'string', enum: ['bruno', 'postman'] }, path: { type: 'string', default: '.orkestrai/exports' } }, required: ['nodeId', 'kind'] } },
+  { name: 'api_client_run_runner', description: 'Executa um runner salvo com ordem, ambiente, iteracoes, dados por linha, variaveis encadeadas, testes e politica de parada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, runnerId: { type: 'string' }, variables: { type: 'object', additionalProperties: { type: 'string' } }, maxExecutions: { type: 'integer', minimum: 1, maximum: 500, default: 100 } }, required: ['nodeId', 'runnerId'] } },
   { name: 'api_client_execute', description: 'Executa um request salvo em um Cliente de API conectado, aplicando variaveis e autenticacao localmente.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, requestId: { type: 'string' }, variables: { type: 'object', additionalProperties: { type: 'string' } } }, required: ['nodeId', 'requestId'] } },
   { name: 'design_list', description: 'Lista Designs, revisoes, progresso, estagnacao e gate visual. stalled = 5 min sem nova revisao; reviewStatus approved vale somente para a revisao atual.', inputSchema: { type: 'object', properties: {} } },
   { name: 'design_read', description: 'Le o scene graph completo de um Design node. Leia antes de alterar e use a revisao retornada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
@@ -155,6 +162,23 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
       return bridge('GET', `/api/agent-room/bridge/api-clients${query}`);
     }
+    case 'api_client_reference':
+      return apiClientReference();
+    case 'api_client_read':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('GET', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}?agentNodeId=${encodeURIComponent(selfAgent ?? '')}`);
+    case 'api_client_create':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('POST', '/api/agent-room/bridge/api-clients', { title: args.title, collection: args.collection, from: selfAgent });
+    case 'api_client_replace':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('PUT', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}`, { title: args.title, baseFingerprint: args.baseFingerprint, collection: args.collection, from: selfAgent });
+    case 'api_client_export':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/export`, { kind: args.kind, path: args.path ?? '.orkestrai/exports', from: selfAgent });
+    case 'api_client_run_runner':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/runners/${encodeURIComponent(args.runnerId)}/execute`, { variables: args.variables ?? {}, maxExecutions: args.maxExecutions ?? 100, from: selfAgent });
     case 'api_client_execute':
       return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/execute`, { requestId: args.requestId, variables: args.variables ?? {}, from: selfAgent });
     case 'design_list':

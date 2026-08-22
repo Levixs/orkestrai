@@ -38,9 +38,9 @@ import { auditDesignDocument } from '$lib/modules/agent-room/domain/design-quali
 import { createDesignTemplate, designTemplateIds } from '$lib/modules/agent-room/domain/design-templates.js';
 import { uuidv7 } from '@beeblock/svelar/support';
 import { isDesignExplorationPayload } from '$lib/modules/agent-room/domain/design-exploration.js';
-import { apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
-import { ExecuteSavedApiClientRequest } from '$lib/modules/agent-room/interface/http/requests/ApiClientRequests.js';
-import { ExecuteSavedApiClientRequestDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
+import { ApiClientFingerprintConflictError, apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
+import { CreateAgentApiClientRequest, ExecuteAgentApiClientRunnerRequest, ExecuteSavedApiClientRequest, ExportAgentApiClientRequest, ReplaceAgentApiClientRequest } from '$lib/modules/agent-room/interface/http/requests/ApiClientRequests.js';
+import { CreateAgentApiClientDto, ExecuteAgentApiClientRunnerDto, ExecuteSavedApiClientRequestDto, ExportAgentApiClientDto, ReplaceAgentApiClientDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
 import { ExecuteSavedApiClientRequestAction } from '$lib/modules/agent-room/application/actions/ExecuteSavedApiClientRequestAction.js';
 
 /**
@@ -109,6 +109,69 @@ export class BridgeController extends Controller {
       }) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao executar request salvo.');
+    }
+  }
+
+  async createApiClient(event: any) {
+    try {
+      const input = await CreateAgentApiClientRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const data = await apiClientService.createForAgent(workspace.id, CreateAgentApiClientDto.from(input));
+      bridgeService.notifyWorkspaceChanged(workspace.id);
+      return this.json({ data }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao criar cliente de API.');
+    }
+  }
+
+  async readApiClient(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const from = String(event.url.searchParams.get('agentNodeId') ?? '').trim();
+      if (!from) throw new Error('agentNodeId is required.');
+      return this.json({ data: await apiClientService.readForAgent(workspace.id, event.params.nodeId, from) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao ler cliente de API.', 401);
+    }
+  }
+
+  async replaceApiClient(event: any) {
+    try {
+      const input = await ReplaceAgentApiClientRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const data = await apiClientService.replaceForAgent(workspace.id, event.params.nodeId, ReplaceAgentApiClientDto.from(input));
+      bridgeService.notifyWorkspaceChanged(workspace.id);
+      return this.json({ data });
+    } catch (error) {
+      if (error instanceof ApiClientFingerprintConflictError) {
+        return this.json({ error: error.message, currentFingerprint: error.currentFingerprint }, 409);
+      }
+      return this.errorResponse(error, 'Falha ao atualizar cliente de API.');
+    }
+  }
+
+  async exportApiClient(event: any) {
+    try {
+      const input = await ExportAgentApiClientRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await apiClientService.exportForAgent(workspace.id, event.params.nodeId, ExportAgentApiClientDto.from(input)) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao exportar cliente de API.');
+    }
+  }
+
+  async executeApiClientRunner(event: any) {
+    try {
+      const input = await ExecuteAgentApiClientRunnerRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await apiClientService.executeRunnerForAgent(
+        workspace.id,
+        event.params.nodeId,
+        event.params.runnerId,
+        ExecuteAgentApiClientRunnerDto.from(input),
+      ) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao executar runner do cliente de API.');
     }
   }
 

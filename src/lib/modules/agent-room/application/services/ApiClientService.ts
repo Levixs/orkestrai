@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { uuidv7 } from '@beeblock/svelar/support';
 import { bundle, validate } from '@readme/openapi-parser';
 import { parseCollection, parseEnvironment, parseFolder, parseRequest, stringifyCollection, stringifyEnvironment, stringifyFolder, stringifyRequest } from '@usebruno/filestore';
-import { apiClientAuthSchema, apiClientNativeCollectionSchema, apiClientNetworkSchema, apiClientRequestSchema, persistedApiClientRequestSchema, type ApiClientRequestInput } from '../../contracts/schemas/apiClient.schema.js';
-import { ExecuteApiClientRequestDto, type ExportApiClientCollectionDto, type ImportApiClientCollectionDto } from '../dto/ApiClientDtos.js';
+import { agentApiClientCollectionSchema, apiClientAuthSchema, apiClientNativeCollectionSchema, apiClientNativePayloadSchema, apiClientNetworkSchema, apiClientRequestSchema, persistedApiClientRequestSchema, type AgentApiClientCollectionInput, type ApiClientRequestInput } from '../../contracts/schemas/apiClient.schema.js';
+import { ExecuteApiClientRequestDto, ExportApiClientCollectionDto, type CreateAgentApiClientDto, type ExecuteAgentApiClientRunnerDto, type ExportAgentApiClientDto, type ImportApiClientCollectionDto, type ReplaceAgentApiClientDto } from '../dto/ApiClientDtos.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { runApiClientScript, type ApiClientScriptResponse, type ApiClientScriptStage } from '../../infrastructure/api-client/ApiClientScriptSandbox.js';
 import { executeHttpTransport } from '../../infrastructure/api-client/ApiClientHttpTransport.js';
@@ -18,9 +18,12 @@ import { mergeScriptScopes, type ApiClientScriptDialect, type ApiClientScriptFlo
 import { desktopSecretService } from '../../infrastructure/secrets/DesktopSecretService.js';
 import type { ApiClientFolder, ApiClientNodePayload } from '../../domain/types.js';
 import { importOpenApiDocument } from '../../domain/api-client-openapi.js';
+import { postmanCollectionFilename, serializePostmanCollection } from '../../domain/api-client-postman.js';
 
 const IMPORT_LIMIT = 500;
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
+const REDACTED_SECRET = '__ORKESTRAI_REDACTED__';
+const SECRET_NAME = /(?:authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|secret|token)/i;
 
 type ImportedCollection = {
   name: string;
@@ -44,6 +47,123 @@ type ApiClientTestResult = {
   actual: string;
   expected: string;
 };
+
+export class ApiClientFingerprintConflictError extends Error {
+  constructor(public readonly currentFingerprint: string) {
+    super('The API collection changed after it was read. Read it again before replacing it.');
+    this.name = 'ApiClientFingerprintConflictError';
+  }
+}
+
+function agentCollection(payload: ApiClientNodePayload): AgentApiClientCollectionInput {
+  return agentApiClientCollectionSchema.parse({
+    requests: (payload.requests ?? []).map(({ sourcePath: _sourcePath, sourceData: _sourceData, ...request }) => request),
+    folders: (payload.folders ?? []).map(({ sourceData: _sourceData, ...folder }) => folder),
+    runners: payload.runners ?? [],
+    selectedRunnerId: payload.selectedRunnerId ?? null,
+    selectedRequestId: payload.selectedRequestId ?? null,
+    variables: payload.variables ?? {},
+    environments: payload.environments ?? {},
+    globalVariables: payload.globalVariables ?? {},
+    runtimeVariables: payload.runtimeVariables ?? {},
+    scriptDialect: payload.scriptDialect ?? 'orkestrai',
+    activeEnvironment: payload.activeEnvironment ?? null,
+    collectionPreRequestScript: payload.collectionPreRequestScript ?? '',
+    collectionPostResponseScript: payload.collectionPostResponseScript ?? '',
+  });
+}
+
+function redactRecord(values: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, SECRET_NAME.test(key) && value ? REDACTED_SECRET : value]));
+}
+
+function restoreRecord(values: Record<string, string>, existing: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value === REDACTED_SECRET ? existing[key] ?? '' : value]));
+}
+
+function redactAgentCollection(collection: AgentApiClientCollectionInput): AgentApiClientCollectionInput {
+  return agentApiClientCollectionSchema.parse({
+    ...collection,
+    variables: redactRecord(collection.variables),
+    environments: Object.fromEntries(Object.entries(collection.environments).map(([name, values]) => [name, redactRecord(values)])),
+    globalVariables: redactRecord(collection.globalVariables),
+    runtimeVariables: redactRecord(collection.runtimeVariables),
+    requests: collection.requests.map((request) => ({
+      ...request,
+      auth: {
+        ...request.auth,
+        token: request.auth.token ? REDACTED_SECRET : '',
+        password: request.auth.password ? REDACTED_SECRET : '',
+        value: request.auth.value ? REDACTED_SECRET : '',
+        oauth2: {
+          ...request.auth.oauth2,
+          clientSecret: request.auth.oauth2.clientSecret ? REDACTED_SECRET : '',
+          password: request.auth.oauth2.password ? REDACTED_SECRET : '',
+          accessToken: request.auth.oauth2.accessToken ? REDACTED_SECRET : '',
+          refreshToken: request.auth.oauth2.refreshToken ? REDACTED_SECRET : '',
+        },
+      },
+    })),
+  });
+}
+
+function mergeAgentCollection(collection: AgentApiClientCollectionInput, current: ApiClientNodePayload): ApiClientNodePayload {
+  const currentRequests = new Map((current.requests ?? []).map((request) => [request.id, request]));
+  const currentFolders = new Map((current.folders ?? []).map((folder) => [folder.id, folder]));
+  const requests = collection.requests.map((request) => {
+    const existing = currentRequests.get(request.id);
+    const oauth2 = request.auth.oauth2;
+    const existingOauth2 = existing?.auth.oauth2;
+    return {
+      ...request,
+      auth: {
+        ...request.auth,
+        token: request.auth.token === REDACTED_SECRET ? existing?.auth.token ?? '' : request.auth.token,
+        password: request.auth.password === REDACTED_SECRET ? existing?.auth.password ?? '' : request.auth.password,
+        value: request.auth.value === REDACTED_SECRET ? existing?.auth.value ?? '' : request.auth.value,
+        oauth2: {
+          ...oauth2,
+          clientSecret: oauth2.clientSecret === REDACTED_SECRET ? existingOauth2?.clientSecret ?? '' : oauth2.clientSecret,
+          password: oauth2.password === REDACTED_SECRET ? existingOauth2?.password ?? '' : oauth2.password,
+          accessToken: oauth2.accessToken === REDACTED_SECRET ? existingOauth2?.accessToken ?? '' : oauth2.accessToken,
+          refreshToken: oauth2.refreshToken === REDACTED_SECRET ? existingOauth2?.refreshToken ?? '' : oauth2.refreshToken,
+        },
+      },
+      sourcePath: existing?.sourcePath ?? null,
+      sourceData: existing?.sourceData ?? null,
+    };
+  });
+  return apiClientNativePayloadSchema.parse({
+    ...current,
+    ...collection,
+    requests,
+    folders: collection.folders.map((folder) => ({ ...folder, sourceData: currentFolders.get(folder.id)?.sourceData ?? null })),
+    variables: restoreRecord(collection.variables, current.variables ?? {}),
+    environments: Object.fromEntries(Object.entries(collection.environments).map(([name, values]) => [name, restoreRecord(values, current.environments?.[name] ?? {})])),
+    globalVariables: restoreRecord(collection.globalVariables, current.globalVariables ?? {}),
+    runtimeVariables: restoreRecord(collection.runtimeVariables, current.runtimeVariables ?? {}),
+    history: current.history ?? [],
+    vaultKeys: current.vaultKeys ?? [],
+    network: current.network ?? {},
+    sync: current.sync ?? {},
+  }) as ApiClientNodePayload;
+}
+
+function payloadForAgentExport(payload: ApiClientNodePayload): ApiClientNodePayload {
+  const safe = redactAgentCollection(agentCollection(payload));
+  const requestMetadata = new Map((payload.requests ?? []).map((request) => [request.id, request]));
+  const folderMetadata = new Map((payload.folders ?? []).map((folder) => [folder.id, folder]));
+  return apiClientNativePayloadSchema.parse({
+    ...payload,
+    ...safe,
+    requests: safe.requests.map((request) => ({
+      ...request,
+      sourcePath: requestMetadata.get(request.id)?.sourcePath ?? null,
+      sourceData: requestMetadata.get(request.id)?.sourceData ?? null,
+    })),
+    folders: safe.folders.map((folder) => ({ ...folder, sourceData: folderMetadata.get(folder.id)?.sourceData ?? null })),
+  }) as ApiClientNodePayload;
+}
 
 export type ApiClientExecutionResult = ApiClientScriptResponse & {
   variables: Record<string, string>;
@@ -76,6 +196,10 @@ function keyValueFields(value: unknown): ApiClientRequestInput['headers'] {
 }
 
 function requestDefaults(request: Partial<ApiClientRequestInput> & Pick<ApiClientRequestInput, 'id' | 'name' | 'method' | 'url' | 'headers' | 'auth' | 'body' | 'bodyMode'>): ApiClientRequestInput {
+  const source = request.sourceData?.kind === 'bruno' ? request.sourceData.data as any : null;
+  const legacyTestScript = Object.prototype.hasOwnProperty.call(request, 'testScript')
+    ? request.testScript
+    : source?.request?.tests ?? source?.tests ?? '';
   return apiClientRequestSchema.parse({
     folder: '',
     sequence: 0,
@@ -83,6 +207,7 @@ function requestDefaults(request: Partial<ApiClientRequestInput> & Pick<ApiClien
     formFields: [],
     preRequestScript: '',
     postResponseScript: '',
+    testScript: legacyTestScript,
     assertions: [],
     documentation: '',
     timeoutMs: 30_000,
@@ -294,6 +419,7 @@ function fromBruno(parsed: any, sourcePath: string): ApiClientRequestInput | nul
     formFields: keyValueFields(request.body?.formUrlEncoded ?? request.body?.multipartForm),
     preRequestScript: String(request.script?.req ?? parsed.script?.req ?? parsed.scripts?.preRequest ?? ''),
     postResponseScript: String(request.script?.res ?? parsed.script?.res ?? parsed.scripts?.postResponse ?? ''),
+    testScript: String(request.tests ?? parsed.tests ?? ''),
     assertions: [],
     documentation: String(request.docs ?? parsed.docs ?? ''),
     timeoutMs: 30_000,
@@ -667,6 +793,7 @@ function toBrunoRequest(request: ApiClientRequestInput, sequence: number): any {
         req: request.preRequestScript,
         res: request.postResponseScript,
       },
+      tests: request.testScript,
       docs: request.documentation,
     },
   };
@@ -743,6 +870,177 @@ export class ApiClientService {
           authType: request.auth?.type ?? 'none',
         })),
       }));
+  }
+
+  async createForAgent(workspaceId: string, dto: CreateAgentApiClientDto) {
+    const agent = await this.requireAgentNode(workspaceId, dto.input.from);
+    const payload = mergeAgentCollection(dto.input.collection, {});
+    const node = await workspaceRepository.createNode({
+      workspaceId,
+      type: 'apiClient',
+      title: dto.input.title,
+      x: agent.x + agent.width + 100,
+      y: agent.y,
+      width: 920,
+      height: 640,
+      floorId: agent.floorId,
+      payload,
+    });
+    await workspaceRepository.createEdge({ workspaceId, sourceNodeId: agent.id, targetNodeId: node.id });
+    return this.readForAgent(workspaceId, node.id, agent.id);
+  }
+
+  async readForAgent(workspaceId: string, nodeId: string, agentNodeId: string) {
+    const agent = await this.requireAgentNode(workspaceId, agentNodeId);
+    await this.requireAgentConnection(workspaceId, nodeId, agent.id);
+    const node = await this.requireNode(workspaceId, nodeId);
+    const payload = apiClientNativePayloadSchema.parse(node.payload ?? {}) as ApiClientNodePayload;
+    return {
+      nodeId: node.id,
+      title: node.title ?? 'API Client',
+      fingerprint: apiClientPayloadFingerprint(payload),
+      redactedValue: REDACTED_SECRET,
+      collection: redactAgentCollection(agentCollection(payload)),
+    };
+  }
+
+  async replaceForAgent(workspaceId: string, nodeId: string, dto: ReplaceAgentApiClientDto) {
+    const agent = await this.requireAgentNode(workspaceId, dto.input.from);
+    await this.requireAgentConnection(workspaceId, nodeId, agent.id);
+    const node = await this.requireNode(workspaceId, nodeId);
+    const current = apiClientNativePayloadSchema.parse(node.payload ?? {}) as ApiClientNodePayload;
+    const currentFingerprint = apiClientPayloadFingerprint(current);
+    if (dto.input.baseFingerprint !== currentFingerprint) throw new ApiClientFingerprintConflictError(currentFingerprint);
+    const payload = mergeAgentCollection(dto.input.collection, current);
+    await workspaceRepository.updateNode(node.id, {
+      title: dto.input.title ?? node.title,
+      payload,
+    });
+    return this.readForAgent(workspaceId, node.id, agent.id);
+  }
+
+  async exportForAgent(workspaceId: string, nodeId: string, dto: ExportAgentApiClientDto) {
+    const agent = await this.requireAgentNode(workspaceId, dto.input.from);
+    await this.requireAgentConnection(workspaceId, nodeId, agent.id);
+    const workspace = await workspaceRepository.getWorkspace(workspaceId);
+    if (!workspace) throw new Error('Workspace not found.');
+    if (isAbsolute(dto.input.path)) throw new Error('The export path must be relative to the workspace.');
+    const root = resolve(workspace.workingDir);
+    const destination = resolve(root, dto.input.path);
+    if (destination !== root && !destination.startsWith(`${root}${sep}`)) throw new Error('The export path must stay inside the workspace.');
+    await mkdir(destination, { recursive: true });
+    const node = await this.requireNode(workspaceId, nodeId);
+    const payload = payloadForAgentExport(apiClientNativePayloadSchema.parse(node.payload ?? {}) as ApiClientNodePayload);
+    if (dto.input.kind === 'bruno') {
+      const result = await this.export(workspaceId, new ExportApiClientCollectionDto({ nodeId, kind: 'bruno', path: destination }), payload);
+      return { ...result, secretsRedacted: true };
+    }
+    const path = join(destination, postmanCollectionFilename(node.title ?? 'Orkestrai API'));
+    await writeFile(path, `${JSON.stringify(serializePostmanCollection(node.title ?? 'Orkestrai API', payload), null, 2)}\n`, 'utf8');
+    return { kind: 'postman' as const, path, files: 1, secretsRedacted: true };
+  }
+
+  async executeRunnerForAgent(workspaceId: string, nodeId: string, runnerId: string, dto: ExecuteAgentApiClientRunnerDto) {
+    const agent = await this.requireAgentNode(workspaceId, dto.input.from);
+    await this.requireAgentConnection(workspaceId, nodeId, agent.id);
+    const node = await this.requireNode(workspaceId, nodeId);
+    const payload = apiClientNativePayloadSchema.parse(node.payload ?? {}) as ApiClientNodePayload;
+    const runner = (payload.runners ?? []).find((candidate) => candidate.id === runnerId);
+    if (!runner) throw new Error('Saved API runner not found.');
+    const requests = new Map((payload.requests ?? []).map((request) => [request.id, request]));
+    const requestsByName = new Map((payload.requests ?? []).map((request) => [request.name, request]));
+    const environmentName = runner.environment ?? payload.activeEnvironment;
+    let scopes = mergeScriptScopes({
+      collection: payload.variables ?? {},
+      environment: { ...(environmentName ? payload.environments?.[environmentName] ?? {} : {}), ...dto.input.variables },
+      globals: payload.globalVariables ?? {},
+      runtime: payload.runtimeVariables ?? {},
+      iteration: {},
+    });
+    const runs: Array<Record<string, unknown>> = [];
+    let stopped = false;
+    let stopReason: string | null = null;
+    let executionCount = 0;
+
+    runnerLoop: for (let iteration = 0; iteration < runner.iterations; iteration += 1) {
+      const iterationData = runner.iterationData[iteration % Math.max(1, runner.iterationData.length)] ?? {};
+      const queue = [...runner.requestIds];
+      for (let cursor = 0; cursor < queue.length; cursor += 1) {
+        if (executionCount >= dto.input.maxExecutions) {
+          stopped = true;
+          stopReason = 'max_executions';
+          break runnerLoop;
+        }
+        const request = requests.get(queue[cursor]);
+        if (!request) continue;
+        executionCount += 1;
+        const result = await this.execute(workspaceId, new ExecuteApiClientRequestDto({
+          nodeId,
+          request: apiClientRequestSchema.parse(request),
+          variables: effectiveScriptVariables({ ...scopes, iteration: iterationData }),
+          collectionVariables: scopes.collection,
+          environmentVariables: scopes.environment,
+          globalVariables: scopes.globals,
+          runtimeVariables: scopes.runtime,
+          iterationData,
+          iterationIndex: iteration,
+          iterationCount: runner.iterations,
+          scriptDialect: payload.scriptDialect,
+          timeoutMs: request.timeoutMs ?? 30_000,
+        }));
+        if (result.scopes) scopes = mergeScriptScopes({ ...result.scopes, iteration: iterationData });
+        else scopes = mergeScriptScopes({ ...scopes, runtime: result.variables, iteration: iterationData });
+        const failedTests = result.tests.filter((test) => !test.passed).length;
+        runs.push({
+          iteration,
+          requestId: request.id,
+          requestName: request.name,
+          status: result.status,
+          statusText: result.statusText,
+          ok: result.ok,
+          durationMs: result.durationMs,
+          testPassed: result.tests.length - failedTests,
+          testFailed: failedTests,
+          tests: result.tests,
+          body: result.body.slice(0, 10_000),
+          bodyTruncated: result.body.length > 10_000,
+        });
+        if (runner.stopOnFailure && (!result.ok || failedTests > 0)) {
+          stopped = true;
+          stopReason = !result.ok ? 'request_failed' : 'test_failed';
+          break runnerLoop;
+        }
+        if (result.flow?.stopExecution) {
+          stopped = true;
+          stopReason = 'script_stopped';
+          break runnerLoop;
+        }
+        if (result.flow?.nextRequest) {
+          const next = requests.get(result.flow.nextRequest) ?? requestsByName.get(result.flow.nextRequest);
+          if (next) {
+            let target = queue.indexOf(next.id);
+            if (target < 0) {
+              queue.splice(cursor + 1, 0, next.id);
+              target = cursor + 1;
+            }
+            cursor = target - 1;
+          }
+        }
+        if (runner.delayMs > 0 && cursor < queue.length - 1) await new Promise((resolveDelay) => setTimeout(resolveDelay, runner.delayMs));
+      }
+    }
+    return {
+      nodeId,
+      runnerId: runner.id,
+      runnerName: runner.name,
+      environment: environmentName,
+      executions: executionCount,
+      stopped,
+      stopReason,
+      passed: runs.length > 0 && runs.every((run) => run.ok === true && run.testFailed === 0),
+      scopes,
+      runs,
+    };
   }
 
   async executeSaved(workspaceId: string, nodeId: string, requestId: string, variables: Record<string, string>, agentNodeId?: string | null) {
@@ -947,6 +1245,9 @@ export class ApiClientService {
         if (!script?.trim()) continue;
         finalResult = (await runScript(script, stage, finalResult) ?? finalResult) as typeof finalResult;
       }
+      if (dialect === 'orkestrai' && request.testScript.trim()) {
+        finalResult = (await runScript(request.testScript, 'requestPostResponse', finalResult) ?? finalResult) as typeof finalResult;
+      }
       if (dialect === 'bruno') {
         const layers = brunoResponseLayers(payload, sourceRequest);
         const context = (script = '') => ({
@@ -976,8 +1277,10 @@ export class ApiClientService {
           const assertions = Array.isArray(layer?.assertions) ? layer.assertions : [];
           if (assertions.length) scriptTests.push(...runBrunoAssertions(context(), assertions));
         }
-        for (const layer of layers) {
-          const testsScript = String(layer?.tests ?? '');
+        for (const [index, layer] of layers.entries()) {
+          const testsScript = index === 0
+            ? String(sourceRequest.testScript ?? request.testScript ?? '')
+            : String(layer?.tests ?? '');
           if (!testsScript.trim()) continue;
           const tested = await runBrunoTests(context(testsScript));
           request = apiClientRequestSchema.parse(tested.request);
@@ -1340,11 +1643,11 @@ export class ApiClientService {
     };
   }
 
-  async export(workspaceId: string, dto: ExportApiClientCollectionDto) {
+  async export(workspaceId: string, dto: ExportApiClientCollectionDto, payloadOverride?: ApiClientNodePayload) {
     const node = await this.requireNode(workspaceId, dto.input.nodeId);
     const destinationInfo = await stat(dto.input.path);
     if (!destinationInfo.isDirectory()) throw new Error('The export destination must be a directory.');
-    const payload = (node.payload ?? {}) as ApiClientNodePayload;
+    const payload = payloadOverride ?? (node.payload ?? {}) as ApiClientNodePayload;
     const requests = (payload.requests ?? []).map((request) => persistedApiClientRequestSchema.parse(request));
     const folders = payload.folders ?? [];
     const output = await availableCollectionDirectory(dto.input.path, node.title ?? 'Orkestrai API');
@@ -1431,6 +1734,21 @@ export class ApiClientService {
     const node = await workspaceRepository.getNode(nodeId);
     if (!node || node.workspaceId !== workspaceId || node.type !== 'apiClient') throw new Error('API Client node not found.');
     return node;
+  }
+
+  private async requireAgentNode(workspaceId: string, agentIdOrTitle: string) {
+    const nodes = await workspaceRepository.listNodes(workspaceId);
+    const node = nodes.find((candidate) => candidate.type === 'terminal' && (candidate.id === agentIdOrTitle || candidate.title === agentIdOrTitle));
+    if (!node) throw new Error('Agent node not found in this workspace.');
+    return node;
+  }
+
+  private async requireAgentConnection(workspaceId: string, nodeId: string, agentNodeId: string) {
+    const connected = (await workspaceRepository.listEdges(workspaceId)).some((edge) =>
+      (edge.sourceNodeId === agentNodeId && edge.targetNodeId === nodeId)
+      || (edge.targetNodeId === agentNodeId && edge.sourceNodeId === nodeId)
+    );
+    if (!connected) throw new Error('API Client node is not connected to this agent.');
   }
 }
 

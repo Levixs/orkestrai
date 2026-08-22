@@ -111,7 +111,10 @@ function item(request: ApiClientRequestInput, metadata: IterationMetadata) {
   return {
     id: request.id,
     name: request.name,
-    event: [event('prerequest', request.preRequestScript, metadata), event('test', request.postResponseScript, metadata)].filter(Boolean),
+    event: [
+      event('prerequest', request.preRequestScript, metadata),
+      event('test', [request.postResponseScript, request.testScript].filter((script) => script?.trim()).join('\n\n'), metadata),
+    ].filter(Boolean),
     request: {
       method: request.method,
       header: requestHeaders,

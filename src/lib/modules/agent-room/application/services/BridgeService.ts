@@ -938,7 +938,7 @@ export class BridgeService {
     const providerIds = listAgentAdapters().map((adapter) => adapter.id).join('|');
     return `---
 name: orkestrai-bridge
-description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, consultar cotas de providers, montar/orquestrar um time, distribuir tarefas, criar notas, ler ou editar designs nativos, controlar portais/devices, ou gerenciar andares.
+description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, consultar cotas de providers, montar/orquestrar um time, distribuir tarefas, criar notas, criar/testar coleções de API, ler ou editar designs nativos, controlar portais/devices, ou gerenciar andares.
 ---
 
 # Ponte Orkestrai
@@ -946,7 +946,7 @@ description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com 
 Você está rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` dá acesso à ponte.
 Sua identidade já está no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem você é, então \`--from\` e \`--agent\` são opcionais.
 Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), execute o launcher da variável ORKESTRAI_CLI DIRETO (SEM prefixar \`node\`): \`"$ORKESTRAI_CLI" ...\` (Linux/macOS), \`%ORKESTRAI_CLI% ...\` (cmd.exe) ou \`& $env:ORKESTRAI_CLI ...\` (PowerShell). ORKESTRAI_CLI aponta para um launcher autocontido que já chama o runtime certo — funciona sempre, sem depender de PATH. NUNCA rode o caminho \`...orkestrai.js\` cru no Windows: o shell o abre pelo Windows Script Host e falha ("Caractere inválido").
-Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
+Se as tools \`orkestrai\` (list/usage/ask/note_*/api_client_*/design_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
 - \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas, portais e designs conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
 - \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage. Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\`. Não troque silenciosamente o provider de um terminal que já executa trabalho.
@@ -958,6 +958,11 @@ Se as tools \`orkestrai\` (list/usage/ask/note_*/design_*/task_*/portal_*/floor_
 - \`orkestrai note edit <nodeId> "<trecho antigo>" "<trecho novo>"\` — edição pontual.
 - \`orkestrai notes\` — lista \`nodeId\`, título e prévia das notas acessíveis. Rode antes de criar; se a nota já existe, use \`note read\` e \`note write/edit\` em vez de duplicar.
 - \`orkestrai api list\` — lista requests dos Clientes de API conectados, sem revelar credenciais.
+- Tool MCP \`api_client_reference\` (ou \`orkestrai api reference\`) — consulte antes de autorar uma coleção: retorna o contrato completo e exemplos de testes/variáveis nos runtimes Bruno, Postman e Orkestrai.
+- Tools MCP \`api_client_create/read/replace/export\` — criam e editam requests, pastas, ambientes, runners, scripts e testes no mesmo node que o usuário vê. Sempre faça \`read\` antes de \`replace\` e envie o \`fingerprint\`; conflito exige reler, nunca sobrescrever. O marcador \`__ORKESTRAI_REDACTED__\` preserva segredos locais.
+- Tool MCP \`api_client_run_runner\` — executa o runner salvo com ordem, ambiente, iterações, dados por linha, variáveis encadeadas, testes e parada em falha; revise o resumo antes de exportar.
+- Ao escrever testes, escolha o runtime da coleção: Bruno usa \`test(...)/expect(...)\` e \`bru.*\`; Postman usa \`pm.test/pm.expect\`; Orkestrai aceita \`pm.test/pm.expect\` e os aliases \`test/expect\`. O export preserva JavaScript, não traduz dialetos silenciosamente.
+- \`orkestrai api read <nodeId>\` / \`api create <titulo> --file <json>\` / \`api replace <nodeId> --file <json> --fingerprint <sha256>\` / \`api run-runner <nodeId> <runnerId>\` / \`api export <nodeId> <bruno|postman>\` — fallbacks CLI para a mesma autoria completa.
 - \`orkestrai api run <nodeId> <requestId> [--variables '{"baseUrl":"..."}']\` — executa um request salvo com as variáveis informadas.
 - \`orkestrai design list\` / \`design read <nodeId>\` — lista e lê o scene graph de documentos visuais nativos conectados ao trabalho. Leia sempre a revisão atual antes de alterar.
 - Tool MCP \`design_reference\` — consulte UMA vez o tópico necessário para obter campos e exemplos exatos. Em explorações, faça primeiro um conceito de 1 desktop + 1 mobile com \`design_import_code\` (HTML/CSS semântico) ou um lote pequeno de \`design_create_elements\`, entregue a primeira revisão em até 5 minutos e AGUARDE o gate humano. Só a direção aprovada recebe o blueprint completo com tokens, componentes, protótipo e motion. NUNCA inspecione o código/instalação do Orkestrai, faça operações de teste ou crie scratch scripts apenas para descobrir o schema.

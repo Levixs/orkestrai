@@ -72,6 +72,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1111.0",
     "@babel/parser": "^7.29.8",
     "@beeblock/svelar": "^0.7.9",
+    "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/lang-xml": "^6.1.0",

@@ -90,7 +90,19 @@ function scriptProgram(
         request.headers = request.headers.filter((header) => header.name.toLowerCase() !== key);
       },
     };
-    const res = response;
+    const res = response ? {
+      ...response,
+      getStatus: () => response.status,
+      getStatusText: () => response.statusText,
+      getHeader: (name) => response.headers?.[String(name).toLowerCase()],
+      getHeaders: () => ({ ...response.headers }),
+      getBody: () => {
+        try { return JSON.parse(response.body); } catch { return response.body; }
+      },
+      getResponseTime: () => response.durationMs,
+      getUrl: () => request.url,
+      getSize: () => response.size,
+    } : null;
     const __variableScope = {
       get: (name) => variables[String(name)],
       has: (name) => Object.prototype.hasOwnProperty.call(variables, String(name)),
@@ -155,6 +167,7 @@ function scriptProgram(
       },
     };
     const expect = __expect;
+    const test = pm.test;
     (() => {
 `;
   const suffix = `

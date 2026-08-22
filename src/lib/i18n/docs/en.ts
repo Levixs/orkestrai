@@ -73,18 +73,19 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'api-client-scripts',
       title: 'API Client scripts and tests',
-      body: 'Use this reference in the collection or request Script editors and in the Tests tab. Select the source runtime: Orkestrai runs Postman scripts through the official Postman Runtime, Bruno scripts through Bruno’s official safe QuickJS runtime, and also provides native declarative assertions. The examples below can be copied directly.',
+      body: 'Use this reference in Script editors and in the Tests tab, which separates Assertions from JavaScript. The editor completes bru.*, req/res, test/expect, and pm.* for the selected runtime and fills the available panel. The examples below can be copied directly.',
       bullets: [
-        'Execution order is collection pre-request, folder pre-request from root to leaf, request pre-request, network call, request post-response, folder post-response from leaf to root, collection post-response, then native assertions.',
+        'Execution order is collection pre-request, folder pre-request from root to leaf, request pre-request, network call, request post-response, Tests JavaScript, folder post-response from leaf to root, collection post-response, then native assertions.',
         'Postman scopes remain separate as pm.globals, pm.collectionVariables, pm.environment, pm.iterationData, and pm.variables. Bruno exposes the equivalent environment, global, collection, runtime, secret, and runner iteration APIs. Use {{name}} in every request field.',
         'Postman supports pm.sendRequest, pm.execution.runRequest/setNextRequest/skipRequest, cookies, vault, visualizer, legacy globals, pm.require for bundled libraries, accurate pm.info iteration metadata, and the complete bundled Chai API. Bruno supports bru.sendRequest/runRequest, req/res helpers, request and folder variables, post-response variable blocks, declarative assertions, tests blocks, cookies, runner flow, visualizations, bundled libraries, and global test/expect/assert.',
         'Imported scripts are preserved and executed by their selected source runtime, so no JavaScript transpilation is needed. Postman team Package Library, hosted datasets, mocks, and other cloud-owned state require Postman services; they are not contained in a portable collection file. Bruno stays in its official safe QuickJS runtime: unsafe NodeVM access to the host filesystem, processes, and arbitrary local modules is deliberately disabled. The native .orkestrai-api.json format remains the lossless backup for Orkestrai-only state.',
+        'Agents and leads use api_client_reference, api_client_create/read/replace/export, api_client_execute, and api_client_run_runner to build and validate the same folders, requests, runners, environments, scripts, and tests shown in the UI. Replace requires the fingerprint that was read and preserves redacted secrets; Bruno or Postman export writes only inside the workspace and keeps JavaScript in the selected dialect.',
       ],
       examples: [
         {
           id: 'postman',
           title: 'Postman-compatible scripts',
-          description: 'Select Postman Runtime, then paste the first block into request Pre-request and the second into Post-response. Scopes remain separate and runner rows feed pm.iterationData.',
+          description: 'Select Postman: Pre-request prepares data, Post-response captures variables, and Tests > JavaScript receives pm.test/pm.expect. Runner rows feed pm.iterationData.',
           snippets: [
             {
               id: 'pre-request',
@@ -142,6 +143,14 @@ if (body) {
 }`,
             },
             {
+              id: 'javascript-tests',
+              title: 'Tests > JavaScript',
+              code: `pm.test('Status is 200', () => {
+  pm.expect(pm.response.code).to.equal(200);
+  pm.expect(pm.response.json()).to.have.property('user');
+});`,
+            },
+            {
               id: 'next-request',
               title: 'Next request · using the variables',
               code: `GET {{baseUrl}}/users/{{userId}}
@@ -153,7 +162,7 @@ X-Request-Id: {{requestId}}`,
         {
           id: 'bruno',
           title: 'Bruno-compatible scripts',
-          description: 'Select Bruno Runtime and paste each block into its matching editor. The official bru, req, res, test, expect, and assert APIs are available in the safe QuickJS runtime.',
+          description: 'Select Bruno: use Pre/Post-response for automation and Tests > JavaScript for the official test(...) body. Export wraps it in tests { } automatically.',
           snippets: [
             {
               id: 'pre-request',
@@ -186,13 +195,32 @@ bru.setNextRequest('Load user');
 
 console.log('Created user:', body.id);`,
             },
+            {
+              id: 'javascript-tests',
+              title: 'Tests > JavaScript',
+              code: `test('User was created', () => {
+  expect(res.getStatus()).to.equal(201);
+  expect(res.getBody()).to.have.property('id');
+});`,
+            },
           ],
         },
         {
           id: 'orkestrai-native',
-          title: 'Native Orkestrai: tests without JavaScript',
-          description: 'Create structured assertions in the Tests tab. There is no orkestrai.expect object: use pm.test/pm.expect or the global expect alias for scripted tests; prefer the declarative rows below for the native workflow.',
+          title: 'Native Orkestrai: assertions and JavaScript',
+          description: 'In Tests, switch between structured assertions and JavaScript. The native runtime accepts pm.test/pm.expect or test/expect; use assertions for simple checks.',
           snippets: [
+            {
+              id: 'javascript-tests',
+              title: 'Tests > JavaScript',
+              code: `test('Status is 200', () => {
+  expect(res.getStatus()).to.equal(200);
+});
+
+pm.test('Body is JSON', () => {
+  pm.expect(pm.response.json()).to.have.property('data');
+});`,
+            },
             {
               id: 'declarative-tests',
               title: 'Tests tab · assertions',
@@ -340,7 +368,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'api-client-workflow',
       title: 'Bring a REST contract into the team workflow',
-      body: 'Add an API Client and import Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, or OpenAPI 3.x, or build a native REST collection with nested folders. Review any compatibility notes, choose or import a Postman environment, then configure params, auth, bodies, sandboxed scripts, and assertions. Save separate smoke, regression, or setup runners by selecting and ordering requests. A variable captured from one response is immediately available as {{name}} in every field of the next request. Export the result as Bruno, OpenCollection, Postman, OpenAPI 3.1, or a complete versioned Orkestrai backup.',
+      body: 'Add an API Client and import Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, or OpenAPI 3.x, or ask the lead/agent to create the complete collection through api_client_* tools. Organize folders, environments, and runners, choose the runtime, write automation in Pre/Post-response, and write tests in Tests > JavaScript with completion. Captured variables become {{name}} in the next request. After running the suites, export to Bruno, Postman, OpenCollection, OpenAPI 3.1, or a versioned Orkestrai backup.',
       tags: ['REST collections', 'scripts + tests', 'Canvas + Workbench'],
     },
     {
@@ -603,6 +631,15 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 22, 2026 · Next',
+      title: 'Complete API test authoring for people and agents',
+      summary: 'Runtime-aware JavaScript tests, completion, and protected MCP/CLI authoring now share one collection model.',
+      items: [
+        'The Tests tab now switches between structured assertions and a full-height JavaScript editor with contextual completion for Bruno, Postman, and native Orkestrai APIs. Test scripts execute separately from post-response automation and round-trip through Bruno and Postman exports.',
+        'Connected agents and leads can create, read, fingerprint-replace, execute, and export complete collections through typed api_client_* MCP tools or CLI commands. Concurrent UI changes are protected, local secrets remain redacted, and exported files stay inside the workspace.',
+      ],
+    },
     {
       date: 'Aug 22, 2026 · 0.16.0',
       title: 'Orkestrai 0.16.0: official Postman and Bruno scripting runtimes',

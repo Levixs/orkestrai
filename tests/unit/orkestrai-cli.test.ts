@@ -25,8 +25,18 @@ describe('orkestrai CLI', () => {
         res.setHeader('content-type', 'application/json');
         if (req.url?.startsWith('/api/agent-room/bridge/notes') && req.method === 'GET' && !req.url.includes('/n9')) {
           res.end(JSON.stringify({ data: [] }));
+        } else if (req.url?.includes('/api1/runners/smoke/execute')) {
+          res.end(JSON.stringify({ data: { runnerName: 'Smoke', passed: true, executions: 2, stopReason: null, runs: [] } }));
         } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients/') && req.url.endsWith('/execute')) {
           res.end(JSON.stringify({ data: { status: 200, statusText: 'OK', durationMs: 12, size: 11, ok: true, body: '{"ok":true}' } }));
+        } else if (req.url?.endsWith('/api1/export')) {
+          res.end(JSON.stringify({ data: { kind: 'postman', path: '/workspace/exports/project.postman_collection.json', files: 1 } }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients/api1?')) {
+          res.end(JSON.stringify({ data: { nodeId: 'api1', title: 'Project API', fingerprint: 'a'.repeat(64), collection: { requests: [] } } }));
+        } else if (req.url === '/api/agent-room/bridge/api-clients/api1' && req.method === 'PUT') {
+          res.end(JSON.stringify({ data: { nodeId: 'api1', title: 'Project API', fingerprint: 'b'.repeat(64), collection: { requests: [] } } }));
+        } else if (req.url === '/api/agent-room/bridge/api-clients' && req.method === 'POST') {
+          res.end(JSON.stringify({ data: { nodeId: 'api2', title: 'Agent API', fingerprint: 'a'.repeat(64), collection: { requests: [] } } }));
         } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients')) {
           res.end(JSON.stringify({ data: [{ nodeId: 'api1', title: 'Project API', requests: [{ requestId: 'r1', method: 'GET', name: 'Health', url: 'https://example.test/health', authType: 'bearer' }] }] }));
         } else if (req.url?.startsWith('/api/agent-room/bridge/agents')) {
@@ -398,6 +408,26 @@ describe('orkestrai CLI', () => {
       url: '/api/agent-room/bridge/api-clients/api1/execute',
       body: { requestId: 'r1', variables: { baseUrl: 'https://example.test' }, from: 'n1' },
     });
+  });
+
+  it('api cria, le, substitui e exporta colecoes completas pela mesma bridge do MCP', async () => {
+    const collectionPath = join(cwd, 'agent-api.json');
+    writeFileSync(collectionPath, JSON.stringify({ requests: [], folders: [], runners: [], scriptDialect: 'bruno' }));
+    const { lines, out } = capture();
+    const env = { ORKESTRAI_NODE_ID: 'n1' };
+
+    expect(await run(['api', 'reference'], { cwd, out, env: {} })).toBe(0);
+    expect(lines.join('\n')).toContain('api_client_replace');
+    expect(await run(['api', 'read', 'api1'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1).url).toContain('/api-clients/api1?agentNodeId=n1');
+    expect(await run(['api', 'create', 'Agent API', '--file', 'agent-api.json'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({ method: 'POST', body: { title: 'Agent API', from: 'n1' } });
+    expect(await run(['api', 'replace', 'api1', '--file', 'agent-api.json', '--fingerprint', 'a'.repeat(64)], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({ method: 'PUT', body: { baseFingerprint: 'a'.repeat(64), from: 'n1' } });
+    expect(await run(['api', 'export', 'api1', 'postman', '--path', 'exports'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({ method: 'POST', url: '/api/agent-room/bridge/api-clients/api1/export', body: { kind: 'postman', path: 'exports', from: 'n1' } });
+    expect(await run(['api', 'run-runner', 'api1', 'smoke', '--max-executions', '20'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({ method: 'POST', url: '/api/agent-room/bridge/api-clients/api1/runners/smoke/execute', body: { variables: {}, maxExecutions: 20, from: 'n1' } });
   });
 
   it('port devolve uma porta livre (sem precisar de workspace.json)', async () => {

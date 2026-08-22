@@ -11,6 +11,7 @@ import { createServer as createNetServer } from 'node:net';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { DESIGN_REFERENCE_TOPICS, designReference } from './design-reference.js';
+import { apiClientReference } from './api-client-reference.js';
 
 /** Porta livre de verdade: binda na efemera, le o numero e libera. */
 export async function findFreePort() {
@@ -45,7 +46,7 @@ Uso:
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
-  orkestrai api list [--json] | api run <nodeId> <requestId> [--variables <json>] [--json]
+  orkestrai api list [--json] | api reference | api read <nodeId> | api create <titulo> --file <json> | api replace <nodeId> --file <json> --fingerprint <sha256> | api export <nodeId> <bruno|postman> [--path <relativo>] | api run <nodeId> <requestId> | api run-runner <nodeId> <runnerId> [--variables <json>] [--max-executions <n>] [--json]
   orkestrai design list | design read <nodeId> | design reference [${DESIGN_REFERENCE_TOPICS.join('|')}] | design audit <nodeId> | design template <nodeId> <product|marketing|mobile|design-system> --revision <n>
   orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
   orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
@@ -181,6 +182,15 @@ function parseFlags(args) {
   return { flags, positional };
 }
 
+function apiCollectionFromDocument(document) {
+  const source = document?.collection ?? document?.payload ?? document;
+  if (!source || Array.isArray(source) || typeof source !== 'object') throw new Error('O arquivo deve conter uma colecao de API JSON.');
+  return Object.fromEntries([
+    'requests', 'folders', 'runners', 'selectedRunnerId', 'selectedRequestId', 'variables', 'environments', 'globalVariables',
+    'runtimeVariables', 'scriptDialect', 'activeEnvironment', 'collectionPreRequestScript', 'collectionPostResponseScript',
+  ].filter((key) => Object.prototype.hasOwnProperty.call(source, key)).map((key) => [key, source[key]]));
+}
+
 export async function run(argv, options = {}) {
   const env = options.env ?? process.env;
   const cwd = options.cwd ?? process.cwd();
@@ -220,6 +230,10 @@ export async function run(argv, options = {}) {
   // workspace provisionado, assim como o handshake do MCP.
   if (command === 'design' && rest[0] === 'reference') {
     out(JSON.stringify(designReference(rest[1] ?? 'quickstart'), null, 2));
+    return 0;
+  }
+  if (command === 'api' && rest[0] === 'reference') {
+    out(JSON.stringify(apiClientReference(), null, 2));
     return 0;
   }
 
@@ -391,6 +405,53 @@ export async function run(argv, options = {}) {
         }
         return 0;
       }
+      if (action === 'read' && nodeId) {
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}?agentNodeId=${encodeURIComponent(selfAgent ?? '')}`);
+        out(JSON.stringify(data, null, 2));
+        return 0;
+      }
+      if (action === 'create') {
+        if (!nodeId || !flags.file) throw new Error('Uso: orkestrai api create <titulo> --file <collection.json>');
+        const document = JSON.parse(readFileSync(resolve(cwd, String(flags.file)), 'utf8'));
+        const data = await bridge(config, 'POST', '/api/agent-room/bridge/api-clients', { title: nodeId, collection: apiCollectionFromDocument(document), from: selfAgent });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Cliente de API criado: ${data.title} (${data.nodeId})`);
+        return 0;
+      }
+      if (action === 'replace' && nodeId) {
+        if (!flags.file || !flags.fingerprint) throw new Error('Uso: orkestrai api replace <nodeId> --file <collection.json> --fingerprint <sha256> [--title <titulo>]');
+        const document = JSON.parse(readFileSync(resolve(cwd, String(flags.file)), 'utf8'));
+        const data = await bridge(config, 'PUT', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}`, {
+          title: flags.title,
+          baseFingerprint: flags.fingerprint,
+          collection: apiCollectionFromDocument(document),
+          from: selfAgent,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Cliente de API atualizado: ${data.title} (${data.fingerprint})`);
+        return 0;
+      }
+      if (action === 'export' && nodeId && ['bruno', 'postman'].includes(requestId)) {
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}/export`, {
+          kind: requestId,
+          path: flags.path ?? '.orkestrai/exports',
+          from: selfAgent,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Colecao ${requestId} exportada para ${data.path}`);
+        return 0;
+      }
+      if (action === 'run-runner' && nodeId && requestId) {
+        const variables = flags.variables ? JSON.parse(String(flags.variables)) : {};
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}/runners/${encodeURIComponent(requestId)}/execute`, {
+          variables,
+          maxExecutions: flags['max-executions'] ? Number(flags['max-executions']) : 100,
+          from: selfAgent,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`${data.runnerName}: ${data.passed ? 'OK' : 'FALHOU'} · ${data.executions} execucoes${data.stopReason ? ` · ${data.stopReason}` : ''}`);
+        return data.passed ? 0 : 2;
+      }
       if (action === 'run' && nodeId && requestId) {
         let variables = {};
         if (flags.variables) {
@@ -405,7 +466,7 @@ export async function run(argv, options = {}) {
         }
         return data.ok ? 0 : 2;
       }
-      throw new Error('Uso: orkestrai api <list|run <nodeId> <requestId>> [--variables <json>]');
+      throw new Error('Uso: orkestrai api <list|reference|read|create|replace|export|run|run-runner> ...');
     }
     case 'design': {
       const [action, nodeId, ...values] = rest;

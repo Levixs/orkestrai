@@ -64,11 +64,13 @@ describe('compatible API Client script runtimes', () => {
       `,
       postResponseScript: `
         tests['legacy response works'] = responseCode.code === 200;
+        pm.execution.setNextRequest('Secondary');
+        pm.visualizer.set('<strong>{{state}}</strong>', { state: 'ready' });
+      `,
+      testScript: `
         pm.test('Postman response and Chai work', () => {
           pm.expect(pm.response.json()).to.have.property('scripted', 'from-iteration');
         });
-        pm.execution.setNextRequest('Secondary');
-        pm.visualizer.set('<strong>{{state}}</strong>', { state: 'ready' });
       `,
     });
     const secondary = request(`${baseUrl}/secondary`, { id: 'secondary', name: 'Secondary' });

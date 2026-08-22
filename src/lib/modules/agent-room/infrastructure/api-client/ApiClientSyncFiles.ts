@@ -63,10 +63,15 @@ export function apiClientPayloadFingerprint(payload: ApiClientNodePayload): stri
   const editable = {
     requests: payload.requests ?? [],
     folders: payload.folders ?? [],
+    runners: payload.runners ?? [],
+    selectedRunnerId: payload.selectedRunnerId ?? null,
+    selectedRequestId: payload.selectedRequestId ?? null,
     variables: payload.variables ?? {},
     environments: payload.environments ?? {},
     globalVariables: payload.globalVariables ?? {},
+    runtimeVariables: payload.runtimeVariables ?? {},
     scriptDialect: payload.scriptDialect ?? 'orkestrai',
+    activeEnvironment: payload.activeEnvironment ?? null,
     collectionPreRequestScript: payload.collectionPreRequestScript ?? '',
     collectionPostResponseScript: payload.collectionPostResponseScript ?? '',
   };
