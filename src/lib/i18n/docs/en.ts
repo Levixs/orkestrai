@@ -56,6 +56,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `Open Workstreams under a workspace in the Workbench explorer or through Command/Ctrl+K. A workstream is not another project tracker: each active Kanban task is the canonical identity, and the view projects its current column, assignee, active Floor and branch, semantic activity, Councils, Review Center records, exact Git revision, evidence, tests, risks, and linked files. Backlog, active, review, blocked, and done stages are derived from those real sources. Starting a Council from the workstream carries the task brief, while opening the board or Review Center returns to the original editable record. Unlinked decisions, reviews, activity, and changed paths remain counted instead of being silently attributed to the wrong task.`,
     },
     {
+      id: 'workspace-memory',
+      title: 'Workspace memory with evidence',
+      body: `Open Workspace memory from Command/Ctrl+K, the Canvas, or the workspace explorer in Workbench. Save only durable decisions, facts, preferences, constraints, references, and lessons; each entry requires one or more explicit sources such as a user statement, note, task, canonical message, workspace file, URL, Git evidence, review, Council, or agent. Sources keep labels, bounded excerpts, links, and content fingerprints. Revisions never overwrite earlier knowledge: they supersede it with optimistic concurrency protection, while archive keeps the audit trail. Agents use memory_search only when context is relevant, then memory_add or memory_revise with evidence; Orkestrai never injects the entire memory into every prompt or treats casual conversation as fact.`,
+    },
+    {
       id: 'review-center',
       title: 'Source Control and Review Center',
       body: `Open Review Center under each workspace in the Workbench explorer to inspect staged and unstaged changes without leaving Orkestrai. The header shows the branch, upstream, and commits ahead or behind; the source list stages, unstages, commits, pulls, pushes, and discards tracked edits only after confirmation. Selecting a file opens a bounded Monaco side-by-side diff; binary and oversized files get explicit safe states. Start a review to link its exact Git revision to a task, responsible agent, summary, evidence, tests, risks, and selected files. Click either side of the diff to attach a file or line comment. When the repository changes, old comments remain visible as outdated context instead of silently pointing at a different line. Approve, request changes, or reject in plain language; requested changes are submitted directly to the responsible agent when its terminal is available, and remain persisted when it is offline.`,
@@ -593,6 +598,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Workstreams', 'end-to-end traceability', 'Kanban to Git'],
     },
     {
+      id: 'preserve-sourced-workspace-memory',
+      title: 'Preserve a decision without losing its source',
+      body: 'Open Workspace memory, record the reusable decision or constraint, and attach the user statement, task, note, file, URL, message, review, or Council that supports it. Agents can query the same evidence only when relevant. When the decision changes, revise it against the current revision so the previous value remains auditable and concurrent edits cannot silently overwrite each other.',
+      tags: ['Workspace memory', 'provenance', 'versioned decisions'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Edit and inspect files without leaving the Workbench',
       body: 'Expand Files in the Workbench sidebar and open a workspace file directly in a local tab, without creating a canvas node. The Canvas file tree and Command/Ctrl+K use the same direct handoff. Monaco preserves cursor, undo, selection, and unsaved state across panes. Find or replace text, navigate symbols, format supported files, and choose minimap, wrapping, font size, or optional autosave under Settings → Appearance. Markdown switches between source and a sanitized preview; PDFs have page and zoom controls; images support zoom, pan, dimensions, and transparency; binary files show metadata and open through the system application. Files above 512 KB open a bounded read-only preview so unloaded content cannot be overwritten.',
@@ -658,6 +669,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'A global Attention Center prioritizes questions, permission requests, blockers, and failures from every workspace and supports read, snooze, resolve, and source navigation.',
         'Command/Ctrl+K now indexes activity, canonical messages, and attention with type, agent, workspace, status, error, and date operators.',
         'Workbench adds Workstreams, a live projection from each Kanban task to its assignee, Floor, Council decisions, reviews, semantic activity, and exact Git evidence.',
+        'Workspace memory now preserves sourced decisions, facts, preferences, constraints, references, and lessons with search, immutable revisions, conflict protection, archive history, and on-demand MCP/CLI access for agents.',
       ],
     },
     {

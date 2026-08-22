@@ -51,6 +51,16 @@ describe('orkestrai CLI', () => {
             shouldFallback: true,
             recommendedProvider: 'codex',
           } }));
+        } else if (req.url?.startsWith('/api/agent-room/bridge/memory') && req.method === 'GET') {
+          res.end(JSON.stringify({ data: [{ id: 'm1', title: 'Architecture', kind: 'decision', revision: 1 }] }));
+        } else if (req.url === '/api/agent-room/bridge/memory' && req.method === 'POST') {
+          const request = JSON.parse(body || '{}');
+          res.end(JSON.stringify({ data: { ...request, id: 'm1', revision: 1 } }));
+        } else if (req.url === '/api/agent-room/bridge/memory/m1' && req.method === 'PATCH') {
+          const request = JSON.parse(body || '{}');
+          res.end(JSON.stringify({ data: { ...request, id: 'm2', revision: 2 } }));
+        } else if (req.url === '/api/agent-room/bridge/memory/m1' && req.method === 'DELETE') {
+          res.end(JSON.stringify({ data: { id: 'm1', title: 'Architecture' } }));
         } else if (req.url === '/api/agent-room/bridge/ask') {
           const request = JSON.parse(body || '{}');
           const timedOut = request.to === 'SemResposta';
@@ -100,6 +110,17 @@ describe('orkestrai CLI', () => {
     expect(code).toBe(0);
     expect(lines.join('\n')).toContain('Claude');
     expect(requests.at(-1).auth).toBe('Bearer tok123');
+  });
+
+  it('consulta e registra memoria com fonte explicita', async () => {
+    const listed = capture();
+    expect(await run(['memory', 'list', 'architecture', '--json'], { cwd, out: listed.out, env: {} })).toBe(0);
+    expect(JSON.parse(listed.lines.join('\n'))[0].id).toBe('m1');
+
+    const added = capture();
+    expect(await run(['memory', 'add', 'Architecture', '--content', 'Use repositories', '--kind', 'decision', '--source-label', 'User direction'], { cwd, out: added.out, env: { ORKESTRAI_NODE_ID: '00000000-0000-7000-8000-000000000001' } })).toBe(0);
+    const request = requests.findLast((item) => item.url === '/api/agent-room/bridge/memory' && item.method === 'POST');
+    expect(request.body).toMatchObject({ title: 'Architecture', kind: 'decision', createdByNodeId: '00000000-0000-7000-8000-000000000001', sources: [{ type: 'user', label: 'User direction' }] });
   });
 
   it('ask envia mensagem e imprime a resposta', async () => {

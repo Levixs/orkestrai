@@ -17,6 +17,7 @@
     Scale,
     Route,
     Workflow,
+    BookMarked,
   } from '@lucide/svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import * as InputGroup from '$lib/components/ui/input-group';
@@ -33,6 +34,7 @@
   import ControlCenterView from '$lib/components/agent-room/ControlCenterView.svelte';
   import WorkbenchReviewCenter from '$lib/components/agent-room/WorkbenchReviewCenter.svelte';
   import WorkbenchWorkstreams from '$lib/components/agent-room/WorkbenchWorkstreams.svelte';
+  import WorkspaceMemoryView from '$lib/components/agent-room/WorkspaceMemoryView.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
   import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
@@ -111,6 +113,11 @@
     isWorkbenchWorkstreamsItemId,
     workbenchWorkstreamsItemId,
   } from '$lib/components/agent-room/workbench-workstreams.js';
+  import {
+    createWorkbenchMemoryItem,
+    isWorkbenchMemoryItemId,
+    workbenchMemoryItemId,
+  } from '$lib/components/agent-room/workbench-memory.js';
   import {
     createWorkbenchAutomationsItem,
     isWorkbenchAutomationsItemId,
@@ -225,16 +232,20 @@
     const workstreams = workspace
       ? [createWorkbenchWorkstreamsItem(workspace, m['workstreams.title']())]
       : [];
+    const memory = workspace
+      ? [createWorkbenchMemoryItem(workspace, m['memory.title']())]
+      : [];
     const automations = workspace
       ? [createWorkbenchAutomationsItem(workspace, m['automation.title']())]
       : [];
-    return [...controlCenter, ...workstreams, ...reviewCenter, ...automations, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
+    return [...controlCenter, ...workstreams, ...memory, ...reviewCenter, ...automations, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
   }
 
   function isVirtualWorkbenchItemId(id: string | null | undefined): boolean {
     return isWorkbenchFileItemId(id)
       || isWorkbenchControlCenterItemId(id)
       || isWorkbenchWorkstreamsItemId(id)
+      || isWorkbenchMemoryItemId(id)
       || isWorkbenchReviewCenterItemId(id)
       || isWorkbenchAutomationsItemId(id);
   }
@@ -594,6 +605,7 @@
     if (node.type === 'usage') return m['terminal_browser.kind_usage']();
     if (node.type === 'controlCenter') return m['control_center.title']();
     if (node.type === 'reviewCenter') return m['review_center.title']();
+    if (node.type === 'memory') return m['memory.title']();
     if (node.type === 'automation') return m['automation.title']();
     if (node.type === 'device') return m['device.title']();
     if (node.type === 'design') return m['terminal_browser.kind_design']();
@@ -972,6 +984,10 @@
           {#key `${pane.id}:${paneNode.id}`}
             <WorkbenchWorkstreams workspaceId={selectedWorkspace.id} />
           {/key}
+        {:else if isWorkbenchMemoryItemId(paneNode.id)}
+          {#key `${pane.id}:${paneNode.id}`}
+            <WorkspaceMemoryView workspaceId={selectedWorkspace.id} />
+          {/key}
         {:else if isWorkbenchReviewCenterItemId(paneNode.id)}
           {#key `${pane.id}:${paneNode.id}`}
             <WorkbenchReviewCenter workspaceId={selectedWorkspace.id} />
@@ -1190,6 +1206,12 @@
                   >
                     <Workflow size={13} class={selectedNodeId === workbenchAutomationsItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
                     <span class="min-w-0 flex-1 truncate font-medium">{m['automation.title']()}</span>
+                  </button>
+                </div>
+                <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchMemoryItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>
+                  <button class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]" aria-current={selectedNodeId === workbenchMemoryItemId(workspace.id) ? 'page' : undefined} onclick={() => selectNode(workspace.id, workbenchMemoryItemId(workspace.id))}>
+                    <BookMarked size={13} class={selectedNodeId === workbenchMemoryItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
+                    <span class="min-w-0 flex-1 truncate font-medium">{m['memory.title']()}</span>
                   </button>
                 </div>
                 <WorkbenchFileExplorer

@@ -60,6 +60,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `Abra Fluxos de trabalho abaixo do workspace no explorer do Workbench ou pelo Command/Ctrl+K. Um fluxo não é outro gerenciador de projetos: cada tarefa ativa do Kanban é a identidade canônica, e a visão projeta coluna atual, responsável, andar e branch ativos, atividade semântica, Conselhos, registros da Central de revisão, revisão Git exata, evidências, testes, riscos e arquivos vinculados. As etapas fila, ativo, revisão, bloqueado e concluído são derivadas dessas fontes reais. Iniciar um Conselho pelo fluxo leva o briefing da tarefa, enquanto abrir quadro ou Central de revisão retorna ao registro editável original. Decisões, revisões, atividades e arquivos alterados sem vínculo continuam contabilizados em vez de serem atribuídos silenciosamente à tarefa errada.`,
     },
     {
+      id: 'workspace-memory',
+      title: 'Memória do workspace com evidências',
+      body: `Abra Memória do workspace pelo Command/Ctrl+K, Canvas ou explorador do workspace no Workbench. Salve apenas decisões, fatos, preferências, restrições, referências e aprendizados duráveis; toda entrada exige uma ou mais fontes explícitas, como declaração do usuário, nota, tarefa, mensagem canônica, arquivo do workspace, URL, evidência Git, revisão, Conselho ou agente. Fontes guardam identificação, trechos limitados, links e fingerprints de conteúdo. Revisões nunca sobrescrevem o conhecimento anterior: elas o substituem com proteção de concorrência otimista, e o arquivamento mantém a trilha de auditoria. Agentes usam memory_search apenas quando o contexto for relevante e memory_add ou memory_revise com evidência; o Orkestrai nunca injeta toda a memória em cada prompt nem trata conversa casual como fato.`,
+    },
+    {
       id: 'review-center',
       title: 'Controle de código e Central de revisão',
       body: `Abra a Central de revisão em cada workspace do explorer do Workbench para inspecionar alterações preparadas e não preparadas sem sair do Orkestrai. O cabeçalho mostra branch, upstream e commits à frente ou atrás; a lista permite preparar, remover da preparação, criar commit, fazer pull, push e descartar edições rastreadas somente após confirmação. Selecionar um arquivo abre um diff lado a lado e limitado no Monaco; arquivos binários ou muito grandes recebem estados seguros explícitos. Inicie uma revisão para vincular a revisão Git exata a uma tarefa, agente responsável, resumo, evidências, testes, riscos e arquivos selecionados. Clique em qualquer lado do diff para comentar no arquivo ou na linha. Quando o repositório muda, comentários antigos continuam visíveis como contexto desatualizado em vez de apontarem silenciosamente para outra linha. Aprove, solicite alterações ou rejeite em linguagem direta; alterações solicitadas são enviadas ao agente responsável quando seu terminal está disponível e permanecem salvas quando ele está offline.`,
@@ -597,6 +602,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Fluxos de trabalho', 'rastreabilidade ponta a ponta', 'Kanban ao Git'],
     },
     {
+      id: 'preserve-sourced-workspace-memory',
+      title: 'Preserve uma decisão sem perder sua fonte',
+      body: 'Abra Memória do workspace, registre a decisão ou restrição reutilizável e associe a declaração do usuário, tarefa, nota, arquivo, URL, mensagem, revisão ou Conselho que a sustenta. Agentes consultam a mesma evidência somente quando relevante. Quando a decisão mudar, revise-a a partir da versão atual para manter o valor anterior auditável e impedir que edições concorrentes se sobrescrevam silenciosamente.',
+      tags: ['Memória do workspace', 'procedência', 'decisões versionadas'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Editar e inspecionar arquivos sem sair do Workbench',
       body: 'Expanda Arquivos no sidebar do Workbench e abra um arquivo do workspace diretamente em uma aba local, sem criar um nó no canvas. A árvore de arquivos do Canvas e o Command/Ctrl+K usam a mesma abertura direta. O Monaco preserva cursor, undo, seleção e estado não salvo entre painéis. Busque ou substitua texto, navegue por símbolos, formate arquivos compatíveis e escolha minimapa, quebra de linha, tamanho da fonte ou autosave opcional em Configurações → Aparência. Markdown alterna entre fonte e prévia sanitizada; PDFs têm navegação e zoom; imagens permitem zoom, pan, dimensões e transparência; binários exibem metadados e abrem no aplicativo do sistema. Arquivos acima de 512 KB abrem em uma prévia limitada e somente leitura para nunca sobrescrever conteúdo que não foi carregado.',
@@ -662,6 +673,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Uma Central de atenção global prioriza perguntas, pedidos de permissão, bloqueios e falhas de todos os workspaces e permite ler, adiar, resolver e abrir a origem.',
         'Command/Ctrl+K agora indexa atividade, mensagens canônicas e atenção com operadores de tipo, agente, workspace, status, erro e data.',
         'O Workbench adiciona Fluxos de trabalho, uma projeção ao vivo de cada tarefa do Kanban até responsável, andar, decisões do Conselho, revisões, atividade semântica e evidência Git exata.',
+        'A Memória do workspace preserva decisões, fatos, preferências, restrições, referências e aprendizados com fontes, busca, revisões imutáveis, proteção contra conflitos, histórico e acesso sob demanda para agentes via MCP/CLI.',
       ],
     },
     {

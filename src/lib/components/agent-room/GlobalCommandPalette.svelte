@@ -8,6 +8,7 @@
     Activity,
     BellRing,
     BookOpen,
+    BookMarked,
     Bot,
     File,
     Network,
@@ -37,6 +38,7 @@
   import { workbenchControlCenterItemId } from './workbench-control-center.js';
   import { workbenchReviewCenterItemId } from './workbench-review-center.js';
   import { workbenchWorkstreamsItemId } from './workbench-workstreams.js';
+  import { workbenchMemoryItemId } from './workbench-memory.js';
   import { workbenchAutomationsItemId } from './workbench-automations.js';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
@@ -64,6 +66,7 @@
     'attention',
     'activity',
     'message',
+    'memory',
     'file',
   ];
 
@@ -104,6 +107,7 @@
       command('council', m['global_search.command_council'](), `/canvas?workspace=${workspaceId}&council=1`),
       command('control-center', m['global_search.command_control_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchControlCenterItemId(workspaceId))}`),
       command('workstreams', m['global_search.command_workstreams'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchWorkstreamsItemId(workspaceId))}`),
+      command('memory', m['global_search.command_memory'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchMemoryItemId(workspaceId))}`),
       command('review-center', m['global_search.command_review_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchReviewCenterItemId(workspaceId))}`),
       command('automations', m['global_search.command_automations'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchAutomationsItemId(workspaceId))}`),
     ] : [];
@@ -232,6 +236,7 @@
       activity: m['global_search.kind_activity'],
       message: m['global_search.kind_message'],
       attention: m['global_search.kind_attention'],
+      memory: m['global_search.kind_memory'],
       file: m['global_search.kind_file'],
       documentation: m['global_search.kind_documentation'],
       command: m['global_search.kind_command'],
@@ -386,6 +391,7 @@
   {:else if kind === 'activity'}<Activity size={15} aria-hidden="true" />
   {:else if kind === 'message'}<MessageSquareMore size={15} aria-hidden="true" />
   {:else if kind === 'attention'}<BellRing size={15} aria-hidden="true" />
+  {:else if kind === 'memory'}<BookMarked size={15} aria-hidden="true" />
   {:else if kind === 'file'}<File size={15} aria-hidden="true" />
   {:else}<Search size={15} aria-hidden="true" />
   {/if}

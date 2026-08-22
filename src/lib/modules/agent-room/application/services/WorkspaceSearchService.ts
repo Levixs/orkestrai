@@ -14,6 +14,7 @@ import { routineService } from './RoutineService.js';
 import { designDocumentService } from './DesignDocumentService.js';
 import { controlCenterRepository } from '../../infrastructure/repositories/ControlCenterRepository.js';
 import { attentionRepository } from '../../infrastructure/repositories/AttentionRepository.js';
+import { workspaceMemoryService } from './WorkspaceMemoryService.js';
 import type { WorkspaceSearchDto } from '../dto/WorkspaceSearchDto.js';
 
 const INDEX_TTL_MS = 15_000;
@@ -221,7 +222,7 @@ export class WorkspaceSearchService {
       path: null,
       route: `/canvas?workspace=${workspace.id}`,
     })];
-    const [nodes, tasks, roles, skills, automations, activity, envelopes, attention] = await Promise.all([
+    const [nodes, tasks, roles, skills, automations, activity, envelopes, attention, memory] = await Promise.all([
       workspaceRepository.listNodes(workspace.id).catch(() => []),
       taskBoardService.list(workspace.id).catch(() => []),
       roleService.list(workspace.id).catch(() => []),
@@ -230,6 +231,7 @@ export class WorkspaceSearchService {
       controlCenterRepository.listActivity(workspace.id, 250).catch(() => []),
       controlCenterRepository.listEnvelopes(workspace.id, 150).catch(() => []),
       attentionRepository.list({ workspaceId: workspace.id, includeResolved: true, limit: 150 }).catch(() => []),
+      workspaceMemoryService.list(workspace.id, { includeHistory: true, limit: 300 }).catch(() => []),
     ]);
     const taskBoardNode = nodes.find((node) => node.type === 'tasks');
     const nodeTitles = new Map(nodes.map((node) => [node.id, node.title ?? node.type]));
@@ -478,6 +480,23 @@ export class WorkspaceSearchService {
         occurredAt: item.updatedAt,
         facets: { agent, category: item.category, status: item.status, severity: item.severity },
       }, [item.sourceType, item.sourceId, item.correlationId]));
+    }
+    for (const item of memory) {
+      results.push(indexed({
+        id: `memory:${item.id}`,
+        kind: 'memory',
+        title: item.title,
+        subtitle: `${workspace.name} · ${item.kind} · v${item.revision}`,
+        preview: clip(item.content),
+        workspaceId: workspace.id,
+        workspaceName: workspace.name,
+        nodeId: null,
+        taskId: null,
+        path: null,
+        route: `/terminal?workspace=${workspace.id}&node=workbench-memory:${workspace.id}`,
+        occurredAt: item.updatedAt,
+        facets: { category: 'memory', status: item.status, severity: 'info' },
+      }, [item.kind, item.status, ...item.tags, ...item.sources.flatMap((source) => [source.type, source.label, source.uri, source.excerpt])]));
     }
     return results;
   }

@@ -63,6 +63,11 @@ Baixe os instaladores mais recentes em
   provider, role e uso de cada agente. A caixa persistente comprova se cada
   handoff entrou na fila, foi entregue, recebido, respondido ou falhou sob um
   id de mensagem, sem acordar terminais ociosos após reiniciar.
+- **Memória do workspace com fontes:** preserve decisões, fatos, preferências,
+  restrições, referências e aprendizados reutilizáveis com evidência explícita,
+  revisões imutáveis, proteção contra conflitos, busca e histórico de arquivo.
+  Agentes consultam a mesma memória sob demanda por tools MCP/CLI tipadas, sem
+  receber toda a memória em cada prompt.
 - **Compartilhamento criptografado de workspace (experimental):** hospede uma
   sessão criptografada de ponta a ponta, escolha um convite para
   navegador/celular ou outro app instalado, confira a impressão digital do

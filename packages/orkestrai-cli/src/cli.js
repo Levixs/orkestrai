@@ -41,6 +41,10 @@ const USAGE = `orkestrai — ponte entre agentes do Orkestrai
 Uso:
   orkestrai list [--agent <seuNodeId>] [--json]
   orkestrai usage [--json]
+  orkestrai memory list [consulta] [--history] [--json]
+  orkestrai memory add <titulo> --content <texto> --source-label <fonte> [--kind fact|decision|preference|constraint|reference|lesson] [--source-type user|note|task|message|file|url|git|review|council|agent] [--source-id <id>] [--source-uri <path-ou-url>] [--source-excerpt <trecho>] [--tags <csv>] [--confidence <0-100>] [--pin]
+  orkestrai memory revise <id> --title <titulo> --content <texto> --kind <tipo> --sources <json> --base-revision <n> --base-updated-at <iso>
+  orkestrai memory archive <id>
   orkestrai ask <agente> <mensagem> [--from <agente>] [--timeout <ms>] [--raw] [--json]
   orkestrai note read <nodeId>
   orkestrai note write <nodeId> <conteudo>
@@ -326,6 +330,47 @@ export async function run(argv, options = {}) {
         }
       }
       return 0;
+    }
+    case 'memory': {
+      const [action, idOrTitle, ...values] = rest;
+      if (action === 'list') {
+        const query = [idOrTitle, ...values].filter(Boolean).join(' ');
+        const params = new URLSearchParams();
+        if (query) params.set('q', query);
+        if (flags.history) params.set('history', '1');
+        const data = await bridge(config, 'GET', `/api/agent-room/bridge/memory?${params}`);
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else if (!data.length) out('(nenhuma memoria encontrada)');
+        else for (const item of data) out(`- ${item.title} [${item.kind}] v${item.revision} (${item.id})`);
+        return 0;
+      }
+      if (action === 'add') {
+        if (!idOrTitle || !flags.content || !flags['source-label']) throw new Error('Uso: orkestrai memory add <titulo> --content <texto> --source-label <fonte> [...]');
+        const data = await bridge(config, 'POST', '/api/agent-room/bridge/memory', {
+          title: idOrTitle, content: String(flags.content), kind: flags.kind ?? 'fact', confidence: Number(flags.confidence ?? 100), pinned: Boolean(flags.pin),
+          tags: String(flags.tags ?? '').split(',').map((tag) => tag.trim()).filter(Boolean), createdByNodeId: selfAgent?.length === 36 ? selfAgent : null,
+          sources: [{ type: flags['source-type'] ?? 'user', sourceId: flags['source-id'] ?? null, label: String(flags['source-label']), uri: flags['source-uri'] ?? null, excerpt: flags['source-excerpt'] ?? null }],
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2)); else out(`Memoria salva: ${data.title} v${data.revision} (${data.id})`);
+        return 0;
+      }
+      if (action === 'revise') {
+        if (!idOrTitle || !flags.title || !flags.content || !flags.kind || !flags.sources || !flags['base-revision'] || !flags['base-updated-at']) throw new Error('Uso: orkestrai memory revise <id> --title ... --content ... --kind ... --sources <json> --base-revision <n> --base-updated-at <iso>');
+        const data = await bridge(config, 'PATCH', `/api/agent-room/bridge/memory/${encodeURIComponent(idOrTitle)}`, {
+          title: String(flags.title), content: String(flags.content), kind: flags.kind, confidence: Number(flags.confidence ?? 100), pinned: Boolean(flags.pin),
+          tags: String(flags.tags ?? '').split(',').map((tag) => tag.trim()).filter(Boolean), createdByNodeId: selfAgent?.length === 36 ? selfAgent : null,
+          sources: JSON.parse(String(flags.sources)), baseRevision: Number(flags['base-revision']), baseUpdatedAt: String(flags['base-updated-at']),
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2)); else out(`Memoria revisada: ${data.title} v${data.revision}`);
+        return 0;
+      }
+      if (action === 'archive') {
+        if (!idOrTitle) throw new Error('Uso: orkestrai memory archive <id>');
+        const data = await bridge(config, 'DELETE', `/api/agent-room/bridge/memory/${encodeURIComponent(idOrTitle)}`);
+        if (flags.json) out(JSON.stringify(data, null, 2)); else out(`Memoria arquivada: ${data.title}`);
+        return 0;
+      }
+      throw new Error('Uso: orkestrai memory <list|add|revise|archive> ...');
     }
     case 'role': {
       const [action, name, ...values] = rest;

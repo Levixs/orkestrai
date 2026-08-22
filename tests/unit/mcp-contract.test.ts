@@ -17,6 +17,7 @@ import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules
 import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
 import { createAgentApiClientSchema, executeAgentApiClientRunnerSchema, exportAgentApiClientSchema, replaceAgentApiClientSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
 import { z } from 'zod';
+import { saveWorkspaceMemorySchema, reviseWorkspaceMemorySchema } from '$lib/modules/agent-room/contracts/schemas/workspace-memory.schema.js';
 
 /**
  * Contrato MCP x ponte: TODA tool e dirigida contra a rota e o schema REAIS
@@ -56,6 +57,10 @@ const EXPECTED: Record<string, Expectation> = {
   note_write: { method: 'PUT', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteWriteSchema },
   note_edit: { method: 'PATCH', path: /\/bridge\/notes\/n1$/, schema: bridgeNoteEditSchema },
   note_create: { method: 'POST', path: /\/bridge\/notes$/, schema: bridgeNoteCreateSchema },
+  memory_search: { method: 'GET', path: /\/bridge\/memory\?/ },
+  memory_add: { method: 'POST', path: /\/bridge\/memory$/, schema: saveWorkspaceMemorySchema },
+  memory_revise: { method: 'PATCH', path: /\/bridge\/memory\/n1$/, schema: reviseWorkspaceMemorySchema },
+  memory_archive: { method: 'DELETE', path: /\/bridge\/memory\/n1$/ },
   api_client_list: { method: 'GET', path: /\/bridge\/api-clients\?agentNodeId=/ },
   api_client_read: { method: 'GET', path: /\/bridge\/api-clients\/n1\?agentNodeId=n1$/ },
   api_client_create: { method: 'POST', path: /\/bridge\/api-clients$/, schema: createAgentApiClientSchema },
@@ -103,6 +108,10 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   note_write: { nodeId: 'n1', content: 'x' },
   note_edit: { nodeId: 'n1', oldText: 'a', newText: 'b' },
   note_create: { title: 'T', content: 'c' },
+  memory_search: { query: 'architecture' },
+  memory_add: { title: 'API boundary', content: 'Use the repository layer.', kind: 'decision', sources: [{ type: 'user', label: 'User direction' }] },
+  memory_revise: { id: 'n1', title: 'API boundary', content: 'Use the service and repository layers.', kind: 'decision', sources: [{ type: 'user', label: 'User direction' }], baseRevision: 1, baseUpdatedAt: '2026-08-22T20:00:00.000Z' },
+  memory_archive: { id: 'n1' },
   api_client_execute: { nodeId: 'n1', requestId: 'r1', variables: { baseUrl: 'https://example.test' } },
   api_client_read: { nodeId: 'n1' },
   api_client_create: { title: 'Agent API', collection: { requests: [] } },

@@ -97,6 +97,11 @@ Download the latest installers from
   Council decisions, Review Center evidence, exact Git revision, tests, risks,
   and linked files. It projects the existing records instead of creating a
   second tracker, and explicitly counts work that is not yet linked to a task.
+- **Sourced workspace memory:** preserve reusable decisions, facts, preferences,
+  constraints, references, and lessons with explicit evidence, immutable
+  revisions, conflict protection, search, and archive history. Agents query the
+  same memory on demand through typed MCP/CLI tools instead of receiving an
+  expensive full-memory prompt on every turn.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
   session, choose a browser/mobile or installed-app invite, approve the device
   fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator

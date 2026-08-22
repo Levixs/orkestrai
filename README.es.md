@@ -64,6 +64,11 @@ Descarga los instaladores más recientes desde
   proveedor, rol y uso de cada agente. La bandeja persistente demuestra si cada
   handoff entró en cola, fue entregado, recibido, respondido o falló bajo un id
   de mensaje, sin despertar terminales inactivos tras reiniciar.
+- **Memoria del workspace con fuentes:** conserva decisiones, hechos,
+  preferencias, restricciones, referencias y aprendizajes reutilizables con
+  evidencia explícita, revisiones inmutables, protección contra conflictos,
+  búsqueda e historial de archivo. Los agentes consultan la misma memoria bajo
+  demanda mediante tools MCP/CLI tipadas, sin recibirla completa en cada prompt.
 - **Uso compartido cifrado del workspace (experimental):** aloja una sesión
   cifrada de extremo a extremo, elige una invitación para navegador/móvil u otra
   aplicación instalada, comprueba la huella del dispositivo y asigna el rol

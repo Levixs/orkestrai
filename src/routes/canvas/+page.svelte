@@ -51,6 +51,7 @@
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
   import AttentionCenter from '$lib/components/agent-room/AttentionCenter.svelte';
+  import WorkspaceMemoryDialog from '$lib/components/agent-room/WorkspaceMemoryDialog.svelte';
   import WorkspacePermissionNotice from '$lib/components/agent-room/WorkspacePermissionNotice.svelte';
   import { isWorkspacePermissionError } from '$lib/components/agent-room/workspace-permission.js';
   import { isTypingTarget } from '$lib/components/agent-room/event-target.js';
@@ -96,7 +97,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, Braces, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, BookMarked, Braces, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -164,6 +165,7 @@
   let councilSource = $state<{ taskId?: string; taskTitle?: string; taskDescription?: string | null; leaderNodeId?: string } | null>(null);
   let designExplorationOpen = $state(false);
   let sharingOpen = $state(false);
+  let memoryOpen = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
   let editingWorkspace = $state<Workspace | null>(null);
@@ -401,6 +403,7 @@
     else if (action === 'roles' && activeWorkspace) toggleSidePanel('roles');
     else if (action === 'usage') toggleSidePanel('usage');
     else if (action === 'ports' && activeWorkspace) toggleSidePanel('ports');
+    else if (action === 'memory' && activeWorkspace) memoryOpen = true;
     else if (action === 'organize' && activeWorkspace) void organizeCanvas();
     else if (action === 'command-palette') showPalette = true;
   }
@@ -1660,6 +1663,7 @@
     { id: 'share-workspace', label: m['collaboration.share_workspace'](), hint: m['canvas.hint_action'](), run: () => (sharingOpen = true) },
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
     { id: 'council', label: m['council.open'](), hint: m['canvas.hint_action'](), run: () => (councilOpen = true) },
+    { id: 'memory', label: m['memory.title'](), hint: m['canvas.hint_view'](), run: () => (memoryOpen = true) },
     ...providers
       .filter((provider) => (provider.installed || canChooseAlternateRuntime) && provider.tui)
       .map((provider) => ({
@@ -2286,6 +2290,7 @@
     />
     {#if activeWorkspace}
       <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} source={councilSource} />
+      <WorkspaceMemoryDialog bind:open={memoryOpen} workspaceId={activeWorkspace.id} />
     {/if}
     {#if sharingOpen && activeWorkspace}
       <WorkspaceSharingDialog workspaceId={activeWorkspace.id} onClose={() => (sharingOpen = false)} />

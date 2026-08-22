@@ -1159,6 +1159,18 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'preserve-sourced-workspace-memory',
+    icon: 'BookMarked',
+    title: 'Preserve memória do workspace com fontes',
+    tagline: 'Mantenha conhecimento durável útil sem transformar toda conversa em fato.',
+    steps: [
+      { id: 'open-workspace-memory', title: 'Abra a memória compartilhada', body: 'Abra Memória do workspace pelo explorador do Workbench, paleta de comandos do Canvas ou Command/Ctrl+K.', action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-memory:{workspace}' } },
+      { id: 'record-durable-knowledge', title: 'Registre apenas conhecimento reutilizável', body: 'Escolha decisão, fato, preferência, restrição, referência ou aprendizado. Adicione conteúdo conciso, confiança, tags e fixe apenas o que merece prioridade.' },
+      { id: 'attach-memory-source', title: 'Associe a evidência', body: 'Adicione pelo menos uma declaração do usuário, nota, tarefa, mensagem, arquivo, URL, referência Git, revisão, Conselho ou agente. Identificação e trecho tornam a procedência compreensível.' },
+      { id: 'revise-memory-safely', title: 'Revise sem apagar o histórico', body: 'Use Revisar quando o conhecimento mudar. A versão anterior continua auditável e um editor desatualizado não sobrescreve silenciosamente um valor mais novo.' },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Revisar uma entrega',

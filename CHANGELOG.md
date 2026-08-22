@@ -27,6 +27,11 @@ pt-BR, English, and Spanish translations.
   projects its assignee, active Floor and branch, semantic timeline, Councils,
   reviews, exact Git revision, evidence, tests, risks, and linked paths into one
   traceable delivery flow without duplicating the underlying records.
+- Added sourced Workspace Memory in Canvas, Workbench, CLI, and MCP. Durable
+  decisions, facts, preferences, constraints, references, and lessons now keep
+  explicit provenance, content fingerprints, search, immutable revisions,
+  optimistic conflict protection, and archive history without injecting the
+  whole memory into every agent prompt.
 
 ## 0.17.0 - 2026-08-22
 

@@ -201,7 +201,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'workstreams' | 'automation' | 'device' | 'design';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'workstreams' | 'memory' | 'automation' | 'device' | 'design';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 export type WorkspaceRuntimeKind = 'native' | 'wsl';
 export type WorkspaceExecutionRuntime =
@@ -426,6 +426,42 @@ export type WorkstreamSnapshot = {
     changedPaths: string[];
   };
   generatedAt: string;
+};
+
+export type WorkspaceMemoryKind = 'decision' | 'fact' | 'preference' | 'constraint' | 'reference' | 'lesson';
+export type WorkspaceMemoryStatus = 'active' | 'superseded' | 'archived';
+export type WorkspaceMemorySourceType = 'user' | 'note' | 'task' | 'message' | 'file' | 'url' | 'git' | 'review' | 'council' | 'agent';
+
+export type WorkspaceMemorySource = {
+  id: string;
+  type: WorkspaceMemorySourceType;
+  sourceId: string | null;
+  label: string;
+  uri: string | null;
+  excerpt: string | null;
+  contentHash: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type WorkspaceMemoryEntry = {
+  id: string;
+  workspaceId: string;
+  kind: WorkspaceMemoryKind;
+  status: WorkspaceMemoryStatus;
+  title: string;
+  content: string;
+  confidence: number;
+  pinned: boolean;
+  tags: string[];
+  createdByNodeId: string | null;
+  createdByTitle: string | null;
+  supersedesId: string | null;
+  revision: number;
+  verifiedAt: string | null;
+  sources: WorkspaceMemorySource[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type WorkspaceAttachment = {
@@ -715,6 +751,7 @@ export type WorkspaceSearchResultKind =
   | 'activity'
   | 'message'
   | 'attention'
+  | 'memory'
   | 'file';
 
 export type WorkspaceSearchResult = {

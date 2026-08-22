@@ -50,6 +50,10 @@ const TOOLS = [
   { name: 'note_write', description: 'Substitui o conteudo de uma nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, content: { type: 'string' } }, required: ['nodeId', 'content'] } },
   { name: 'note_edit', description: 'Edicao pontual: troca um trecho da nota.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, oldText: { type: 'string' }, newText: { type: 'string' } }, required: ['nodeId', 'oldText', 'newText'] } },
   { name: 'note_create', description: 'Cria uma nota no canvas (conecta ao time por padrao).', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, connect: { type: 'string', description: 'Titulo de agente ou "all"' } }, required: ['title'] } },
+  { name: 'memory_search', description: 'Consulta memoria duravel e suas fontes sob demanda. Use antes de decisoes relevantes; nao trate conversa solta como memoria.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, includeHistory: { type: 'boolean', default: false } } } },
+  { name: 'memory_add', description: 'Registra conhecimento duravel com pelo menos uma fonte explicita.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, content: { type: 'string' }, kind: { type: 'string', enum: ['decision', 'fact', 'preference', 'constraint', 'reference', 'lesson'] }, confidence: { type: 'integer', minimum: 0, maximum: 100 }, pinned: { type: 'boolean' }, tags: { type: 'array', items: { type: 'string' } }, sources: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'object', properties: { type: { type: 'string', enum: ['user', 'note', 'task', 'message', 'file', 'url', 'git', 'review', 'council', 'agent'] }, sourceId: { type: ['string', 'null'] }, label: { type: 'string' }, uri: { type: ['string', 'null'] }, excerpt: { type: ['string', 'null'] } }, required: ['type', 'label'] } } }, required: ['title', 'content', 'kind', 'sources'] } },
+  { name: 'memory_revise', description: 'Cria uma revisao imutavel. Requer revision e updatedAt obtidos por memory_search para impedir sobrescrita concorrente.', inputSchema: { type: 'object', properties: { id: { type: 'string' }, title: { type: 'string' }, content: { type: 'string' }, kind: { type: 'string', enum: ['decision', 'fact', 'preference', 'constraint', 'reference', 'lesson'] }, confidence: { type: 'integer', minimum: 0, maximum: 100 }, pinned: { type: 'boolean' }, tags: { type: 'array', items: { type: 'string' } }, sources: { type: 'array', minItems: 1, maxItems: 8, items: { type: 'object' } }, baseRevision: { type: 'integer', minimum: 1 }, baseUpdatedAt: { type: 'string' } }, required: ['id', 'title', 'content', 'kind', 'sources', 'baseRevision', 'baseUpdatedAt'] } },
+  { name: 'memory_archive', description: 'Arquiva uma memoria sem apagar seu historico.', inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
   { name: 'api_client_list', description: 'Lista os requests salvos em nodes Cliente de API conectados a este agente, sem expor tokens ou senhas.', inputSchema: { type: 'object', properties: {} } },
   { name: 'api_client_reference', description: 'Retorna o contrato, fluxo seguro e exemplos oficiais de scripts Bruno, Postman e Orkestrai para criar colecoes completas sem tentativa e erro.', inputSchema: { type: 'object', properties: {} } },
   { name: 'api_client_read', description: 'Le uma colecao completa conectada, incluindo requests, pastas, runners e scripts. Segredos vem marcados; use o fingerprint ao substituir.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
@@ -158,6 +162,20 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('PATCH', `/api/agent-room/bridge/notes/${encodeURIComponent(args.nodeId)}`, { old: args.oldText, new: args.newText });
     case 'note_create':
       return bridge('POST', '/api/agent-room/bridge/notes', { title: args.title, content: args.content, connect: args.connect ?? 'all', from: selfAgent });
+    case 'memory_search': {
+      const params = new URLSearchParams();
+      if (args.query) params.set('q', args.query);
+      if (args.includeHistory) params.set('history', '1');
+      return bridge('GET', `/api/agent-room/bridge/memory?${params}`);
+    }
+    case 'memory_add':
+      return bridge('POST', '/api/agent-room/bridge/memory', { ...args, confidence: args.confidence ?? 100, pinned: args.pinned ?? false, tags: args.tags ?? [], createdByNodeId: selfAgent?.length === 36 ? selfAgent : null });
+    case 'memory_revise': {
+      const { id, ...body } = args;
+      return bridge('PATCH', `/api/agent-room/bridge/memory/${encodeURIComponent(id)}`, { ...body, confidence: body.confidence ?? 100, pinned: body.pinned ?? false, tags: body.tags ?? [], createdByNodeId: selfAgent?.length === 36 ? selfAgent : null });
+    }
+    case 'memory_archive':
+      return bridge('DELETE', `/api/agent-room/bridge/memory/${encodeURIComponent(args.id)}`);
     case 'api_client_list': {
       const query = selfAgent ? `?agentNodeId=${encodeURIComponent(selfAgent)}` : '';
       return bridge('GET', `/api/agent-room/bridge/api-clients${query}`);

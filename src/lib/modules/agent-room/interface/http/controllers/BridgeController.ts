@@ -42,6 +42,8 @@ import { ApiClientFingerprintConflictError, apiClientService } from '$lib/module
 import { CreateAgentApiClientRequest, ExecuteAgentApiClientRunnerRequest, ExecuteSavedApiClientRequest, ExportAgentApiClientRequest, ReplaceAgentApiClientRequest } from '$lib/modules/agent-room/interface/http/requests/ApiClientRequests.js';
 import { CreateAgentApiClientDto, ExecuteAgentApiClientRunnerDto, ExecuteSavedApiClientRequestDto, ExportAgentApiClientDto, ReplaceAgentApiClientDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
 import { ExecuteSavedApiClientRequestAction } from '$lib/modules/agent-room/application/actions/ExecuteSavedApiClientRequestAction.js';
+import { workspaceMemoryService, WorkspaceMemoryConflictError } from '$lib/modules/agent-room/application/services/WorkspaceMemoryService.js';
+import { saveWorkspaceMemorySchema, reviseWorkspaceMemorySchema } from '$lib/modules/agent-room/contracts/schemas/workspace-memory.schema.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -75,6 +77,48 @@ export class BridgeController extends Controller {
       return this.json({ data: buildUsageRoutingReport(await usageService.getAll(false), policy) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao consultar uso dos providers.', 401);
+    }
+  }
+
+  async memoryList(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await workspaceMemoryService.list(workspace.id, {
+        query: event.url.searchParams.get('q') ?? '',
+        includeHistory: event.url.searchParams.get('history') === '1',
+      }) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao consultar a memoria do workspace.', 401);
+    }
+  }
+
+  async memoryCreate(event: any) {
+    try {
+      const input = saveWorkspaceMemorySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await workspaceMemoryService.create(workspace.id, input) }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao salvar a memoria do workspace.');
+    }
+  }
+
+  async memoryRevise(event: any) {
+    try {
+      const input = reviseWorkspaceMemorySchema.parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await workspaceMemoryService.revise(workspace.id, event.params.memoryId, input) });
+    } catch (error) {
+      if (error instanceof WorkspaceMemoryConflictError) return this.json({ error: error.message, current: error.current }, 409);
+      return this.errorResponse(error, 'Falha ao revisar a memoria do workspace.');
+    }
+  }
+
+  async memoryArchive(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await workspaceMemoryService.archive(workspace.id, event.params.memoryId) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao arquivar a memoria do workspace.');
     }
   }
 

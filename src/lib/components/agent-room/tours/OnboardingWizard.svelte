@@ -7,7 +7,7 @@
   import { Input } from '$lib/components/ui/input';
   import * as m from '$lib/paraglide/messages.js';
   import {
-    Activity, ArrowLeft, Cable, FileCode2, FolderPlus, GitBranch, GitPullRequestArrow, Languages, Layers, LayoutGrid, LayoutTemplate, ListRestart, Mic, Palette, PanelLeftOpen, Paperclip, Pin, RadioTower, Repeat, Rocket, Scale, ScanSearch, Search, Smartphone, Sparkles, Users, Workflow,
+    Activity, ArrowLeft, BookMarked, Cable, FileCode2, FolderPlus, GitBranch, GitPullRequestArrow, Languages, Layers, LayoutGrid, LayoutTemplate, ListRestart, Mic, Palette, PanelLeftOpen, Paperclip, Pin, RadioTower, Repeat, Rocket, Scale, ScanSearch, Search, Smartphone, Sparkles, Users, Workflow,
   } from '@lucide/svelte';
   import { toursCatalog, startTour } from './engine.svelte.js';
   import type { Tour } from './types.js';
@@ -29,7 +29,7 @@
 
   let { open, onClose, onCreateWorkspace, activeWorkspaceId, requestedTourId = null }: Props = $props();
 
-  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, GitPullRequestArrow, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, ListRestart, Palette, PanelLeftOpen, FileCode2, Paperclip, Pin, RadioTower, Mic, Languages, Activity, Scale, ScanSearch, Smartphone };
+  const ICONS: Record<string, typeof Users> = { Users, Repeat, GitBranch, GitPullRequestArrow, Workflow, Search, FolderPlus, Cable, Rocket, Layers, LayoutGrid, LayoutTemplate, ListRestart, Palette, PanelLeftOpen, FileCode2, Paperclip, Pin, RadioTower, Mic, Languages, Activity, Scale, ScanSearch, Smartphone, BookMarked };
 
   type WizardStep = 'language' | 'welcome' | 'workspace' | 'usecase';
   type UiLanguage = 'pt-BR' | 'en' | 'es';

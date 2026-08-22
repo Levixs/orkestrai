@@ -41,6 +41,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'monitor-team-control-center': 'monitor-team-control-center',
   'triage-attention-across-workspaces': 'triage-attention-center',
   'trace-delivery-workstream': 'trace-delivery-workstream',
+  'preserve-sourced-workspace-memory': 'preserve-sourced-workspace-memory',
   'edit-and-preview-files': 'edit-and-preview-files',
   'share-reference-material': 'share-reference-material',
   'universal-workspace-search': 'universal-workspace-search',
