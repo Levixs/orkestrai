@@ -13,6 +13,19 @@ required_signing_env=(
   APPLE_TEAM_ID
 )
 
+# Signing traverses the unpacked application concurrently. The macOS runner's
+# default soft limit is too low once production dependencies exceed a few
+# thousand files.
+requested_open_file_limit="${ORKESTRAI_MAC_OPEN_FILE_LIMIT:-65536}"
+hard_open_file_limit="$(ulimit -Hn)"
+if [[ "$hard_open_file_limit" =~ ^[0-9]+$ ]] && (( hard_open_file_limit < requested_open_file_limit )); then
+  requested_open_file_limit="$hard_open_file_limit"
+fi
+if ! ulimit -n "$requested_open_file_limit"; then
+  printf 'ERROR: Unable to raise the macOS open-file limit to %s.\n' "$requested_open_file_limit" >&2
+  exit 1
+fi
+
 if [[ "${ORKESTRAI_REQUIRE_MAC_SIGNING:-false}" == "true" ]]; then
   for variable in "${required_signing_env[@]}"; do
     if [[ -z "${!variable:-}" ]]; then

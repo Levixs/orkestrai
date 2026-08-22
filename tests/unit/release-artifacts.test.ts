@@ -137,6 +137,8 @@ describe('packaged updater', () => {
     expect(packageScript).toContain('-c.mac.hardenedRuntime=false');
     expect(packageScript).toContain('-c.mac.notarize=false');
     expect(packageScript).toContain('ORKESTRAI_REQUIRE_MAC_SIGNING');
+    expect(packageScript).toContain('ORKESTRAI_MAC_OPEN_FILE_LIMIT');
+    expect(packageScript).toContain('ulimit -n "$requested_open_file_limit"');
     expect(workflow).toContain("ORKESTRAI_REQUIRE_MAC_SIGNING: 'true'");
     expect(workflow).toContain('scripts/package-macos.sh --arm64 --x64');
     expect(workflow).toContain('codesign --verify --deep --strict');
