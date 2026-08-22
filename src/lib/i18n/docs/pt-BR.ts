@@ -75,6 +75,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `Abra Team Packs pela biblioteca de presets do Canvas. Presets existentes e o catálogo embutido continuam compatíveis; um snapshot customizado começa na versão 1.0.0 e inclui agentes, roles, skills portáteis, etapas e tarefas-modelo, rotinas, servidores MCP adicionais, conexões e layout. Publique uma versão semântica maior com notas para criar uma revisão local imutável. Exporte um arquivo .orkestrai-team-pack.json protegido por checksum ou importe um após validações limitadas de schema, tamanho, integridade e conteúdo. Sessões, ids de conversa, credenciais e outros estados de runtime são removidos. A importação cria um novo pack local em vez de substituir silenciosamente outro com a mesma identidade.`,
     },
     {
+      id: 'huddles',
+      title: 'Huddles: conversas persistentes com pessoas e agentes',
+      body: `Abra Huddles pela barra do Canvas, explorer do Workbench, menu nativo Workspace, Command/Ctrl+K ou PWA Remota. Inicie uma sala ativa por workspace com assunto, pauta opcional, um facilitador e até onze agentes além da pessoa que iniciou. Dite ou escreva cada fala, direcione para até cinco agentes participantes e, se quiser, ouça novas respostas pelo TTS local existente. A transcrição limitada, histórico de participantes, respostas pendentes ou falhas e ciclo de vida sobrevivem à navegação e reinicialização sem acordar terminais alheios. Um agente contribui por huddle list/say na CLI ou ferramentas MCP tipadas sem disparar respostas recursivas. Encerre explicitamente ou crie uma tarefa Kanban vinculada com pauta e transcrição; Fluxos de trabalho mostra a sessão como evidência da entrega. A colaboração remota aplica permissões separadas de visualizar, falar e gerenciar sobre o transporte criptografado existente. É uma conversa estruturada assistida por voz, não uma chamada de áudio sempre aberta.`,
+    },
+    {
       id: 'review-center',
       title: 'Controle de código e Central de revisão',
       body: `Abra a Central de revisão em cada workspace do explorer do Workbench para inspecionar alterações preparadas e não preparadas sem sair do Orkestrai. O cabeçalho mostra branch, upstream e commits à frente ou atrás; a lista permite preparar, remover da preparação, criar commit, fazer pull, push e descartar edições rastreadas somente após confirmação. Selecionar um arquivo abre um diff lado a lado e limitado no Monaco; arquivos binários ou muito grandes recebem estados seguros explícitos. Inicie uma revisão para vincular a revisão Git exata a uma tarefa, agente responsável, resumo, evidências, testes, riscos e arquivos selecionados. Clique em qualquer lado do diff para comentar no arquivo ou na linha. Quando o repositório muda, comentários antigos continuam visíveis como contexto desatualizado em vez de apontarem silenciosamente para outra linha. Aprove, solicite alterações ou rejeite em linguagem direta; alterações solicitadas são enviadas ao agente responsável quando seu terminal está disponível e permanecem salvas quando ele está offline.`,
@@ -346,7 +351,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'cli',
       title: 'CLI orkestrai (a ponte)',
-      body: `Os agentes usam a CLI orkestrai para agir no canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, device, port, fs, run, say, clip, notes e portals. ask preserva mensagens com várias palavras mesmo sem aspas, mas uma conversa só conta quando a ponte devolve Resposta confirmada; timeout ou resposta não confirmada termina com erro. usage devolve as cotas atuais e a recomendação configurada no nó Uso. task columns devolve as etapas definidas por você; task add --column e task move permitem que líder e equipe respeitem qualquer processo, não apenas um kanban de software. device lista, conecta, controla, inspeciona, captura e encerra o simulador móvel do workspace. task done também avisa o líder automaticamente. Agentes que falam MCP recebem as mesmas ações como tools nativas via orkestrai mcp. O provisionamento da ponte é automático e o token fica em .orkestrai/workspace.json.`,
+      body: `Os agentes usam a CLI orkestrai para agir no canvas: list, ask, usage, huddle list/say, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, device, port, fs, run, say, clip, notes e portals. ask preserva mensagens com várias palavras mesmo sem aspas, mas uma conversa só conta quando a ponte devolve Resposta confirmada; timeout ou resposta não confirmada termina com erro. usage devolve as cotas atuais e a recomendação configurada no nó Uso. huddle list/say permite que um agente participante leia a transcrição limitada e contribua sem disparar respostas recursivas. task columns devolve as etapas definidas por você; task add --column e task move permitem que líder e equipe respeitem qualquer processo, não apenas um kanban de software. device lista, conecta, controla, inspeciona, captura e encerra o simulador móvel do workspace. task done também avisa o líder automaticamente. Agentes que falam MCP recebem as mesmas ações como tools nativas via orkestrai mcp. O provisionamento da ponte é automático e o token fica em .orkestrai/workspace.json.`,
     },
     {
       id: 'usage-routing',
@@ -630,6 +635,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Team Packs', 'versões semânticas', 'importação e exportação seguras'],
     },
     {
+      id: 'run-agent-huddle',
+      title: 'Chegue a uma decisão com um huddle persistente de agentes',
+      body: 'Abra Huddles, defina assunto e pauta, escolha facilitador e agentes participantes e escreva ou dite uma fala para quem precisa opinar. Acompanhe respostas pendentes e concluídas numa transcrição ordenada, ouça as novas quando o TTS estiver ativo e permita que agentes participantes registrem descobertas concisas pela ponte. Encerre quando a decisão estiver clara e crie uma tarefa Kanban vinculada para manter pauta e transcrição no fluxo da entrega. Um colaborador remoto participa da mesma sala sanitizada conforme permissão para visualizar, falar ou gerenciar.',
+      tags: ['Huddle persistente', 'ditado + TTS', 'evidência na tarefa'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Editar e inspecionar arquivos sem sair do Workbench',
       body: 'Expanda Arquivos no sidebar do Workbench e abra um arquivo do workspace diretamente em uma aba local, sem criar um nó no canvas. A árvore de arquivos do Canvas e o Command/Ctrl+K usam a mesma abertura direta. O Monaco preserva cursor, undo, seleção e estado não salvo entre painéis. Busque ou substitua texto, navegue por símbolos, formate arquivos compatíveis e escolha minimapa, quebra de linha, tamanho da fonte ou autosave opcional em Configurações → Aparência. Markdown alterna entre fonte e prévia sanitizada; PDFs têm navegação e zoom; imagens permitem zoom, pan, dimensões e transparência; binários exibem metadados e abrem no aplicativo do sistema. Arquivos acima de 512 KB abrem em uma prévia limitada e somente leitura para nunca sobrescrever conteúdo que não foi carregado.',
@@ -688,7 +699,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       date: 'Próxima versão',
       title: 'Coordenação durável, conhecimento com fontes e times reutilizáveis',
-      summary: 'Mensagens, atividade, atenção, entrega, memória, anotações e Team Packs agora preservam seu contexto operacional.',
+      summary: 'Mensagens, atividade, atenção, entrega, memória, anotações, Team Packs e Huddles agora preservam seu contexto operacional.',
       items: [
         'Cada mensagem entre agentes agora possui um envelope canônico com destinatário e conteúdo verificados, recibos duráveis, correlação, deduplicação e proteção contra replay.',
         'A Central de controle adiciona uma timeline semântica de Atividade para mensagens, tarefas, revisões, decisões, Git e eventos do sistema, com diagnósticos brutos sob demanda.',
@@ -698,6 +709,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'A Memória do workspace preserva decisões, fatos, preferências, restrições, referências e aprendizados com fontes, busca, revisões imutáveis, proteção contra conflitos, histórico e acesso sob demanda para agentes via MCP/CLI.',
         'A Central de Anotações projeta feedback de revisão de código e Design nativo sem perder artefato canônico, autoria, alvo, revisão, resolução e aviso de código desatualizado.',
         'Presets customizados agora são Team Packs versionados, com releases semânticas, histórico local imutável, verificação SHA-256, importação limitada e sem estado vivo ou credenciais.',
+        'Huddles persistentes reúnem pessoas e agentes selecionados em uma transcrição limitada com ditado, TTS opcional, respostas direcionadas, contribuições por CLI/MCP, permissões remotas criptografadas, retomada do ciclo de vida e evidência vinculada ao Kanban e aos Fluxos de trabalho.',
       ],
     },
     {

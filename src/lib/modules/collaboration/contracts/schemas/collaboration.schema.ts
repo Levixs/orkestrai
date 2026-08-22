@@ -65,6 +65,26 @@ const agentInvokeCommandSchema = z.object({
   agentNodeId: z.string().uuid(),
 }).strict();
 
+const huddleCreateCommandSchema = z.object({
+  type: z.literal('huddle.create'),
+  title: z.string().trim().min(1).max(160),
+  agenda: z.string().trim().max(8_000).nullish(),
+  agentNodeIds: z.array(z.string().uuid()).min(1).max(12),
+  facilitatorNodeId: z.string().uuid().nullish(),
+}).strict();
+
+const huddleTurnCommandSchema = z.object({
+  type: z.literal('huddle.turn'),
+  huddleId: z.string().uuid(),
+  text: z.string().trim().min(1).max(10_000),
+  targetNodeIds: z.array(z.string().uuid()).min(1).max(5),
+}).strict();
+
+const huddleEndCommandSchema = z.object({
+  type: z.literal('huddle.end'),
+  huddleId: z.string().uuid(),
+}).strict();
+
 const designCommentCreateCommandSchema = z.object({
   type: z.literal('design.comment.create'),
   nodeId: z.string().uuid(),
@@ -127,6 +147,9 @@ export const collaborationCommandSchema = z.discriminatedUnion('type', [
   leaderMessageCommandSchema,
   agentMessageCommandSchema,
   agentInvokeCommandSchema,
+  huddleCreateCommandSchema,
+  huddleTurnCommandSchema,
+  huddleEndCommandSchema,
   designCommentCreateCommandSchema,
   designCommentReplyCommandSchema,
   designCommentResolveCommandSchema,

@@ -2,6 +2,9 @@ import type { AgentActivity, AgentWorkstream, AgentWorkstreamStage, WorkstreamSn
 import { AgentCouncil } from '../../domain/models/AgentCouncil.js';
 import { AgentCouncilPerspective } from '../../domain/models/AgentCouncilPerspective.js';
 import { AgentReview } from '../../domain/models/AgentReview.js';
+import { AgentHuddle } from '../../domain/models/AgentHuddle.js';
+import { AgentHuddleParticipant } from '../../domain/models/AgentHuddleParticipant.js';
+import { AgentHuddleTurn } from '../../domain/models/AgentHuddleTurn.js';
 import { controlCenterRepository } from '../../infrastructure/repositories/ControlCenterRepository.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { boardColumnService } from './BoardColumnService.js';
@@ -35,7 +38,7 @@ export class WorkstreamService {
   async snapshot(workspaceId: string): Promise<WorkstreamSnapshot> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     if (!workspace) throw new Error('Workspace not found.');
-    const [tasks, columns, nodes, floors, activities, councilModels, reviewModels, git] = await Promise.all([
+    const [tasks, columns, nodes, floors, activities, councilModels, reviewModels, huddleModels, git] = await Promise.all([
       taskBoardService.list(workspaceId),
       boardColumnService.list(workspaceId),
       workspaceRepository.listNodes(workspaceId, undefined, true),
@@ -43,6 +46,7 @@ export class WorkstreamService {
       controlCenterRepository.listActivity(workspaceId),
       AgentCouncil.query().where('workspace_id', workspaceId).orderBy('updated_at', 'desc').get(),
       AgentReview.query().where('workspace_id', workspaceId).orderBy('updated_at', 'desc').get(),
+      AgentHuddle.query().where('workspace_id', workspaceId).orderBy('updated_at', 'desc').get(),
       gitService.status(workspaceId).catch(() => ({ isRepo: false, branch: null, upstream: null, ahead: 0, behind: 0, head: null, revision: '', changes: [] })),
     ]);
     const columnsByKey = new Map(columns.map((column) => [column.key, column]));
@@ -50,6 +54,7 @@ export class WorkstreamService {
     const floorsById = new Map(floors.map((floor) => [floor.id, floor]));
     const councilsByTask = new Map<string, typeof councilModels>();
     const reviewsByTask = new Map<string, typeof reviewModels>();
+    const huddlesByTask = new Map<string, typeof huddleModels>();
     for (const council of councilModels) {
       const taskId = council.getAttribute('task_id') as string | null;
       if (taskId) councilsByTask.set(taskId, [...(councilsByTask.get(taskId) ?? []), council]);
@@ -57,6 +62,25 @@ export class WorkstreamService {
     for (const review of reviewModels) {
       const taskId = review.getAttribute('task_id') as string | null;
       if (taskId) reviewsByTask.set(taskId, [...(reviewsByTask.get(taskId) ?? []), review]);
+    }
+    for (const huddle of huddleModels) {
+      const taskId = huddle.getAttribute('linked_task_id') as string | null;
+      if (taskId) huddlesByTask.set(taskId, [...(huddlesByTask.get(taskId) ?? []), huddle]);
+    }
+    const huddleIds = huddleModels.map((model) => String(model.getAttribute('id')));
+    const [huddleParticipants, huddleTurns] = huddleIds.length ? await Promise.all([
+      AgentHuddleParticipant.query().whereIn('huddle_id', huddleIds).get(),
+      AgentHuddleTurn.query().whereIn('huddle_id', huddleIds).get(),
+    ]) : [[], []];
+    const huddleParticipantCounts = new Map<string, number>();
+    const huddleTurnCounts = new Map<string, number>();
+    for (const participant of huddleParticipants) {
+      const id = String(participant.getAttribute('huddle_id'));
+      if (!participant.getAttribute('left_at')) huddleParticipantCounts.set(id, (huddleParticipantCounts.get(id) ?? 0) + 1);
+    }
+    for (const turn of huddleTurns) {
+      const id = String(turn.getAttribute('huddle_id'));
+      huddleTurnCounts.set(id, (huddleTurnCounts.get(id) ?? 0) + 1);
     }
     const perspectiveRows = councilModels.length
       ? await AgentCouncilPerspective.query().whereIn('council_id', councilModels.map((model) => String(model.getAttribute('id')))).get()
@@ -71,6 +95,7 @@ export class WorkstreamService {
       const taskActivities = activities.filter((activity) => activity.taskId === task.id);
       const councils = councilsByTask.get(task.id) ?? [];
       const reviews = reviewsByTask.get(task.id) ?? [];
+      const huddles = huddlesByTask.get(task.id) ?? [];
       const paths = [...new Set(reviews.flatMap((review) => strings(review.getAttribute('selected_paths_json'))))];
       const assignee = task.assigneeNodeId ? nodesById.get(task.assigneeNodeId) ?? null : null;
       const floor = assignee?.floorId ? floorsById.get(assignee.floorId) ?? null : null;
@@ -99,8 +124,18 @@ export class WorkstreamService {
         riskCount: strings(review.getAttribute('risks_json')).length,
         updatedAt: iso(review.getAttribute('updated_at')),
       }));
+      const huddleRefs = huddles.map((huddle) => {
+        const id = String(huddle.getAttribute('id'));
+        return {
+          id, title: String(huddle.getAttribute('title')),
+          status: huddle.getAttribute('status') as 'active' | 'ended',
+          participantCount: huddleParticipantCounts.get(id) ?? 0,
+          turnCount: huddleTurnCounts.get(id) ?? 0,
+          updatedAt: iso(huddle.getAttribute('updated_at')),
+        };
+      });
       const stage = stageFor(task.status, taskActivities, reviewRefs.map((review) => review.status));
-      const updatedAt = [task.updatedAt, ...taskActivities.map((item) => item.createdAt), ...councilRefs.map((item) => item.updatedAt), ...reviewRefs.map((item) => item.updatedAt)]
+      const updatedAt = [task.updatedAt, ...taskActivities.map((item) => item.createdAt), ...councilRefs.map((item) => item.updatedAt), ...reviewRefs.map((item) => item.updatedAt), ...huddleRefs.map((item) => item.updatedAt)]
         .sort().at(-1) ?? task.updatedAt;
       return {
         id: task.id,
@@ -116,6 +151,7 @@ export class WorkstreamService {
         floor: floor ? { id: floor.id, name: floor.name, branch: floor.branch } : null,
         councils: councilRefs,
         reviews: reviewRefs,
+        huddles: huddleRefs,
         git: {
           revision: git.revision || null,
           branch: git.branch,
@@ -139,6 +175,7 @@ export class WorkstreamService {
       unlinked: {
         councils: councilModels.filter((model) => !linkedTaskIds.has(String(model.getAttribute('task_id') ?? ''))).length,
         reviews: reviewModels.filter((model) => !linkedTaskIds.has(String(model.getAttribute('task_id') ?? ''))).length,
+        huddles: huddleModels.filter((model) => !linkedTaskIds.has(String(model.getAttribute('linked_task_id') ?? ''))).length,
         activities: activities.filter((activity) => !activity.taskId || !linkedTaskIds.has(activity.taskId)).length,
         changedPaths: [...new Set(git.changes.filter((change) => !linkedPaths.has(change.path)).map((change) => change.path))],
       },

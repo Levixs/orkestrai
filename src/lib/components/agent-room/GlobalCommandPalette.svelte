@@ -40,6 +40,7 @@
   import { workbenchWorkstreamsItemId } from './workbench-workstreams.js';
   import { workbenchMemoryItemId } from './workbench-memory.js';
   import { workbenchAnnotationsItemId } from './workbench-annotations.js';
+  import { workbenchHuddlesItemId } from './workbench-huddles.js';
   import { workbenchAutomationsItemId } from './workbench-automations.js';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
@@ -68,6 +69,7 @@
     'activity',
     'message',
     'memory',
+    'huddle',
     'file',
   ];
 
@@ -110,6 +112,7 @@
       command('workstreams', m['global_search.command_workstreams'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchWorkstreamsItemId(workspaceId))}`),
       command('memory', m['global_search.command_memory'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchMemoryItemId(workspaceId))}`),
       command('annotations', m['global_search.command_annotations'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchAnnotationsItemId(workspaceId))}`),
+      command('huddles', m['global_search.command_huddles'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchHuddlesItemId(workspaceId))}`),
       command('review-center', m['global_search.command_review_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchReviewCenterItemId(workspaceId))}`),
       command('automations', m['global_search.command_automations'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchAutomationsItemId(workspaceId))}`),
     ] : [];
@@ -239,6 +242,7 @@
       message: m['global_search.kind_message'],
       attention: m['global_search.kind_attention'],
       memory: m['global_search.kind_memory'],
+      huddle: m['global_search.kind_huddle'],
       file: m['global_search.kind_file'],
       documentation: m['global_search.kind_documentation'],
       command: m['global_search.kind_command'],

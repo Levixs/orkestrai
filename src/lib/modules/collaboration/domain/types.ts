@@ -16,6 +16,9 @@ export type CollaborationScope =
   | 'voice.transcribe'
   | 'agents.message'
   | 'agents.invoke'
+  | 'huddles.view'
+  | 'huddles.speak'
+  | 'huddles.manage'
   | 'terminal.control'
   | 'peers.manage';
 
@@ -102,6 +105,22 @@ export type SharedWorkspaceDto = {
     createdAt: string;
     updatedAt: string;
   }>;
+  huddles: Array<{
+    id: string;
+    title: string;
+    agenda: string | null;
+    status: 'active' | 'ended';
+    facilitatorNodeId: string | null;
+    linkedTaskId: string | null;
+    participants: Array<{ kind: 'user' | 'remote' | 'agent'; participantId: string; displayName: string; role: 'facilitator' | 'member' | 'guest' }>;
+    turns: Array<{
+      id: string; sequence: number; speakerKind: 'user' | 'remote' | 'agent'; speakerName: string;
+      addressedNodeId: string | null; text: string; state: 'pending' | 'completed' | 'failed'; errorCode: string | null; createdAt: string;
+    }>;
+    startedAt: string;
+    endedAt: string | null;
+    updatedAt: string;
+  }>;
   floors: Array<{ id: string; name: string; status: string; activeTasks: number; activeAgents: number }>;
   roles: Array<{ name: string; agentCount: number }>;
   reviews: Array<{
@@ -162,7 +181,10 @@ export type CollaborationCommand =
   | { type: 'design.element.update'; nodeId: string; elementId: string; changes: { x: number; y: number; width: number; height: number; opacity: number; fill: string } }
   | { type: 'leader.message'; message: string }
   | { type: 'agent.message'; agentNodeId: string; message: string }
-  | { type: 'agent.invoke'; agentNodeId: string };
+  | { type: 'agent.invoke'; agentNodeId: string }
+  | { type: 'huddle.create'; title: string; agenda?: string | null; agentNodeIds: string[]; facilitatorNodeId?: string | null }
+  | { type: 'huddle.turn'; huddleId: string; text: string; targetNodeIds: string[] }
+  | { type: 'huddle.end'; huddleId: string };
 
 export type CollaborationCommandResult = {
   commandId: string;

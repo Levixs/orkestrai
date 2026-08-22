@@ -23,6 +23,7 @@ import { designDocumentService } from '$lib/modules/agent-room/application/servi
 import { ApplyDesignOperationsDto } from '$lib/modules/agent-room/application/dto/DesignDtos.js';
 import { designOperationSchema } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
 import { collaborationCommandSchema } from '$lib/modules/collaboration/contracts/schemas/collaboration.schema.js';
+import { huddleService } from '$lib/modules/agent-room/application/services/HuddleService.js';
 
 async function setup(role: 'viewer' | 'operator' | 'administrator' = 'operator') {
   const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-collaboration-'));
@@ -173,6 +174,17 @@ describe('collaboration host core', () => {
     expect(collaborationPolicy.scopesForApproval('administrator', true)).toContain('terminal.control');
   });
 
+  it('separates huddle viewing, speaking, and lifecycle management by role', () => {
+    expect(collaborationPolicy.scopesForRole('viewer')).toContain('huddles.view');
+    expect(collaborationPolicy.scopesForRole('viewer')).not.toContain('huddles.speak');
+    expect(collaborationPolicy.scopesForRole('collaborator')).toEqual(expect.arrayContaining(['huddles.view', 'huddles.speak']));
+    expect(collaborationPolicy.scopesForRole('collaborator')).not.toContain('huddles.manage');
+    expect(collaborationPolicy.scopesForRole('operator')).toContain('huddles.manage');
+    expect(collaborationPolicy.commandScope('huddle.create')).toBe('huddles.manage');
+    expect(collaborationPolicy.commandScope('huddle.turn')).toBe('huddles.speak');
+    expect(collaborationPolicy.commandScope('huddle.end')).toBe('huddles.manage');
+  });
+
   it('grants design permissions independently from the collaboration role', () => {
     expect(collaborationPolicy.scopesForApproval('administrator', false, 'none')).not.toContain('design.view');
     expect(collaborationPolicy.scopesForApproval('viewer', false, 'view')).toContain('design.view');
@@ -316,6 +328,65 @@ describe('collaboration host core', () => {
     expect((await taskBoardService.list(viewer.workspace.id)).some((task) => task.title === 'Forbidden task')).toBe(false);
     expect((await collaborationRepository.listAudit(operator.workspace.id)).some((event) => event.eventType === 'command.accepted')).toBe(true);
     expect((await collaborationRepository.listAudit(viewer.workspace.id)).some((event) => event.eventType === 'command.rejected')).toBe(true);
+  });
+
+  it('creates, projects, and ends a persistent huddle through authorized remote commands', async () => {
+    const operator = await setup('operator');
+    const created = await sharedWorkspaceCommandBus.execute(
+      operator.share.id,
+      operator.device.id,
+      new ExecuteCollaborationCommandDto(`command_${uuidv7().replaceAll('-', '_')}`, 0, {
+        type: 'huddle.create',
+        title: 'Remote release room',
+        agenda: 'Agree on the release gate.',
+        agentNodeIds: [operator.agent.id],
+        facilitatorNodeId: operator.agent.id,
+      }),
+    );
+    expect(created).toMatchObject({
+      accepted: true,
+      revision: 1,
+      errorCode: null,
+    });
+    const huddleId = String(created.result?.huddleId);
+    expect((await huddleService.snapshot(operator.workspace.id, huddleId)).selected).toMatchObject({
+      id: huddleId,
+      status: 'active',
+      createdByKind: 'remote',
+    });
+    const projection = await sharedWorkspaceQuery.snapshot(operator.share.id);
+    expect(projection.huddles).toEqual([expect.objectContaining({ id: huddleId, title: 'Remote release room' })]);
+    expect(scopeSharedWorkspaceSnapshot(projection, ['workspace.view']).huddles).toEqual([]);
+
+    const ended = await sharedWorkspaceCommandBus.execute(
+      operator.share.id,
+      operator.device.id,
+      new ExecuteCollaborationCommandDto(`command_${uuidv7().replaceAll('-', '_')}`, 1, {
+        type: 'huddle.end',
+        huddleId,
+      }),
+    );
+    expect(ended).toMatchObject({
+      accepted: true,
+      revision: 2,
+      errorCode: null,
+    });
+    expect((await huddleService.snapshot(operator.workspace.id, huddleId)).selected?.status).toBe('ended');
+
+    const viewer = await setup('viewer');
+    const denied = await sharedWorkspaceCommandBus.execute(
+      viewer.share.id,
+      viewer.device.id,
+      new ExecuteCollaborationCommandDto(`command_${uuidv7().replaceAll('-', '_')}`, 0, {
+        type: 'huddle.create',
+        title: 'Forbidden room',
+        agentNodeIds: [viewer.agent.id],
+      }),
+    );
+    expect(denied).toMatchObject({
+      accepted: false,
+      errorCode: 'SCOPE_DENIED',
+    });
   });
 
   it('fits large sanitized projections within the encrypted frame budget', async () => {

@@ -18,6 +18,7 @@ import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previe
 import { createAgentApiClientSchema, executeAgentApiClientRunnerSchema, exportAgentApiClientSchema, replaceAgentApiClientSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
 import { z } from 'zod';
 import { saveWorkspaceMemorySchema, reviseWorkspaceMemorySchema } from '$lib/modules/agent-room/contracts/schemas/workspace-memory.schema.js';
+import { contributeHuddleTurnSchema } from '$lib/modules/agent-room/contracts/schemas/huddle.schema.js';
 
 /**
  * Contrato MCP x ponte: TODA tool e dirigida contra a rota e o schema REAIS
@@ -45,12 +46,15 @@ const apiClientExecuteSchema = z.object({
   variables: z.record(z.string(), z.string().max(100_000)).default({}),
   from: z.string().trim().min(1).max(200).nullish(),
 }).strict();
+const bridgeHuddleContributeSchema = contributeHuddleTurnSchema.extend({ from: z.string().uuid() }).strict();
 
 type Expectation = { method: string; path: RegExp; schema?: z.ZodTypeAny };
 
 const EXPECTED: Record<string, Expectation> = {
   list: { method: 'GET', path: /\/bridge\/agents\?/ },
   usage: { method: 'GET', path: /\/bridge\/usage$/ },
+  huddle_list: { method: 'GET', path: /\/bridge\/huddles\?selected=/ },
+  huddle_say: { method: 'POST', path: /\/bridge\/huddles\/00000000-0000-7000-8000-000000000001\/turns$/, schema: bridgeHuddleContributeSchema },
   ask: { method: 'POST', path: /\/bridge\/ask$/, schema: bridgeAskSchema },
   note_list: { method: 'GET', path: /\/bridge\/notes\?agentNodeId=/ },
   note_read: { method: 'GET', path: /\/bridge\/notes\/n1$/ },
@@ -103,6 +107,8 @@ const EXPECTED: Record<string, Expectation> = {
 };
 
 const TOOL_ARGS: Record<string, Record<string, unknown>> = {
+  huddle_list: { huddleId: '00000000-0000-7000-8000-000000000001' },
+  huddle_say: { huddleId: '00000000-0000-7000-8000-000000000001', text: 'The release gate is clear.' },
   ask: { agent: 'Codex', message: 'oi' },
   note_read: { nodeId: 'n1' },
   note_write: { nodeId: 'n1', content: 'x' },
@@ -328,7 +334,7 @@ describe('contrato MCP x bridge (todas as tools)', () => {
           return { ok: true };
         },
         findFreePort: async () => 45678,
-        selfAgent: 'n1',
+        selfAgent: tool === 'huddle_say' ? '00000000-0000-7000-8000-000000000002' : 'n1',
       });
       send(input, { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: TOOL_ARGS[tool] ?? {} } });
       const response = await waitFor(chunks, 1);
@@ -371,7 +377,6 @@ describe('contrato MCP x bridge (todas as tools)', () => {
 function send(input: PassThrough, message: Record<string, unknown>) {
   input.write(`${JSON.stringify(message)}\n`);
 }
-
 async function waitFor(chunks: string[], id: number): Promise<any> {
   for (let i = 0; i < 200; i += 1) {
     for (const line of chunks.join('').split('\n').filter(Boolean)) {

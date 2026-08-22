@@ -1191,6 +1191,18 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'run-agent-huddle',
+    icon: 'MessageCircleMore',
+    title: 'Run a persistent agent huddle',
+    tagline: 'Bring the right agents into one voice-assisted, traceable conversation.',
+    steps: [
+      { id: 'open-huddles', title: 'Open Huddles', body: 'Open Huddles from the Canvas toolbar, Workbench explorer, native Workspace menu, or Command/Ctrl+K.', action: { kind: 'openPage', path: '/canvas?workspace={workspace}' } },
+      { id: 'choose-huddle-room', title: 'Set the room', body: 'Enter a topic and optional agenda, choose up to eleven agents, and identify the facilitator. Only one active huddle is allowed in a workspace.' },
+      { id: 'hold-huddle-turn', title: 'Address the right participants', body: 'Select up to five participating agents, then type or dictate your turn. Pending, completed, failed, and contributed replies stay ordered in the persisted transcript; optional TTS reads only new agent replies.' },
+      { id: 'close-huddle-loop', title: 'Turn the decision into work', body: 'End the huddle explicitly and create a linked Kanban task when follow-up is required. The agenda and bounded transcript become traceable evidence in the related Workstream.' },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Review a delivery',

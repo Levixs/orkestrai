@@ -51,6 +51,10 @@ describe('orkestrai CLI', () => {
             shouldFallback: true,
             recommendedProvider: 'codex',
           } }));
+        } else if (req.url === '/api/agent-room/bridge/huddles') {
+          res.end(JSON.stringify({ data: { huddles: [{ id: 'h1', title: 'Release room', status: 'active', turnCount: 2 }] } }));
+        } else if (req.url === '/api/agent-room/bridge/huddles/h1/turns') {
+          res.end(JSON.stringify({ data: { id: 'h1', title: 'Release room', status: 'active' } }));
         } else if (req.url?.startsWith('/api/agent-room/bridge/memory') && req.method === 'GET') {
           res.end(JSON.stringify({ data: [{ id: 'm1', title: 'Architecture', kind: 'decision', revision: 1 }] }));
         } else if (req.url === '/api/agent-room/bridge/memory' && req.method === 'POST') {
@@ -151,6 +155,26 @@ describe('orkestrai CLI', () => {
     expect(lines.join('\n')).toContain('codex');
     expect(lines.join('\n')).toContain('codex');
     expect(requests.at(-1).url).toBe('/api/agent-room/bridge/usage');
+  });
+
+  it('huddle lista sessoes e registra a fala do agente identificado', async () => {
+    const listed = capture();
+    expect(await run(['huddle', 'list'], { cwd, out: listed.out, env: {} })).toBe(0);
+    expect(listed.lines.join('\n')).toContain('Release room');
+
+    const spoken = capture();
+    expect(
+      await run(['huddle', 'say', 'h1', 'Release', 'approved'], {
+        cwd,
+        out: spoken.out,
+        env: { ORKESTRAI_NODE_ID: 'n1' },
+      }),
+    ).toBe(0);
+    expect(requests.at(-1)).toMatchObject({
+      method: 'POST',
+      url: '/api/agent-room/bridge/huddles/h1/turns',
+      body: { from: 'n1', text: 'Release approved' },
+    });
   });
 
   it('device encaminha comandos estruturados para a sessao do workspace', async () => {

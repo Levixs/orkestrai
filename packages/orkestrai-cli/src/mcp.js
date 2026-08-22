@@ -44,6 +44,8 @@ const DESIGN_BATCH_BASE = {
 const TOOLS = [
   { name: 'list', description: 'Lista agentes do workspace (titulo, provider, sessao viva) e suas notas/portais conectados.', inputSchema: { type: 'object', properties: {} } },
   { name: 'usage', description: 'Consulta cotas dos providers e a recomendacao de roteamento configurada no no Usage do canvas.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'huddle_list', description: 'Lista huddles e retorna a sessao selecionada com participantes e transcricao.', inputSchema: { type: 'object', properties: { huddleId: { type: 'string', format: 'uuid' } } } },
+  { name: 'huddle_say', description: 'Registra uma fala deste agente em um huddle ativo, sem disparar respostas recursivas.', inputSchema: { type: 'object', properties: { huddleId: { type: 'string', format: 'uuid' }, text: { type: 'string', minLength: 1, maxLength: 10000 } }, required: ['huddleId', 'text'] } },
   { name: 'ask', description: 'Envia mensagem a outro agente e aguarda resposta confirmada. So afirme que conversou quando replyConfirmed for true.', inputSchema: { type: 'object', properties: { agent: { type: 'string', description: 'Titulo do agente' }, message: { type: 'string' } }, required: ['agent', 'message'] } },
   { name: 'note_list', description: 'Lista notas acessiveis com nodeId, titulo e previa. Use antes de criar para atualizar a nota existente com note_read, note_write ou note_edit.', inputSchema: { type: 'object', properties: {} } },
   { name: 'note_read', description: 'Le uma nota pelo nodeId.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
@@ -148,6 +150,15 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
     }
     case 'usage':
       return bridge('GET', '/api/agent-room/bridge/usage');
+    case 'huddle_list': {
+      const huddleId = /** @type {{ huddleId?: string }} */ (args).huddleId;
+      return bridge('GET', `/api/agent-room/bridge/huddles${huddleId ? `?selected=${encodeURIComponent(huddleId)}` : ''}`);
+    }
+    case 'huddle_say': {
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      const input = /** @type {{ huddleId: string, text: string }} */ (args);
+      return bridge('POST', `/api/agent-room/bridge/huddles/${encodeURIComponent(input.huddleId)}/turns`, { from: selfAgent, text: input.text });
+    }
     case 'ask':
       return bridge('POST', '/api/agent-room/bridge/ask', { to: args.agent, message: args.message, from: selfAgent });
     case 'note_list': {

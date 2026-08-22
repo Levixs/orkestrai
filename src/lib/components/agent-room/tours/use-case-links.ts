@@ -44,6 +44,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'preserve-sourced-workspace-memory': 'preserve-sourced-workspace-memory',
   'triage-traceable-annotations': 'triage-traceable-annotations',
   'version-and-share-team-pack': 'version-and-share-team-pack',
+  'run-agent-huddle': 'run-agent-huddle',
   'edit-and-preview-files': 'edit-and-preview-files',
   'share-reference-material': 'share-reference-material',
   'universal-workspace-search': 'universal-workspace-search',

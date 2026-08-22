@@ -40,6 +40,11 @@ pt-BR, English, and Spanish translations.
   release notes, immutable local revision history, SHA-256 integrity checks,
   bounded import validation, and runtime-state stripping. Existing and built-in
   presets remain compatible.
+- Added persistent Huddles across Canvas, Workbench, global search, the native
+  desktop menu, CLI/MCP, and encrypted remote collaboration. A workspace can
+  keep one active voice-assisted room with a facilitator, selected agents,
+  targeted turns, dictation, optional local TTS, bounded transcript recovery,
+  explicit remote scopes, and linked Kanban/Workstream evidence.
 
 ## 0.17.0 - 2026-08-22
 

@@ -1,16 +1,16 @@
 import type { CollaborationRole, CollaborationScope } from '../types.js';
 
 const ROLE_SCOPES: Record<CollaborationRole, readonly CollaborationScope[]> = {
-  viewer: ['workspace.view', 'activity.view', 'tasks.view', 'approvals.view', 'design.view'],
-  collaborator: ['workspace.view', 'activity.view', 'tasks.view', 'tasks.write', 'approvals.view', 'design.view', 'design.comment', 'design.propose'],
+  viewer: ['workspace.view', 'activity.view', 'tasks.view', 'approvals.view', 'design.view', 'huddles.view'],
+  collaborator: ['workspace.view', 'activity.view', 'tasks.view', 'tasks.write', 'approvals.view', 'design.view', 'design.comment', 'design.propose', 'huddles.view', 'huddles.speak'],
   operator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
-    'approvals.view', 'approvals.decide', 'design.view', 'design.comment', 'design.propose', 'design.decide', 'leader.message', 'voice.transcribe', 'agents.message',
+    'approvals.view', 'approvals.decide', 'design.view', 'design.comment', 'design.propose', 'design.decide', 'leader.message', 'voice.transcribe', 'agents.message', 'huddles.view', 'huddles.speak', 'huddles.manage',
   ],
   administrator: [
     'workspace.view', 'activity.view', 'tasks.view', 'tasks.write',
     'approvals.view', 'approvals.decide', 'design.view', 'design.comment', 'design.propose', 'design.decide', 'design.edit', 'leader.message', 'voice.transcribe', 'agents.message',
-    'agents.invoke', 'peers.manage',
+    'agents.invoke', 'huddles.view', 'huddles.speak', 'huddles.manage', 'peers.manage',
   ],
 };
 
@@ -27,6 +27,9 @@ const COMMAND_SCOPE = {
   'leader.message': 'leader.message',
   'agent.message': 'agents.message',
   'agent.invoke': 'agents.invoke',
+  'huddle.create': 'huddles.manage',
+  'huddle.turn': 'huddles.speak',
+  'huddle.end': 'huddles.manage',
 } as const satisfies Record<string, CollaborationScope>;
 
 export class CollaborationPolicy {

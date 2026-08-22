@@ -22,7 +22,7 @@
     type LeaderDictationStateDetail,
     type LeaderDictationStatus,
   } from './leader-dictation.js';
-  import { TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from './text-dictation.js';
+  import { TEXT_DICTATION_COMMAND, TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from './text-dictation.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
   import * as m from '$lib/paraglide/messages.js';
 
@@ -395,6 +395,7 @@
       toast.warning(m['settings.audio_device_removed']());
     };
     document.addEventListener('focusin', focusIn, true);
+    window.addEventListener(TEXT_DICTATION_COMMAND, toggle);
     document.addEventListener('pointerdown', pointerDown, true);
     document.addEventListener('selectionchange', selectionChange);
     window.addEventListener('keydown', keyDown);
@@ -404,6 +405,7 @@
     rememberSelection();
     return () => {
       document.removeEventListener('focusin', focusIn, true);
+      window.removeEventListener(TEXT_DICTATION_COMMAND, toggle);
       document.removeEventListener('pointerdown', pointerDown, true);
       document.removeEventListener('selectionchange', selectionChange);
       window.removeEventListener('keydown', keyDown);

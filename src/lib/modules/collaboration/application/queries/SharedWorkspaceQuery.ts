@@ -8,6 +8,7 @@ import { workspaceService } from '$lib/modules/agent-room/application/services/W
 import { usageService } from '$lib/modules/agent-room/application/services/UsageService.js';
 import { designDocumentService } from '$lib/modules/agent-room/application/services/DesignDocumentService.js';
 import { designCollaborationService } from '$lib/modules/agent-room/application/services/DesignCollaborationService.js';
+import { huddleService } from '$lib/modules/agent-room/application/services/HuddleService.js';
 import type { CollaborationScope, SharedCanvasNodeDto, SharedWorkspaceDto } from '../../domain/types.js';
 import { MAX_PLAINTEXT_BYTES } from '@orkestrai/collaboration-protocol';
 import { collaborationRepository } from '../../infrastructure/repositories/CollaborationRepository.js';
@@ -20,14 +21,15 @@ export function scopeSharedWorkspaceSnapshot(
   snapshot: SharedWorkspaceDto,
   scopes: readonly CollaborationScope[],
 ): SharedWorkspaceDto {
-  if (scopes.includes('design.view')) return snapshot;
-  const nodes = snapshot.nodes.filter((node) => node.type !== 'design');
+  const canViewDesign = scopes.includes('design.view');
+  const nodes = canViewDesign ? snapshot.nodes : snapshot.nodes.filter((node) => node.type !== 'design');
   const nodeIds = new Set(nodes.map((node) => node.id));
   return {
     ...snapshot,
     nodes,
     edges: snapshot.edges.filter((edge) => nodeIds.has(edge.sourceNodeId) && nodeIds.has(edge.targetNodeId)),
-    designs: [],
+    designs: canViewDesign ? snapshot.designs : [],
+    huddles: scopes.includes('huddles.view') ? snapshot.huddles : [],
   };
 }
 
@@ -55,6 +57,13 @@ export function fitSharedWorkspaceSnapshot(snapshot: SharedWorkspaceDto): Shared
         message: conversation.message.slice(0, descriptionLimit),
         reply: conversation.reply?.slice(0, descriptionLimit) ?? null,
         error: conversation.error?.slice(0, 240) ?? null,
+      })),
+      huddles: snapshot.huddles.slice(0, 20).map((huddle) => ({
+        ...huddle,
+        title: huddle.title.slice(0, 160),
+        agenda: huddle.agenda?.slice(0, descriptionLimit) ?? null,
+        participants: huddle.participants.slice(0, 12),
+        turns: huddle.turns.slice(-Math.max(20, Math.min(120, nodeLimit))).map((turn) => ({ ...turn, text: turn.text.slice(0, descriptionLimit) })),
       })),
       floors: snapshot.floors.slice(0, 50),
       roles: snapshot.roles.slice(0, 100),
@@ -127,7 +136,7 @@ export class SharedWorkspaceQuery {
       throw new Error('COLLABORATION_SHARE_UNAVAILABLE');
     }
     const workspace = await workspaceService.get(share.workspaceId);
-    const [rawNodes, rawEdges, columns, tasks, control, floors, reviews] = await Promise.all([
+    const [rawNodes, rawEdges, columns, tasks, control, floors, reviews, huddleSnapshot] = await Promise.all([
       workspaceService.listNodes(share.workspaceId),
       workspaceService.listEdges(share.workspaceId),
       boardColumnService.list(share.workspaceId),
@@ -135,6 +144,7 @@ export class SharedWorkspaceQuery {
       controlCenterService.snapshot(share.workspaceId, true),
       floorService.list(share.workspaceId),
       reviewCenterService.snapshot(share.workspaceId).catch(() => ({ reviews: [] } as unknown as Awaited<ReturnType<typeof reviewCenterService.snapshot>>)),
+      huddleService.snapshot(share.workspaceId).catch(() => ({ huddles: [], selected: null, activeHuddleId: null })),
     ]);
     const nodes = rawNodes.map(projectNode).filter((node): node is SharedCanvasNodeDto => Boolean(node));
     const designDocuments = await Promise.all(rawNodes.filter((node) => node.type === 'design').map(async (node) => {
@@ -199,6 +209,29 @@ export class SharedWorkspaceQuery {
           createdAt: thread.createdAt,
           updatedAt: thread.updatedAt,
         })),
+      huddles: (await Promise.all(huddleSnapshot.huddles.map(async (summary) => {
+        const item = await huddleService.snapshot(share.workspaceId, summary.id).then((value) => value.selected).catch(() => null);
+        if (!item) return null;
+        return {
+          id: item.id,
+          title: sanitizeSharedText(item.title).slice(0, 160),
+          agenda: item.agenda ? sanitizeSharedText(item.agenda) : null,
+          status: item.status,
+          facilitatorNodeId: item.facilitatorNodeId,
+          linkedTaskId: item.linkedTaskId,
+          participants: item.participants.filter((participant) => !participant.leftAt).map((participant) => ({
+            kind: participant.kind, participantId: participant.participantId,
+            displayName: sanitizeSharedText(participant.displayName).slice(0, 120), role: participant.role,
+          })),
+          turns: item.turns.map((turn) => ({
+            id: turn.id, sequence: turn.sequence, speakerKind: turn.speakerKind,
+            speakerName: sanitizeSharedText(turn.speakerName).slice(0, 120), addressedNodeId: turn.addressedNodeId,
+            text: sanitizeSharedText(turn.text), state: turn.state, errorCode: turn.errorCode,
+            createdAt: turn.createdAt,
+          })),
+          startedAt: item.startedAt, endedAt: item.endedAt, updatedAt: item.updatedAt,
+        };
+      }))).filter((item): item is NonNullable<typeof item> => Boolean(item)),
       floors: floors.map((floor) => {
         const floorAgentIds = new Set(rawNodes.filter((node) => node.floorId === floor.id && node.type === 'terminal').map((node) => node.id));
         return {

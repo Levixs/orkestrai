@@ -965,7 +965,7 @@ export class BridgeService {
     const providerIds = listAgentAdapters().map((adapter) => adapter.id).join('|');
     return `---
 name: orkestrai-bridge
-description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, consultar cotas de providers, montar/orquestrar um time, distribuir tarefas, consultar ou registrar memória com fontes, criar notas, criar/testar coleções de API, ler ou editar designs nativos, controlar portais/devices, ou gerenciar andares.
+description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com outro agente, participar de huddles, consultar cotas de providers, montar/orquestrar um time, distribuir tarefas, consultar ou registrar memória com fontes, criar notas, criar/testar coleções de API, ler ou editar designs nativos, controlar portais/devices, ou gerenciar andares.
 ---
 
 # Ponte Orkestrai
@@ -973,11 +973,12 @@ description: Ponte com o canvas do Orkestrai. Use SEMPRE que precisar falar com 
 Você está rodando dentro de um workspace do Orkestrai. A CLI \`orkestrai\` dá acesso à ponte.
 Sua identidade já está no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem você é, então \`--from\` e \`--agent\` são opcionais.
 Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), execute o launcher da variável ORKESTRAI_CLI DIRETO (SEM prefixar \`node\`): \`"$ORKESTRAI_CLI" ...\` (Linux/macOS), \`%ORKESTRAI_CLI% ...\` (cmd.exe) ou \`& $env:ORKESTRAI_CLI ...\` (PowerShell). ORKESTRAI_CLI aponta para um launcher autocontido que já chama o runtime certo — funciona sempre, sem depender de PATH. NUNCA rode o caminho \`...orkestrai.js\` cru no Windows: o shell o abre pelo Windows Script Host e falha ("Caractere inválido").
-Se as tools \`orkestrai\` (list/usage/ask/memory_*/note_*/api_client_*/design_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
+Se as tools \`orkestrai\` (list/usage/ask/huddle_*/memory_*/note_*/api_client_*/design_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
 - \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas, portais e designs conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
 - \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage. Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\`. Não troque silenciosamente o provider de um terminal que já executa trabalho.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda uma resposta confirmada. Só diga que falou/consultou o agente quando o comando terminar com sucesso e imprimir \`Resposta confirmada de ...\`. Timeout, erro ou \`Resposta nao confirmada\` significam que a conversa NÃO foi concluída — informe isso sem inventar resposta.
+- Tools MCP \`huddle_list\` e \`huddle_say\` (ou \`orkestrai huddle list/say\`) — acompanhe a transcrição de um huddle e registre sua contribuição quando você for participante. \`huddle_say\` apenas registra sua fala; não use para simular outra pessoa nem para disparar fan-out recursivo.
 - \`orkestrai status working "<ação atual>" --task <taskId>\` — registra o trabalho atual no Control Center. Use \`waiting_input\`, \`waiting_permission\`, \`blocked\`, \`idle\`, \`done\` ou \`error\` sempre que houver uma transição real; não use como heartbeat.
 - Tools MCP \`memory_search/add/revise/archive\` — consulte memória sob demanda antes de decisões relevantes. Registre somente conhecimento reutilizável (decisão, fato, preferência, restrição, referência ou aprendizado) com uma fonte explícita. Nunca injete toda a memória no prompt nem salve conversa solta automaticamente. Para corrigir algo, use \`memory_revise\` com a revisão retornada pela busca; não duplique nem sobrescreva concorrência.
 - \`orkestrai memory list [consulta] --json\` / \`memory add ... --source-label ...\` / \`memory revise ...\` / \`memory archive <id>\` — fallbacks CLI para a mesma memória durável e versionada.
@@ -1156,6 +1157,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '- `orkestrai list` — agentes do workspace, notas e portais conectados. O [LIDER] marcado e o maestro do time: fale com ele pelo TITULO ("Maestro" e o papel, não um nome de agente).',
       '- `orkestrai usage` — cotas reais e recomendação do nó Usage; líderes consultam antes de delegar e roteiam novas tarefas ao recommendedProvider quando shouldFallback=true.',
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
+      '- `huddle_list` / `huddle_say` — acompanha huddles ativos e registra somente a contribuição deste agente no transcript.',
       '- `orkestrai note read/write/edit/create` — notas compartilhadas no canvas.',
       '- `orkestrai design list/read/reference/apply` — documentos visuais nativos. Em exploração, produza primeiro 1 desktop + 1 mobile com design_import_code ou lote pequeno, entregue a primeira revisão em até 5 minutos e espere o gate visual humano. Só expanda a direção aprovada com blueprint completo. design list sinaliza stalled e o reviewStatus da revisão atual.',
       '- `design_comment` / `design_propose` / `design_decide_proposal` — colaboracao visual com autoria e revisao: propostas ficam pendentes ate decisao explicita e podem ser comparadas em Floors/Council.',

@@ -10,6 +10,7 @@
     GitBranch,
     GitPullRequestArrow,
     ListTodo,
+    MessageCircleMore,
     RefreshCw,
     Route,
     Scale,
@@ -20,6 +21,7 @@
   import { Input } from '$lib/components/ui/input';
   import type { AgentActivity, AgentWorkstream, AgentWorkstreamStage, WorkstreamSnapshot } from '$lib/modules/agent-room/domain/types.js';
   import { workbenchReviewCenterItemId } from './workbench-review-center.js';
+  import { workbenchHuddlesItemId } from './workbench-huddles.js';
   import * as m from '$lib/paraglide/messages.js';
 
   let { workspaceId }: { workspaceId: string } = $props();
@@ -125,6 +127,10 @@
     void goto(`/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchReviewCenterItemId(workspaceId))}`);
   }
 
+  function openHuddles(): void {
+    void goto(`/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchHuddlesItemId(workspaceId))}`);
+  }
+
   onMount(() => {
     void load();
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -132,7 +138,7 @@
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(String(event.data));
-        if (message.workspaceId === workspaceId && ['workspaceChanged', 'gitReviewChanged', 'councilChanged', 'controlCenterChanged'].includes(message.type)) scheduleRefresh();
+        if (message.workspaceId === workspaceId && ['workspaceChanged', 'gitReviewChanged', 'councilChanged', 'huddleChanged', 'controlCenterChanged'].includes(message.type)) scheduleRefresh();
       } catch {
         // Ignore terminal frames.
       }
@@ -222,6 +228,10 @@
             </section>
 
             <div>
+              <section class="border-b border-[var(--app-border)] p-5">
+                <div class="mb-3 flex items-center justify-between"><h3 class="flex items-center gap-2 text-[11px] font-semibold"><MessageCircleMore size={13} />{m['huddle.title']()}</h3><Button variant="ghost" size="sm" class="h-7 text-[9px]" onclick={openHuddles}>{m['workstreams.open_huddles']()}<ArrowRight size={11} /></Button></div>
+                {#if selected.huddles.length}<div class="space-y-2">{#each selected.huddles as huddle (huddle.id)}<div class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-subtle)] p-2.5"><div class="flex items-center gap-2"><strong class="min-w-0 flex-1 truncate text-[10px]">{huddle.title}</strong><span class="text-[8px] uppercase text-[var(--app-text-muted)]">{huddle.status === 'active' ? m['huddle.live']() : m['huddle.finished']()}</span></div><p class="mt-1 text-[9px] text-[var(--app-text-muted)]">{m['workstreams.huddle_evidence']({ people: huddle.participantCount, turns: huddle.turnCount })}</p></div>{/each}</div>{:else}<p class="text-[10px] text-[var(--app-text-muted)]">{m['workstreams.no_huddles']()}</p>{/if}
+              </section>
               <section class="border-b border-[var(--app-border)] p-5">
                 <div class="mb-3 flex items-center justify-between"><h3 class="flex items-center gap-2 text-[11px] font-semibold"><Scale size={13} />{m['workstreams.councils']()}</h3><Button variant="ghost" size="sm" class="h-7 text-[9px]" onclick={() => openCouncil(selected)}>{m['workstreams.open_council']()}<ArrowRight size={11} /></Button></div>
                 {#if selected.councils.length}<div class="space-y-2">{#each selected.councils as council (council.id)}<div class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-subtle)] p-2.5"><div class="flex items-center gap-2"><strong class="min-w-0 flex-1 truncate text-[10px]">{council.title}</strong><span class="text-[8px] uppercase text-[var(--app-text-muted)]">{councilStatusLabel(council.status)}</span></div><p class="mt-1 text-[9px] text-[var(--app-text-muted)]">{m['workstreams.perspectives']({ done: council.completedPerspectives, total: council.totalPerspectives })}</p></div>{/each}</div>{:else}<p class="text-[10px] text-[var(--app-text-muted)]">{m['workstreams.no_councils']()}</p>{/if}

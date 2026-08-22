@@ -45,6 +45,8 @@ Uso:
   orkestrai memory add <titulo> --content <texto> --source-label <fonte> [--kind fact|decision|preference|constraint|reference|lesson] [--source-type user|note|task|message|file|url|git|review|council|agent] [--source-id <id>] [--source-uri <path-ou-url>] [--source-excerpt <trecho>] [--tags <csv>] [--confidence <0-100>] [--pin]
   orkestrai memory revise <id> --title <titulo> --content <texto> --kind <tipo> --sources <json> --base-revision <n> --base-updated-at <iso>
   orkestrai memory archive <id>
+  orkestrai huddle list [--json]
+  orkestrai huddle say <huddleId> <mensagem> [--json]
   orkestrai ask <agente> <mensagem> [--from <agente>] [--timeout <ms>] [--raw] [--json]
   orkestrai note read <nodeId>
   orkestrai note write <nodeId> <conteudo>
@@ -398,6 +400,22 @@ export async function run(argv, options = {}) {
         return 0;
       }
       throw new Error('Uso: orkestrai role <show|write|edit> ...');
+    }
+    case 'huddle': {
+      const [action, huddleId, ...values] = rest;
+      if (action === 'list') {
+        const data = await bridge(config, 'GET', '/api/agent-room/bridge/huddles');
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else for (const item of data.huddles ?? []) out(`- ${item.title} (${item.id}) [${item.status}] ${item.turnCount} turnos`);
+        return 0;
+      }
+      if (action === 'say') {
+        if (!selfAgent || !huddleId || !values.length) throw new Error('Uso: orkestrai huddle say <huddleId> <mensagem>');
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/huddles/${encodeURIComponent(huddleId)}/turns`, { from: selfAgent, text: values.join(' ') });
+        if (flags.json) out(JSON.stringify(data, null, 2)); else out(`Fala registrada no huddle ${data.title}.`);
+        return 0;
+      }
+      throw new Error('Uso: orkestrai huddle <list|say> ...');
     }
     case 'note': {
       const [action, nodeId, ...values] = rest;

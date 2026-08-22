@@ -71,6 +71,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `Open Team Packs from the Canvas preset library. Existing presets and the built-in catalog remain compatible; a custom workspace snapshot now starts at version 1.0.0 and includes its agents, roles, portable skills, task stages and templates, routines, additional MCP servers, connections, and layout. Publish a larger semantic version with release notes to create an immutable local revision. Export a checksum-protected .orkestrai-team-pack.json file or import one after bounded schema, size, integrity, and content validation. Live sessions, conversation ids, credentials, and other runtime state are stripped. Import creates a new local pack instead of silently replacing one with the same package identity.`,
     },
     {
+      id: 'huddles',
+      title: 'Huddles: persistent conversations with people and agents',
+      body: `Open Huddles from the Canvas toolbar, Workbench explorer, native Workspace menu, Command/Ctrl+K, or Remote PWA. Start one active room per workspace with a topic, optional agenda, one facilitator, and up to eleven agents plus the person who starts it. Dictate or type each turn, address up to five participating agents, and optionally hear new replies through the existing local TTS. The bounded transcript, participant history, pending/failed replies, and lifecycle survive navigation and restart without waking unrelated terminals. An agent can contribute through huddle list/say in the CLI or typed MCP tools without recursively triggering the room. End the huddle explicitly or create a linked Kanban task containing its agenda and transcript; Workstreams displays that session as delivery evidence. Remote collaboration applies separate view, speak, and manage scopes over the existing encrypted transport. This is a structured, voice-assisted conversation, not an always-open audio call.`,
+    },
+    {
       id: 'review-center',
       title: 'Source Control and Review Center',
       body: `Open Review Center under each workspace in the Workbench explorer to inspect staged and unstaged changes without leaving Orkestrai. The header shows the branch, upstream, and commits ahead or behind; the source list stages, unstages, commits, pulls, pushes, and discards tracked edits only after confirmation. Selecting a file opens a bounded Monaco side-by-side diff; binary and oversized files get explicit safe states. Start a review to link its exact Git revision to a task, responsible agent, summary, evidence, tests, risks, and selected files. Click either side of the diff to attach a file or line comment. When the repository changes, old comments remain visible as outdated context instead of silently pointing at a different line. Approve, request changes, or reject in plain language; requested changes are submitted directly to the responsible agent when its terminal is available, and remain persisted when it is offline.`,
@@ -342,7 +347,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'cli',
       title: 'orkestrai CLI (the bridge)',
-      body: `Agents use the orkestrai CLI to act on the canvas: list, ask, usage, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, device, port, fs, run, say, clip, notes, and portals. ask preserves unquoted multi-word messages, but a conversation counts only after the bridge returns Confirmed reply; a timeout or unconfirmed reply exits with an error. usage returns current quotas and the recommendation configured in the Usage node. task columns returns the stages you defined; task add --column and task move let the lead and team follow any process, not only a software kanban. device lists, attaches, controls, inspects, captures, and stops the workspace mobile simulator. task done also notifies the leader automatically. MCP-speaking agents receive the same actions as native tools through orkestrai mcp. Bridge provisioning is automatic and the token lives in .orkestrai/workspace.json.`,
+      body: `Agents use the orkestrai CLI to act on the canvas: list, ask, usage, huddle list/say, note read/write/edit/create, task list/columns/add/move/assign/done/archive/history, role show/write/edit, floor create/list/preview/land/remove, notify, recruit/dismiss/connect/reassign, portal, device, port, fs, run, say, clip, notes, and portals. ask preserves unquoted multi-word messages, but a conversation counts only after the bridge returns Confirmed reply; a timeout or unconfirmed reply exits with an error. usage returns current quotas and the recommendation configured in the Usage node. huddle list/say lets a participating agent read the bounded transcript and contribute without recursively triggering agent replies. task columns returns the stages you defined; task add --column and task move let the lead and team follow any process, not only a software kanban. device lists, attaches, controls, inspects, captures, and stops the workspace mobile simulator. task done also notifies the leader automatically. MCP-speaking agents receive the same actions as native tools through orkestrai mcp. Bridge provisioning is automatic and the token lives in .orkestrai/workspace.json.`,
     },
     {
       id: 'usage-routing',
@@ -626,6 +631,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Team Packs', 'semantic versions', 'safe import/export'],
     },
     {
+      id: 'run-agent-huddle',
+      title: 'Reach a decision with a persistent agent huddle',
+      body: 'Open Huddles, set the topic and agenda, choose the facilitator and participating agents, then type or dictate a turn to the agents whose perspective you need. Follow pending and completed replies in one ordered transcript, hear new replies when TTS is enabled, and let participating agents add concise findings through the bridge. End the room when the decision is clear and create a linked Kanban task so the agenda and transcript remain attached to the delivery workstream. A remote collaborator can join the same sanitized room according to view, speak, or manage permission.',
+      tags: ['Persistent huddle', 'dictation + TTS', 'task evidence'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Edit and inspect files without leaving the Workbench',
       body: 'Expand Files in the Workbench sidebar and open a workspace file directly in a local tab, without creating a canvas node. The Canvas file tree and Command/Ctrl+K use the same direct handoff. Monaco preserves cursor, undo, selection, and unsaved state across panes. Find or replace text, navigate symbols, format supported files, and choose minimap, wrapping, font size, or optional autosave under Settings → Appearance. Markdown switches between source and a sanitized preview; PDFs have page and zoom controls; images support zoom, pan, dimensions, and transparency; binary files show metadata and open through the system application. Files above 512 KB open a bounded read-only preview so unloaded content cannot be overwritten.',
@@ -684,7 +695,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       date: 'Unreleased',
       title: 'Durable coordination, sourced knowledge, and reusable teams',
-      summary: 'Messages, activity, attention, delivery, memory, annotations, and Team Packs now preserve their operational context.',
+      summary: 'Messages, activity, attention, delivery, memory, annotations, Team Packs, and Huddles now preserve their operational context.',
       items: [
         'Every agent message now has a canonical envelope with verified recipient and content, durable delivery receipts, correlations, deduplication, and idempotent replay protection.',
         'Control Center adds a semantic Activity timeline for messages, tasks, reviews, decisions, Git work, and system events, with raw diagnostics available on demand.',
@@ -694,6 +705,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Workspace memory now preserves sourced decisions, facts, preferences, constraints, references, and lessons with search, immutable revisions, conflict protection, archive history, and on-demand MCP/CLI access for agents.',
         'Annotation Center projects code-review and native Design feedback together while preserving each canonical artifact, author, target, revision, resolution state, and stale-code warning.',
         'Custom presets are now versioned Team Packs with semantic releases, immutable local history, SHA-256 verification, bounded import validation, and no live runtime or credential state.',
+        'Persistent Huddles bring selected people and agents into one bounded transcript with dictation, optional TTS, targeted replies, CLI/MCP contributions, encrypted remote permissions, lifecycle recovery, and linked Kanban/Workstream evidence.',
       ],
     },
     {

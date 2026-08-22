@@ -7,6 +7,8 @@ import { designDocumentService } from '$lib/modules/agent-room/application/servi
 import { ApplyDesignOperationsDto } from '$lib/modules/agent-room/application/dto/DesignDtos.js';
 import type { DesignCollaborator, DesignOperation } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
 import { uuidv7 } from '@beeblock/svelar/support';
+import { huddleService } from '$lib/modules/agent-room/application/services/HuddleService.js';
+import { CreateHuddleDto, SubmitHuddleTurnDto, UpdateHuddleDto } from '$lib/modules/agent-room/application/dto/HuddleDtos.js';
 import type { ExecuteCollaborationCommandDto } from '../dto/CollaborationDto.js';
 import type { CollaborationCommand, CollaborationCommandResult } from '../../domain/types.js';
 import { collaborationPolicy } from '../../domain/policies/CollaborationPolicy.js';
@@ -92,6 +94,24 @@ export class SharedWorkspaceCommandBus {
     deviceName: string,
     command: CollaborationCommand,
   ): Promise<Record<string, unknown>> {
+    const remoteActor = { kind: 'remote' as const, id: deviceId, name: deviceName };
+    if (command.type === 'huddle.create') {
+      const huddle = await huddleService.create(workspaceId, CreateHuddleDto.from({
+        title: command.title, agenda: command.agenda ?? null, agentNodeIds: command.agentNodeIds,
+        facilitatorNodeId: command.facilitatorNodeId ?? null,
+      }), remoteActor);
+      return { huddleId: huddle.id, title: huddle.title, status: huddle.status };
+    }
+    if (command.type === 'huddle.turn') {
+      const huddle = await huddleService.submit(workspaceId, command.huddleId, SubmitHuddleTurnDto.from({
+        text: command.text, targetNodeIds: command.targetNodeIds,
+      }), remoteActor);
+      return { huddleId: huddle.id, turnCount: huddle.turns.length };
+    }
+    if (command.type === 'huddle.end') {
+      const huddle = await huddleService.update(workspaceId, command.huddleId, UpdateHuddleDto.from({ operation: 'end' }));
+      return { huddleId: huddle.id, status: huddle.status };
+    }
     if (command.type === 'task.create') {
       const task = await taskBoardService.create(workspaceId, {
         title: command.title,

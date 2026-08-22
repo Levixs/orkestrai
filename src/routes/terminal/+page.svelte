@@ -19,6 +19,7 @@
     Workflow,
     BookMarked,
     MessageSquareText,
+    MessageCircleMore,
   } from '@lucide/svelte';
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import * as InputGroup from '$lib/components/ui/input-group';
@@ -37,6 +38,7 @@
   import WorkbenchWorkstreams from '$lib/components/agent-room/WorkbenchWorkstreams.svelte';
   import WorkspaceMemoryView from '$lib/components/agent-room/WorkspaceMemoryView.svelte';
   import AnnotationCenterView from '$lib/components/agent-room/AnnotationCenterView.svelte';
+  import HuddleView from '$lib/components/agent-room/HuddleView.svelte';
   import DeviceWorkbenchPanel from '$lib/components/agent-room/DeviceWorkbenchPanel.svelte';
   import DesignEditor from '$lib/components/agent-room/design/DesignEditor.svelte';
   import CouncilDialog from '$lib/components/agent-room/CouncilDialog.svelte';
@@ -121,6 +123,7 @@
     workbenchMemoryItemId,
   } from '$lib/components/agent-room/workbench-memory.js';
   import { createWorkbenchAnnotationsItem, isWorkbenchAnnotationsItemId, workbenchAnnotationsItemId } from '$lib/components/agent-room/workbench-annotations.js';
+  import { createWorkbenchHuddlesItem, isWorkbenchHuddlesItemId, workbenchHuddlesItemId } from '$lib/components/agent-room/workbench-huddles.js';
   import {
     createWorkbenchAutomationsItem,
     isWorkbenchAutomationsItemId,
@@ -241,10 +244,13 @@
     const annotations = workspace
       ? [createWorkbenchAnnotationsItem(workspace, m['annotations.title']())]
       : [];
+    const huddles = workspace
+      ? [createWorkbenchHuddlesItem(workspace, m['huddle.title']())]
+      : [];
     const automations = workspace
       ? [createWorkbenchAutomationsItem(workspace, m['automation.title']())]
       : [];
-    return [...controlCenter, ...workstreams, ...memory, ...annotations, ...reviewCenter, ...automations, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
+    return [...controlCenter, ...workstreams, ...huddles, ...memory, ...annotations, ...reviewCenter, ...automations, ...(nodesByWorkspace[workspaceId] ?? []).filter((node) => BROWSABLE_TYPES.has(node.type)), ...fileItems];
   }
 
   function isVirtualWorkbenchItemId(id: string | null | undefined): boolean {
@@ -253,6 +259,7 @@
       || isWorkbenchWorkstreamsItemId(id)
       || isWorkbenchMemoryItemId(id)
       || isWorkbenchAnnotationsItemId(id)
+      || isWorkbenchHuddlesItemId(id)
       || isWorkbenchReviewCenterItemId(id)
       || isWorkbenchAutomationsItemId(id);
   }
@@ -1000,6 +1007,10 @@
           {#key `${pane.id}:${paneNode.id}`}
             <AnnotationCenterView workspaceId={selectedWorkspace.id} />
           {/key}
+        {:else if isWorkbenchHuddlesItemId(paneNode.id)}
+          {#key `${pane.id}:${paneNode.id}`}
+            <HuddleView workspaceId={selectedWorkspace.id} />
+          {/key}
         {:else if isWorkbenchReviewCenterItemId(paneNode.id)}
           {#key `${pane.id}:${paneNode.id}`}
             <WorkbenchReviewCenter workspaceId={selectedWorkspace.id} />
@@ -1224,6 +1235,12 @@
                   <button class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]" aria-current={selectedNodeId === workbenchMemoryItemId(workspace.id) ? 'page' : undefined} onclick={() => selectNode(workspace.id, workbenchMemoryItemId(workspace.id))}>
                     <BookMarked size={13} class={selectedNodeId === workbenchMemoryItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
                     <span class="min-w-0 flex-1 truncate font-medium">{m['memory.title']()}</span>
+                  </button>
+                </div>
+                <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchHuddlesItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>
+                  <button class="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-accent)]" aria-current={selectedNodeId === workbenchHuddlesItemId(workspace.id) ? 'page' : undefined} onclick={() => selectNode(workspace.id, workbenchHuddlesItemId(workspace.id))}>
+                    <MessageCircleMore size={13} class={selectedNodeId === workbenchHuddlesItemId(workspace.id) ? 'text-[var(--app-accent)]' : 'text-[var(--app-text-muted)]'} aria-hidden="true" />
+                    <span class="min-w-0 flex-1 truncate font-medium">{m['huddle.title']()}</span>
                   </button>
                 </div>
                 <div class={`group mb-0.5 flex h-8 w-full min-w-0 items-center rounded-[5px] transition-[background-color,color] hover:bg-[var(--app-surface-raised)] ${selectedNodeId === workbenchAnnotationsItemId(workspace.id) ? 'bg-[var(--app-accent-soft)] text-[var(--app-text)]' : 'text-[var(--app-text-soft)]'}`}>

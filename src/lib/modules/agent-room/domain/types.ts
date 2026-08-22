@@ -201,7 +201,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'workstreams' | 'memory' | 'annotations' | 'automation' | 'device' | 'design';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'workstreams' | 'memory' | 'annotations' | 'huddles' | 'automation' | 'device' | 'design';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 export type WorkspaceRuntimeKind = 'native' | 'wsl';
 export type WorkspaceExecutionRuntime =
@@ -403,6 +403,14 @@ export type AgentWorkstream = {
     riskCount: number;
     updatedAt: string;
   }>;
+  huddles: Array<{
+    id: string;
+    title: string;
+    status: WorkspaceHuddleStatus;
+    participantCount: number;
+    turnCount: number;
+    updatedAt: string;
+  }>;
   git: {
     revision: string | null;
     branch: string | null;
@@ -422,6 +430,7 @@ export type WorkstreamSnapshot = {
   unlinked: {
     councils: number;
     reviews: number;
+    huddles: number;
     activities: number;
     changedPaths: string[];
   };
@@ -486,6 +495,65 @@ export type TraceableAnnotation = {
 export type AnnotationCenterSnapshot = {
   annotations: TraceableAnnotation[];
   counts: { open: number; resolved: number; stale: number; code: number; design: number };
+};
+
+export type WorkspaceHuddleStatus = 'active' | 'ended';
+export type WorkspaceHuddleParticipantKind = 'user' | 'remote' | 'agent';
+export type WorkspaceHuddleTurnState = 'pending' | 'completed' | 'failed';
+
+export type WorkspaceHuddleParticipant = {
+  id: string;
+  kind: WorkspaceHuddleParticipantKind;
+  participantId: string;
+  displayName: string;
+  role: 'facilitator' | 'member' | 'guest';
+  voiceEnabled: boolean;
+  joinedAt: string;
+  leftAt: string | null;
+};
+
+export type WorkspaceHuddleTurn = {
+  id: string;
+  sequence: number;
+  speakerKind: WorkspaceHuddleParticipantKind;
+  speakerId: string | null;
+  speakerName: string;
+  addressedNodeId: string | null;
+  text: string;
+  state: WorkspaceHuddleTurnState;
+  messageId: string | null;
+  errorCode: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type WorkspaceHuddle = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  agenda: string | null;
+  status: WorkspaceHuddleStatus;
+  facilitatorNodeId: string | null;
+  linkedTaskId: string | null;
+  createdByKind: WorkspaceHuddleParticipantKind;
+  createdById: string | null;
+  participants: WorkspaceHuddleParticipant[];
+  turns: WorkspaceHuddleTurn[];
+  startedAt: string;
+  endedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkspaceHuddleSummary = Omit<WorkspaceHuddle, 'participants' | 'turns'> & {
+  participantCount: number;
+  turnCount: number;
+};
+
+export type WorkspaceHuddleSnapshot = {
+  huddles: WorkspaceHuddleSummary[];
+  selected: WorkspaceHuddle | null;
+  activeHuddleId: string | null;
 };
 
 export type WorkspaceAttachment = {
@@ -776,6 +844,7 @@ export type WorkspaceSearchResultKind =
   | 'message'
   | 'attention'
   | 'memory'
+  | 'huddle'
   | 'file';
 
 export type WorkspaceSearchResult = {

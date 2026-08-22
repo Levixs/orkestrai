@@ -1195,6 +1195,18 @@ export const TOURS_PT: Tour[] = [
     ],
   },
   {
+    id: 'run-agent-huddle',
+    icon: 'MessageCircleMore',
+    title: 'Conduza um huddle persistente de agentes',
+    tagline: 'Reúna os agentes certos em uma conversa assistida por voz e rastreável.',
+    steps: [
+      { id: 'open-huddles', title: 'Abra Huddles', body: 'Abra Huddles pela barra do Canvas, explorer do Workbench, menu nativo Workspace ou Command/Ctrl+K.', action: { kind: 'openPage', path: '/canvas?workspace={workspace}' } },
+      { id: 'choose-huddle-room', title: 'Configure a sala', body: 'Informe assunto e pauta opcional, escolha até onze agentes e defina o facilitador. Só pode existir um huddle ativo por workspace.' },
+      { id: 'hold-huddle-turn', title: 'Direcione aos participantes certos', body: 'Selecione até cinco agentes participantes e escreva ou dite a fala. Respostas pendentes, concluídas, falhas e contribuições ficam ordenadas na transcrição persistida; o TTS opcional lê apenas respostas novas dos agentes.' },
+      { id: 'close-huddle-loop', title: 'Transforme a decisão em trabalho', body: 'Encerre explicitamente e crie uma tarefa Kanban vinculada quando houver acompanhamento. Pauta e transcrição limitada viram evidência rastreável no Fluxo de trabalho relacionado.' },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Revisar uma entrega',

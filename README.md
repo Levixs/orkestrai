@@ -111,6 +111,12 @@ Download the latest installers from
   Semantic versions, release notes, immutable history, SHA-256 verification,
   bounded imports, and runtime-state stripping make packs safe to evolve and
   share without carrying live sessions or credentials.
+- **Persistent agent Huddles:** bring a person and selected agents into one
+  voice-assisted room with a facilitator, agenda, targeted turns, dictation,
+  optional local TTS, and a durable bounded transcript. Agents contribute through
+  typed CLI/MCP tools, remote participants use separate encrypted view/speak/manage
+  permissions, and the completed conversation can become linked Kanban and
+  Workstream evidence.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
   session, choose a browser/mobile or installed-app invite, approve the device
   fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator

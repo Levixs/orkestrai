@@ -52,7 +52,7 @@
     consumeCollaborationInvite?: () => Promise<string | null>;
     onCollaborationInvite?: (callback: () => void) => () => void;
   };
-  type RemoteTab = "overview" | "team" | "tasks" | "designs" | "reviews" | "activity";
+  type RemoteTab = "overview" | "team" | "tasks" | "huddles" | "designs" | "reviews" | "activity";
 
   let remoteState = $state<RemoteState>({
     status: "idle",
@@ -98,10 +98,10 @@
       headers: { ...headers(), ...(init?.headers ?? {}) },
     });
     const payload = await response.json();
-    if (!response.ok || payload.error)
-      throw new Error(
-        payload.error || payload.data?.errorCode || m["remote.error"](),
-      );
+    if (!response.ok || payload.error) {
+      if (payload.data?.errorCode) throw new Error(m["remote.command_error"]());
+      throw new Error(payload.error || m["remote.error"]());
+    }
     return payload.data as T;
   }
 
@@ -243,6 +243,18 @@
       message: leaderMessage.trim(),
     });
     if (result?.accepted) leaderMessage = "";
+  }
+
+  async function createHuddle(input: { title: string; agenda: string | null; agentNodeIds: string[]; facilitatorNodeId: string | null }): Promise<void> {
+    await command({ type: "huddle.create", ...input });
+  }
+
+  async function sendHuddleTurn(huddleId: string, text: string, targetNodeIds: string[]): Promise<void> {
+    await command({ type: "huddle.turn", huddleId, text, targetNodeIds });
+  }
+
+  async function endHuddle(huddleId: string): Promise<void> {
+    await command({ type: "huddle.end", huddleId });
   }
 
   function platformFromNavigator(): "darwin" | "win32" | "linux" {
@@ -459,6 +471,9 @@
     onDecideDesignProposal={decideDesignProposal}
     onUpdateDesignElement={updateDesignElement}
     onSendLeaderMessage={sendLeaderMessage}
+    onCreateHuddle={createHuddle}
+    onSendHuddleTurn={sendHuddleTurn}
+    onEndHuddle={endHuddle}
   />
 {/if}
 

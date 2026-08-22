@@ -44,6 +44,9 @@ import { CreateAgentApiClientDto, ExecuteAgentApiClientRunnerDto, ExecuteSavedAp
 import { ExecuteSavedApiClientRequestAction } from '$lib/modules/agent-room/application/actions/ExecuteSavedApiClientRequestAction.js';
 import { workspaceMemoryService, WorkspaceMemoryConflictError } from '$lib/modules/agent-room/application/services/WorkspaceMemoryService.js';
 import { saveWorkspaceMemorySchema, reviseWorkspaceMemorySchema } from '$lib/modules/agent-room/contracts/schemas/workspace-memory.schema.js';
+import { contributeHuddleTurnSchema } from '$lib/modules/agent-room/contracts/schemas/huddle.schema.js';
+import { ContributeHuddleTurnDto } from '$lib/modules/agent-room/application/dto/HuddleDtos.js';
+import { huddleService } from '$lib/modules/agent-room/application/services/HuddleService.js';
 
 /**
  * Endpoints consumidos pela CLI `orkestrai` (autenticacao por token de
@@ -119,6 +122,25 @@ export class BridgeController extends Controller {
       return this.json({ data: await workspaceMemoryService.archive(workspace.id, event.params.memoryId) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao arquivar a memoria do workspace.');
+    }
+  }
+
+  async huddleList(event: any) {
+    try {
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await huddleService.snapshot(workspace.id, event.url.searchParams.get('selected')) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao consultar huddles.', 401);
+    }
+  }
+
+  async huddleContribute(event: any) {
+    try {
+      const input = contributeHuddleTurnSchema.extend({ from: z.string().uuid() }).parse(await event.request.json());
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      return this.json({ data: await huddleService.contribute(workspace.id, event.params.huddleId, input.from, ContributeHuddleTurnDto.from(input)) }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao registrar fala no huddle.');
     }
   }
 
