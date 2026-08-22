@@ -230,4 +230,23 @@ describe('PresetService', () => {
     expect(columns.map((column) => column.name)).toEqual(['Briefing', 'Planejado', 'Produção', 'Aprovação', 'Publicado']);
     expect((await taskBoardService.list(applied.workspaceId))[0].status).toBe('todo');
   });
+
+  it('exports, imports, and versions checksum-protected Team Packs', async () => {
+    const source = await workspaceRepository.createWorkspace({ name: 'Pack source', workingDir: mkdtempSync(join(tmpdir(), 'orkestrai-pack-source-')) });
+    await workspaceRepository.createNode({ workspaceId: source.id, type: 'terminal', title: 'Lead', payload: { provider: 'codex', maestro: true } });
+    const created = await presetService.createFromWorkspace(source.id, { name: 'Product team', description: 'A complete team' });
+    expect(created.version).toBe('1.0.0');
+    expect((await presetService.revisions(created.id))).toHaveLength(1);
+
+    const published = await presetService.publish(created.id, { version: '1.1.0', releaseNotes: 'Add review guidance.' });
+    expect(published.version).toBe('1.1.0');
+    expect((await presetService.revisions(created.id)).map((item) => item.version)).toEqual(['1.1.0', '1.0.0']);
+
+    const bundle = await presetService.exportPack(created.id, 'en');
+    expect(bundle).toMatchObject({ format: 'orkestrai-team-pack', schemaVersion: 1, manifest: { version: '1.1.0' } });
+    const imported = await presetService.importPack(bundle);
+    expect(imported).toMatchObject({ name: 'Product team', version: '1.1.0' });
+    await expect(presetService.importPack({ ...bundle, data: { ...bundle.data, createdAt: '2030-01-01T00:00:00.000Z' } })).rejects.toThrow('Checksum');
+    await expect(presetService.publish(created.id, { version: '1.0.5' })).rejects.toThrow('maior');
+  });
 });

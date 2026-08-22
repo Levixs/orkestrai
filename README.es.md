@@ -69,6 +69,15 @@ Descarga los instaladores más recientes desde
   evidencia explícita, revisiones inmutables, protección contra conflictos,
   búsqueda e historial de archivo. Los agentes consultan la misma memoria bajo
   demanda mediante tools MCP/CLI tipadas, sin recibirla completa en cada prompt.
+- **Anotaciones trazables:** revisa feedback de código y de Design nativo desde
+  un Centro de Anotaciones en Canvas o Workbench. Cada elemento conserva su
+  artefacto canónico, autor, objetivo, revisión capturada, estado de resolución y
+  alerta de código obsoleto; abrirlo vuelve a la revisión o documento original.
+- **Team Packs versionados:** convierte un workspace real en un equipo portátil
+  con agentes, roles, skills, etapas, rutinas, configuración MCP y layout.
+  Versiones semánticas, notas, historial inmutable, verificación SHA-256,
+  importaciones limitadas y eliminación del runtime permiten compartir sin
+  transportar sesiones ni credenciales.
 - **Uso compartido cifrado del workspace (experimental):** aloja una sesión
   cifrada de extremo a extremo, elige una invitación para navegador/móvil u otra
   aplicación instalada, comprueba la huella del dispositivo y asigna el rol

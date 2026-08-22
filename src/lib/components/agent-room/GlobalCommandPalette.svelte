@@ -39,6 +39,7 @@
   import { workbenchReviewCenterItemId } from './workbench-review-center.js';
   import { workbenchWorkstreamsItemId } from './workbench-workstreams.js';
   import { workbenchMemoryItemId } from './workbench-memory.js';
+  import { workbenchAnnotationsItemId } from './workbench-annotations.js';
   import { workbenchAutomationsItemId } from './workbench-automations.js';
   import * as m from '$lib/paraglide/messages.js';
   import { localeState } from '$lib/i18n/locale.svelte.js';
@@ -108,6 +109,7 @@
       command('control-center', m['global_search.command_control_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchControlCenterItemId(workspaceId))}`),
       command('workstreams', m['global_search.command_workstreams'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchWorkstreamsItemId(workspaceId))}`),
       command('memory', m['global_search.command_memory'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchMemoryItemId(workspaceId))}`),
+      command('annotations', m['global_search.command_annotations'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchAnnotationsItemId(workspaceId))}`),
       command('review-center', m['global_search.command_review_center'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchReviewCenterItemId(workspaceId))}`),
       command('automations', m['global_search.command_automations'](), `/terminal?workspace=${workspaceId}&node=${encodeURIComponent(workbenchAutomationsItemId(workspaceId))}`),
     ] : [];

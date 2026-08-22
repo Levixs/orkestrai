@@ -52,6 +52,7 @@
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
   import AttentionCenter from '$lib/components/agent-room/AttentionCenter.svelte';
   import WorkspaceMemoryDialog from '$lib/components/agent-room/WorkspaceMemoryDialog.svelte';
+  import AnnotationCenterDialog from '$lib/components/agent-room/AnnotationCenterDialog.svelte';
   import WorkspacePermissionNotice from '$lib/components/agent-room/WorkspacePermissionNotice.svelte';
   import { isWorkspacePermissionError } from '$lib/components/agent-room/workspace-permission.js';
   import { isTypingTarget } from '$lib/components/agent-room/event-target.js';
@@ -166,6 +167,7 @@
   let designExplorationOpen = $state(false);
   let sharingOpen = $state(false);
   let memoryOpen = $state(false);
+  let annotationsOpen = $state(false);
   /** workspaceId -> sessoes PTY vivas (indicador de ativo na sidebar). */
   let activity = $state<Record<string, number>>({});
   let editingWorkspace = $state<Workspace | null>(null);
@@ -404,6 +406,7 @@
     else if (action === 'usage') toggleSidePanel('usage');
     else if (action === 'ports' && activeWorkspace) toggleSidePanel('ports');
     else if (action === 'memory' && activeWorkspace) memoryOpen = true;
+    else if (action === 'annotations' && activeWorkspace) annotationsOpen = true;
     else if (action === 'organize' && activeWorkspace) void organizeCanvas();
     else if (action === 'command-palette') showPalette = true;
   }
@@ -1664,6 +1667,7 @@
     { id: 'device', label: m['canvas.palette_new_device'](), hint: m['canvas.hint_action'](), run: () => void addDevice() },
     { id: 'council', label: m['council.open'](), hint: m['canvas.hint_action'](), run: () => (councilOpen = true) },
     { id: 'memory', label: m['memory.title'](), hint: m['canvas.hint_view'](), run: () => (memoryOpen = true) },
+    { id: 'annotations', label: m['annotations.title'](), hint: m['canvas.hint_view'](), run: () => (annotationsOpen = true) },
     ...providers
       .filter((provider) => (provider.installed || canChooseAlternateRuntime) && provider.tui)
       .map((provider) => ({
@@ -2291,6 +2295,7 @@
     {#if activeWorkspace}
       <CouncilDialog bind:open={councilOpen} workspaceId={activeWorkspace.id} source={councilSource} />
       <WorkspaceMemoryDialog bind:open={memoryOpen} workspaceId={activeWorkspace.id} />
+      <AnnotationCenterDialog bind:open={annotationsOpen} workspaceId={activeWorkspace.id} />
     {/if}
     {#if sharingOpen && activeWorkspace}
       <WorkspaceSharingDialog workspaceId={activeWorkspace.id} onClose={() => (sharingOpen = false)} />

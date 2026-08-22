@@ -1,7 +1,9 @@
 import { uuidv7 } from '@beeblock/svelar/support';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AgentPreset } from '../../domain/models/AgentPreset.js';
+import { AgentPresetRevision } from '../../domain/models/AgentPresetRevision.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { workspaceService } from './WorkspaceService.js';
 import { roleService } from './RoleService.js';
@@ -22,11 +24,13 @@ export type PresetSummary = {
   createdAt: string;
   builtin: boolean;
   category: 'product' | 'frontend' | 'backend' | 'creative' | 'growth' | 'orkestrai' | 'custom';
+  version: string;
+  updatedAt: string;
 };
 
 export type PresetData = {
   format: 'orkestrai-preset';
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   createdAt: string;
   workspace: {
     name: string;
@@ -62,7 +66,43 @@ export type PresetData = {
   taskColumns?: BoardColumnRecipe[];
   /** Arquivos SKILL.md portaveis, sempre relativos ao projeto de destino. */
   skills?: Array<{ relativePath: string; content: string }>;
+  pack?: {
+    packageId: string;
+    version: string;
+    minimumOrkestraiVersion?: string | null;
+    releaseNotes?: string | null;
+  };
 };
+
+export type TeamPackRevision = { id: string; version: string; releaseNotes: string | null; checksum: string; createdAt: string };
+export type TeamPackBundle = {
+  format: 'orkestrai-team-pack';
+  schemaVersion: 1;
+  exportedAt: string;
+  manifest: { packageId: string; name: string; icon: string | null; description: string | null; version: string; minimumOrkestraiVersion: string | null; releaseNotes: string | null; checksum: string };
+  data: PresetData;
+};
+
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/;
+
+function checksum(data: PresetData): string {
+  return createHash('sha256').update(JSON.stringify(data)).digest('hex');
+}
+
+function dataVersion(data: PresetData): string {
+  return data.pack?.version ?? '1.0.0';
+}
+
+function compareSemver(left: string, right: string): number {
+  const a = left.split(/[.-]/).slice(0, 3).map(Number);
+  const b = right.split(/[.-]/).slice(0, 3).map(Number);
+  for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] - b[index];
+  return left.localeCompare(right);
+}
+
+function iso(value: unknown): string {
+  return value instanceof Date ? value.toISOString() : new Date(String(value)).toISOString();
+}
 
 /** Campos de runtime que NUNCA viajam num preset. */
 const RUNTIME_PAYLOAD_KEYS = [
@@ -89,9 +129,11 @@ async function presetNodePayload(workspaceId: string, node: PresetData['nodes'][
 
 function mapSummary(model: AgentPreset): PresetSummary {
   let agents = 0;
+  let version = '1.0.0';
   try {
     const data = JSON.parse(model.getAttribute('data')) as PresetData;
     agents = (data.nodes ?? []).filter((node) => node.type === 'terminal' && (node.payload as { provider?: string })?.provider).length;
+    version = dataVersion(data);
   } catch {
     // data invalido — agentes 0
   }
@@ -104,6 +146,8 @@ function mapSummary(model: AgentPreset): PresetSummary {
     createdAt: String(model.getAttribute('created_at')),
     builtin: false,
     category: 'custom',
+    version,
+    updatedAt: iso(model.getAttribute('updated_at')),
   };
 }
 
@@ -117,6 +161,8 @@ function builtinSummary(locale: PresetLocale): PresetSummary[] {
     createdAt: preset.data.createdAt,
     builtin: true,
     category: preset.category,
+    version: dataVersion(preset.data as PresetData),
+    updatedAt: preset.data.createdAt,
   }));
 }
 
@@ -192,7 +238,7 @@ export class PresetService {
     // Rotinas viram receita por TITULO do agente (ids mudam a cada aplicacao).
     const routines: PresetData['routines'] = [];
     for (const routine of await routineService.list(workspaceId)) {
-      const node = await workspaceRepository.getNode(routine.targetNodeId);
+      const node = routine.targetNodeId ? await workspaceRepository.getNode(routine.targetNodeId) : null;
       routines.push({
         targetTitle: node?.title ?? '',
         prompt: routine.prompt,
@@ -214,9 +260,10 @@ export class PresetService {
     const mcpServers = (await mcpService.list(workspaceId).catch(() => []))
       .filter((server) => !server.builtin)
       .map(({ name, command, args }) => ({ name, command, args }));
+    const id = uuidv7();
     const data: PresetData = {
       format: 'orkestrai-preset',
-      version: 2,
+      version: 3,
       createdAt: new Date().toISOString(),
       workspace: exported.workspace,
       nodes,
@@ -227,9 +274,9 @@ export class PresetService {
       mcpServers,
       taskColumns: (await boardColumnService.list(workspaceId)).map(({ key, name, color, position }) => ({ key, name, color, position })),
       skills: snapshotSkills(sourceWorkingDir),
+      pack: { packageId: id, version: '1.0.0', minimumOrkestraiVersion: null, releaseNotes: null },
     };
     const now = new Date().toISOString();
-    const id = uuidv7();
     await AgentPreset.query().insert({
       id,
       name,
@@ -239,13 +286,97 @@ export class PresetService {
       created_at: now,
       updated_at: now,
     });
+    await AgentPresetRevision.create({ id: uuidv7(), preset_id: id, version: '1.0.0', revision_key: `${id}:1.0.0`, release_notes: null, data: JSON.stringify(data), checksum: checksum(data), created_at: now });
     const model = await AgentPreset.find(id);
     return mapSummary(model!);
   }
 
   async remove(id: string): Promise<boolean> {
     if (id.startsWith('builtin:')) throw new Error('Presets embutidos nao podem ser excluidos.');
+    await AgentPresetRevision.query().where('preset_id', id).delete();
     return (await AgentPreset.query().where('id', id).delete()) > 0;
+  }
+
+  async revisions(id: string): Promise<TeamPackRevision[]> {
+    if (id.startsWith('builtin:')) {
+      const data = await this.data(id);
+      return [{ id, version: dataVersion(data), releaseNotes: data.pack?.releaseNotes ?? null, checksum: checksum(data), createdAt: data.createdAt }];
+    }
+    if (!await AgentPreset.find(id)) throw new Error('Team Pack nao encontrado.');
+    const rows = await AgentPresetRevision.query().where('preset_id', id).orderBy('created_at', 'desc').get();
+    if (!rows.length) {
+      const model = await AgentPreset.find(id);
+      const data = JSON.parse(String(model!.getAttribute('data'))) as PresetData;
+      return [{ id, version: dataVersion(data), releaseNotes: data.pack?.releaseNotes ?? null, checksum: checksum(data), createdAt: iso(model!.getAttribute('created_at')) }];
+    }
+    return rows.map((row) => ({
+      id: String(row.getAttribute('id')),
+      version: String(row.getAttribute('version')),
+      releaseNotes: row.getAttribute('release_notes') as string | null,
+      checksum: String(row.getAttribute('checksum')),
+      createdAt: iso(row.getAttribute('created_at')),
+    })).sort((left, right) => compareSemver(right.version, left.version) || right.createdAt.localeCompare(left.createdAt));
+  }
+
+  async publish(id: string, input: { version: string; releaseNotes?: string | null; minimumOrkestraiVersion?: string | null }): Promise<PresetSummary> {
+    if (id.startsWith('builtin:')) throw new Error('Team Packs embutidos nao podem publicar revisoes locais.');
+    if (!SEMVER.test(input.version)) throw new Error('Use uma versao semantica valida, como 1.1.0.');
+    if (input.minimumOrkestraiVersion && !SEMVER.test(input.minimumOrkestraiVersion)) throw new Error('A versao minima do Orkestrai deve usar SemVer.');
+    const model = await AgentPreset.find(id);
+    if (!model) throw new Error('Team Pack nao encontrado.');
+    const current = JSON.parse(String(model.getAttribute('data'))) as PresetData;
+    if (compareSemver(input.version, dataVersion(current)) <= 0) throw new Error('A nova versao deve ser maior que a versao atual.');
+    const data: PresetData = {
+      ...current,
+      version: 3,
+      pack: {
+        packageId: current.pack?.packageId ?? id,
+        version: input.version,
+        minimumOrkestraiVersion: input.minimumOrkestraiVersion ?? current.pack?.minimumOrkestraiVersion ?? null,
+        releaseNotes: input.releaseNotes?.trim() || null,
+      },
+    };
+    const now = new Date().toISOString();
+    await AgentPresetRevision.create({ id: uuidv7(), preset_id: id, version: input.version, revision_key: `${id}:${input.version}`, release_notes: data.pack?.releaseNotes ?? null, data: JSON.stringify(data), checksum: checksum(data), created_at: now });
+    await model.update({ data: JSON.stringify(data), updated_at: now });
+    return mapSummary((await AgentPreset.find(id))!);
+  }
+
+  async exportPack(id: string, locale: PresetLocale = 'pt-BR'): Promise<TeamPackBundle> {
+    const data = await this.data(id, locale);
+    const summary = (await this.list({ includeBuiltin: true, locale })).find((item) => item.id === id);
+    if (!summary) throw new Error('Team Pack nao encontrado.');
+    const digest = checksum(data);
+    return {
+      format: 'orkestrai-team-pack', schemaVersion: 1, exportedAt: new Date().toISOString(),
+      manifest: {
+        packageId: data.pack?.packageId ?? id, name: summary.name, icon: summary.icon,
+        description: summary.description, version: dataVersion(data),
+        minimumOrkestraiVersion: data.pack?.minimumOrkestraiVersion ?? null,
+        releaseNotes: data.pack?.releaseNotes ?? null, checksum: digest,
+      },
+      data,
+    };
+  }
+
+  async importPack(bundle: TeamPackBundle): Promise<PresetSummary> {
+    if (!bundle || bundle.format !== 'orkestrai-team-pack' || bundle.schemaVersion !== 1) throw new Error('Arquivo de Team Pack invalido.');
+    if (!bundle.manifest?.name?.trim() || !SEMVER.test(bundle.manifest.version)) throw new Error('Manifesto do Team Pack invalido.');
+    if (Buffer.byteLength(JSON.stringify(bundle)) > 5 * 1024 * 1024) throw new Error('Team Pack excede o limite de 5 MB.');
+    const data = bundle.data;
+    if (!data || data.format !== 'orkestrai-preset' || ![1, 2, 3].includes(data.version)) throw new Error('Conteudo do Team Pack invalido.');
+    if (checksum(data) !== bundle.manifest.checksum) throw new Error('Checksum do Team Pack nao confere.');
+    if (data.nodes.length > 200 || data.edges.length > 500 || data.roles.length > 100 || (data.skills?.length ?? 0) > MAX_SKILLS) throw new Error('Team Pack excede os limites de conteudo.');
+    const id = uuidv7();
+    const normalized: PresetData = {
+      ...data, version: 3,
+      nodes: data.nodes.map((node) => ({ ...node, payload: sanitizePayload(node.payload) })),
+      pack: { packageId: bundle.manifest.packageId, version: bundle.manifest.version, minimumOrkestraiVersion: bundle.manifest.minimumOrkestraiVersion, releaseNotes: bundle.manifest.releaseNotes },
+    };
+    const now = new Date().toISOString();
+    await AgentPreset.create({ id, name: bundle.manifest.name.trim(), icon: bundle.manifest.icon, description: bundle.manifest.description, data: JSON.stringify(normalized), created_at: now, updated_at: now });
+    await AgentPresetRevision.create({ id: uuidv7(), preset_id: id, version: bundle.manifest.version, revision_key: `${id}:${bundle.manifest.version}`, release_notes: bundle.manifest.releaseNotes, data: JSON.stringify(normalized), checksum: checksum(normalized), created_at: now });
+    return mapSummary((await AgentPreset.find(id))!);
   }
 
   /**

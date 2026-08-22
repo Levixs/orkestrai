@@ -1167,6 +1167,30 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'triage-traceable-annotations',
+    icon: 'MessageSquareText',
+    title: 'Clasifica anotaciones trazables',
+    tagline: 'Mantén el feedback de código y diseño unido al artefacto que lo originó.',
+    steps: [
+      { id: 'open-annotation-center', title: 'Abre la vista unificada', body: 'Abre el Centro de Anotaciones desde Canvas, el explorador de Workbench o Command/Ctrl+K.', action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-annotations:{workspace}' } },
+      { id: 'filter-annotation-center', title: 'Encuentra el feedback importante', body: 'Alterna entre elementos abiertos, resueltos y todos. Busca por comentario, autor, revisión, archivo, documento de Design o capa.' },
+      { id: 'inspect-annotation-source', title: 'Comprueba revisión y contexto', body: 'Inspecciona la revisión capturada y la alerta de obsolescencia. Los comentarios de código detectan cambios posteriores; los hilos de Design conservan revisión y capa.' },
+      { id: 'resolve-at-source', title: 'Vuelve al artefacto canónico', body: 'Elige Abrir origen para responder o resolver en el Centro de revisión o Design nativo. El centro nunca divide el estado del feedback.' },
+    ],
+  },
+  {
+    id: 'version-and-share-team-pack',
+    icon: 'PackageOpen',
+    title: 'Versiona y comparte un Team Pack',
+    tagline: 'Reutiliza un equipo completo sin transportar sesiones ni secretos.',
+    steps: [
+      { id: 'open-team-packs', title: 'Abre Team Packs', body: 'Abre la biblioteca de presets desde Canvas. Los presets integrados y existentes siguen funcionando y los snapshots personalizados tienen historial.', action: { kind: 'openPage', path: '/canvas?workspace={workspace}' } },
+      { id: 'capture-team-pack', title: 'Captura el equipo funcional', body: 'Guarda el workspace como pack personalizado. Agentes, roles, skills, etapas, tareas plantilla, rutinas, MCPs, conexiones y layout entran; el runtime vivo se elimina.' },
+      { id: 'publish-team-pack', title: 'Publica una revisión inmutable', body: 'Abre el historial, introduce una versión semántica mayor y notas, y publica. La revisión anterior con checksum no cambia.' },
+      { id: 'share-team-pack', title: 'Exporta o importa con seguridad', body: 'Exporta el JSON protegido o importa uno de otra instalación. Orkestrai valida formato, tamaño, límites y SHA-256 antes de crear un pack local.' },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Revisar una entrega',

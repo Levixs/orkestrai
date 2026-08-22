@@ -19,6 +19,11 @@ const applyPresetSchema = z.object({
   wslWorkingDir: z.string().trim().nullish(),
   locale: z.enum(['pt-BR', 'en', 'es']).optional(),
 });
+const publishTeamPackSchema = z.object({
+  version: z.string().trim().min(5).max(40),
+  releaseNotes: z.string().trim().max(8_000).nullish(),
+  minimumOrkestraiVersion: z.string().trim().max(40).nullish(),
+});
 
 /** Presets de equipe (templates de workspace) — globais, nao por workspace. */
 export class PresetController extends Controller {
@@ -44,6 +49,43 @@ export class PresetController extends Controller {
   async remove(event: any) {
     await presetService.remove(event.params.id);
     return this.json({ data: { deleted: true } });
+  }
+
+  async exportPack(event: any) {
+    try {
+      const url = new URL(event.request.url);
+      return this.json({ data: await presetService.exportPack(event.params.id, normalizePresetLocale(url.searchParams.get('locale'))) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao exportar Team Pack.');
+    }
+  }
+
+  async importPack(event: any) {
+    try {
+      const declaredSize = Number(event.request.headers.get('content-length') ?? 0);
+      if (Number.isFinite(declaredSize) && declaredSize > 5 * 1024 * 1024) throw new Error('Team Pack excede o limite de 5 MB.');
+      const source = await event.request.text();
+      if (Buffer.byteLength(source) > 5 * 1024 * 1024) throw new Error('Team Pack excede o limite de 5 MB.');
+      return this.json({ data: await presetService.importPack(JSON.parse(source)) }, 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao importar Team Pack.');
+    }
+  }
+
+  async revisions(event: any) {
+    try {
+      return this.json({ data: await presetService.revisions(event.params.id) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao carregar versoes do Team Pack.');
+    }
+  }
+
+  async publish(event: any) {
+    try {
+      return this.json({ data: await presetService.publish(event.params.id, publishTeamPackSchema.parse(await event.request.json())) });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao publicar a versao do Team Pack.');
+    }
   }
 
   /** Edita metadados (nome/icone/descricao). */

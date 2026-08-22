@@ -201,7 +201,7 @@ export type AgentModelOption = {
 // Canvas / Workspaces
 // ---------------------------------------------------------------------------
 
-export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'workstreams' | 'memory' | 'automation' | 'device' | 'design';
+export type CanvasNodeType = 'terminal' | 'note' | 'fileTree' | 'editor' | 'diff' | 'portal' | 'apiClient' | 'loop' | 'group' | 'shape' | 'tasks' | 'flow' | 'image' | 'usage' | 'controlCenter' | 'reviewCenter' | 'workstreams' | 'memory' | 'annotations' | 'automation' | 'device' | 'design';
 export type CanvasEdgeStyle = 'cord' | 'circuit';
 export type WorkspaceRuntimeKind = 'native' | 'wsl';
 export type WorkspaceExecutionRuntime =
@@ -462,6 +462,30 @@ export type WorkspaceMemoryEntry = {
   sources: WorkspaceMemorySource[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type TraceableAnnotation = {
+  id: string;
+  workspaceId: string;
+  kind: 'code' | 'design';
+  status: 'open' | 'resolved';
+  body: string;
+  authorTitle: string | null;
+  targetTitle: string;
+  targetDetail: string | null;
+  targetId: string;
+  nodeId: string | null;
+  taskId: string | null;
+  revision: string;
+  stale: boolean;
+  route: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AnnotationCenterSnapshot = {
+  annotations: TraceableAnnotation[];
+  counts: { open: number; resolved: number; stale: number; code: number; design: number };
 };
 
 export type WorkspaceAttachment = {

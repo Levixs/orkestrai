@@ -61,6 +61,16 @@ export const DOCS_ES: DocsCatalog = {
       body: `Abre Memoria del workspace con Command/Ctrl+K, desde el Canvas o el explorador del workspace en Workbench. Guarda solo decisiones, hechos, preferencias, restricciones, referencias y aprendizajes duraderos; cada entrada exige una o más fuentes explícitas como una declaración del usuario, nota, tarea, mensaje canónico, archivo del workspace, URL, evidencia Git, revisión, Consejo o agente. Las fuentes conservan identificación, extractos limitados, enlaces y fingerprints de contenido. Las revisiones nunca sobrescriben el conocimiento anterior: lo sustituyen con protección de concurrencia optimista, mientras el archivado conserva la auditoría. Los agentes usan memory_search solo cuando el contexto es relevante y memory_add o memory_revise con evidencia; Orkestrai nunca inyecta toda la memoria en cada prompt ni trata una conversación casual como un hecho.`,
     },
     {
+      id: 'annotation-center',
+      title: 'Centro de Anotaciones: feedback con su origen',
+      body: `Abre el Centro de Anotaciones desde Canvas, el explorador del workspace en Workbench o Command/Ctrl+K. No copia comentarios a otro gestor: proyecta cada comentario de código del Centro de revisión y cada hilo del Design nativo desde su artefacto canónico. Busca feedback abierto o resuelto e inspecciona autor, archivo, línea o capa exacta, revisión capturada, actualización y relación con una tarea. Un comentario de código se marca obsoleto cuando su contenido capturado ya no coincide con el archivo actual. Abrir origen vuelve a la revisión o documento de Design original, donde la resolución sigue siendo autoritativa.`,
+    },
+    {
+      id: 'team-packs',
+      title: 'Team Packs: equipos portátiles y versionados',
+      body: `Abre Team Packs desde la biblioteca de presets del Canvas. Los presets existentes y el catálogo integrado siguen siendo compatibles; un snapshot personalizado comienza en 1.0.0 e incluye agentes, roles, skills portátiles, etapas y tareas plantilla, rutinas, servidores MCP adicionales, conexiones y layout. Publica una versión semántica mayor con notas para crear una revisión local inmutable. Exporta un archivo .orkestrai-team-pack.json protegido por checksum o importa uno tras validar schema, tamaño, integridad y contenido con límites. Se eliminan sesiones, ids de conversación, credenciales y demás runtime. La importación crea un pack local nuevo en vez de reemplazar silenciosamente otro con la misma identidad.`,
+    },
+    {
       id: 'review-center',
       title: 'Control de código y Centro de revisión',
       body: `Abre el Centro de revisión de cada workspace en el explorador del Workbench para inspeccionar cambios preparados y no preparados sin salir de Orkestrai. El encabezado muestra la rama, el upstream y los commits por delante o detrás; la lista permite preparar, quitar de preparación, crear commits, hacer pull, push y descartar ediciones rastreadas solo tras una confirmación. Al seleccionar un archivo se abre un diff lado a lado y limitado en Monaco; los archivos binarios o demasiado grandes muestran estados seguros explícitos. Inicia una revisión para vincular la revisión Git exacta con una tarea, agente responsable, resumen, evidencias, pruebas, riesgos y archivos seleccionados. Haz clic en cualquier lado del diff para comentar el archivo o una línea. Cuando cambia el repositorio, los comentarios anteriores siguen visibles como contexto desactualizado en vez de apuntar silenciosamente a otra línea. Aprueba, solicita cambios o rechaza con lenguaje directo; los cambios solicitados se envían al agente responsable cuando su terminal está disponible y permanecen guardados cuando está desconectado.`,
@@ -604,6 +614,18 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Memoria del workspace', 'procedencia', 'decisiones versionadas'],
     },
     {
+      id: 'triage-traceable-annotations',
+      title: 'Clasifica feedback de código y diseño en un solo lugar',
+      body: 'Abre el Centro de Anotaciones desde Canvas o Workbench para comparar todos los comentarios abiertos del Centro de revisión y los hilos del Design nativo. Busca por feedback, autor, archivo, capa o artefacto, inspecciona revisión y obsolescencia y abre la fuente canónica para responder o resolver. El centro nunca crea una copia desconectada del feedback.',
+      tags: ['Centro de Anotaciones', 'feedback de código + diseño', 'trazabilidad de revisión'],
+    },
+    {
+      id: 'version-and-share-team-pack',
+      title: 'Versiona y comparte un equipo completo',
+      body: 'Captura el workspace actual como Team Pack personalizado, publica una versión semántica con notas e inspecciona sus checksums inmutables. Exporta el pack a otra instalación o importa uno compartido tras validar schema, tamaño, contenido y SHA-256. Agentes, roles, skills, etapas, rutinas, configuración MCP y layout viajan; las sesiones y credenciales no.',
+      tags: ['Team Packs', 'versiones semánticas', 'importación y exportación seguras'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Editar e inspeccionar archivos sin salir del Workbench',
       body: 'Expande Archivos en la barra lateral del Workbench y abre un archivo del workspace directamente en una pestaña local, sin crear un nodo en el canvas. El árbol de archivos del Canvas y Command/Ctrl+K usan la misma apertura directa. Monaco conserva cursor, undo, selección y estado sin guardar entre paneles. Busca o reemplaza texto, navega por símbolos, formatea archivos compatibles y elige minimapa, ajuste de línea, tamaño de fuente o guardado automático opcional en Configuración → Apariencia. Markdown alterna entre fuente y vista previa sanitizada; los PDFs tienen navegación y zoom; las imágenes permiten zoom, desplazamiento, dimensiones y transparencia; los binarios muestran metadatos y se abren con la aplicación del sistema. Los archivos mayores de 512 KB se abren en una vista limitada de solo lectura para no sobrescribir contenido que no fue cargado.',
@@ -661,8 +683,8 @@ Header: Authorization = Bearer {{accessToken}}`,
   changelog: [
     {
       date: 'Próxima versión',
-      title: 'Coordinación duradera y atención entre workspaces',
-      summary: 'Mensajes, actividad, señales de atención y búsqueda global comparten ahora un historial operativo persistente.',
+      title: 'Coordinación duradera, conocimiento con fuentes y equipos reutilizables',
+      summary: 'Mensajes, actividad, atención, entrega, memoria, anotaciones y Team Packs conservan ahora su contexto operativo.',
       items: [
         'Cada mensaje entre agentes tiene ahora un sobre canónico con destinatario y contenido verificados, recibos duraderos, correlación, deduplicación y protección contra replay.',
         'El Centro de control añade una línea temporal semántica de Actividad para mensajes, tareas, revisiones, decisiones, Git y eventos del sistema, con diagnósticos brutos bajo demanda.',
@@ -670,6 +692,8 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Command/Ctrl+K ahora indexa actividad, mensajes canónicos y atención con operadores de tipo, agente, workspace, estado, error y fecha.',
         'Workbench añade Flujos de trabajo, una proyección en vivo de cada tarea de Kanban hasta responsable, Piso, decisiones del Consejo, revisiones, actividad semántica y evidencia Git exacta.',
         'La Memoria del workspace conserva decisiones, hechos, preferencias, restricciones, referencias y aprendizajes con fuentes, búsqueda, revisiones inmutables, protección contra conflictos, historial y acceso bajo demanda para agentes por MCP/CLI.',
+        'El Centro de Anotaciones proyecta feedback de revisión de código y Design nativo sin perder artefacto canónico, autor, objetivo, revisión, resolución ni alerta de código obsoleto.',
+        'Los presets personalizados son ahora Team Packs versionados con releases semánticos, historial local inmutable, verificación SHA-256, importación limitada y sin runtime vivo ni credenciales.',
       ],
     },
     {

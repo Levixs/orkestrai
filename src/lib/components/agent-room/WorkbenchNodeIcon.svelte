@@ -19,6 +19,7 @@
     Braces,
     Route,
     BookMarked,
+    MessageSquareText,
   } from '@lucide/svelte';
   import type { CanvasNodeType } from '$lib/modules/agent-room/domain/types.js';
 
@@ -41,6 +42,7 @@
 {:else if type === 'reviewCenter'}<GitPullRequestArrow {size} aria-hidden="true" />
 {:else if type === 'workstreams'}<Route {size} aria-hidden="true" />
 {:else if type === 'memory'}<BookMarked {size} aria-hidden="true" />
+{:else if type === 'annotations'}<MessageSquareText {size} aria-hidden="true" />
 {:else if type === 'device'}<Smartphone {size} aria-hidden="true" />
 {:else if type === 'design'}<Palette {size} aria-hidden="true" />
 {:else if type === 'automation'}<AutomationIcon {size} aria-hidden="true" />

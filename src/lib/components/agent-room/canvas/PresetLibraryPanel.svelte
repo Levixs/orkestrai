@@ -1,12 +1,14 @@
 <script lang="ts">
   import * as AlertDialog from '$lib/components/ui/alert-dialog';
+  import * as Dialog from '$lib/components/ui/dialog';
   import * as Select from '$lib/components/ui/select';
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
+  import { Textarea } from '$lib/components/ui/textarea';
   import WorkspaceIcon from '../WorkspaceIcon.svelte';
   import { localeState } from '$lib/i18n/locale.svelte.js';
-  import { ArrowRight, Library, Plus, Search, Sparkles, X } from '@lucide/svelte';
+  import { ArrowRight, Download, History, Library, PackageOpen, Plus, Search, Sparkles, Upload, X } from '@lucide/svelte';
   import * as m from '$lib/paraglide/messages.js';
 
   type PresetSummary = {
@@ -17,7 +19,10 @@
     agents: number;
     builtin: boolean;
     category: 'product' | 'frontend' | 'backend' | 'creative' | 'growth' | 'orkestrai' | 'custom';
+    version: string;
+    updatedAt: string;
   };
+  type TeamPackRevision = { id: string; version: string; releaseNotes: string | null; checksum: string; createdAt: string };
 
   type Props = {
     workspaceId?: string | null;
@@ -34,6 +39,12 @@
   let pendingPreset = $state<PresetSummary | null>(null);
   let applying = $state(false);
   let errorMessage = $state('');
+  let importInput: HTMLInputElement;
+  let detailPreset = $state<PresetSummary | null>(null);
+  let revisions = $state<TeamPackRevision[]>([]);
+  let releaseVersion = $state('');
+  let releaseNotes = $state('');
+  let packBusy = $state(false);
 
   const filtered = $derived(
     presets.filter((preset) => {
@@ -82,6 +93,47 @@
     }
   }
 
+  async function exportPack(preset: PresetSummary): Promise<void> {
+    try {
+      const bundle = await api<unknown>(`/api/agent-room/presets/${preset.id}/export?locale=${encodeURIComponent(localeState.current)}`);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = url; anchor.download = `${preset.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLocaleLowerCase()}-${preset.version}.orkestrai-team-pack.json`; anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) { errorMessage = error instanceof Error ? error.message : m['team_pack.export_error'](); }
+  }
+
+  async function importPack(event: Event): Promise<void> {
+    const file = (event.currentTarget as HTMLInputElement).files?.[0];
+    if (!file) return;
+    try {
+      const bundle = JSON.parse(await file.text());
+      await api('/api/agent-room/presets/import', { method: 'POST', body: JSON.stringify(bundle) });
+      await refresh();
+    } catch (error) { errorMessage = error instanceof Error ? error.message : m['team_pack.import_error'](); }
+    finally { importInput.value = ''; }
+  }
+
+  async function openDetails(preset: PresetSummary): Promise<void> {
+    detailPreset = preset;
+    releaseVersion = '';
+    releaseNotes = '';
+    try { revisions = await api<TeamPackRevision[]>(`/api/agent-room/presets/${preset.id}/revisions`); }
+    catch { revisions = []; }
+  }
+
+  async function publishVersion(): Promise<void> {
+    if (!detailPreset || detailPreset.builtin || !releaseVersion.trim()) return;
+    packBusy = true;
+    try {
+      await api(`/api/agent-room/presets/${detailPreset.id}/revisions`, { method: 'POST', body: JSON.stringify({ version: releaseVersion, releaseNotes }) });
+      await refresh();
+      const updated = presets.find((preset) => preset.id === detailPreset?.id);
+      if (updated) await openDetails(updated);
+    } catch (error) { errorMessage = error instanceof Error ? error.message : m['team_pack.publish_error'](); }
+    finally { packBusy = false; }
+  }
+
   $effect(() => {
     localeState.current;
     void refresh();
@@ -98,9 +150,7 @@
       <h3 class="m-0 text-base font-semibold text-[var(--app-text)]">{m['preset.title']()}</h3>
       <p class="mt-1 text-xs leading-5 text-[var(--app-text-muted)]">{m['preset.subtitle']()}</p>
     </div>
-    <Button variant="ghost" size="icon-sm" aria-label={m['preset.close']()} onclick={onClose} class="shrink-0 text-[var(--app-text-muted)] hover:text-[var(--app-text)]">
-      <X size={15} />
-    </Button>
+    <div class="flex shrink-0 gap-1"><input bind:this={importInput} class="hidden" type="file" accept=".json,application/json" onchange={importPack} /><Button variant="ghost" size="icon-sm" aria-label={m['team_pack.import']()} onclick={() => importInput.click()}><Upload size={14} /></Button><Button variant="ghost" size="icon-sm" aria-label={m['preset.close']()} onclick={onClose} class="text-[var(--app-text-muted)] hover:text-[var(--app-text)]"><X size={15} /></Button></div>
   </header>
 
   <div class="grid gap-2 border-b border-[var(--app-border)] p-4">
@@ -141,13 +191,14 @@
               <Badge variant={preset.builtin ? 'secondary' : 'outline'} class="h-5 rounded px-1.5 text-[9px] uppercase tracking-normal">
                 {preset.builtin ? m['preset.builtin']() : m['preset.custom']()}
               </Badge>
+              <Badge variant="outline" class="h-5 rounded px-1.5 text-[9px]">v{preset.version}</Badge>
             </div>
             <p class="mt-1 text-[11px] leading-4 text-[var(--app-text-muted)]">{preset.description ?? m['preset.no_description']()}</p>
             <p class="mt-2 text-[10px] font-medium text-[var(--app-text-muted)]">{m['preset.agent_count']({ count: preset.agents })} · {categoryLabel(preset.category)}</p>
           </div>
         </div>
-        <div class="mt-3 grid {workspaceId ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'} gap-2">
-          <Button size="sm" class="justify-between" onclick={() => onCreateWorkspace(preset.id)}>
+        <div class="mt-3 flex gap-2">
+          <Button size="sm" class="min-w-0 flex-1 justify-between" onclick={() => onCreateWorkspace(preset.id)}>
             {m['preset.new_workspace']()}
             <ArrowRight size={14} />
           </Button>
@@ -156,6 +207,8 @@
               <Plus size={14} />
             </Button>
           {/if}
+          <Button variant="outline" size="icon-sm" aria-label={m['team_pack.history_named']({ name: preset.name })} onclick={() => void openDetails(preset)}><History size={14} /></Button>
+          <Button variant="outline" size="icon-sm" aria-label={m['team_pack.export_named']({ name: preset.name })} onclick={() => void exportPack(preset)}><Download size={14} /></Button>
         </div>
       </article>
     {:else}
@@ -180,3 +233,11 @@
     </AlertDialog.Footer>
   </AlertDialog.Content>
 </AlertDialog.Root>
+
+<Dialog.Root open={detailPreset !== null} onOpenChange={(open) => !open && (detailPreset = null)}>
+  <Dialog.Content class="max-h-[82vh] max-w-lg overflow-y-auto">
+    <Dialog.Header><Dialog.Title class="flex items-center gap-2"><PackageOpen size={16} />{detailPreset?.name}</Dialog.Title><Dialog.Description>{m['team_pack.description']()}</Dialog.Description></Dialog.Header>
+    <div class="space-y-2">{#each revisions as revision (revision.id)}<article class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-subtle)] p-3"><div class="flex items-center gap-2"><strong class="text-[11px]">v{revision.version}</strong><time class="ml-auto text-[8px] text-[var(--app-text-muted)]">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(revision.createdAt))}</time></div><p class="mt-1 text-[9px] leading-4 text-[var(--app-text-muted)]">{revision.releaseNotes ?? m['team_pack.no_notes']()}</p><code class="mt-2 block truncate text-[7px] text-[var(--app-text-muted)]">sha256:{revision.checksum}</code></article>{/each}</div>
+    {#if detailPreset && !detailPreset.builtin}<div class="grid gap-3 border-t border-[var(--app-border)] pt-4"><h3 class="text-[11px] font-semibold">{m['team_pack.publish_title']()}</h3><label class="grid gap-1 text-[9px]">{m['team_pack.version']()}<Input bind:value={releaseVersion} placeholder={m['team_pack.version_placeholder']()} /></label><label class="grid gap-1 text-[9px]">{m['team_pack.release_notes']()}<Textarea bind:value={releaseNotes} class="min-h-20 resize-y text-[10px]" /></label><Button disabled={packBusy || !releaseVersion.trim()} onclick={() => void publishVersion()}>{packBusy ? m['team_pack.publishing']() : m['team_pack.publish']()}</Button></div>{/if}
+  </Dialog.Content>
+</Dialog.Root>

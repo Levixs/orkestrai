@@ -32,6 +32,14 @@ pt-BR, English, and Spanish translations.
   explicit provenance, content fingerprints, search, immutable revisions,
   optimistic conflict protection, and archive history without injecting the
   whole memory into every agent prompt.
+- Added an Annotation Center in Canvas, Workbench, and Universal Search. It
+  projects code-review and native Design comments from their canonical sources
+  with author, target, captured revision, resolution state, and stale-code
+  detection instead of creating a parallel feedback store.
+- Turned custom team presets into portable Team Packs with semantic versions,
+  release notes, immutable local revision history, SHA-256 integrity checks,
+  bounded import validation, and runtime-state stripping. Existing and built-in
+  presets remain compatible.
 
 ## 0.17.0 - 2026-08-22
 

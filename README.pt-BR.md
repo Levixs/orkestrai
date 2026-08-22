@@ -68,6 +68,15 @@ Baixe os instaladores mais recentes em
   revisões imutáveis, proteção contra conflitos, busca e histórico de arquivo.
   Agentes consultam a mesma memória sob demanda por tools MCP/CLI tipadas, sem
   receber toda a memória em cada prompt.
+- **Anotações rastreáveis:** revise feedback de código e do Design nativo em uma
+  Central de Anotações no Canvas ou Workbench. Cada item mantém artefato
+  canônico, autor, alvo, revisão capturada, estado de resolução e aviso de código
+  desatualizado; ao abrir, você volta à revisão ou documento de Design original.
+- **Team Packs versionados:** transforme um workspace funcional em um time
+  portátil com agentes, roles, skills, etapas, rotinas, configuração MCP e
+  layout. Versões semânticas, notas, histórico imutável, verificação SHA-256,
+  importação limitada e remoção do estado de runtime permitem evoluir e
+  compartilhar sem carregar sessões ou credenciais.
 - **Compartilhamento criptografado de workspace (experimental):** hospede uma
   sessão criptografada de ponta a ponta, escolha um convite para
   navegador/celular ou outro app instalado, confira a impressão digital do

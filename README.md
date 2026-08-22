@@ -102,6 +102,15 @@ Download the latest installers from
   revisions, conflict protection, search, and archive history. Agents query the
   same memory on demand through typed MCP/CLI tools instead of receiving an
   expensive full-memory prompt on every turn.
+- **Traceable annotations:** review code and native Design feedback from one
+  Annotation Center in Canvas or Workbench. Every item keeps its canonical
+  artifact, author, target, captured revision, resolution state, and stale-code
+  warning; opening it returns to the original review or Design document.
+- **Versioned Team Packs:** turn a working workspace into a portable team with
+  agents, roles, skills, task stages, routines, MCP configuration, and layout.
+  Semantic versions, release notes, immutable history, SHA-256 verification,
+  bounded imports, and runtime-state stripping make packs safe to evolve and
+  share without carrying live sessions or credentials.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted
   session, choose a browser/mobile or installed-app invite, approve the device
   fingerprint, and assign a Viewer, Collaborator, Operator, or Administrator

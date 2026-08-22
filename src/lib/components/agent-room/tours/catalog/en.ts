@@ -1167,6 +1167,30 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'triage-traceable-annotations',
+    icon: 'MessageSquareText',
+    title: 'Triage traceable annotations',
+    tagline: 'Keep code and design feedback attached to the artifact that created it.',
+    steps: [
+      { id: 'open-annotation-center', title: 'Open the unified view', body: 'Open Annotation Center from Canvas, the Workbench explorer, or Command/Ctrl+K.', action: { kind: 'openPage', path: '/terminal?workspace={workspace}&node=workbench-annotations:{workspace}' } },
+      { id: 'filter-annotation-center', title: 'Find the feedback that matters', body: 'Switch between open, resolved, and all items. Search by comment, author, review, file, Design document, or layer.' },
+      { id: 'inspect-annotation-source', title: 'Check revision and context', body: 'Inspect the captured revision and stale warning. Code comments detect later file changes; Design threads retain their document revision and layer target.' },
+      { id: 'resolve-at-source', title: 'Return to the canonical artifact', body: 'Choose Open source to reply or resolve in Review Center or the native Design document. Annotation Center never forks the feedback state.' },
+    ],
+  },
+  {
+    id: 'version-and-share-team-pack',
+    icon: 'PackageOpen',
+    title: 'Version and share a Team Pack',
+    tagline: 'Reuse a complete team without carrying sessions or secrets.',
+    steps: [
+      { id: 'open-team-packs', title: 'Open Team Packs', body: 'Open the preset library from the Canvas. Built-in and existing presets continue to work, while custom workspace snapshots support version history.', action: { kind: 'openPage', path: '/canvas?workspace={workspace}' } },
+      { id: 'capture-team-pack', title: 'Capture the working team', body: 'Save the workspace as a custom pack. Agents, roles, skills, stages, task templates, routines, MCP configuration, connections, and layout are included; live runtime state is removed.' },
+      { id: 'publish-team-pack', title: 'Publish an immutable revision', body: 'Open version history, enter a larger semantic version and release notes, and publish. The previous checksummed revision remains unchanged.' },
+      { id: 'share-team-pack', title: 'Export or import safely', body: 'Export the checksum-protected JSON or import one from another installation. Orkestrai validates format, size, content limits, and SHA-256 before creating a new local pack.' },
+    ],
+  },
+  {
     id: 'review-delivery',
     icon: 'GitPullRequestArrow',
     title: 'Review a delivery',
