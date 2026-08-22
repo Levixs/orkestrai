@@ -11,6 +11,7 @@ import { WorkspaceSearchDto } from '$lib/modules/agent-room/application/dto/Work
 import { WorkspaceSearchService } from '$lib/modules/agent-room/application/services/WorkspaceSearchService.js';
 import { designOperationSchema } from '$lib/modules/agent-room/contracts/schemas/designSchemas.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
+import { controlCenterService } from '$lib/modules/agent-room/application/services/ControlCenterService.js';
 
 const tempDirectories: string[] = [];
 
@@ -91,5 +92,39 @@ describe('WorkspaceSearchService', () => {
     expect(componentResults).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'artifact', title: 'Checkout button', nodeId: node.id })]));
     expect(tokenResults).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'artifact', title: 'color/purchase', nodeId: node.id })]));
     expect(figmaResults).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'artifact', title: 'Checkout foundations', nodeId: node.id })]));
+  });
+
+  it('searches semantic activity, attention, and durable messages with operators', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'Operations', workingDir: '/tmp' });
+    const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'Codex reviewer' });
+    await controlCenterService.recordActivity({
+      workspaceId: workspace.id,
+      nodeId: agent.id,
+      state: 'error',
+      action: 'Tests failed',
+      category: 'workflow',
+      verb: 'validated',
+      objectType: 'test-suite',
+      objectTitle: 'Checkout tests failed',
+      outcome: 'Two assertions failed.',
+      severity: 'error',
+      attentionRequired: true,
+    });
+    await controlCenterService.recordDelivery({
+      workspaceId: workspace.id,
+      toNodeId: agent.id,
+      state: 'failed',
+      content: 'Review checkout',
+      error: 'Terminal disconnected',
+    });
+
+    const service = new WorkspaceSearchService();
+    const attention = await service.search(new WorkspaceSearchDto('type:attention checkout', workspace.id, false, 20));
+    const errors = await service.search(new WorkspaceSearchDto('has:error agent:"Codex reviewer"', workspace.id, false, 20));
+    const failedMessages = await service.search(new WorkspaceSearchDto('type:message status:failed', workspace.id, false, 20));
+
+    expect(attention).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'attention', title: 'Checkout tests failed' })]));
+    expect(errors).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'activity', title: 'Checkout tests failed' })]));
+    expect(failedMessages).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'message', preview: 'Terminal disconnected' })]));
   });
 });

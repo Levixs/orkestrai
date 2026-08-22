@@ -227,6 +227,24 @@ export type AgentMessageDeliveryState =
   | 'replied'
   | 'failed';
 
+export type AgentActivityCategory =
+  | 'agent'
+  | 'message'
+  | 'task'
+  | 'workflow'
+  | 'review'
+  | 'git'
+  | 'terminal'
+  | 'design'
+  | 'portal'
+  | 'remote'
+  | 'usage'
+  | 'system';
+
+export type AgentActivitySeverity = 'info' | 'success' | 'warning' | 'error';
+
+export type AgentAttentionStatus = 'open' | 'read' | 'snoozed' | 'resolved';
+
 export type AgentActivity = {
   id: string;
   workspaceId: string;
@@ -235,7 +253,66 @@ export type AgentActivity = {
   action: string | null;
   taskId: string | null;
   metadata: Record<string, unknown>;
+  category: AgentActivityCategory;
+  verb: string;
+  objectType: string | null;
+  objectId: string | null;
+  objectTitle: string | null;
+  outcome: string | null;
+  severity: AgentActivitySeverity;
+  correlationId: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+  attentionRequired: boolean;
+  resolvedAt: string | null;
   createdAt: string;
+};
+
+export type AgentMessageEnvelope = {
+  id: string;
+  workspaceId: string;
+  fromNodeId: string | null;
+  toNodeId: string;
+  kind: string;
+  state: AgentMessageDeliveryState;
+  content: string;
+  reply: string | null;
+  error: string | null;
+  contentHash: string;
+  correlationId: string | null;
+  dedupKey: string | null;
+  attempts: number;
+  metadata: Record<string, unknown>;
+  deliveredAt: string | null;
+  acknowledgedAt: string | null;
+  repliedAt: string | null;
+  failedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AgentAttentionItem = {
+  id: string;
+  workspaceId: string;
+  workspaceName: string | null;
+  activityEventId: string | null;
+  nodeId: string | null;
+  nodeTitle: string | null;
+  taskId: string | null;
+  category: AgentActivityCategory;
+  severity: AgentActivitySeverity;
+  status: AgentAttentionStatus;
+  title: string;
+  body: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+  correlationId: string | null;
+  action: Record<string, unknown>;
+  readAt: string | null;
+  snoozedUntil: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AgentMessageDeliveryEvent = {
@@ -287,6 +364,7 @@ export type ControlCenterSnapshot = {
   workspaceId: string;
   counts: Record<AgentActivityState, number>;
   agents: AgentActivitySnapshot[];
+  activity: AgentActivity[];
   communications: AgentMessageThread[];
   generatedAt: string;
 };
@@ -575,6 +653,9 @@ export type WorkspaceSearchResultKind =
   | 'role'
   | 'skill'
   | 'automation'
+  | 'activity'
+  | 'message'
+  | 'attention'
   | 'file';
 
 export type WorkspaceSearchResult = {
@@ -590,6 +671,13 @@ export type WorkspaceSearchResult = {
   path: string | null;
   route: string;
   score: number;
+  occurredAt?: string | null;
+  facets?: {
+    agent?: string | null;
+    category?: string | null;
+    status?: string | null;
+    severity?: string | null;
+  };
 };
 
 export type CanvasEdge = {

@@ -1,6 +1,8 @@
 import { uuidv7 } from '@beeblock/svelar/support';
 import type {
   AgentActivity,
+  AgentActivityCategory,
+  AgentActivitySeverity,
   AgentActivityState,
   AgentMessageDeliveryEvent,
   AgentMessageDeliveryState,
@@ -12,6 +14,7 @@ import { AgentFloor } from '../../domain/models/AgentFloor.js';
 import { controlCenterRepository } from '../../infrastructure/repositories/ControlCenterRepository.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
+import { attentionService } from './AttentionService.js';
 
 const ACTIVITY_STATES: AgentActivityState[] = [
   'starting',
@@ -32,6 +35,17 @@ type RecordActivityInput = {
   action?: string | null;
   taskId?: string | null;
   metadata?: Record<string, unknown>;
+  category?: AgentActivityCategory;
+  verb?: string;
+  objectType?: string | null;
+  objectId?: string | null;
+  objectTitle?: string | null;
+  outcome?: string | null;
+  severity?: AgentActivitySeverity;
+  correlationId?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  attentionRequired?: boolean;
 };
 
 type RecordDeliveryInput = {
@@ -100,7 +114,16 @@ export class ControlCenterService {
       const previous = this.latest.get(key) ?? await controlCenterRepository.latestActivity(input.nodeId);
       const action = input.action?.trim() || null;
       const taskId = input.taskId ?? null;
-      if (previous?.state === input.state && previous.action === action && previous.taskId === taskId) return null;
+      if (
+        previous?.state === input.state
+        && previous.action === action
+        && previous.taskId === taskId
+        && previous.category === (input.category ?? previous.category)
+        && previous.verb === (input.verb ?? previous.verb)
+        && previous.outcome === (input.outcome ?? previous.outcome)
+        && previous.severity === (input.severity ?? previous.severity)
+        && previous.attentionRequired === (input.attentionRequired ?? previous.attentionRequired)
+      ) return null;
       const node = await workspaceRepository.getNode(input.nodeId);
       if (!node || node.workspaceId !== input.workspaceId) return null;
       let event: AgentActivity;
@@ -111,6 +134,7 @@ export class ControlCenterService {
         throw error;
       }
       this.latest.set(key, event);
+      await attentionService.syncActivity(event);
       broadcast({ type: 'controlCenterChanged', workspaceId: input.workspaceId, nodeId: input.nodeId, event });
       return event;
     }).finally(() => {
@@ -132,6 +156,26 @@ export class ControlCenterService {
       state: event.state,
       event,
     });
+    if (event.state === 'failed') {
+      await this.recordActivity({
+        workspaceId: event.workspaceId,
+        nodeId: event.toNodeId,
+        state: 'error',
+        action: 'system:message_failed',
+        category: 'message',
+        verb: 'failed',
+        objectType: 'message',
+        objectId: event.messageId,
+        objectTitle: event.content.slice(0, 120),
+        outcome: event.error,
+        severity: 'error',
+        correlationId: typeof event.metadata.correlationId === 'string' ? event.metadata.correlationId : `message:${event.messageId}`,
+        sourceType: 'bridge',
+        sourceId: event.messageId,
+        attentionRequired: true,
+        metadata: event.metadata,
+      });
+    }
     return event;
   }
 
@@ -212,6 +256,7 @@ export class ControlCenterService {
       workspaceId,
       counts,
       agents,
+      activity: [...activityEvents].reverse().slice(0, 300),
       communications: projectMessages(deliveryEvents, titles),
       generatedAt: new Date().toISOString(),
     };

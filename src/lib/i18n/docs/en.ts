@@ -48,7 +48,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'control-center',
       title: 'Control Center and verified communications',
-      body: `Open Control Center at the top of each expanded workspace in the Workbench explorer. It reconstructs the state of every Ground and currently active Floor agent from an append-only history; agents from finished Floors remain historical but do not enter current counts. Floor badges distinguish active worktrees. States include starting, working, waiting for input or permission, blocked, idle, done, error, or disconnected. Each row shows the current task, latest relevant action, time in state, provider, role, and available usage. The Communications inbox records queued, sent, delivered, acknowledged, replied, and failed transitions under one message id; orkestrai ask succeeds only after a confirmed reply. These states survive navigation and app restarts without waking idle terminals. Canvas edges remain the visual history of real conversations, while delivery uses the bridge and does not depend on an edge. Native notifications are reserved for explicit attention, task completion, or true project completion rather than routine activity.`,
+      body: `Open Control Center at the top of each expanded workspace in the Workbench explorer. It reconstructs the state of every Ground and currently active Floor agent from an append-only history; agents from finished Floors remain historical but do not enter current counts. Floor badges distinguish active worktrees. States include starting, working, waiting for input or permission, blocked, idle, done, error, or disconnected. Each row shows the current task, latest relevant action, time in state, provider, role, and available usage. Activity presents the same history as a semantic timeline of messages, tasks, reviews, decisions, Git work, and system events; raw metadata stays collapsed for diagnostics. Communications projects every queued, sent, delivered, acknowledged, replied, and failed transition into one durable message envelope with a content fingerprint, correlation id, deduplication key, and attempt history. Repeating the same event is idempotent, while reusing an id for different content or a different recipient is rejected. The global Attention Center, opened from the bell beside Canvas/Workbench, gathers questions, permission requests, blockers, and failures from every workspace, prioritizes the current workspace, and supports read, snooze, resolve, and direct source navigation. Command/Ctrl+K searches this history with filters such as type:, agent:, workspace:, status:, has:error, before:, and after:. These states survive navigation and app restarts without waking idle terminals. Canvas edges remain the visual history of real conversations, while delivery uses the bridge and does not depend on an edge.`,
     },
     {
       id: 'review-center',
@@ -576,6 +576,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Control Center', 'verified delivery', 'agent activity'],
     },
     {
+      id: 'triage-attention-across-workspaces',
+      title: 'Triage every workspace from one attention inbox',
+      body: 'Open the bell beside Canvas/Workbench to see questions, permission requests, blockers, and failures from every workspace, with the current workspace first. Open the exact agent, task, review, or message that raised the signal; mark it read, snooze it for later, or resolve it without losing the audit trail. Use Command/Ctrl+K with type:attention, workspace:"Name", agent:"Name", status:open, has:error, before:, or after: to recover the same event later.',
+      tags: ['Attention Center', 'cross-workspace triage', 'search operators'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Edit and inspect files without leaving the Workbench',
       body: 'Expand Files in the Workbench sidebar and open a workspace file directly in a local tab, without creating a canvas node. The Canvas file tree and Command/Ctrl+K use the same direct handoff. Monaco preserves cursor, undo, selection, and unsaved state across panes. Find or replace text, navigate symbols, format supported files, and choose minimap, wrapping, font size, or optional autosave under Settings → Appearance. Markdown switches between source and a sanitized preview; PDFs have page and zoom controls; images support zoom, pan, dimensions, and transparency; binary files show metadata and open through the system application. Files above 512 KB open a bounded read-only preview so unloaded content cannot be overwritten.',
@@ -631,6 +637,17 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Unreleased',
+      title: 'Durable coordination and cross-workspace attention',
+      summary: 'Messages, activity, attention signals, and global search now share one persistent operational history.',
+      items: [
+        'Every agent message now has a canonical envelope with verified recipient and content, durable delivery receipts, correlations, deduplication, and idempotent replay protection.',
+        'Control Center adds a semantic Activity timeline for messages, tasks, reviews, decisions, Git work, and system events, with raw diagnostics available on demand.',
+        'A global Attention Center prioritizes questions, permission requests, blockers, and failures from every workspace and supports read, snooze, resolve, and source navigation.',
+        'Command/Ctrl+K now indexes activity, canonical messages, and attention with type, agent, workspace, status, error, and date operators.',
+      ],
+    },
     {
       date: 'Aug 22, 2026 · 0.17.0',
       title: 'Orkestrai 0.17.0: complete API test authoring for people and agents',

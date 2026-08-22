@@ -52,7 +52,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'control-center',
       title: 'Central de controle e comunicações verificadas',
-      body: `Abra a Central de controle no topo de cada workspace expandido no explorer do Workbench. Ela reconstrói o estado de cada agente do térreo e dos andares atualmente ativos a partir de um histórico append-only; agentes de andares encerrados permanecem no histórico, mas não entram nas contagens. Os badges de andar distinguem worktrees ativas. Os estados incluem iniciando, trabalhando, aguardando resposta ou permissão, bloqueado, ocioso, concluído, erro ou desconectado. Cada linha mostra tarefa atual, última ação relevante, tempo no estado, provider, role e uso disponível. A caixa de Comunicações registra as transições na fila, enviada, entregue, recebida, respondida e falhou sob um único id de mensagem; orkestrai ask só termina com sucesso após resposta confirmada. Esses estados sobrevivem à troca de tela e ao reinício do app sem acordar terminais ociosos. As edges continuam como histórico visual de conversas reais, mas a entrega usa a ponte e não depende de uma edge. Notificações nativas ficam reservadas para atenção explícita, conclusão de tarefa ou conclusão do projeto, sem ruído de atividade comum.`,
+      body: `Abra a Central de controle no topo de cada workspace expandido no explorer do Workbench. Ela reconstrói o estado de cada agente do térreo e dos andares atualmente ativos a partir de um histórico append-only; agentes de andares encerrados permanecem no histórico, mas não entram nas contagens. Os badges de andar distinguem worktrees ativas. Os estados incluem iniciando, trabalhando, aguardando resposta ou permissão, bloqueado, ocioso, concluído, erro ou desconectado. Cada linha mostra tarefa atual, última ação relevante, tempo no estado, provider, role e uso disponível. Atividade apresenta o mesmo histórico como uma timeline semântica de mensagens, tarefas, revisões, decisões, Git e eventos do sistema; metadados brutos ficam recolhidos para diagnóstico. Comunicações projeta cada transição na fila, enviada, entregue, recebida, respondida ou falhou em um envelope durável com fingerprint do conteúdo, correlação, chave de deduplicação e histórico de tentativas. Repetir o mesmo evento é idempotente, enquanto reutilizar um id com outro conteúdo ou destinatário é rejeitado. A Central de atenção global, aberta pelo sino ao lado de Canvas/Workbench, reúne perguntas, pedidos de permissão, bloqueios e falhas de todos os workspaces, prioriza o atual e permite ler, adiar, resolver e abrir a origem exata. Command/Ctrl+K pesquisa esse histórico com filtros como type:, agent:, workspace:, status:, has:error, before: e after:. Esses estados sobrevivem à troca de tela e ao reinício do app sem acordar terminais ociosos. As edges continuam como histórico visual de conversas reais, mas a entrega usa a ponte e não depende de uma edge.`,
     },
     {
       id: 'review-center',
@@ -580,6 +580,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Central de controle', 'entrega verificada', 'atividade dos agentes'],
     },
     {
+      id: 'triage-attention-across-workspaces',
+      title: 'Tratar todos os workspaces em uma central de atenção',
+      body: 'Abra o sino ao lado de Canvas/Workbench para ver perguntas, pedidos de permissão, bloqueios e falhas de todos os workspaces, com o atual primeiro. Abra o agente, tarefa, revisão ou mensagem exata que gerou o sinal; marque como lido, adie para depois ou resolva sem perder o histórico de auditoria. Use Command/Ctrl+K com type:attention, workspace:"Nome", agent:"Nome", status:open, has:error, before: ou after: para recuperar o mesmo evento depois.',
+      tags: ['Central de atenção', 'triagem entre workspaces', 'operadores de busca'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Editar e inspecionar arquivos sem sair do Workbench',
       body: 'Expanda Arquivos no sidebar do Workbench e abra um arquivo do workspace diretamente em uma aba local, sem criar um nó no canvas. A árvore de arquivos do Canvas e o Command/Ctrl+K usam a mesma abertura direta. O Monaco preserva cursor, undo, seleção e estado não salvo entre painéis. Busque ou substitua texto, navegue por símbolos, formate arquivos compatíveis e escolha minimapa, quebra de linha, tamanho da fonte ou autosave opcional em Configurações → Aparência. Markdown alterna entre fonte e prévia sanitizada; PDFs têm navegação e zoom; imagens permitem zoom, pan, dimensões e transparência; binários exibem metadados e abrem no aplicativo do sistema. Arquivos acima de 512 KB abrem em uma prévia limitada e somente leitura para nunca sobrescrever conteúdo que não foi carregado.',
@@ -635,6 +641,17 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Próxima versão',
+      title: 'Coordenação durável e atenção entre workspaces',
+      summary: 'Mensagens, atividade, sinais de atenção e busca global agora compartilham um histórico operacional persistente.',
+      items: [
+        'Cada mensagem entre agentes agora possui um envelope canônico com destinatário e conteúdo verificados, recibos duráveis, correlação, deduplicação e proteção contra replay.',
+        'A Central de controle adiciona uma timeline semântica de Atividade para mensagens, tarefas, revisões, decisões, Git e eventos do sistema, com diagnósticos brutos sob demanda.',
+        'Uma Central de atenção global prioriza perguntas, pedidos de permissão, bloqueios e falhas de todos os workspaces e permite ler, adiar, resolver e abrir a origem.',
+        'Command/Ctrl+K agora indexa atividade, mensagens canônicas e atenção com operadores de tipo, agente, workspace, status, erro e data.',
+      ],
+    },
     {
       date: '22 ago 2026 · 0.17.0',
       title: 'Orkestrai 0.17.0: autoria completa de testes de API para pessoas e agentes',

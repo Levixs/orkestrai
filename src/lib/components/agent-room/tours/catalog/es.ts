@@ -1082,17 +1082,46 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'read-agent-state',
         title: 'Lee el estado real de los agentes',
-        body: 'Compara agentes trabajando, esperando respuesta o permiso, bloqueados, inactivos, completados, con error o desconectados. Cada fila incluye tarea actual, última acción relevante, tiempo en el estado, proveedor, rol y uso.',
+        body: 'Compara agentes trabajando, esperando respuesta o permiso, bloqueados, inactivos, completados, con error o desconectados. Actividad convierte mensajes, tareas, revisiones, decisiones, Git y eventos del sistema en una línea temporal legible.',
       },
       {
         id: 'verify-delivery',
         title: 'Verifica las comunicaciones',
-        body: 'La bandeja agrupa las transiciones en cola, enviado, entregado, recibido, respondido y falló bajo un id de mensaje. Un orkestrai ask exitoso siempre termina con respuesta confirmada.',
+        body: 'La bandeja proyecta las transiciones en cola, enviado, entregado, recibido, respondido y falló en un sobre canónico. Los replays son idempotentes y un orkestrai ask exitoso siempre termina con respuesta confirmada.',
       },
       {
         id: 'switch-without-waking',
         title: 'Cambia de workspace de forma segura',
         body: 'Cambia de vista o reinicia la app. El historial reconstruye el Centro sin inyectar prompts ni activar terminales inactivos; las notificaciones nativas se reservan para atención y finalización reales.',
+      },
+    ],
+  },
+  {
+    id: 'triage-attention-center',
+    icon: 'BellRing',
+    title: 'Gestionar la atención entre todos los workspaces',
+    tagline: 'Resuelve preguntas y bloqueos reales sin revisar cada terminal.',
+    steps: [
+      {
+        id: 'open-attention-center',
+        title: 'Abre la bandeja global',
+        body: 'Usa la campana junto al selector Canvas/Workbench. Permanece disponible en ambas vistas y no despierta ningún agente.',
+        action: { kind: 'openPage', path: '/canvas?workspace={workspace}' },
+      },
+      {
+        id: 'prioritize-signals',
+        title: 'Empieza por el workspace actual',
+        body: 'Preguntas, solicitudes de permiso, bloqueos y fallos se reúnen desde todos los workspaces, con el actual y la mayor severidad primero.',
+      },
+      {
+        id: 'defer-or-resolve',
+        title: 'Abre, pospón o resuelve',
+        body: 'Abre el origen exacto, márcalo como leído, posponlo una hora o resuélvelo. Cada acción mantiene el historial persistente de auditoría.',
+      },
+      {
+        id: 'search-history',
+        title: 'Recupera el historial después',
+        body: 'Usa Command/Ctrl+K con type:attention, workspace:"Nombre", agent:"Nombre", status:open, has:error, before: o after: para encontrar la misma señal otra vez.',
       },
     ],
   },

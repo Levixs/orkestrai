@@ -5,6 +5,8 @@
   import { createVirtualizer } from '@tanstack/svelte-virtual';
   import {
     Blocks,
+    Activity,
+    BellRing,
     BookOpen,
     Bot,
     File,
@@ -12,6 +14,7 @@
     PanelBottomOpen,
     PanelRightOpen,
     Search,
+    MessageSquareMore,
     Sparkles,
     SquareKanban,
     SquareTerminal,
@@ -57,6 +60,9 @@
     'role',
     'skill',
     'automation',
+    'attention',
+    'activity',
+    'message',
     'file',
   ];
 
@@ -102,6 +108,7 @@
     return [
       command('canvas', m['global_search.command_canvas'](), workspaceId ? `/canvas?workspace=${workspaceId}` : '/canvas'),
       command('workbench', m['global_search.command_workbench'](), workspaceId ? `/terminal?workspace=${workspaceId}` : '/terminal'),
+      command('attention', m['global_search.command_attention'](), '#attention'),
       ...workspaceCommands,
       command('settings', m['global_search.command_settings'](), '/settings'),
       command('providers', m['global_search.command_providers'](), '/providers'),
@@ -220,6 +227,9 @@
       role: m['global_search.kind_role'],
       skill: m['global_search.kind_skill'],
       automation: m['global_search.kind_automation'],
+      activity: m['global_search.kind_activity'],
+      message: m['global_search.kind_message'],
+      attention: m['global_search.kind_attention'],
       file: m['global_search.kind_file'],
       documentation: m['global_search.kind_documentation'],
       command: m['global_search.kind_command'],
@@ -261,6 +271,10 @@
       window.dispatchEvent(new CustomEvent('orkestrai:open-council', {
         detail: { workspaceId: item.workspaceId },
       }));
+      return;
+    }
+    if (item.id === 'command:attention') {
+      window.dispatchEvent(new CustomEvent('orkestrai:open-attention'));
       return;
     }
     if (
@@ -365,6 +379,9 @@
   {:else if kind === 'role'}<UserRoundCog size={15} aria-hidden="true" />
   {:else if kind === 'skill'}<Sparkles size={15} aria-hidden="true" />
   {:else if kind === 'automation'}<Workflow size={15} aria-hidden="true" />
+  {:else if kind === 'activity'}<Activity size={15} aria-hidden="true" />
+  {:else if kind === 'message'}<MessageSquareMore size={15} aria-hidden="true" />
+  {:else if kind === 'attention'}<BellRing size={15} aria-hidden="true" />
   {:else if kind === 'file'}<File size={15} aria-hidden="true" />
   {:else}<Search size={15} aria-hidden="true" />
   {/if}

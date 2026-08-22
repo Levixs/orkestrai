@@ -48,7 +48,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'control-center',
       title: 'Centro de control y comunicaciones verificadas',
-      body: `Abre el Centro de control en la parte superior de cada workspace expandido en el explorador del Workbench. Reconstruye el estado de cada agente de Planta baja y de los Pisos actualmente activos desde un historial append-only; los agentes de pisos terminados permanecen en el historial, pero no entran en los conteos actuales. Los badges de piso distinguen los worktrees activos. Los estados incluyen iniciando, trabajando, esperando respuesta o permiso, bloqueado, inactivo, completado, error o desconectado. Cada fila muestra la tarea actual, última acción relevante, tiempo en el estado, provider, role y uso disponible. La bandeja de Comunicaciones registra las transiciones en cola, enviada, entregada, recibida, respondida y fallida con un único id de mensaje; orkestrai ask solo termina con éxito después de una respuesta confirmada. Estos estados sobreviven al cambio de pantalla y al reinicio de la app sin despertar terminales inactivas. Las edges siguen como historial visual de conversaciones reales, pero la entrega usa el bridge y no depende de una edge. Las notificaciones nativas se reservan para atención explícita, finalización de tarea o finalización real del proyecto, sin ruido de actividad común.`,
+      body: `Abre el Centro de control en la parte superior de cada workspace expandido en el explorador del Workbench. Reconstruye el estado de cada agente de Planta baja y de los Pisos actualmente activos desde un historial append-only; los agentes de pisos terminados permanecen en el historial, pero no entran en los conteos actuales. Los badges de piso distinguen los worktrees activos. Los estados incluyen iniciando, trabajando, esperando respuesta o permiso, bloqueado, inactivo, completado, error o desconectado. Cada fila muestra la tarea actual, última acción relevante, tiempo en el estado, provider, role y uso disponible. Actividad presenta el mismo historial como una línea temporal semántica de mensajes, tareas, revisiones, decisiones, Git y eventos del sistema; los metadatos brutos quedan plegados para diagnóstico. Comunicaciones proyecta cada transición en cola, enviada, entregada, recibida, respondida o fallida en un sobre duradero con huella del contenido, correlación, clave de deduplicación e historial de intentos. Repetir el mismo evento es idempotente, mientras reutilizar un id con otro contenido o destinatario es rechazado. El Centro de atención global, abierto con la campana junto a Canvas/Workbench, reúne preguntas, solicitudes de permiso, bloqueos y fallos de todos los workspaces, prioriza el actual y permite leer, posponer, resolver y abrir el origen exacto. Command/Ctrl+K busca este historial con filtros como type:, agent:, workspace:, status:, has:error, before: y after:. Estos estados sobreviven al cambio de pantalla y al reinicio de la app sin despertar terminales inactivas. Las edges siguen como historial visual de conversaciones reales, pero la entrega usa el bridge y no depende de una edge.`,
     },
     {
       id: 'review-center',
@@ -576,6 +576,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Centro de control', 'entrega verificada', 'actividad de agentes'],
     },
     {
+      id: 'triage-attention-across-workspaces',
+      title: 'Gestionar todos los workspaces desde un centro de atención',
+      body: 'Abre la campana junto a Canvas/Workbench para ver preguntas, solicitudes de permiso, bloqueos y fallos de todos los workspaces, con el actual primero. Abre el agente, tarea, revisión o mensaje exacto que generó la señal; márcalo como leído, posponlo o resuélvelo sin perder el historial de auditoría. Usa Command/Ctrl+K con type:attention, workspace:"Nombre", agent:"Nombre", status:open, has:error, before: o after: para recuperar el mismo evento después.',
+      tags: ['Centro de atención', 'triaje entre workspaces', 'operadores de búsqueda'],
+    },
+    {
       id: 'edit-and-preview-files',
       title: 'Editar e inspeccionar archivos sin salir del Workbench',
       body: 'Expande Archivos en la barra lateral del Workbench y abre un archivo del workspace directamente en una pestaña local, sin crear un nodo en el canvas. El árbol de archivos del Canvas y Command/Ctrl+K usan la misma apertura directa. Monaco conserva cursor, undo, selección y estado sin guardar entre paneles. Busca o reemplaza texto, navega por símbolos, formatea archivos compatibles y elige minimapa, ajuste de línea, tamaño de fuente o guardado automático opcional en Configuración → Apariencia. Markdown alterna entre fuente y vista previa sanitizada; los PDFs tienen navegación y zoom; las imágenes permiten zoom, desplazamiento, dimensiones y transparencia; los binarios muestran metadatos y se abren con la aplicación del sistema. Los archivos mayores de 512 KB se abren en una vista limitada de solo lectura para no sobrescribir contenido que no fue cargado.',
@@ -631,6 +637,17 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Próxima versión',
+      title: 'Coordinación duradera y atención entre workspaces',
+      summary: 'Mensajes, actividad, señales de atención y búsqueda global comparten ahora un historial operativo persistente.',
+      items: [
+        'Cada mensaje entre agentes tiene ahora un sobre canónico con destinatario y contenido verificados, recibos duraderos, correlación, deduplicación y protección contra replay.',
+        'El Centro de control añade una línea temporal semántica de Actividad para mensajes, tareas, revisiones, decisiones, Git y eventos del sistema, con diagnósticos brutos bajo demanda.',
+        'Un Centro de atención global prioriza preguntas, solicitudes de permiso, bloqueos y fallos de todos los workspaces y permite leer, posponer, resolver y abrir el origen.',
+        'Command/Ctrl+K ahora indexa actividad, mensajes canónicos y atención con operadores de tipo, agente, workspace, estado, error y fecha.',
+      ],
+    },
     {
       date: '22 ago 2026 · 0.17.0',
       title: 'Orkestrai 0.17.0: autoría completa de pruebas de API para personas y agentes',

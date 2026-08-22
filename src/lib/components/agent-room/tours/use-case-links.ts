@@ -39,6 +39,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'organize-canvas': 'organize-canvas',
   'focused-workspace-view': 'focused-workspace-view',
   'monitor-team-control-center': 'monitor-team-control-center',
+  'triage-attention-across-workspaces': 'triage-attention-center',
   'edit-and-preview-files': 'edit-and-preview-files',
   'share-reference-material': 'share-reference-material',
   'universal-workspace-search': 'universal-workspace-search',

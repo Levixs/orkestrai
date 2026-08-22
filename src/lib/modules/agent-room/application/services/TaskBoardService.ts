@@ -370,6 +370,16 @@ export class TaskBoardService {
         action: 'system:task_completed',
         taskId: updated.id,
         metadata: { taskTitle: updated.title },
+        category: 'task',
+        verb: 'completed',
+        objectType: 'task',
+        objectId: updated.id,
+        objectTitle: updated.title,
+        outcome: null,
+        severity: 'success',
+        correlationId: `task:${updated.id}`,
+        sourceType: 'kanban',
+        sourceId: updated.id,
       });
     }
     if (!wasDone && updated.status === 'done') {
@@ -595,7 +605,7 @@ export class TaskBoardService {
       toNodeId: leader.id,
       state: 'queued',
       content,
-      metadata: { kind: 'task_completion', taskId: task.id },
+      metadata: { kind: 'task_completion', taskId: task.id, correlationId: `task:${task.id}`, dedupKey: `task-completion:${task.id}:${leader.id}` },
     });
     await controlCenterService.recordDelivery({
       messageId,
@@ -619,7 +629,7 @@ export class TaskBoardService {
           toNodeId: leader.id,
           state: 'delivered',
           content,
-          metadata: { kind: 'task_completion', taskId: task.id },
+          metadata: { kind: 'task_completion', taskId: task.id, correlationId: `task:${task.id}`, dedupKey: `task-completion:${task.id}:${leader.id}` },
         });
         await controlCenterService.recordActivity({
           workspaceId,
@@ -628,6 +638,15 @@ export class TaskBoardService {
           action: 'system:task_review',
           taskId: task.id,
           metadata: { taskTitle: task.title },
+          category: 'review',
+          verb: 'requested',
+          objectType: 'task',
+          objectId: task.id,
+          objectTitle: task.title,
+          outcome: null,
+          correlationId: `task:${task.id}`,
+          sourceType: 'kanban',
+          sourceId: task.id,
         });
       })
       .catch(async (error) => {
@@ -639,7 +658,7 @@ export class TaskBoardService {
           state: 'failed',
           content,
           error: error instanceof Error ? error.message : String(error),
-          metadata: { kind: 'task_completion', taskId: task.id },
+          metadata: { kind: 'task_completion', taskId: task.id, correlationId: `task:${task.id}`, dedupKey: `task-completion:${task.id}:${leader.id}` },
         });
       });
     return { status: 'queued', leaderTitle: leader.title ?? 'Lider' };
@@ -702,6 +721,15 @@ export class TaskBoardService {
       action: 'system:task_working',
       taskId,
       metadata: { taskTitle: task.getAttribute('title') },
+      category: 'task',
+      verb: 'started',
+      objectType: 'task',
+      objectId: taskId,
+      objectTitle: String(task.getAttribute('title')),
+      outcome: null,
+      correlationId: `task:${taskId}`,
+      sourceType: 'kanban',
+      sourceId: taskId,
     });
   }
 }

@@ -5,6 +5,25 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Added
+
+- Added canonical, content-hashed message envelopes alongside the append-only
+  delivery trail. Duplicate state transitions are idempotent, attempts and
+  delivery timestamps survive restarts, and recipient/content mismatches are
+  rejected before corrupting an existing message record.
+- Added a semantic activity timeline to Control Center with category, action,
+  object, outcome, severity, correlation, source, and expandable technical
+  context. Tasks, agent handoffs, notifications, and Council runs now publish
+  meaningful outcomes instead of relying only on raw terminal state.
+- Added a global Attention Center to Canvas and Workbench. Questions, blocked
+  agents, permissions, and failures appear across workspaces with unread state,
+  snooze, resolve, live WebSocket updates, and direct navigation to the source.
+- Universal Search now indexes activity, durable messages, and attention items
+  and accepts `type:`, `agent:`, `workspace:`, `status:`, `has:error`, `before:`,
+  and `after:` operators.
+
 ## 0.17.0 - 2026-08-22
 
 ### Added

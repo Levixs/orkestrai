@@ -50,6 +50,7 @@
   import WorkspaceSharingDialog from '$lib/components/collaboration/WorkspaceSharingDialog.svelte';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
+  import AttentionCenter from '$lib/components/agent-room/AttentionCenter.svelte';
   import WorkspacePermissionNotice from '$lib/components/agent-room/WorkspacePermissionNotice.svelte';
   import { isWorkspacePermissionError } from '$lib/components/agent-room/workspace-permission.js';
   import { isTypingTarget } from '$lib/components/agent-room/event-target.js';
@@ -1915,12 +1916,13 @@
         <img src="/brand/icon.svg" width="22" height="22" alt="Orkestrai" />
         <span class="brand-name">Orkestrai</span>
       </div>
-      <div class="px-3 pb-2">
+      <div class="flex items-center justify-between gap-2 px-3 pb-2">
         <WorkspaceModeSwitch
           active="canvas"
           workspaceId={activeWorkspace?.id ?? null}
           nodeId={nodes.find((node) => node.selected)?.id ?? canvasRouteNodeId()}
         />
+        <AttentionCenter workspaceId={activeWorkspace?.id ?? null} />
       </div>
     {/if}
       <div class="sidebar-header">

@@ -80,6 +80,7 @@
   import { TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from '$lib/components/agent-room/text-dictation.js';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import WorkspaceModeSwitch from '$lib/components/agent-room/WorkspaceModeSwitch.svelte';
+  import AttentionCenter from '$lib/components/agent-room/AttentionCenter.svelte';
   import WorkspacePermissionNotice from '$lib/components/agent-room/WorkspacePermissionNotice.svelte';
   import { isWorkspacePermissionError } from '$lib/components/agent-room/workspace-permission.js';
   import {
@@ -1030,12 +1031,13 @@
       <strong class="font-['Sora_Variable'] text-[14px] font-semibold text-[var(--app-text)]">Orkestrai</strong>
       <div class="ml-auto"><WorkspaceSharingButton variant="icon" workspaceId={selectedWorkspaceId} onOpen={() => (sharingOpen = true)} /></div>
     </div>
-    <div class="flex h-11 shrink-0 items-center border-b border-[var(--app-border)] px-3">
+    <div class="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-[var(--app-border)] px-3">
       <WorkspaceModeSwitch
         active="terminals"
         workspaceId={selectedWorkspaceId}
         nodeId={isVirtualWorkbenchItemId(selectedNodeId) ? null : selectedNodeId}
       />
+      <AttentionCenter workspaceId={selectedWorkspaceId} />
     </div>
 
     <div class="shrink-0 p-2.5">

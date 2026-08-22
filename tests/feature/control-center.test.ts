@@ -6,6 +6,8 @@ import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repo
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
 import { AgentFloor } from '$lib/modules/agent-room/domain/models/AgentFloor.js';
 import { uuidv7 } from '@beeblock/svelar/support';
+import { attentionService } from '$lib/modules/agent-room/application/services/AttentionService.js';
+import { AgentMessageEnvelope } from '$lib/modules/agent-room/domain/models/AgentMessageEnvelope.js';
 
 describe('ControlCenterService', () => {
   useSvelarTest({ refreshDatabase: true });
@@ -88,6 +90,93 @@ describe('ControlCenterService', () => {
       'acknowledged',
       'replied',
     ]);
+  });
+
+  it('mantém um envelope canônico e torna retries idempotentes por estado', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'envelopes', workingDir: '/tmp' });
+    const worker = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'Worker' });
+    const messageId = uuidv7();
+
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId: workspace.id,
+      toNodeId: worker.id,
+      state: 'queued',
+      content: 'Run the focused tests',
+      metadata: { correlationId: 'task:focused-tests', dedupKey: 'focused-tests:worker' },
+    });
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId: workspace.id,
+      toNodeId: worker.id,
+      state: 'sent',
+      content: 'Run the focused tests',
+      metadata: { correlationId: 'task:focused-tests', dedupKey: 'focused-tests:worker' },
+    });
+    await controlCenterService.recordDelivery({
+      messageId,
+      workspaceId: workspace.id,
+      toNodeId: worker.id,
+      state: 'sent',
+      content: 'Run the focused tests',
+      metadata: { correlationId: 'task:focused-tests', dedupKey: 'focused-tests:worker' },
+    });
+
+    const envelope = await AgentMessageEnvelope.find(messageId);
+    expect(envelope?.getAttribute('state')).toBe('sent');
+    expect(envelope?.getAttribute('attempts')).toBe(1);
+    expect(envelope?.getAttribute('content_hash')).toMatch(/^[a-f0-9]{64}$/);
+    expect((await controlCenterRepository.listDeliveries(workspace.id)).map((event) => event.state)).toEqual(['queued', 'sent']);
+  });
+
+  it('abre e resolve atenção derivada de estado sem criar duplicatas', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'attention', workingDir: '/tmp' });
+    const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'Reviewer' });
+
+    await controlCenterService.recordActivity({
+      workspaceId: workspace.id,
+      nodeId: agent.id,
+      state: 'blocked',
+      action: 'Waiting for credentials',
+      category: 'agent',
+      verb: 'requested',
+      objectType: 'permission',
+      objectTitle: 'Credentials required',
+      outcome: 'The review cannot continue without credentials.',
+      severity: 'warning',
+      attentionRequired: true,
+    });
+    await controlCenterService.recordActivity({
+      workspaceId: workspace.id,
+      nodeId: agent.id,
+      state: 'blocked',
+      action: 'Waiting for credentials',
+      category: 'agent',
+      verb: 'requested',
+      objectType: 'permission',
+      objectTitle: 'Credentials required',
+      outcome: 'The review cannot continue without credentials.',
+      severity: 'warning',
+      attentionRequired: true,
+    });
+
+    const open = await attentionService.list({ workspaceId: workspace.id });
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({
+      nodeId: agent.id,
+      nodeTitle: 'Reviewer',
+      title: 'Credentials required',
+      status: 'open',
+      severity: 'warning',
+    });
+
+    await controlCenterService.recordActivity({
+      workspaceId: workspace.id,
+      nodeId: agent.id,
+      state: 'working',
+      action: 'Review resumed',
+    });
+    expect(await attentionService.list({ workspaceId: workspace.id })).toEqual([]);
   });
 
   it('reconstrói agentes desconectados sem criar ou acordar sessões PTY', async () => {

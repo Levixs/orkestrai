@@ -1082,17 +1082,46 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'read-agent-state',
         title: 'Read the real agent state',
-        body: 'Compare working, waiting for input or permission, blocked, idle, done, error, and disconnected agents. Each row includes the current task, last significant action, time in state, provider, role, and usage.',
+        body: 'Compare working, waiting for input or permission, blocked, idle, done, error, and disconnected agents. Activity turns messages, tasks, reviews, decisions, Git work, and system events into a readable timeline.',
       },
       {
         id: 'verify-delivery',
         title: 'Verify communications',
-        body: 'The inbox groups queued, sent, delivered, acknowledged, replied, and failed transitions under one message id. A successful orkestrai ask always ends with a confirmed reply.',
+        body: 'The inbox projects queued, sent, delivered, acknowledged, replied, and failed transitions into one canonical message envelope. Replays are idempotent and a successful orkestrai ask always ends with a confirmed reply.',
       },
       {
         id: 'switch-without-waking',
         title: 'Move between workspaces safely',
         body: 'Switch views or restart the app. Event history reconstructs the Control Center without injecting prompts or activating idle terminals; native notifications remain reserved for real attention and completion.',
+      },
+    ],
+  },
+  {
+    id: 'triage-attention-center',
+    icon: 'BellRing',
+    title: 'Triage attention across every workspace',
+    tagline: 'Handle real questions and blockers without scanning every terminal.',
+    steps: [
+      {
+        id: 'open-attention-center',
+        title: 'Open the global inbox',
+        body: 'Use the bell beside the Canvas/Workbench switch. It stays available in both views and does not wake any agent.',
+        action: { kind: 'openPage', path: '/canvas?workspace={workspace}' },
+      },
+      {
+        id: 'prioritize-signals',
+        title: 'Start with the current workspace',
+        body: 'Questions, permission requests, blockers, and failures are gathered from every workspace, with the current workspace and highest severity first.',
+      },
+      {
+        id: 'defer-or-resolve',
+        title: 'Open, snooze, or resolve',
+        body: 'Open the exact source, mark it read, snooze it for one hour, or resolve it. Every action keeps the persisted audit trail.',
+      },
+      {
+        id: 'search-history',
+        title: 'Recover the history later',
+        body: 'Use Command/Ctrl+K with type:attention, workspace:"Name", agent:"Name", status:open, has:error, before:, or after: to find the same signal again.',
       },
     ],
   },

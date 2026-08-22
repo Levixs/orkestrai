@@ -6,11 +6,14 @@
     Check,
     CircleDashed,
     Clock3,
+    FileCode2,
+    GitCommitHorizontal,
     Inbox,
     Layers,
     MessageSquareMore,
     RefreshCw,
     ShieldAlert,
+    SquareKanban,
     Users,
     WifiOff,
   } from '@lucide/svelte';
@@ -20,6 +23,7 @@
   import { retainUsageFeed, usageStore } from './usage-store.svelte.js';
   import type {
     AgentActivitySnapshot,
+    AgentActivity,
     AgentActivityState,
     AgentMessageDeliveryState,
     AgentMessageThread,
@@ -40,6 +44,7 @@
   } = $props();
 
   let now = $state(Date.now());
+  let secondaryView = $state<'activity' | 'communications'>('activity');
 
   const attentionCount = $derived(
     (snapshot?.counts.waiting_input ?? 0)
@@ -113,6 +118,32 @@
 
   function sender(thread: AgentMessageThread): string {
     return thread.fromTitle ?? m['control_center.workspace_user']();
+  }
+
+  function activityTitle(event: AgentActivity): string {
+    if (event.objectTitle) return event.objectTitle;
+    const name = (key: string) => String(event.metadata[key] ?? m['control_center.workspace_user']());
+    if (event.action === 'system:message_received') return m['control_center.action_message_received']({ name: name('fromTitle') });
+    if (event.action === 'system:message_replied') return m['control_center.action_message_replied']({ name: name('toTitle') });
+    if (event.action === 'system:task_completed') return m['control_center.action_task_completed']({ title: name('taskTitle') });
+    if (event.action === 'system:task_review') return m['control_center.action_task_review']({ title: name('taskTitle') });
+    if (event.action === 'system:task_working') return m['control_center.action_task_working']({ title: name('taskTitle') });
+    return event.action ?? event.verb;
+  }
+
+  function activityIcon(category: AgentActivity['category']) {
+    if (category === 'message') return MessageSquareMore;
+    if (category === 'task' || category === 'review') return SquareKanban;
+    if (category === 'git') return GitCommitHorizontal;
+    if (category === 'terminal') return FileCode2;
+    return Activity;
+  }
+
+  function activityColor(event: AgentActivity): string {
+    if (event.severity === 'error') return 'var(--app-danger)';
+    if (event.severity === 'warning') return 'var(--app-warning)';
+    if (event.severity === 'success') return 'var(--app-success)';
+    return 'var(--app-accent)';
   }
 
   onMount(() => {
@@ -214,13 +245,71 @@
         {/if}
       </section>
 
-      <section class="min-h-0 overflow-y-auto" aria-labelledby="control-center-inbox">
-        <div class="sticky top-0 z-10 flex h-9 items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-surface-subtle)] px-4">
-          <Inbox size={13} class="text-[var(--app-text-muted)]" aria-hidden="true" />
-          <h3 id="control-center-inbox" class="text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">{m['control_center.inbox']()}</h3>
-          <span class="ml-auto text-[10px] tabular-nums text-[var(--app-text-muted)]">{snapshot?.communications.length ?? 0}</span>
+      <section class="min-h-0 overflow-y-auto" aria-labelledby="control-center-secondary">
+        <div class="sticky top-0 z-10 flex h-9 items-center gap-1 border-b border-[var(--app-border)] bg-[var(--app-surface-subtle)] px-2">
+          <h3 id="control-center-secondary" class="sr-only">{m['control_center.activity']()}</h3>
+          <button
+            type="button"
+            class="flex h-7 items-center gap-1.5 rounded-[5px] px-2 text-[9px] font-semibold uppercase transition-colors"
+            class:bg-[var(--app-surface-raised)]={secondaryView === 'activity'}
+            class:text-[var(--app-text)]={secondaryView === 'activity'}
+            class:text-[var(--app-text-muted)]={secondaryView !== 'activity'}
+            aria-pressed={secondaryView === 'activity'}
+            onclick={() => (secondaryView = 'activity')}
+          >
+            <Activity size={12} />{m['control_center.activity']()}
+            <span class="tabular-nums">{snapshot?.activity.length ?? 0}</span>
+          </button>
+          <button
+            type="button"
+            class="flex h-7 items-center gap-1.5 rounded-[5px] px-2 text-[9px] font-semibold uppercase transition-colors"
+            class:bg-[var(--app-surface-raised)]={secondaryView === 'communications'}
+            class:text-[var(--app-text)]={secondaryView === 'communications'}
+            class:text-[var(--app-text-muted)]={secondaryView !== 'communications'}
+            aria-pressed={secondaryView === 'communications'}
+            onclick={() => (secondaryView = 'communications')}
+          >
+            <Inbox size={12} />{m['control_center.inbox']()}
+            <span class="tabular-nums">{snapshot?.communications.length ?? 0}</span>
+          </button>
         </div>
-        {#if snapshot?.communications.length}
+
+        {#if secondaryView === 'activity'}
+          {#if snapshot?.activity.length}
+            <div class="divide-y divide-[var(--app-border)]">
+              {#each snapshot.activity as event (event.id)}
+                {@const Icon = activityIcon(event.category)}
+                <article class="grid grid-cols-[28px_minmax(0,1fr)] gap-2.5 px-4 py-3 transition-colors hover:bg-[var(--app-surface-subtle)]">
+                  <span class="grid size-7 place-items-center rounded-md bg-[var(--app-surface-raised)]" style:color={activityColor(event)}>
+                    <Icon size={13} />
+                  </span>
+                  <div class="min-w-0">
+                    <div class="flex min-w-0 items-start gap-2">
+                      <strong class="min-w-0 flex-1 text-[10px] font-semibold leading-4 text-[var(--app-text)]">{activityTitle(event)}</strong>
+                      <span class="shrink-0 text-[8px] text-[var(--app-text-muted)]">{elapsed(event.createdAt)}</span>
+                    </div>
+                    {#if event.outcome}<p class="mt-1 text-[10px] leading-4 text-[var(--app-text-soft)]">{event.outcome}</p>{/if}
+                    <div class="mt-1.5 flex min-w-0 items-center gap-1.5 text-[8px] text-[var(--app-text-muted)]">
+                      <span class="rounded-[3px] bg-[var(--app-surface-raised)] px-1.5 py-0.5">{event.category}</span>
+                      <span>{stateLabel(event.state)}</span>
+                      {#if event.objectType}<span>·</span><span class="truncate">{event.objectType}</span>{/if}
+                    </div>
+                    {#if Object.keys(event.metadata).length}
+                      <details class="mt-2 text-[9px] text-[var(--app-text-muted)]">
+                        <summary class="cursor-pointer select-none hover:text-[var(--app-text-soft)]">{m['control_center.raw_details']()}</summary>
+                        <pre class="mt-1 max-h-32 overflow-auto rounded-md bg-[var(--app-canvas)] p-2 font-mono text-[8px] leading-4 text-[var(--app-text-soft)]">{JSON.stringify(event.metadata, null, 2)}</pre>
+                      </details>
+                    {/if}
+                  </div>
+                </article>
+              {/each}
+            </div>
+          {:else}
+            <div class="grid min-h-56 place-items-center p-8 text-center">
+              <div><Activity size={24} class="mx-auto text-[var(--app-text-muted)]" /><p class="mt-2 text-xs text-[var(--app-text-muted)]">{m['control_center.no_activity']()}</p></div>
+            </div>
+          {/if}
+        {:else if snapshot?.communications.length}
           <div class="divide-y divide-[var(--app-border)]">
             {#each snapshot.communications as thread (thread.messageId)}
               <article class="px-4 py-3 transition-colors hover:bg-[var(--app-surface-subtle)]">
@@ -235,12 +324,12 @@
                 {#if thread.reply}<p class="mt-2 border-l-2 border-[var(--app-success)] pl-2 text-[10px] leading-4 text-[var(--app-text-muted)]">{thread.reply}</p>{/if}
                 {#if thread.error}<p class="mt-2 text-[9px] text-[var(--app-danger)]">{thread.error}</p>{/if}
                 <div class="mt-2 flex items-center gap-1" aria-label={m['control_center.delivery_history']()}>
-                  {#each thread.events as event, index (event.id)}
+                  {#each thread.events as deliveryEvent, index (deliveryEvent.id)}
                     <Tooltip.Root>
                       <Tooltip.Trigger>
-                        {#snippet child({ props })}<span {...props} class={`size-1.5 rounded-full ${event.state === 'failed' ? 'bg-[var(--app-danger)]' : event.state === 'replied' ? 'bg-[var(--app-success)]' : 'bg-[var(--app-accent)]'}`}></span>{/snippet}
+                        {#snippet child({ props })}<span {...props} class={`size-1.5 rounded-full ${deliveryEvent.state === 'failed' ? 'bg-[var(--app-danger)]' : deliveryEvent.state === 'replied' ? 'bg-[var(--app-success)]' : 'bg-[var(--app-accent)]'}`}></span>{/snippet}
                       </Tooltip.Trigger>
-                      <Tooltip.Content>{deliveryLabel(event.state)}</Tooltip.Content>
+                      <Tooltip.Content>{deliveryLabel(deliveryEvent.state)}</Tooltip.Content>
                     </Tooltip.Root>
                     {#if index < thread.events.length - 1}<span class="h-px w-3 bg-[var(--app-border-strong)]"></span>{/if}
                   {/each}

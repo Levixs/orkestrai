@@ -282,6 +282,15 @@ export class BridgeService {
             state: 'working',
             action: 'system:message_received',
             metadata: { ...metadata, fromTitle: origin?.title ?? null },
+            category: 'message',
+            verb: 'received',
+            objectType: 'message',
+            objectId: messageId,
+            objectTitle: input.message.slice(0, 120),
+            outcome: null,
+            correlationId: typeof metadata.correlationId === 'string' ? metadata.correlationId : `message:${messageId}`,
+            sourceType: 'bridge',
+            sourceId: messageId,
           });
           markSubmitted?.();
         },
@@ -418,6 +427,16 @@ export class BridgeService {
         state: 'idle',
         action: 'system:message_replied',
         metadata: { ...metadata, toTitle: origin?.title ?? null },
+        category: 'message',
+        verb: 'replied',
+        objectType: 'message',
+        objectId: messageId,
+        objectTitle: input.message.slice(0, 120),
+        outcome: replyText.slice(0, 240),
+        severity: 'success',
+        correlationId: typeof metadata.correlationId === 'string' ? metadata.correlationId : `message:${messageId}`,
+        sourceType: 'bridge',
+        sourceId: messageId,
       });
     } else {
       await controlCenterService.recordDelivery({
@@ -674,6 +693,14 @@ export class BridgeService {
         nodeId: agent.nodeId,
         state,
         action: input.title?.trim() || input.message,
+        category: input.kind === 'task' ? 'task' : 'system',
+        verb: input.kind === 'attention' ? 'requested' : 'notified',
+        objectType: input.kind ?? 'notification',
+        objectTitle: input.title?.trim() || input.message,
+        outcome: input.message,
+        severity: input.kind === 'attention' ? 'warning' : input.kind === 'task' || input.kind === 'project' ? 'success' : 'info',
+        sourceType: 'notification',
+        attentionRequired: input.kind === 'attention',
       });
     }
     return nativeNotificationService.send(workspace, input);

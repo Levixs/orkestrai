@@ -84,8 +84,12 @@ Download the latest installers from
   Agents run the same workspace-scoped flow through the bundled CLI or MCP tools.
 - **Operational Control Center:** inspect every agent's current task, state,
   state duration, provider, role, and usage. Its persistent communications inbox
-  proves whether each handoff was queued, delivered, acknowledged, replied to,
-  or failed under one message id, without waking idle terminals after restart.
+  projects every handoff into a canonical, idempotent message envelope and proves
+  whether it was queued, delivered, acknowledged, replied to, or failed. A
+  semantic activity timeline explains messages, tasks, reviews, decisions, Git,
+  and system events without waking idle terminals after restart. The global
+  Attention Center gathers questions, permission requests, blockers, and failures
+  from every workspace, while Command/Ctrl+K recovers them with structured filters.
   Counts include only the Ground floor and currently active Floors; historical
   floor nodes stay archived for task attribution instead of appearing as agents.
 - **Encrypted workspace sharing (experimental):** host an end-to-end encrypted

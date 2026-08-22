@@ -190,6 +190,10 @@ export class CouncilService {
         workspaceId, nodeId: node.id, state: 'working', action: 'system:council_perspective',
         taskId: council.getAttribute('task_id') ?? null,
         metadata: { councilId: council.getAttribute('id'), perspectiveId: perspective.getAttribute('id') },
+        category: 'review', verb: 'analyzed', objectType: 'council-perspective',
+        objectId: String(perspective.getAttribute('id')), objectTitle: String(council.getAttribute('title')),
+        outcome: String(perspective.getAttribute('approach') ?? ''), correlationId: `council:${council.getAttribute('id')}`,
+        sourceType: 'council', sourceId: String(council.getAttribute('id')),
       });
       broadcast(workspaceId, String(council.getAttribute('id')));
 
@@ -213,6 +217,10 @@ export class CouncilService {
         workspaceId, nodeId: node.id, state: 'done', action: 'system:council_perspective_done',
         taskId: council.getAttribute('task_id') ?? null,
         metadata: { councilId: council.getAttribute('id'), perspectiveId: perspective.getAttribute('id') },
+        category: 'review', verb: 'completed', objectType: 'council-perspective',
+        objectId: String(perspective.getAttribute('id')), objectTitle: String(council.getAttribute('title')),
+        outcome: null, severity: 'success', correlationId: `council:${council.getAttribute('id')}`,
+        sourceType: 'council', sourceId: String(council.getAttribute('id')),
       });
     } catch (error) {
       if (!began) {
@@ -229,6 +237,11 @@ export class CouncilService {
         workspaceId, nodeId: node.id, state: 'error', action: 'system:council_perspective_failed',
         taskId: council.getAttribute('task_id') ?? null,
         metadata: { councilId: council.getAttribute('id'), perspectiveId: perspective.getAttribute('id') },
+        category: 'review', verb: 'failed', objectType: 'council-perspective',
+        objectId: String(perspective.getAttribute('id')), objectTitle: String(council.getAttribute('title')),
+        outcome: error instanceof Error ? error.message : String(error), severity: 'error',
+        correlationId: `council:${council.getAttribute('id')}`, sourceType: 'council', sourceId: String(council.getAttribute('id')),
+        attentionRequired: true,
       }).catch(() => undefined);
     } finally {
       broadcast(workspaceId, String(council.getAttribute('id')));
@@ -284,6 +297,9 @@ export class CouncilService {
       workspaceId, nodeId: leader.id, state: 'working', action: 'system:council_synthesis',
       taskId: council.getAttribute('task_id') ?? null,
       metadata: { councilId: council.getAttribute('id') },
+      category: 'review', verb: 'synthesized', objectType: 'council', objectId: String(council.getAttribute('id')),
+      objectTitle: String(council.getAttribute('title')), outcome: null,
+      correlationId: `council:${council.getAttribute('id')}`, sourceType: 'council', sourceId: String(council.getAttribute('id')),
     });
     const result = await runAgentInWorkspace({
       agent: provider,
@@ -312,6 +328,9 @@ export class CouncilService {
       workspaceId, nodeId: leader.id, state: 'done', action: 'system:council_synthesis_done',
       taskId: council.getAttribute('task_id') ?? null,
       metadata: { councilId: council.getAttribute('id') },
+      category: 'review', verb: 'decided', objectType: 'council', objectId: String(council.getAttribute('id')),
+      objectTitle: String(council.getAttribute('title')), outcome: parsed.recommendation, severity: 'success',
+      correlationId: `council:${council.getAttribute('id')}`, sourceType: 'council', sourceId: String(council.getAttribute('id')),
     });
     return parsed;
   }
