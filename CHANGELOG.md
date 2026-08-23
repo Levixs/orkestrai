@@ -45,6 +45,11 @@ pt-BR, English, and Spanish translations.
   keep one active voice-assisted room with a facilitator, selected agents,
   targeted turns, dictation, optional local TTS, bounded transcript recovery,
   explicit remote scopes, and linked Kanban/Workstream evidence.
+- Connected agents can now import existing Bruno, OpenCollection, and Postman
+  collections from workspace-relative repository paths. The same files open in
+  the Canvas/Workbench API Client, linked edits write back atomically by
+  default, watch mode detects external changes, and explicit pull/push
+  resolution prevents silent conflict overwrites.
 
 ### Fixed
 

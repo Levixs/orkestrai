@@ -55,15 +55,19 @@ Download the latest installers from
   Copy cURL; import Bruno, OpenCollection YAML, Postman Collection v2.1,
   Swagger 2.0, or OpenAPI 3.x; and export Bruno, OpenCollection, Postman, or
   OpenAPI 3.1 JSON/YAML while preserving unsupported REST metadata and showing
-  explicit fidelity notes. Linked Bruno/OpenCollection sources support guarded
-  pull, push, watch mode, and explicit conflict resolution. Postman environments
+  explicit fidelity notes. Linked Bruno, OpenCollection, and Postman sources
+  support guarded pull, atomic push, watch mode, and explicit conflict
+  resolution. Agents can import project collections by relative path and their
+  typed edits persist in the original repository files. Postman environments
   import and export independently.
   A versioned `.orkestrai-api.json` format backs up the complete
   native collection, including folders, runners, environments, scripts, and
   history. The same node persists in Canvas and Workbench, and
-  connected agents use typed MCP/CLI tools to create, fingerprint-read/replace,
-  execute, and export complete collections without receiving stored secrets in
-  plaintext. The JavaScript editor provides runtime-aware completion for
+  connected agents use typed MCP/CLI tools to import, fingerprint-read/replace,
+  synchronize, execute, and export complete collections without receiving stored secrets in
+  plaintext. Format-native requests, folders, scripts, tests, and variables are
+  written back; Orkestrai-only runner configuration remains in the node and in
+  lossless `.orkestrai-api.json` backups. The JavaScript editor provides runtime-aware completion for
   `bru`, `req`/`res`, `test`/`expect`, and `pm`; scripted tests live beside
   structured assertions and round-trip through Bruno and Postman.
   Bruno/OpenCollection GraphQL, WebSocket, and gRPC requests

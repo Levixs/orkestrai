@@ -2,11 +2,13 @@ export function apiClientReference() {
   return {
     workflow: [
       'Call api_client_list, then api_client_read before changing an existing collection.',
-      'Edit the returned collection and pass its fingerprint to api_client_replace. A stale fingerprint is rejected instead of overwriting concurrent UI changes.',
+      'When the project already contains Bruno or Postman files, call api_client_import with a workspace-relative path. It creates or updates the connected canvas node and watches that repository source by default.',
+      'Edit the returned collection and pass its fingerprint to api_client_replace. A stale fingerprint is rejected instead of overwriting concurrent UI changes; linked Bruno/Postman sources are written back atomically by default.',
+      'Use api_client_sync_status before resolving concurrent repository edits. api_client_pull and api_client_push refuse destructive conflicts unless resolution is explicitly filesystem or orkestrai.',
       'Use stable unique ids for requests, folders, runners, params, headers, form fields, assertions, and messages.',
       'Secrets are returned as __ORKESTRAI_REDACTED__. Keep that exact value to preserve the stored secret, or provide a replacement value.',
       'Set scriptDialect to bruno, postman, or orkestrai and write scripts for that runtime. Scripts are preserved on export; JavaScript is never silently translated between runtimes.',
-      'Use api_client_export with the matching kind after validating requests and runner results.',
+      'Use api_client_export only for a new copy or format conversion after validating requests and runner results. A linked source stays at its original repository path.',
     ],
     collection: {
       requests: 'Array of complete request objects.',
@@ -54,6 +56,12 @@ export function apiClientReference() {
       bruno: 'Creates an official Bruno directory with bruno.json, collection.bru, nested folders, request .bru files, environments, scripts, tests, auth, variables, and ordering. Stored secret values remain redacted.',
       postman: 'Creates a Postman Collection v2.1 JSON with nested folders, events, auth, variables, bodies, tests, and original compatible metadata. Stored secret values remain redacted.',
       path: 'Must be relative to the workspace, for example .orkestrai/exports.',
+    },
+    repository: {
+      import: 'api_client_import accepts only paths inside the workspace and supports Bruno directories/files, Postman v2.1 JSON, and OpenCollection YAML.',
+      update: 'api_client_replace writes a linked Bruno/Postman/OpenCollection source by default. Pass syncToSource=false only when intentionally staging a canvas-only edit.',
+      conflicts: 'api_client_sync_status reports sourceChanged/localChanged/conflict. Pull with resolution=filesystem or push with resolution=orkestrai only after reviewing the competing side.',
+      persistence: 'The linked collection remains ordinary project files, so git status, commits, CI, Bruno, and Postman see the same format-native requests, scripts, tests, folders, and variables. Orkestrai-only runner configuration remains in the node and lossless native backup.',
     },
     execution: {
       request: 'api_client_execute runs one saved request.',

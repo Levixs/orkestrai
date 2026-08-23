@@ -200,6 +200,10 @@
     return (event.currentTarget as HTMLInputElement).value;
   }
 
+  function linkedSourceWritable(kind: ApiClientNodePayload['sourceKind']): boolean {
+    return kind === 'bruno' || kind === 'openCollection' || kind === 'postman';
+  }
+
   function persist(extra: Record<string, unknown> = {}) {
     data.onPayloadChange?.(id, {
       requests: $state.snapshot(requests),
@@ -286,10 +290,10 @@
           }
         }
       } else if (value.status === 'conflict') {
-        syncStatus = { linked: true, writable: true, sourceChanged: true, localChanged: Boolean(value.localChanged), conflict: true, sourcePath: value.sourcePath };
+        syncStatus = { linked: true, writable: linkedSourceWritable(data.payload.sourceKind), sourceChanged: true, localChanged: Boolean(value.localChanged), conflict: true, sourcePath: value.sourcePath };
       } else if (value.payload) {
         applySynchronizedPayload(value.payload);
-        syncStatus = { linked: true, writable: data.payload.sourceKind === 'bruno' || data.payload.sourceKind === 'openCollection', sourceChanged: false, localChanged: false, conflict: false, sourcePath: data.payload.sourcePath ?? undefined, lastSyncedAt: value.payload.sync?.lastSyncedAt };
+        syncStatus = { linked: true, writable: linkedSourceWritable(data.payload.sourceKind), sourceChanged: false, localChanged: false, conflict: false, sourcePath: data.payload.sourcePath ?? undefined, lastSyncedAt: value.payload.sync?.lastSyncedAt };
         if (!automatic) toast.success(action === 'pull' ? m['api_client.sync_pull_success']() : m['api_client.sync_push_success']({ count: value.files ?? 0 }));
       }
     } catch (cause) {

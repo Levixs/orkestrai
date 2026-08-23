@@ -15,7 +15,7 @@ import {
 } from '$lib/modules/agent-room/contracts/schemas/bridgeSchemas.js';
 import { bridgeBoardTaskSchema, bridgeBoardTaskUpdateSchema } from '$lib/modules/agent-room/contracts/schemas/taskSchemas.js';
 import { bridgeApplyDesignDeliverySchema, bridgeImportDesignMarkupSchema, previewDesignDeliverySchema } from '$lib/modules/agent-room/contracts/schemas/design-delivery.schema.js';
-import { createAgentApiClientSchema, executeAgentApiClientRunnerSchema, exportAgentApiClientSchema, replaceAgentApiClientSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
+import { createAgentApiClientSchema, executeAgentApiClientRunnerSchema, exportAgentApiClientSchema, importAgentApiClientSchema, replaceAgentApiClientSchema, syncAgentApiClientSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
 import { z } from 'zod';
 import { saveWorkspaceMemorySchema, reviseWorkspaceMemorySchema } from '$lib/modules/agent-room/contracts/schemas/workspace-memory.schema.js';
 import { contributeHuddleTurnSchema } from '$lib/modules/agent-room/contracts/schemas/huddle.schema.js';
@@ -67,8 +67,12 @@ const EXPECTED: Record<string, Expectation> = {
   memory_archive: { method: 'DELETE', path: /\/bridge\/memory\/n1$/ },
   api_client_list: { method: 'GET', path: /\/bridge\/api-clients\?agentNodeId=/ },
   api_client_read: { method: 'GET', path: /\/bridge\/api-clients\/n1\?agentNodeId=n1$/ },
+  api_client_import: { method: 'POST', path: /\/bridge\/api-clients\/import$/, schema: importAgentApiClientSchema },
   api_client_create: { method: 'POST', path: /\/bridge\/api-clients$/, schema: createAgentApiClientSchema },
   api_client_replace: { method: 'PUT', path: /\/bridge\/api-clients\/n1$/, schema: replaceAgentApiClientSchema },
+  api_client_sync_status: { method: 'POST', path: /\/bridge\/api-clients\/n1\/sync$/, schema: syncAgentApiClientSchema },
+  api_client_pull: { method: 'POST', path: /\/bridge\/api-clients\/n1\/sync$/, schema: syncAgentApiClientSchema },
+  api_client_push: { method: 'POST', path: /\/bridge\/api-clients\/n1\/sync$/, schema: syncAgentApiClientSchema },
   api_client_export: { method: 'POST', path: /\/bridge\/api-clients\/n1\/export$/, schema: exportAgentApiClientSchema },
   api_client_run_runner: { method: 'POST', path: /\/bridge\/api-clients\/n1\/runners\/runner1\/execute$/, schema: executeAgentApiClientRunnerSchema },
   api_client_execute: { method: 'POST', path: /\/bridge\/api-clients\/n1\/execute$/, schema: apiClientExecuteSchema },
@@ -120,8 +124,12 @@ const TOOL_ARGS: Record<string, Record<string, unknown>> = {
   memory_archive: { id: 'n1' },
   api_client_execute: { nodeId: 'n1', requestId: 'r1', variables: { baseUrl: 'https://example.test' } },
   api_client_read: { nodeId: 'n1' },
+  api_client_import: { path: 'tests/api', kind: 'bruno' },
   api_client_create: { title: 'Agent API', collection: { requests: [] } },
   api_client_replace: { nodeId: 'n1', baseFingerprint: 'a'.repeat(64), collection: { requests: [] } },
+  api_client_sync_status: { nodeId: 'n1' },
+  api_client_pull: { nodeId: 'n1' },
+  api_client_push: { nodeId: 'n1' },
   api_client_export: { nodeId: 'n1', kind: 'postman', path: '.orkestrai/exports' },
   api_client_run_runner: { nodeId: 'n1', runnerId: 'runner1', variables: { tenant: 'alpha' }, maxExecutions: 20 },
   design_read: { nodeId: 'n1' },
@@ -354,7 +362,7 @@ describe('contrato MCP x bridge (todas as tools)', () => {
   });
 
   it('tools de maestro sem identidade (selfAgent null) dao erro claro, nao 422', async () => {
-    for (const tool of ['recruit', 'dismiss', 'portal_create', 'api_client_read', 'api_client_create', 'api_client_replace', 'api_client_export', 'api_client_run_runner']) {
+    for (const tool of ['recruit', 'dismiss', 'portal_create', 'api_client_read', 'api_client_import', 'api_client_create', 'api_client_replace', 'api_client_sync_status', 'api_client_pull', 'api_client_push', 'api_client_export', 'api_client_run_runner']) {
       const input = new PassThrough();
       const chunks: string[] = [];
       const done = runMcpServer({

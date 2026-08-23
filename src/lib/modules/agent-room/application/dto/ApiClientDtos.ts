@@ -7,6 +7,8 @@ import type {
   ImportApiClientCollectionInput,
   CreateAgentApiClientInput,
   ReplaceAgentApiClientInput,
+  ImportAgentApiClientInput,
+  SyncAgentApiClientInput,
   ExportAgentApiClientInput,
   ExecuteAgentApiClientRunnerInput,
 } from '../../contracts/schemas/apiClient.schema.js';
@@ -49,6 +51,16 @@ export class CreateAgentApiClientDto {
 export class ReplaceAgentApiClientDto {
   constructor(public readonly input: ReplaceAgentApiClientInput) {}
   static from(input: ReplaceAgentApiClientInput) { return new ReplaceAgentApiClientDto(input); }
+}
+
+export class ImportAgentApiClientDto {
+  constructor(public readonly input: ImportAgentApiClientInput) {}
+  static from(input: ImportAgentApiClientInput) { return new ImportAgentApiClientDto(input); }
+}
+
+export class SyncAgentApiClientDto {
+  constructor(public readonly input: SyncAgentApiClientInput) {}
+  static from(input: SyncAgentApiClientInput) { return new SyncAgentApiClientDto(input); }
 }
 
 export class ExportAgentApiClientDto {

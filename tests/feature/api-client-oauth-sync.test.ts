@@ -4,12 +4,27 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { useSvelarTest } from '@beeblock/svelar/testing';
-import { ApiClientOAuthDto, ApiClientSyncDto, ExecuteApiClientRequestDto, ImportApiClientCollectionDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
+import { ApiClientOAuthDto, ApiClientSyncDto, ExecuteApiClientRequestDto, ImportAgentApiClientDto, ImportApiClientCollectionDto, ReplaceAgentApiClientDto, SyncAgentApiClientDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
 import { apiClientOAuthService } from '$lib/modules/agent-room/application/services/ApiClientOAuthService.js';
 import { apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
 import { apiClientSyncService } from '$lib/modules/agent-room/application/services/ApiClientSyncService.js';
+import { bridgeService } from '$lib/modules/agent-room/application/services/BridgeService.js';
 import { apiClientNativePayloadSchema, apiClientRequestSchema } from '$lib/modules/agent-room/contracts/schemas/apiClient.schema.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
+import { BridgeController } from '$lib/modules/agent-room/interface/http/controllers/BridgeController.js';
+
+function bridgeEvent(method: string, path: string, body: unknown, params: Record<string, string>, token: string) {
+  const url = new URL(`http://localhost${path}`);
+  return {
+    request: new Request(url, {
+      method,
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+    params,
+    url,
+  };
+}
 
 describe('API Client OAuth, cookies, and sync', () => {
   useSvelarTest({ refreshDatabase: true });
@@ -139,5 +154,99 @@ describe('API Client OAuth, cookies, and sync', () => {
     expect(status).toMatchObject({ linked: true, writable: true, sourceChanged: true, localChanged: false });
     const pulled = await apiClientSyncService.execute(workspace.id, ApiClientSyncDto.from({ action: 'pull', nodeId: node.id }));
     expect(pulled).toMatchObject({ status: 'complete', direction: 'pull', payload: { requests: [expect.objectContaining({ url: 'https://example.test/external' })] } });
+  });
+
+  it('lets an agent link and update the repository Bruno collection seen in the canvas', async () => {
+    const { workspace } = await fixture();
+    const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'API Agent', x: 20, y: 30, width: 480 });
+    const collection = join(tempDir!, 'tests', 'api');
+    await mkdir(collection, { recursive: true });
+    await writeFile(join(collection, 'health.bru'), `meta {\n  name: Health\n  type: http\n  seq: 1\n}\n\nget {\n  url: https://example.test/health\n  body: none\n  auth: none\n}\n\ntests {\n  test('returns 200', function () {\n    expect(res.getStatus()).to.equal(200);\n  });\n}\n`);
+
+    const imported = await apiClientService.importForAgent(workspace.id, ImportAgentApiClientDto.from({
+      path: 'tests/api', kind: 'auto', syncMode: 'watch', from: agent.id,
+    }));
+
+    expect(imported).toMatchObject({
+      repository: { linked: true, kind: 'bruno', path: 'tests/api', sync: { mode: 'watch' } },
+      collection: { requests: [expect.objectContaining({ name: 'Health', testScript: expect.stringContaining('returns 200') })] },
+    });
+    expect((await workspaceRepository.listEdges(workspace.id)).some((edge) => edge.sourceNodeId === agent.id && edge.targetNodeId === imported.nodeId)).toBe(true);
+
+    const edited = structuredClone(imported.collection);
+    edited.requests[0].name = 'Health check';
+    edited.requests[0].documentation = 'Maintained by the workspace API agent.';
+    const replaced = await apiClientService.replaceForAgent(workspace.id, imported.nodeId, ReplaceAgentApiClientDto.from({
+      baseFingerprint: imported.fingerprint, collection: edited, from: agent.id,
+    }));
+    const pushed = await apiClientSyncService.executeForAgent(workspace.id, imported.nodeId, SyncAgentApiClientDto.from({ action: 'push', from: agent.id }));
+
+    expect(pushed).toMatchObject({ status: 'complete', direction: 'push' });
+    expect(replaced.repository).toMatchObject({ linked: true, kind: 'bruno', path: 'tests/api' });
+    const generated = (await readdir(collection)).find((file) => /^Health check\.bru$/i.test(file));
+    expect(generated).toBeTruthy();
+    const source = await readFile(join(collection, generated!), 'utf8');
+    expect(source).toContain('returns 200');
+    expect(source).toContain('Maintained by the workspace API agent.');
+  });
+
+  it('writes linked Postman changes atomically and refuses silent conflict overwrites', async () => {
+    const { workspace } = await fixture();
+    const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'Postman Agent', x: 10, y: 10, width: 480 });
+    const path = join(tempDir!, 'project.postman_collection.json');
+    const postman = {
+      info: { name: 'Project API', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' },
+      item: [{
+        name: 'Health',
+        request: { method: 'GET', header: [], url: { raw: 'https://example.test/health' } },
+        event: [{ listen: 'test', script: { type: 'text/javascript', exec: ["pm.test('healthy', () => pm.response.to.have.status(200));"] } }],
+      }],
+    };
+    await writeFile(path, `${JSON.stringify(postman, null, 2)}\n`);
+    const imported = await apiClientService.importForAgent(workspace.id, ImportAgentApiClientDto.from({
+      path: 'project.postman_collection.json', kind: 'auto', syncMode: 'watch', from: agent.id,
+    }));
+    expect(imported.repository).toMatchObject({ linked: true, kind: 'postman', path: 'project.postman_collection.json' });
+    const token = await bridgeService.getOrCreateToken(workspace.id);
+    const controller = new BridgeController();
+
+    const edited = structuredClone(imported.collection);
+    edited.requests[0].documentation = 'Repository-backed request.';
+    edited.requests[0].testScript += "\npm.collectionVariables.set('verified', 'yes');";
+    const replacedResponse = await controller.replaceApiClient(bridgeEvent('PUT', `/api/agent-room/bridge/api-clients/${imported.nodeId}`, {
+      baseFingerprint: imported.fingerprint, collection: edited, from: agent.id,
+    }, { nodeId: imported.nodeId }, token) as any) as Response;
+    const replacedBody = await replacedResponse.json();
+    expect(replacedResponse.status, JSON.stringify(replacedBody)).toBe(200);
+    expect(replacedBody.data.repositorySync).toMatchObject({ status: 'complete', direction: 'push', files: 1 });
+    let stored = JSON.parse(await readFile(path, 'utf8'));
+    expect(stored.item[0].request.description).toBe('Repository-backed request.');
+    expect(stored.item[0].event[0].script.exec.join('\n')).toContain("collectionVariables.set('verified'");
+
+    stored.info.description = 'External edit';
+    await writeFile(path, `${JSON.stringify(stored, null, 2)}\n`);
+    const fresh = await apiClientService.readForAgent(workspace.id, imported.nodeId, agent.id);
+    const localEdit = structuredClone(fresh.collection);
+    localEdit.requests[0].name = 'Local health';
+    const conflictResponse = await controller.replaceApiClient(bridgeEvent('PUT', `/api/agent-room/bridge/api-clients/${imported.nodeId}`, {
+      baseFingerprint: fresh.fingerprint, collection: localEdit, from: agent.id,
+    }, { nodeId: imported.nodeId }, token) as any) as Response;
+    expect(conflictResponse.status).toBe(409);
+    expect((await conflictResponse.json()).data.repositorySync).toMatchObject({ status: 'conflict', sourceChanged: true, localChanged: true });
+    expect(JSON.parse(await readFile(path, 'utf8')).info.description).toBe('External edit');
+
+    const statusResponse = await controller.syncApiClient(bridgeEvent('POST', `/api/agent-room/bridge/api-clients/${imported.nodeId}/sync`, {
+      action: 'status', from: agent.id,
+    }, { nodeId: imported.nodeId }, token) as any) as Response;
+    expect(statusResponse.status).toBe(200);
+    expect((await statusResponse.json()).data).toMatchObject({ conflict: true, sourceChanged: true, localChanged: true });
+    const forceResponse = await controller.syncApiClient(bridgeEvent('POST', `/api/agent-room/bridge/api-clients/${imported.nodeId}/sync`, {
+      action: 'push', resolution: 'orkestrai', from: agent.id,
+    }, { nodeId: imported.nodeId }, token) as any) as Response;
+    expect(forceResponse.status).toBe(200);
+    expect((await forceResponse.json()).data).toMatchObject({ status: 'complete', direction: 'push' });
+    expect(JSON.parse(await readFile(path, 'utf8')).item[0].name).toBe('Local health');
+
+    await expect(apiClientService.importForAgent(workspace.id, ImportAgentApiClientDto.from({ path, kind: 'postman', syncMode: 'watch', from: agent.id }))).rejects.toThrow('relative');
   });
 });

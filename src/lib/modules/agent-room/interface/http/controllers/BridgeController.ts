@@ -39,9 +39,10 @@ import { createDesignTemplate, designTemplateIds } from '$lib/modules/agent-room
 import { uuidv7 } from '@beeblock/svelar/support';
 import { isDesignExplorationPayload } from '$lib/modules/agent-room/domain/design-exploration.js';
 import { ApiClientFingerprintConflictError, apiClientService } from '$lib/modules/agent-room/application/services/ApiClientService.js';
-import { CreateAgentApiClientRequest, ExecuteAgentApiClientRunnerRequest, ExecuteSavedApiClientRequest, ExportAgentApiClientRequest, ReplaceAgentApiClientRequest } from '$lib/modules/agent-room/interface/http/requests/ApiClientRequests.js';
-import { CreateAgentApiClientDto, ExecuteAgentApiClientRunnerDto, ExecuteSavedApiClientRequestDto, ExportAgentApiClientDto, ReplaceAgentApiClientDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
+import { CreateAgentApiClientRequest, ExecuteAgentApiClientRunnerRequest, ExecuteSavedApiClientRequest, ExportAgentApiClientRequest, ImportAgentApiClientRequest, ReplaceAgentApiClientRequest, SyncAgentApiClientRequest } from '$lib/modules/agent-room/interface/http/requests/ApiClientRequests.js';
+import { CreateAgentApiClientDto, ExecuteAgentApiClientRunnerDto, ExecuteSavedApiClientRequestDto, ExportAgentApiClientDto, ImportAgentApiClientDto, ReplaceAgentApiClientDto, SyncAgentApiClientDto } from '$lib/modules/agent-room/application/dto/ApiClientDtos.js';
 import { ExecuteSavedApiClientRequestAction } from '$lib/modules/agent-room/application/actions/ExecuteSavedApiClientRequestAction.js';
+import { apiClientSyncService } from '$lib/modules/agent-room/application/services/ApiClientSyncService.js';
 import { workspaceMemoryService, WorkspaceMemoryConflictError } from '$lib/modules/agent-room/application/services/WorkspaceMemoryService.js';
 import { saveWorkspaceMemorySchema, reviseWorkspaceMemorySchema } from '$lib/modules/agent-room/contracts/schemas/workspace-memory.schema.js';
 import { contributeHuddleTurnSchema } from '$lib/modules/agent-room/contracts/schemas/huddle.schema.js';
@@ -190,6 +191,18 @@ export class BridgeController extends Controller {
     }
   }
 
+  async importApiClient(event: any) {
+    try {
+      const input = await ImportAgentApiClientRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const data = await apiClientService.importForAgent(workspace.id, ImportAgentApiClientDto.from(input));
+      bridgeService.notifyWorkspaceChanged(workspace.id);
+      return this.json({ data }, input.nodeId ? 200 : 201);
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao importar cliente de API.');
+    }
+  }
+
   async readApiClient(event: any) {
     try {
       const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
@@ -206,13 +219,37 @@ export class BridgeController extends Controller {
       const input = await ReplaceAgentApiClientRequest.validate(event);
       const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
       const data = await apiClientService.replaceForAgent(workspace.id, event.params.nodeId, ReplaceAgentApiClientDto.from(input));
+      const repository = data.repository;
+      const repositorySync = input.syncToSource && repository.linked && ['bruno', 'postman', 'openCollection'].includes(String(repository.kind))
+        ? await apiClientSyncService.executeForAgent(workspace.id, event.params.nodeId, SyncAgentApiClientDto.from({ action: 'push', from: input.from }))
+        : null;
       bridgeService.notifyWorkspaceChanged(workspace.id);
-      return this.json({ data });
+      const conflict = repositorySync && 'status' in repositorySync && repositorySync.status === 'conflict';
+      const refreshed = conflict || !repositorySync
+        ? data
+        : await apiClientService.readForAgent(workspace.id, event.params.nodeId, input.from);
+      return this.json({
+        ...(conflict ? { error: 'The repository collection changed externally. Review sync status and choose pull or push explicitly.' } : {}),
+        data: { ...refreshed, repositorySync },
+      }, conflict ? 409 : 200);
     } catch (error) {
       if (error instanceof ApiClientFingerprintConflictError) {
         return this.json({ error: error.message, currentFingerprint: error.currentFingerprint }, 409);
       }
       return this.errorResponse(error, 'Falha ao atualizar cliente de API.');
+    }
+  }
+
+  async syncApiClient(event: any) {
+    try {
+      const input = await SyncAgentApiClientRequest.validate(event);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.requireToken(event));
+      const data = await apiClientSyncService.executeForAgent(workspace.id, event.params.nodeId, SyncAgentApiClientDto.from(input));
+      const conflict = 'status' in data && data.status === 'conflict';
+      if (input.action !== 'status' && !conflict) bridgeService.notifyWorkspaceChanged(workspace.id);
+      return this.json({ data });
+    } catch (error) {
+      return this.errorResponse(error, 'Falha ao sincronizar cliente de API.');
     }
   }
 

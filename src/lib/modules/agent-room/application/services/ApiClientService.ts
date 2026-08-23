@@ -6,7 +6,7 @@ import { uuidv7 } from '@beeblock/svelar/support';
 import { bundle, validate } from '@readme/openapi-parser';
 import { parseCollection, parseEnvironment, parseFolder, parseRequest, stringifyCollection, stringifyEnvironment, stringifyFolder, stringifyRequest } from '@usebruno/filestore';
 import { agentApiClientCollectionSchema, apiClientAuthSchema, apiClientNativeCollectionSchema, apiClientNativePayloadSchema, apiClientNetworkSchema, apiClientRequestSchema, persistedApiClientRequestSchema, type AgentApiClientCollectionInput, type ApiClientRequestInput } from '../../contracts/schemas/apiClient.schema.js';
-import { ExecuteApiClientRequestDto, ExportApiClientCollectionDto, type CreateAgentApiClientDto, type ExecuteAgentApiClientRunnerDto, type ExportAgentApiClientDto, type ImportApiClientCollectionDto, type ReplaceAgentApiClientDto } from '../dto/ApiClientDtos.js';
+import { ExecuteApiClientRequestDto, ExportApiClientCollectionDto, ImportApiClientCollectionDto, type CreateAgentApiClientDto, type ExecuteAgentApiClientRunnerDto, type ExportAgentApiClientDto, type ImportAgentApiClientDto, type ReplaceAgentApiClientDto } from '../dto/ApiClientDtos.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { runApiClientScript, type ApiClientScriptResponse, type ApiClientScriptStage } from '../../infrastructure/api-client/ApiClientScriptSandbox.js';
 import { executeHttpTransport } from '../../infrastructure/api-client/ApiClientHttpTransport.js';
@@ -890,17 +890,78 @@ export class ApiClientService {
     return this.readForAgent(workspaceId, node.id, agent.id);
   }
 
+  async importForAgent(workspaceId: string, dto: ImportAgentApiClientDto) {
+    const agent = await this.requireAgentNode(workspaceId, dto.input.from);
+    const workspace = await workspaceRepository.getWorkspace(workspaceId);
+    if (!workspace) throw new Error('Workspace not found.');
+    const sourcePath = await this.resolveAgentImportPath(workspace.workingDir, dto.input.path);
+    const kind = dto.input.kind === 'auto' ? await this.inferAgentImportKind(sourcePath) : dto.input.kind;
+    let node = dto.input.nodeId ? await this.requireNode(workspaceId, dto.input.nodeId) : null;
+    const created = !node;
+    if (node) await this.requireAgentConnection(workspaceId, node.id, agent.id);
+    else {
+      node = await workspaceRepository.createNode({
+        workspaceId,
+        type: 'apiClient',
+        title: dto.input.title ?? (basename(sourcePath, extname(sourcePath)) || 'API Client'),
+        x: agent.x + agent.width + 100,
+        y: agent.y,
+        width: 920,
+        height: 640,
+        floorId: agent.floorId,
+        payload: apiClientNativePayloadSchema.parse({}),
+      });
+    }
+
+    try {
+      const imported = await this.import(workspaceId, ImportApiClientCollectionDto.from({ nodeId: node.id, kind, path: sourcePath }));
+      const payload = apiClientNativePayloadSchema.parse({
+        ...imported.payload,
+        sync: { ...imported.payload.sync, mode: dto.input.syncMode },
+      }) as ApiClientNodePayload;
+      await workspaceRepository.updateNode(node.id, {
+        title: dto.input.title ?? imported.collectionName,
+        payload,
+      });
+      if (created) await workspaceRepository.createEdge({ workspaceId, sourceNodeId: agent.id, targetNodeId: node.id });
+      return this.readForAgent(workspaceId, node.id, agent.id);
+    } catch (error) {
+      if (created) await workspaceRepository.deleteNode(node.id).catch(() => undefined);
+      throw error;
+    }
+  }
+
   async readForAgent(workspaceId: string, nodeId: string, agentNodeId: string) {
     const agent = await this.requireAgentNode(workspaceId, agentNodeId);
     await this.requireAgentConnection(workspaceId, nodeId, agent.id);
     const node = await this.requireNode(workspaceId, nodeId);
     const payload = apiClientNativePayloadSchema.parse(node.payload ?? {}) as ApiClientNodePayload;
+    const workspace = await workspaceRepository.getWorkspace(workspaceId);
+    let sourcePath: string | null = null;
+    if (payload.sourcePath && workspace) {
+      try {
+        const root = await realpath(resolve(workspace.workingDir));
+        const source = await realpath(resolve(payload.sourcePath));
+        sourcePath = relative(root, source).split(sep).join('/');
+      } catch {
+        sourcePath = null;
+      }
+    }
+    const repositoryLinked = Boolean(
+      payload.sourceKind
+      && sourcePath !== null
+      && !isAbsolute(sourcePath)
+      && !sourcePath.split('/').includes('..')
+    );
     return {
       nodeId: node.id,
       title: node.title ?? 'API Client',
       fingerprint: apiClientPayloadFingerprint(payload),
       redactedValue: REDACTED_SECRET,
       collection: redactAgentCollection(agentCollection(payload)),
+      repository: repositoryLinked
+        ? { linked: true, kind: payload.sourceKind, path: sourcePath || '.', sync: payload.sync ?? null }
+        : { linked: false, kind: null, path: null, sync: null },
     };
   }
 
@@ -1483,7 +1544,7 @@ export class ApiClientService {
       const sourceRoot = await apiClientSourceRoot(dto.input.path, dto.input.kind);
       const sourceFingerprint = await apiClientSourceFingerprint(sourceRoot);
       payload.sync = {
-        mode: (current as ApiClientNodePayload).sync?.mode ?? 'manual',
+        mode: (current as ApiClientNodePayload).sync?.mode ?? 'watch',
         conflictPolicy: (current as ApiClientNodePayload).sync?.conflictPolicy ?? 'ask',
         lastSyncedAt: new Date().toISOString(),
         sourceFingerprint,
@@ -1749,6 +1810,32 @@ export class ApiClientService {
       || (edge.targetNodeId === agentNodeId && edge.sourceNodeId === nodeId)
     );
     if (!connected) throw new Error('API Client node is not connected to this agent.');
+  }
+
+  private async resolveAgentImportPath(workingDir: string, requestedPath: string): Promise<string> {
+    if (isAbsolute(requestedPath)) throw new Error('The import path must be relative to the workspace.');
+    const root = await realpath(resolve(workingDir));
+    const candidate = await realpath(resolve(root, requestedPath));
+    if (candidate !== root && !candidate.startsWith(`${root}${sep}`)) throw new Error('The import path must stay inside the workspace.');
+    return candidate;
+  }
+
+  private async inferAgentImportKind(path: string): Promise<'bruno' | 'postman' | 'openCollection'> {
+    const info = await stat(path);
+    if (info.isDirectory()) {
+      const names = new Set((await readdir(path)).map((name) => name.toLowerCase()));
+      if (names.has('opencollection.yml') || names.has('opencollection.yaml')) return 'openCollection';
+      return 'bruno';
+    }
+    const name = basename(path).toLowerCase();
+    if (/\.postman_collection\.json$/.test(name)) return 'postman';
+    if (/^opencollection\.ya?ml$/.test(name)) return 'openCollection';
+    if (/\.bru$/.test(name)) return 'bruno';
+    if (/\.json$/.test(name)) {
+      const document = JSON.parse(await readLimited(path));
+      if (document?.info && Array.isArray(document.item)) return 'postman';
+    }
+    throw new Error('Could not detect a Bruno or Postman collection at this path.');
   }
 }
 

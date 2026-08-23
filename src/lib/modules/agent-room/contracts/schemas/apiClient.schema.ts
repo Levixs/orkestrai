@@ -288,19 +288,39 @@ export const createAgentApiClientSchema = z.object({
 }).strict();
 
 export const replaceAgentApiClientSchema = z.object({
+  nodeId: z.string().trim().min(1).max(200).optional(),
   title: z.string().trim().min(1).max(500).optional(),
   baseFingerprint: z.string().trim().length(64),
   collection: agentApiClientCollectionSchema,
+  syncToSource: z.boolean().default(true),
   from: z.string().trim().min(1).max(200),
 }).strict();
 
+export const importAgentApiClientSchema = z.object({
+  path: z.string().trim().min(1).max(4_000),
+  kind: z.enum(['auto', 'bruno', 'postman', 'openCollection']).default('auto'),
+  nodeId: z.string().trim().min(1).max(200).optional(),
+  title: z.string().trim().min(1).max(500).optional(),
+  syncMode: z.enum(['manual', 'watch']).default('watch'),
+  from: z.string().trim().min(1).max(200),
+}).strict();
+
+export const syncAgentApiClientSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('status'), nodeId: z.string().trim().min(1).max(200).optional(), from: z.string().trim().min(1).max(200) }).strict(),
+  z.object({ action: z.literal('pull'), nodeId: z.string().trim().min(1).max(200).optional(), resolution: z.enum(['filesystem']).optional(), from: z.string().trim().min(1).max(200) }).strict(),
+  z.object({ action: z.literal('push'), nodeId: z.string().trim().min(1).max(200).optional(), resolution: z.enum(['orkestrai']).optional(), from: z.string().trim().min(1).max(200) }).strict(),
+]);
+
 export const exportAgentApiClientSchema = z.object({
+  nodeId: z.string().trim().min(1).max(200).optional(),
   kind: z.enum(['bruno', 'postman']),
   path: z.string().trim().min(1).max(4_000).default('.orkestrai/exports'),
   from: z.string().trim().min(1).max(200),
 }).strict();
 
 export const executeAgentApiClientRunnerSchema = z.object({
+  nodeId: z.string().trim().min(1).max(200).optional(),
+  runnerId: z.string().trim().min(1).max(200).optional(),
   variables: z.record(z.string(), z.string().max(100_000)).default({}),
   maxExecutions: z.coerce.number().int().min(1).max(500).default(100),
   from: z.string().trim().min(1).max(200),
@@ -335,6 +355,8 @@ export type ExecuteSavedApiClientRequestInput = z.infer<typeof executeSavedApiCl
 export type AgentApiClientCollectionInput = z.infer<typeof agentApiClientCollectionSchema>;
 export type CreateAgentApiClientInput = z.infer<typeof createAgentApiClientSchema>;
 export type ReplaceAgentApiClientInput = z.infer<typeof replaceAgentApiClientSchema>;
+export type ImportAgentApiClientInput = z.infer<typeof importAgentApiClientSchema>;
+export type SyncAgentApiClientInput = z.infer<typeof syncAgentApiClientSchema>;
 export type ExportAgentApiClientInput = z.infer<typeof exportAgentApiClientSchema>;
 export type ExecuteAgentApiClientRunnerInput = z.infer<typeof executeAgentApiClientRunnerSchema>;
 export type ApiClientOAuthInput = z.infer<typeof apiClientOAuthSchema>;

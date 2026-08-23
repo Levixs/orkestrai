@@ -31,6 +31,13 @@ describe('orkestrai CLI', () => {
           res.end(JSON.stringify({ data: { status: 200, statusText: 'OK', durationMs: 12, size: 11, ok: true, body: '{"ok":true}' } }));
         } else if (req.url?.endsWith('/api1/export')) {
           res.end(JSON.stringify({ data: { kind: 'postman', path: '/workspace/exports/project.postman_collection.json', files: 1 } }));
+        } else if (req.url === '/api/agent-room/bridge/api-clients/import' && req.method === 'POST') {
+          res.end(JSON.stringify({ data: { nodeId: 'api3', title: 'Repository API', repository: { linked: true, kind: 'bruno', path: 'tests/api' } } }));
+        } else if (req.url === '/api/agent-room/bridge/api-clients/api1/sync' && req.method === 'POST') {
+          const request = JSON.parse(body || '{}');
+          res.end(JSON.stringify({ data: request.action === 'status'
+            ? { linked: true, sourceKind: 'bruno', sourceChanged: false, localChanged: false, conflict: false }
+            : { status: 'complete', direction: request.action } }));
         } else if (req.url?.startsWith('/api/agent-room/bridge/api-clients/api1?')) {
           res.end(JSON.stringify({ data: { nodeId: 'api1', title: 'Project API', fingerprint: 'a'.repeat(64), collection: { requests: [] } } }));
         } else if (req.url === '/api/agent-room/bridge/api-clients/api1' && req.method === 'PUT') {
@@ -455,7 +462,7 @@ describe('orkestrai CLI', () => {
     });
   });
 
-  it('api cria, le, substitui e exporta colecoes completas pela mesma bridge do MCP', async () => {
+  it('api importa, sincroniza, cria, le, substitui e exporta colecoes completas pela mesma bridge do MCP', async () => {
     const collectionPath = join(cwd, 'agent-api.json');
     writeFileSync(collectionPath, JSON.stringify({ requests: [], folders: [], runners: [], scriptDialect: 'bruno' }));
     const { lines, out } = capture();
@@ -465,10 +472,18 @@ describe('orkestrai CLI', () => {
     expect(lines.join('\n')).toContain('api_client_replace');
     expect(await run(['api', 'read', 'api1'], { cwd, out, env })).toBe(0);
     expect(requests.at(-1).url).toContain('/api-clients/api1?agentNodeId=n1');
+    expect(await run(['api', 'import', 'tests/api', '--kind', 'bruno'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({ method: 'POST', url: '/api/agent-room/bridge/api-clients/import', body: { path: 'tests/api', kind: 'bruno', syncMode: 'watch', from: 'n1' } });
     expect(await run(['api', 'create', 'Agent API', '--file', 'agent-api.json'], { cwd, out, env })).toBe(0);
     expect(requests.at(-1)).toMatchObject({ method: 'POST', body: { title: 'Agent API', from: 'n1' } });
     expect(await run(['api', 'replace', 'api1', '--file', 'agent-api.json', '--fingerprint', 'a'.repeat(64)], { cwd, out, env })).toBe(0);
-    expect(requests.at(-1)).toMatchObject({ method: 'PUT', body: { baseFingerprint: 'a'.repeat(64), from: 'n1' } });
+    expect(requests.at(-1)).toMatchObject({ method: 'PUT', body: { baseFingerprint: 'a'.repeat(64), syncToSource: true, from: 'n1' } });
+    expect(await run(['api', 'sync-status', 'api1'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1)).toMatchObject({ method: 'POST', url: '/api/agent-room/bridge/api-clients/api1/sync', body: { action: 'status', from: 'n1' } });
+    expect(await run(['api', 'pull', 'api1'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1).body).toMatchObject({ action: 'pull', from: 'n1' });
+    expect(await run(['api', 'push', 'api1', '--force'], { cwd, out, env })).toBe(0);
+    expect(requests.at(-1).body).toMatchObject({ action: 'push', resolution: 'orkestrai', from: 'n1' });
     expect(await run(['api', 'export', 'api1', 'postman', '--path', 'exports'], { cwd, out, env })).toBe(0);
     expect(requests.at(-1)).toMatchObject({ method: 'POST', url: '/api/agent-room/bridge/api-clients/api1/export', body: { kind: 'postman', path: 'exports', from: 'n1' } });
     expect(await run(['api', 'run-runner', 'api1', 'smoke', '--max-executions', '20'], { cwd, out, env })).toBe(0);

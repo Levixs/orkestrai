@@ -8,6 +8,8 @@ import {
   importApiClientCollectionSchema,
   createAgentApiClientSchema,
   replaceAgentApiClientSchema,
+  importAgentApiClientSchema,
+  syncAgentApiClientSchema,
   exportAgentApiClientSchema,
   executeAgentApiClientRunnerSchema,
   type ExecuteApiClientRequestInput,
@@ -18,6 +20,8 @@ import {
   type ImportApiClientCollectionInput,
   type CreateAgentApiClientInput,
   type ReplaceAgentApiClientInput,
+  type ImportAgentApiClientInput,
+  type SyncAgentApiClientInput,
   type ExportAgentApiClientInput,
   type ExecuteAgentApiClientRunnerInput,
 } from '../../../contracts/schemas/apiClient.schema.js';
@@ -68,6 +72,18 @@ export class ReplaceAgentApiClientRequest extends FormRequest {
   rules() { return replaceAgentApiClientSchema; }
   authorize() { return true; }
   passedValidation(data: unknown): ReplaceAgentApiClientInput { return replaceAgentApiClientSchema.parse(data); }
+}
+
+export class ImportAgentApiClientRequest extends FormRequest {
+  rules() { return importAgentApiClientSchema; }
+  authorize() { return true; }
+  passedValidation(data: unknown): ImportAgentApiClientInput { return importAgentApiClientSchema.parse(data); }
+}
+
+export class SyncAgentApiClientRequest extends FormRequest {
+  rules() { return syncAgentApiClientSchema; }
+  authorize() { return true; }
+  passedValidation(data: unknown): SyncAgentApiClientInput { return syncAgentApiClientSchema.parse(data); }
 }
 
 export class ExportAgentApiClientRequest extends FormRequest {

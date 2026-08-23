@@ -52,7 +52,7 @@ Uso:
   orkestrai note write <nodeId> <conteudo>
   orkestrai note edit <nodeId> <trecho-antigo> <trecho-novo>
   orkestrai note create <titulo> [--content <texto>] [--connect <agente|all>]
-  orkestrai api list [--json] | api reference | api read <nodeId> | api create <titulo> --file <json> | api replace <nodeId> --file <json> --fingerprint <sha256> | api export <nodeId> <bruno|postman> [--path <relativo>] | api run <nodeId> <requestId> | api run-runner <nodeId> <runnerId> [--variables <json>] [--max-executions <n>] [--json]
+  orkestrai api list [--json] | api reference | api read <nodeId> | api import <path> [--kind auto|bruno|postman|openCollection] [--node <nodeId>] [--title <titulo>] [--manual] | api create <titulo> --file <json> | api replace <nodeId> --file <json> --fingerprint <sha256> [--no-sync] | api sync-status <nodeId> | api pull <nodeId> [--force] | api push <nodeId> [--force] | api export <nodeId> <bruno|postman> [--path <relativo>] | api run <nodeId> <requestId> | api run-runner <nodeId> <runnerId> [--variables <json>] [--max-executions <n>] [--json]
   orkestrai design list | design read <nodeId> | design reference [${DESIGN_REFERENCE_TOPICS.join('|')}] | design audit <nodeId> | design template <nodeId> <product|marketing|mobile|design-system> --revision <n>
   orkestrai design apply <nodeId> <operations-json> --revision <n> [--summary <texto>] [--task <taskId>]
   orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
@@ -473,6 +473,19 @@ export async function run(argv, options = {}) {
         out(JSON.stringify(data, null, 2));
         return 0;
       }
+      if (action === 'import' && nodeId) {
+        const data = await bridge(config, 'POST', '/api/agent-room/bridge/api-clients/import', {
+          path: nodeId,
+          kind: flags.kind ?? 'auto',
+          nodeId: flags.node,
+          title: flags.title,
+          syncMode: flags.manual ? 'manual' : 'watch',
+          from: selfAgent,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`Colecao vinculada: ${data.title} (${data.nodeId}) · ${data.repository?.path ?? nodeId}`);
+        return 0;
+      }
       if (action === 'create') {
         if (!nodeId || !flags.file) throw new Error('Uso: orkestrai api create <titulo> --file <collection.json>');
         const document = JSON.parse(readFileSync(resolve(cwd, String(flags.file)), 'utf8'));
@@ -488,11 +501,28 @@ export async function run(argv, options = {}) {
           title: flags.title,
           baseFingerprint: flags.fingerprint,
           collection: apiCollectionFromDocument(document),
+          syncToSource: !flags['no-sync'],
           from: selfAgent,
         });
         if (flags.json) out(JSON.stringify(data, null, 2));
         else out(`Cliente de API atualizado: ${data.title} (${data.fingerprint})`);
         return 0;
+      }
+      if (action === 'sync-status' && nodeId) {
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}/sync`, { action: 'status', from: selfAgent });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(`${data.sourceKind ?? 'colecao'} · origem ${data.sourceChanged ? 'alterada' : 'atual'} · Orkestrai ${data.localChanged ? 'alterado' : 'atual'}${data.conflict ? ' · CONFLITO' : ''}`);
+        return 0;
+      }
+      if ((action === 'pull' || action === 'push') && nodeId) {
+        const data = await bridge(config, 'POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}/sync`, {
+          action,
+          ...(flags.force ? { resolution: action === 'pull' ? 'filesystem' : 'orkestrai' } : {}),
+          from: selfAgent,
+        });
+        if (flags.json) out(JSON.stringify(data, null, 2));
+        else out(data.status === 'conflict' ? 'Conflito de sincronizacao: revise o status antes de forcar.' : `Colecao sincronizada (${action}).`);
+        return data.status === 'conflict' ? 2 : 0;
       }
       if (action === 'export' && nodeId && ['bruno', 'postman'].includes(requestId)) {
         const data = await bridge(config, 'POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(nodeId)}/export`, {
@@ -529,7 +559,7 @@ export async function run(argv, options = {}) {
         }
         return data.ok ? 0 : 2;
       }
-      throw new Error('Uso: orkestrai api <list|reference|read|create|replace|export|run|run-runner> ...');
+      throw new Error('Uso: orkestrai api <list|reference|read|import|create|replace|sync-status|pull|push|export|run|run-runner> ...');
     }
     case 'design': {
       const [action, nodeId, ...values] = rest;

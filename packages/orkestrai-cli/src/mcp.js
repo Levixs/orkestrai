@@ -59,8 +59,12 @@ const TOOLS = [
   { name: 'api_client_list', description: 'Lista os requests salvos em nodes Cliente de API conectados a este agente, sem expor tokens ou senhas.', inputSchema: { type: 'object', properties: {} } },
   { name: 'api_client_reference', description: 'Retorna o contrato, fluxo seguro e exemplos oficiais de scripts Bruno, Postman e Orkestrai para criar colecoes completas sem tentativa e erro.', inputSchema: { type: 'object', properties: {} } },
   { name: 'api_client_read', description: 'Le uma colecao completa conectada, incluindo requests, pastas, runners e scripts. Segredos vem marcados; use o fingerprint ao substituir.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'api_client_import', description: 'Importa e vincula uma colecao Bruno, OpenCollection ou Postman existente dentro do repositorio. Cria um node conectado ou atualiza nodeId, preserva scripts/testes e habilita acompanhamento por padrao.', inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'Caminho relativo ao workspace.' }, kind: { type: 'string', enum: ['auto', 'bruno', 'postman', 'openCollection'], default: 'auto' }, nodeId: { type: 'string' }, title: { type: 'string' }, syncMode: { type: 'string', enum: ['manual', 'watch'], default: 'watch' } }, required: ['path'] } },
   { name: 'api_client_create', description: 'Cria no canvas uma colecao completa conectada ao agente. Consulte api_client_reference para o contrato.', inputSchema: { type: 'object', properties: { title: { type: 'string' }, collection: { type: 'object', description: 'Colecao nativa completa conforme api_client_reference.' } }, required: ['title', 'collection'] } },
-  { name: 'api_client_replace', description: 'Substitui atomicamente uma colecao completa. Requer o fingerprint retornado por api_client_read e preserva segredos marcados e metadados de importacao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseFingerprint: { type: 'string' }, title: { type: 'string' }, collection: { type: 'object', description: 'Colecao nativa completa conforme api_client_reference.' } }, required: ['nodeId', 'baseFingerprint', 'collection'] } },
+  { name: 'api_client_replace', description: 'Substitui atomicamente uma colecao completa e sincroniza a origem vinculada por padrao. Requer o fingerprint retornado por api_client_read e preserva segredos marcados.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, baseFingerprint: { type: 'string' }, title: { type: 'string' }, collection: { type: 'object', description: 'Colecao nativa completa conforme api_client_reference.' }, syncToSource: { type: 'boolean', default: true } }, required: ['nodeId', 'baseFingerprint', 'collection'] } },
+  { name: 'api_client_sync_status', description: 'Compara a colecao do node com sua origem no repositorio sem alterar nada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'api_client_pull', description: 'Importa mudancas da origem vinculada. Recusa descartar edicoes locais; resolution=filesystem confirma explicitamente essa substituicao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, resolution: { type: 'string', enum: ['filesystem'] } }, required: ['nodeId'] } },
+  { name: 'api_client_push', description: 'Persiste requests, scripts, testes, ambientes e runners na origem Bruno/Postman vinculada. Recusa mudancas externas; resolution=orkestrai confirma explicitamente a substituicao.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, resolution: { type: 'string', enum: ['orkestrai'] } }, required: ['nodeId'] } },
   { name: 'api_client_export', description: 'Exporta a colecao conectada para Bruno ou Postman dentro do workspace, preservando estrutura, scripts e testes do runtime escolhido.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, kind: { type: 'string', enum: ['bruno', 'postman'] }, path: { type: 'string', default: '.orkestrai/exports' } }, required: ['nodeId', 'kind'] } },
   { name: 'api_client_run_runner', description: 'Executa um runner salvo com ordem, ambiente, iteracoes, dados por linha, variaveis encadeadas, testes e politica de parada.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, runnerId: { type: 'string' }, variables: { type: 'object', additionalProperties: { type: 'string' } }, maxExecutions: { type: 'integer', minimum: 1, maximum: 500, default: 100 } }, required: ['nodeId', 'runnerId'] } },
   { name: 'api_client_execute', description: 'Executa um request salvo em um Cliente de API conectado, aplicando variaveis e autenticacao localmente.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, requestId: { type: 'string' }, variables: { type: 'object', additionalProperties: { type: 'string' } } }, required: ['nodeId', 'requestId'] } },
@@ -196,12 +200,24 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
     case 'api_client_read':
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
       return bridge('GET', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}?agentNodeId=${encodeURIComponent(selfAgent ?? '')}`);
+    case 'api_client_import':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('POST', '/api/agent-room/bridge/api-clients/import', { path: args.path, kind: args.kind ?? 'auto', nodeId: args.nodeId, title: args.title, syncMode: args.syncMode ?? 'watch', from: selfAgent });
     case 'api_client_create':
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
       return bridge('POST', '/api/agent-room/bridge/api-clients', { title: args.title, collection: args.collection, from: selfAgent });
     case 'api_client_replace':
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
-      return bridge('PUT', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}`, { title: args.title, baseFingerprint: args.baseFingerprint, collection: args.collection, from: selfAgent });
+      return bridge('PUT', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}`, { title: args.title, baseFingerprint: args.baseFingerprint, collection: args.collection, syncToSource: args.syncToSource ?? true, from: selfAgent });
+    case 'api_client_sync_status':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/sync`, { action: 'status', from: selfAgent });
+    case 'api_client_pull':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/sync`, { action: 'pull', resolution: args.resolution, from: selfAgent });
+    case 'api_client_push':
+      if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
+      return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/sync`, { action: 'push', resolution: args.resolution, from: selfAgent });
     case 'api_client_export':
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente).');
       return bridge('POST', `/api/agent-room/bridge/api-clients/${encodeURIComponent(args.nodeId)}/export`, { kind: args.kind, path: args.path ?? '.orkestrai/exports', from: selfAgent });

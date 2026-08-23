@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, readFile, readdir, rm, stat, unlink } from 'node:fs/promises';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { copyFile, mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import type { ApiClientNodePayload } from '../../domain/types.js';
 
 const MAX_FILES = 2_000;
@@ -76,6 +76,18 @@ export function apiClientPayloadFingerprint(payload: ApiClientNodePayload): stri
     collectionPostResponseScript: payload.collectionPostResponseScript ?? '',
   };
   return createHash('sha256').update(JSON.stringify(canonical(editable))).digest('hex');
+}
+
+export async function writeApiClientFileAtomic(path: string, content: string): Promise<void> {
+  const target = resolve(path);
+  const temporary = join(dirname(target), `.${basename(target)}.orkestrai-${process.pid}-${Date.now()}.tmp`);
+  try {
+    await writeFile(temporary, content, { encoding: 'utf8', flag: 'wx' });
+    await rename(temporary, target);
+  } catch (error) {
+    await unlink(temporary).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function mirrorGeneratedCollection(input: { generatedRoot: string; sourceRoot: string; previousManagedFiles: string[] }): Promise<string[]> {
