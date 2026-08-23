@@ -8,9 +8,10 @@
     Bell,
     BellRing,
     Check,
-    ChevronRight,
+    ChevronDown,
     CircleDot,
     Clock3,
+    ExternalLink,
     MessageSquareMore,
     RefreshCw,
     ShieldAlert,
@@ -31,6 +32,7 @@
   let loading = $state(false);
   let items = $state<AgentAttentionItem[]>([]);
   let filter = $state<'action' | 'all' | 'snoozed'>('action');
+  let expandedIds = $state<Set<string>>(new Set());
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
   let clock = $state(Date.now());
 
@@ -93,7 +95,14 @@
     const updated = payload.data as AgentAttentionItem;
     items = status === 'resolved'
       ? items.filter((candidate) => candidate.id !== item.id)
-      : items.map((candidate) => candidate.id === item.id ? updated : candidate);
+      : items.map((candidate) => candidate.id === item.id ? {
+          ...candidate,
+          ...updated,
+          workspaceName: candidate.workspaceName,
+          nodeTitle: candidate.nodeTitle,
+          sourceContent: candidate.sourceContent,
+          actionAvailable: candidate.actionAvailable,
+        } : candidate);
   }
 
   async function act(item: AgentAttentionItem, status: AgentAttentionStatus, snoozedUntil?: string): Promise<void> {
@@ -105,12 +114,21 @@
   }
 
   async function openItem(item: AgentAttentionItem): Promise<void> {
+    if (!item.actionAvailable) return;
     if (item.status === 'open') await act(item, 'read');
     open = false;
     const params = new URLSearchParams({ workspace: item.workspaceId });
     if (item.nodeId) params.set('node', item.nodeId);
     if (item.taskId) params.set('task', item.taskId);
     await goto(`/canvas?${params.toString()}`);
+  }
+
+  async function toggleItem(item: AgentAttentionItem): Promise<void> {
+    if (item.status === 'open') await act(item, 'read');
+    const next = new Set(expandedIds);
+    if (next.has(item.id)) next.delete(item.id);
+    else next.add(item.id);
+    expandedIds = next;
   }
 
   function scheduleRefresh(): void {
@@ -216,8 +234,15 @@
         <div class="space-y-2">
           {#each visibleItems as item (item.id)}
             {@const Icon = iconFor(item.category)}
+            {@const expanded = expandedIds.has(item.id)}
             <article class="group rounded-md border border-[var(--app-border)] bg-[var(--app-surface-subtle)] transition-colors hover:border-[var(--app-border-strong)] hover:bg-[var(--app-surface-raised)]">
-              <button type="button" class="flex w-full items-start gap-3 p-3 text-left" onclick={() => void openItem(item)}>
+              <button
+                type="button"
+                class="flex w-full items-start gap-3 p-3 text-left"
+                aria-expanded={expanded}
+                aria-label={expanded ? m['attention.hide_details']() : m['attention.show_details']()}
+                onclick={() => void toggleItem(item)}
+              >
                 <span
                   class="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md"
                   class:bg-[color-mix(in_srgb,var(--app-danger)_14%,transparent)]={item.severity === 'error'}
@@ -228,19 +253,35 @@
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="flex items-center gap-2">
-                    <strong class="truncate text-[11px] font-semibold text-[var(--app-text)]">{item.title}</strong>
+                    <strong class:text-clip={expanded} class:line-clamp-2={!expanded} class="min-w-0 whitespace-pre-wrap break-words text-[11px] font-semibold leading-4 text-[var(--app-text)]">{item.title}</strong>
                     {#if item.status === 'open'}<span class="size-1.5 shrink-0 rounded-full bg-[var(--app-accent)]"></span>{/if}
                   </span>
-                  {#if item.body}<span class="mt-1 line-clamp-2 text-[10px] leading-4 text-[var(--app-text-soft)]">{item.body}</span>{/if}
+                  {#if item.body}
+                    <span class:line-clamp-2={!expanded} class="mt-1 block whitespace-pre-wrap break-words text-[10px] leading-4 text-[var(--app-text-soft)]">{item.body}</span>
+                  {/if}
                   <span class="mt-2 flex min-w-0 items-center gap-1.5 text-[9px] text-[var(--app-text-muted)]">
                     <span class="truncate">{item.workspaceName ?? item.workspaceId}</span>
                     {#if item.nodeTitle}<span>·</span><span class="truncate">{item.nodeTitle}</span>{/if}
                     <span>·</span><time title={dateLabel(item.updatedAt)}>{dateLabel(item.updatedAt)}</time>
                   </span>
                 </span>
-                <ChevronRight size={14} class="mt-1 shrink-0 text-[var(--app-text-muted)]" />
+                <ChevronDown size={14} class={`mt-1 shrink-0 text-[var(--app-text-muted)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
               </button>
+              {#if expanded && item.sourceContent && item.sourceContent.trim() !== item.title.trim()}
+                <div class="mx-3 mb-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2.5">
+                  <span class="text-[9px] font-semibold uppercase text-[var(--app-text-muted)]">{m['attention.original_message']()}</span>
+                  <p class="mt-1 whitespace-pre-wrap break-words text-[10px] leading-4 text-[var(--app-text-soft)]">{item.sourceContent}</p>
+                </div>
+              {/if}
               <div class="flex items-center justify-end gap-1 border-t border-[var(--app-border)] px-2 py-1.5">
+                {#if item.actionAvailable}
+                  <Button variant="ghost" size="sm" class="mr-auto h-7 gap-1.5 px-2 text-[10px]" onclick={() => void openItem(item)}>
+                    <ExternalLink size={12} />
+                    {m['attention.open_source']()}
+                  </Button>
+                {:else}
+                  <span class="mr-auto px-1 text-[9px] text-[var(--app-text-muted)]">{m['attention.source_unavailable']()}</span>
+                {/if}
                 {#if item.status === 'open'}
                   <Button variant="ghost" size="sm" class="h-7 px-2 text-[10px]" onclick={() => void act(item, 'read')}>{m['attention.mark_read']()}</Button>
                 {/if}

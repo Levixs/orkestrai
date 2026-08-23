@@ -44,7 +44,7 @@ describe('PresetService', () => {
     writeFileSync(join(sourceDir, '.agents', 'skills', 'svelar', 'SKILL.md'), '# Svelar\n\nSiga as convencoes do framework.\n');
     await routineService.create({ workspaceId: source.id, targetNodeId: leader.id, prompt: 'verifique o quadro', intervalMinutes: 5 });
     // Tarefa-template vinculada ao lider + nota, e MCP extra no projeto.
-    await taskBoardService.create(source.id, { title: 'Montar a base', description: 'Leia a spec completa antes de implementar.', assigneeNodeId: leader.id, noteId: note.id, createdBy: 'user' });
+    await taskBoardService.create(source.id, { title: 'Montar a base', description: 'Leia a spec completa antes de implementar.', assigneeNodeId: leader.id, noteId: note.id, createdBy: 'user', dispatch: false });
     await mcpService.add(source.id, { name: 'web', command: 'uvx', args: ['mcp-web'] });
 
     const preset = await presetService.createFromWorkspace(source.id, { name: 'Time Svelar', description: 'framework proprio' });

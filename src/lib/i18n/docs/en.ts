@@ -18,7 +18,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'wsl-runtime',
       title: 'Windows workspaces with WSL',
-      body: `On Windows, the environment selected when creating or editing a workspace is the team default. Each terminal can inherit it or use Execution environment in the creation dialog and compact terminal menu to force native Windows or one specific WSL distribution. Select the exact Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian, or other installation and provide the Linux path for the same project folder. A single workspace can therefore combine Windows and WSL agents, including different distributions. A WIN or WSL badge identifies an override. Provider detection and models, PTY, exact conversation resume, Council, recruited agents, and the orkestrai bridge follow each terminal's effective runtime. Orkestrai validates the CLI in that distribution and confirms the provider transcript inside its own Linux home before persisting or restoring an id; an empty agent starts clean instead of guessing the latest conversation. Changing runtime restarts only that terminal. Missing distributions, directories, or commands produce distinct actionable errors without a silent native-Windows fallback.`,
+      body: `On Windows, the environment selected when creating or editing a workspace is the team default. Each terminal can inherit it or use Execution environment in the creation dialog and compact terminal menu to force native Windows or one specific WSL distribution. Select the exact Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian, or other installation and provide the Linux path for the same project folder. A single workspace can therefore combine Windows and WSL agents, including different distributions. A WIN or WSL badge identifies an override. Provider detection and models, PTY, exact conversation resume, Council, recruited agents, and the orkestrai bridge follow each terminal's effective runtime. Maestro recruits inherit the leader's active Floor and are confirmed only after the PTY starts in the correct environment; a failed launch removes the incomplete node. When a task is assigned, Orkestrai starts or resumes an offline agent and moves the card to In progress only after the complete briefing is delivered. Orkestrai validates the CLI in that distribution and confirms the provider transcript inside its own Linux home before persisting or restoring an id; an empty agent starts clean instead of guessing the latest conversation. Changing runtime restarts only that terminal. Missing distributions, directories, or commands produce distinct actionable errors without a silent native-Windows fallback.`,
     },
     {
       id: 'agentes',
@@ -603,7 +603,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'triage-attention-across-workspaces',
       title: 'Triage every workspace from one attention inbox',
-      body: 'Open the bell beside Canvas/Workbench to see questions, permission requests, blockers, and failures from every workspace, with the current workspace first. Open the exact agent, task, review, or message that raised the signal; mark it read, snooze it for later, or resolve it without losing the audit trail. Use Command/Ctrl+K with type:attention, workspace:"Name", agent:"Name", status:open, has:error, before:, or after: to recover the same event later.',
+      body: 'Open the bell beside Canvas/Workbench to see questions, permission requests, blockers, and failures from every workspace, with the current workspace first. Expand any item to read the complete failure and original request without leaving the inbox. Open source is a separate action and becomes unavailable when its agent or task has been removed; the persisted content remains readable. Mark it read, snooze it, or resolve it without losing the audit trail. Use Command/Ctrl+K with type:attention, workspace:"Name", agent:"Name", status:open, has:error, before:, or after: to recover the same event later.',
       tags: ['Attention Center', 'cross-workspace triage', 'search operators'],
     },
     {
@@ -693,8 +693,8 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Unreleased',
-      title: 'Durable coordination, sourced knowledge, and reusable teams',
+      date: 'Aug 23, 2026 · 0.18.0',
+      title: 'Orkestrai 0.18.0: durable coordination, sourced knowledge, and reusable teams',
       summary: 'Messages, activity, attention, delivery, memory, annotations, Team Packs, and Huddles now preserve their operational context.',
       items: [
         'Every agent message now has a canonical envelope with verified recipient and content, durable delivery receipts, correlations, deduplication, and idempotent replay protection.',
@@ -711,6 +711,10 @@ Header: Authorization = Bearer {{accessToken}}`,
         'The Command/Ctrl+P palette now uses the shared modal stack and closes reliably with Escape or an outside click, including after opening Huddles.',
         'Agents can link existing Bruno, OpenCollection, and Postman project collections by repository-relative path. Canvas and Workbench show the same requests while guarded, atomic synchronization persists scripts and tests in the original files and exposes conflicts before either side is replaced.',
         'On Windows, Ctrl+C and right-click copy selected terminal text through the native desktop clipboard; Ctrl+C still interrupts the running process when no text is selected.',
+        'Attention Center items now expand in place to show the complete failure and original request, keep source navigation separate, and identify removed agents or tasks.',
+        'Agent replies are now correlated to the provider\'s exact turn even after later messages or delayed session discovery; concurrent deliveries to one terminal are serialized and no longer raise false structured-transcript failures.',
+        'Maestro recruitment now inherits the active Floor, starts and validates the PTY in the correct runtime including WSL, and rolls back incomplete nodes. Assigned tasks enter In progress only after the agent starts or resumes and the briefing reaches its terminal.',
+        'Long briefings sent to Codex on Windows and WSL now wait for the composer to process the text, confirm activity after submission, and retry only the Enter key when the TUI does not acknowledge it.',
       ],
     },
     {

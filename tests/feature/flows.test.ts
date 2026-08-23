@@ -11,7 +11,7 @@ async function createWorkspaceWithAgent() {
     workspaceId: workspace.id,
     type: 'terminal',
     title: 'Gato',
-    payload: { command: '/bin/cat', provider: 'claude', sessionId: session.id },
+    payload: { command: '/bin/cat', provider: null, sessionId: session.id },
   });
   return { workspace, agent, session };
 }

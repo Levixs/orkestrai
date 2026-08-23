@@ -284,6 +284,12 @@ export class ControlCenterRepository {
     return rows.map(mapEnvelope);
   }
 
+  async findEnvelopes(messageIds: string[]): Promise<AgentMessageEnvelopeData[]> {
+    if (!messageIds.length) return [];
+    const models = await AgentMessageEnvelope.query().whereIn('id', messageIds).get();
+    return models.map(mapEnvelope);
+  }
+
   async listDeliveries(workspaceId: string, limit = 1_200): Promise<AgentMessageDeliveryEvent[]> {
     const rows = await AgentMessageDelivery.query()
       .where('workspace_id', workspaceId)

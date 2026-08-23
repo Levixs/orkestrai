@@ -12,6 +12,7 @@ import {
   workspaceAttachmentSchema,
 } from '../../contracts/schemas/workspaceAttachmentSchemas.js';
 import { AutomationTriggerReceived } from '../../domain/events/AutomationTriggerReceived.js';
+import { agentSessionService } from './AgentSessionService.js';
 
 export type BoardTask = {
   id: string;
@@ -264,6 +265,8 @@ export class TaskBoardService {
       createdBy?: string;
       noteId?: string | null;
       status?: string;
+      /** Persiste autoria/template sem acordar o agente; interações normais despacham por padrão. */
+      dispatch?: boolean;
     }
   ): Promise<BoardTask> {
     const title = input.title.trim();
@@ -297,8 +300,18 @@ export class TaskBoardService {
       updated_at: now,
     });
     const task = await this.requireTask(workspaceId, id);
-    if (input.assigneeNodeId) {
-      await this.dispatch(workspaceId, id).catch(() => {});
+    if (input.assigneeNodeId && input.dispatch !== false) {
+      try {
+        await this.dispatch(workspaceId, id);
+      } catch (error) {
+        await AgentBoardTask.query().where('id', id).update({
+          status: 'todo',
+          assignee_node_id: null,
+          updated_at: new Date().toISOString(),
+        });
+        notifyWorkspaceChanged(workspaceId);
+        throw error;
+      }
     }
     // Task criada por humano (UI): avisa o líder — ele decide a coordenacao.
     // (Tasks da propria ponte/agentes não ecoam de volta.)
@@ -350,7 +363,17 @@ export class TaskBoardService {
     }
     await AgentBoardTask.query().where('id', taskId).update(patch);
     if (assignedNow) {
-      await this.dispatch(workspaceId, taskId).catch(() => {});
+      try {
+        await this.dispatch(workspaceId, taskId);
+      } catch (error) {
+        await AgentBoardTask.query().where('id', taskId).update({
+          status: task.getAttribute('status'),
+          assignee_node_id: task.getAttribute('assignee_node_id'),
+          updated_at: task.getAttribute('updated_at'),
+        });
+        notifyWorkspaceChanged(workspaceId);
+        throw error;
+      }
     }
     notifyWorkspaceChanged(workspaceId);
     const updated = await this.mapWithTitles(await this.requireTask(workspaceId, taskId));
@@ -685,9 +708,16 @@ export class TaskBoardService {
     if (!assigneeNodeId) return;
     const node = await workspaceRepository.getNode(assigneeNodeId);
     if (!node || node.workspaceId !== workspaceId || node.type !== 'terminal') return;
-    const sessionId = (node.payload as { sessionId?: string }).sessionId;
-    const session = sessionId ? ptySessionManager.get(sessionId) : null;
-    if (!session || session.exited) return;
+    let sessionId = (node.payload as { sessionId?: string }).sessionId;
+    let session = sessionId ? ptySessionManager.get(sessionId) : null;
+    if (!session || session.exited) {
+      const ensured = await agentSessionService.ensure(workspaceId, node.id);
+      sessionId = ensured.sessionId;
+      session = ptySessionManager.get(sessionId);
+      if (!session || session.exited) throw new Error(`O agente "${node.title ?? node.id}" não iniciou uma sessão PTY funcional.`);
+      const ready = await ptySessionManager.waitUntilIdle(sessionId, 30_000);
+      if (!ready) throw new Error(`O agente "${node.title ?? node.id}" não ficou pronto para receber a tarefa.`);
+    }
     const designNodeId = designNodeIdFromTask(task);
     if (designNodeId) {
       const designNode = await workspaceRepository.getNode(designNodeId);
@@ -713,7 +743,9 @@ export class TaskBoardService {
     }
     // Texto e Enter separados — ver writeWithSubmit (composer do Codex).
     const prompt = `[nova tarefa do quadro #${taskId.slice(0, 8)}]\n${await taskBrief(task)}\nQuando terminar, marque com: orkestrai task done ${taskId}`;
-    await ptySessionManager.writeWithSubmit(session.id, prompt);
+    const activeSessionId = sessionId;
+    if (!activeSessionId) throw new Error(`O agente "${node.title ?? node.id}" não possui uma sessão PTY para receber a tarefa.`);
+    await ptySessionManager.writeWithConfirmedSubmit(activeSessionId, prompt);
     await controlCenterService.recordActivity({
       workspaceId,
       nodeId: node.id,

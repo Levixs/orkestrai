@@ -93,7 +93,9 @@ Download the latest installers from
   semantic activity timeline explains messages, tasks, reviews, decisions, Git,
   and system events without waking idle terminals after restart. The global
   Attention Center gathers questions, permission requests, blockers, and failures
-  from every workspace, while Command/Ctrl+K recovers them with structured filters.
+  from every workspace, expands the full original message in place, and keeps
+  source navigation separate when its agent or task still exists. Command/Ctrl+K
+  recovers the same history with structured filters.
   Counts include only the Ground floor and currently active Floors; historical
   floor nodes stay archived for task attribution instead of appearing as agents.
 - **Traceable Workstreams:** every active Kanban task becomes a live delivery
@@ -243,7 +245,9 @@ Download the latest installers from
   receive the complete relative path or URL.
 - **Maestro mode:** assign a leader that can propose a team, recruit agents,
   delegate complete task briefings, coordinate work, and dismiss agents when the
-  work is done.
+  work is done. Recruitment inherits the leader's active Floor and is confirmed
+  only after the provider terminal starts; task assignment restores an offline
+  agent and moves to progress only after the briefing is delivered.
 - **Ready-made teams:** start or expand a workspace with complete Product,
   Campaign and launch, Brand and design, Content and SEO, React, Next.js,
   SvelteKit, Svelar, Laravel, and Orkestrai Contributing presets. Their agents
@@ -266,7 +270,9 @@ Download the latest installers from
   Council, recruited agents, and the bridge follow each terminal, so one team
   can combine tools installed across Windows, Ubuntu, Debian, or other distros.
   Orkestrai validates the selected Linux environment before spawn and restores
-  only a conversation confirmed inside that distribution's own home.
+  only a conversation confirmed inside that distribution's own home. Maestro
+  recruitment validates and starts the PTY in that same environment instead of
+  leaving a hidden or non-running agent record behind.
 - **Git floors:** isolate work in Git worktrees, inspect conflicts, and land
   completed changes from the canvas.
 - **Local voice:** dictate into any text field or use the no-focus workspace

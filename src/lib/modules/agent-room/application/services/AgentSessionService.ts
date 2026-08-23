@@ -15,6 +15,7 @@ type AgentNodePayload = {
   provider?: string;
   command?: string;
   args?: string[];
+  initialRoleArgs?: string[];
   env?: Record<string, string>;
   executionRuntime?: WorkspaceExecutionRuntime | null;
 };
@@ -87,7 +88,7 @@ export class AgentSessionService {
 
     const session = ptySessionManager.create({
       command: payload.command,
-      args: [...(payload.args ?? []), ...conversationArgs],
+      args: [...(payload.args ?? []), ...(!resumableAgentSessionId ? (payload.initialRoleArgs ?? []) : []), ...conversationArgs],
       cwd,
       label: title,
       workspace: workspace?.name ?? null,
@@ -107,9 +108,14 @@ export class AgentSessionService {
     };
     if (activeAgentSessionId) nextPayload.agentSessionId = activeAgentSessionId;
     else delete nextPayload.agentSessionId;
-    await workspaceRepository.updateNode(target.id, {
-      payload: nextPayload as never,
-    });
+    try {
+      await workspaceRepository.updateNode(target.id, {
+        payload: nextPayload as never,
+      });
+    } catch (error) {
+      ptySessionManager.kill(session.id);
+      throw error;
+    }
 
     if (payload.provider && adapter && !activeAgentSessionId) {
       const reportAgentSession = (agentSessionId: string) => {

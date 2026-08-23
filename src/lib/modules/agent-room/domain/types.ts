@@ -306,8 +306,10 @@ export type AgentAttentionItem = {
   body: string | null;
   sourceType: string | null;
   sourceId: string | null;
+  sourceContent?: string | null;
   correlationId: string | null;
   action: Record<string, unknown>;
+  actionAvailable?: boolean;
   readAt: string | null;
   snoozedUntil: string | null;
   resolvedAt: string | null;

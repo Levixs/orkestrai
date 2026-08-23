@@ -34,6 +34,7 @@ describe('WorkstreamService', () => {
       description: 'Add regression coverage and review the delivery.',
       assigneeNodeId: agent.id,
       createdBy: 'automation',
+      dispatch: false,
     });
     const now = new Date().toISOString();
     await AgentReview.create({

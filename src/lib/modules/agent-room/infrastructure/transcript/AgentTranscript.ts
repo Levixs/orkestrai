@@ -24,6 +24,7 @@ import { agentSessionTracker } from '../pty/AgentSessionTracker.js';
 
 /** Lida a cauda do arquivo (transcritos longos nao cabem inteiros na memoria). */
 const TAIL_BYTES = 512 * 1024;
+const MATCH_TAIL_BYTES = 4 * 1024 * 1024;
 
 export type MatchedTranscriptReply = {
   sessionId: string;
@@ -59,16 +60,21 @@ function openReadonlySqlite(path: string): ReadonlySqliteDatabase {
   }
 }
 
-function readTail(path: string): string | null {
+function readTail(path: string, maxBytes = TAIL_BYTES): string | null {
+  let fd: number | null = null;
   try {
     const size = statSync(path).size;
-    const start = Math.max(0, size - TAIL_BYTES);
-    const buffer = readFileSync(path);
-    const tail = buffer.subarray(start).toString('utf8');
+    const start = Math.max(0, size - maxBytes);
+    const buffer = Buffer.allocUnsafe(size - start);
+    fd = openSync(path, 'r');
+    const bytesRead = readSync(fd, buffer, 0, buffer.length, start);
+    const tail = buffer.toString('utf8', 0, bytesRead);
     // Se cortou no meio, joga fora a primeira linha parcial.
     return start > 0 ? tail.slice(tail.indexOf('\n') + 1) : tail;
   } catch {
     return null;
+  } finally {
+    if (fd !== null) closeSync(fd);
   }
 }
 
@@ -348,10 +354,164 @@ function devinTurn(json: string): { prompt: string | null; reply: string | null 
   }
 }
 
+function codexCompletion(jsonl: string): { reply: string | null; complete: boolean } {
+  let turnId: string | null = null;
+  let finalReply: string | null = null;
+  for (const line of jsonl.trim().split('\n')) {
+    let event: any;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const payload = event.payload ?? event;
+    if (payload?.type === 'message' && payload.role === 'user') {
+      const candidate = payload.internal_chat_message_metadata_passthrough?.turn_id;
+      if (typeof candidate === 'string') turnId = candidate;
+      continue;
+    }
+    if (
+      payload?.type === 'task_complete'
+      && (!turnId || payload.turn_id === turnId)
+      && typeof payload.last_agent_message === 'string'
+      && payload.last_agent_message.trim()
+    ) {
+      finalReply = payload.last_agent_message.trim();
+    }
+  }
+  return {
+    reply: finalReply ?? parseCodexTranscriptReply(jsonl),
+    complete: Boolean(finalReply),
+  };
+}
+
+function kimiTurnComplete(jsonl: string): boolean {
+  for (const line of jsonl.trim().split('\n').reverse()) {
+    try {
+      const event = JSON.parse(line) as { type?: unknown };
+      if (event.type === 'turn.prompt') return false;
+      if (event.type === 'turn.ended') return true;
+    } catch {
+      // Ignore a partially written line.
+    }
+  }
+  return false;
+}
+
+function promptFromJsonlEvent(storage: string, event: any): string | null {
+  if (storage === 'claude-project-jsonl') {
+    if (!isClaudeUserPrompt(event)) return null;
+    const content = event.message?.content;
+    if (typeof content === 'string') return content.trim() || null;
+    return Array.isArray(content)
+      ? content
+          .filter((block: any) => block?.type === 'text' && typeof block.text === 'string')
+          .map((block: any) => block.text.trim())
+          .filter(Boolean)
+          .join('\n') || null
+      : null;
+  }
+  if (storage === 'codex-rollout-jsonl') {
+    const payload = event?.payload ?? event;
+    if (payload?.type !== 'message' || payload.role !== 'user' || !Array.isArray(payload.content)) return null;
+    return payload.content
+      .filter((block: any) => ['input_text', 'text'].includes(block?.type) && typeof block.text === 'string')
+      .map((block: any) => block.text.trim())
+      .filter(Boolean)
+      .join('\n') || null;
+  }
+  if (storage === 'kimi-session-dir') {
+    if (event?.type !== 'turn.prompt' || !Array.isArray(event.input)) return null;
+    return event.input
+      .filter((part: any) => part?.type === 'text' && typeof part.text === 'string')
+      .map((part: any) => part.text.trim())
+      .filter(Boolean)
+      .join('\n') || null;
+  }
+  const message = event?.message && typeof event.message === 'object' ? event.message : event?.payload ?? event;
+  const role = String(message?.role ?? message?.author?.role ?? message?.speaker ?? event?.role ?? '').toLowerCase();
+  return ['user', 'human'].includes(role)
+    ? transcriptText(message.content ?? message.parts ?? message.text)
+    : null;
+}
+
+function jsonlTurnForPrompt(storage: string, transcript: string, expectedPrompt: string): string | null {
+  const lines = transcript.trim().split('\n');
+  const expected = normalizedPrompt(expectedPrompt);
+  let match = -1;
+  for (let index = 0; index < lines.length; index += 1) {
+    let event: any;
+    try {
+      event = JSON.parse(lines[index]);
+    } catch {
+      continue;
+    }
+    const prompt = promptFromJsonlEvent(storage, event);
+    if (!prompt) continue;
+    if (match >= 0) return lines.slice(match, index).join('\n');
+    if (normalizedPrompt(prompt) === expected) match = index;
+  }
+  return match >= 0 ? lines.slice(match).join('\n') : null;
+}
+
+function structuredTurnForPrompt(messages: unknown[], expectedPrompt: string): unknown[] | null {
+  const expected = normalizedPrompt(expectedPrompt);
+  let match = -1;
+  for (let index = 0; index < messages.length; index += 1) {
+    const prompt = structuredPrompt([messages[index]]);
+    if (!prompt) continue;
+    if (match >= 0) return messages.slice(match, index);
+    if (normalizedPrompt(prompt) === expected) match = index;
+  }
+  return match >= 0 ? messages.slice(match) : null;
+}
+
+function structuredReplyForPrompt(messages: unknown[], expectedPrompt: string): string | null {
+  const turn = structuredTurnForPrompt(messages, expectedPrompt);
+  return turn ? parseStructuredMessagesReply(turn) : null;
+}
+
+function transcriptTurnForPrompt(storage: string, transcript: string, expectedPrompt: string): string | null {
+  if (storage === 'cline-session-manifest') {
+    try {
+      const payload = JSON.parse(transcript) as unknown;
+      const messages = Array.isArray(payload)
+        ? payload
+        : payload && typeof payload === 'object' && Array.isArray((payload as { messages?: unknown }).messages)
+          ? (payload as { messages: unknown[] }).messages
+          : [];
+      const turn = structuredTurnForPrompt(messages, expectedPrompt);
+      return turn ? JSON.stringify(turn) : null;
+    } catch {
+      return null;
+    }
+  }
+  if (storage === 'devin-session-db') {
+    try {
+      const payload = JSON.parse(transcript) as { steps?: unknown };
+      const steps = Array.isArray(payload.steps) ? payload.steps : [];
+      const expected = normalizedPrompt(expectedPrompt);
+      let match = -1;
+      for (let index = 0; index < steps.length; index += 1) {
+        const step = steps[index] as { source?: unknown; message?: unknown };
+        if (String(step?.source ?? '').toLowerCase() !== 'user') continue;
+        const prompt = transcriptText(step.message);
+        if (!prompt) continue;
+        if (match >= 0) return JSON.stringify({ steps: steps.slice(match, index) });
+        if (normalizedPrompt(prompt) === expected) match = index;
+      }
+      return match >= 0 ? JSON.stringify({ steps: steps.slice(match) }) : null;
+    } catch {
+      return null;
+    }
+  }
+  return jsonlTurnForPrompt(storage, transcript, expectedPrompt);
+}
+
 function parserForStorage(storage: string | undefined): ((jsonl: string) => ParsedTranscriptTurn) | null {
   if (storage === 'claude-project-jsonl') return (jsonl) => ({ prompt: claudePrompt(jsonl), reply: parseClaudeTranscriptReply(jsonl), complete: claudeTurnComplete(jsonl) });
-  if (storage === 'codex-rollout-jsonl') return (jsonl) => ({ prompt: codexPrompt(jsonl), reply: parseCodexTranscriptReply(jsonl), complete: true });
-  if (storage === 'kimi-session-dir') return (jsonl) => ({ prompt: kimiPrompt(jsonl), reply: parseKimiTranscriptReply(jsonl), complete: true });
+  if (storage === 'codex-rollout-jsonl') return (jsonl) => ({ prompt: codexPrompt(jsonl), ...codexCompletion(jsonl) });
+  if (storage === 'kimi-session-dir') return (jsonl) => ({ prompt: kimiPrompt(jsonl), reply: parseKimiTranscriptReply(jsonl), complete: kimiTurnComplete(jsonl) });
   if (['opencode-session-json', 'cursor-transcript-jsonl', 'antigravity-workspace-cache'].includes(storage ?? '')) {
     return (jsonl) => ({ prompt: genericPrompt(jsonl), reply: parseGenericTranscriptReply(jsonl), complete: true });
   }
@@ -375,7 +535,9 @@ export function parseTranscriptReplyStateForPrompt(
 ): { text: string; complete: boolean } | null {
   const parser = parserForStorage(storage);
   if (!parser) return null;
-  const turn = parser(transcript);
+  const scopedTranscript = transcriptTurnForPrompt(storage, transcript, expectedPrompt);
+  if (!scopedTranscript) return null;
+  const turn = parser(scopedTranscript);
   if (!turn.prompt || normalizedPrompt(turn.prompt) !== normalizedPrompt(expectedPrompt)) return null;
   const text = turn.reply?.trim();
   return text ? { text, complete: turn.complete } : null;
@@ -526,6 +688,7 @@ type StoredTranscriptTurn = {
   prompt: string | null;
   reply: string | null;
   activity: number;
+  messages: unknown[];
 };
 
 function openCodeDataRoots(): string[] {
@@ -607,6 +770,7 @@ function openCodeSqliteTurn(sessionId: string): StoredTranscriptTurn | null {
         prompt: structuredPrompt(structured),
         reply: parseStructuredMessagesReply(structured),
         activity,
+        messages: structured,
       };
     } catch {
       // Banco em migracao, ocupado ou de uma versao com outro schema.
@@ -663,6 +827,7 @@ function openCodeLegacyTurn(sessionId: string): StoredTranscriptTurn | null {
       prompt: structuredPrompt(structured),
       reply: parseStructuredMessagesReply(structured),
       activity,
+      messages: structured,
     };
   }
   return null;
@@ -741,9 +906,9 @@ function candidateTranscriptPaths(storage: string | undefined, cwd: string, sinc
   return [];
 }
 
-function candidateSessionIds(storage: string | undefined, cwd: string, preferredSessionId: string): string[] {
+function candidateSessionIds(storage: string | undefined, cwd: string, preferredSessionId: string | null): string[] {
   const ids: string[] = [];
-  const exclude = new Set<string>([preferredSessionId]);
+  const exclude = new Set<string>(preferredSessionId ? [preferredSessionId] : []);
   for (let index = 0; index < 12; index += 1) {
     const id = agentSessionTracker.findLatestAgentSessionId(storage, cwd, exclude);
     if (!id) break;
@@ -785,43 +950,43 @@ function sessionIdForPath(storage: string | undefined, path: string): string | n
 function replyAtPath(storage: string | undefined, path: string, expectedPrompt: string): { text: string; complete: boolean } | null {
   const transcript = ['cline-session-manifest', 'devin-session-db'].includes(storage ?? '')
     ? readFileSync(path, 'utf8')
-    : readTail(path);
+    : readTail(path, MATCH_TAIL_BYTES);
   return transcript && storage ? parseTranscriptReplyStateForPrompt(storage, transcript, expectedPrompt) : null;
 }
 
 /**
- * Resolves only a reply whose latest user turn is the exact injected prompt.
- * If a provider opened a replacement conversation while resuming, the recent
- * transcript scoped to the same cwd repairs the stale persisted session id.
+ * Resolves only the turn whose user prompt is the exact injected message.
+ * Later turns cannot hide or contaminate that reply. Recent transcripts scoped
+ * to the same cwd also repair a stale or not-yet-persisted session id.
  */
 export async function findReplyToPrompt(
   provider: string,
   cwd: string,
-  preferredSessionId: string,
+  preferredSessionId: string | null,
   expectedPrompt: string,
   since: number,
 ): Promise<MatchedTranscriptReply | null> {
   try {
     const storage = hasAgentAdapter(provider) ? getAgentAdapter(provider).sessionStorage : undefined;
     if (storage === 'opencode-session-json') {
-      for (const sessionId of [preferredSessionId, ...candidateSessionIds(storage, cwd, preferredSessionId)]) {
+      const sessionIds = [preferredSessionId, ...candidateSessionIds(storage, cwd, preferredSessionId)]
+        .filter((sessionId): sessionId is string => Boolean(sessionId));
+      for (const sessionId of sessionIds) {
         const turn = openCodeTurn(sessionId);
         if (
           turn
           && turn.activity >= since - 2_000
-          && turn.prompt
-          && normalizedPrompt(turn.prompt) === normalizedPrompt(expectedPrompt)
-          && turn.reply?.trim()
         ) {
-          return { sessionId, text: turn.reply.trim(), complete: true };
+          const reply = structuredReplyForPrompt(turn.messages, expectedPrompt);
+          if (reply) return { sessionId, text: reply, complete: true };
         }
       }
       return null;
     }
-    const preferredPath = preferredTranscriptPath(storage, cwd, preferredSessionId);
+    const preferredPath = preferredSessionId ? preferredTranscriptPath(storage, cwd, preferredSessionId) : null;
     if (preferredPath && statSync(preferredPath).mtimeMs >= since - 2_000) {
       const reply = replyAtPath(storage, preferredPath, expectedPrompt);
-      if (reply) return { sessionId: preferredSessionId, ...reply };
+      if (reply && preferredSessionId) return { sessionId: preferredSessionId, ...reply };
     }
     for (const path of candidateTranscriptPaths(storage, cwd, since)) {
       if (path === preferredPath) continue;

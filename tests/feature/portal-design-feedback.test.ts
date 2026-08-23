@@ -18,6 +18,7 @@ import {
 } from '$lib/modules/agent-room/contracts/schemas/portal-design-feedback.schema.js';
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { SendPortalDesignFeedbackRequest } from '$lib/modules/agent-room/interface/http/requests/SendPortalDesignFeedbackRequest.js';
+import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.js';
 
 const tempDirs: string[] = [];
 
@@ -65,6 +66,7 @@ describe('PortalDesignFeedbackService', () => {
   useSvelarTest({ refreshDatabase: true });
 
   afterEach(() => {
+    ptySessionManager.killAll();
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
   });
 
@@ -146,11 +148,12 @@ describe('PortalDesignFeedbackService', () => {
 
   it('tracks direct agent feedback as an assigned Kanban task', async () => {
     const { workspace, portal, screenshot, context } = await createFeedbackScenario('assigned feedback');
+    const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
     const agent = await workspaceRepository.createNode({
       workspaceId: workspace.id,
       type: 'terminal',
       title: 'Frontend reviewer',
-      payload: { provider: 'claude', command: 'claude', role: 'Frontend reviewer' },
+      payload: { provider: 'claude', command: 'claude', role: 'Frontend reviewer', sessionId: session.id },
     });
     const input = sendPortalDesignFeedbackSchema.parse({
       capture: context,

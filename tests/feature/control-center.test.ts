@@ -179,6 +179,36 @@ describe('ControlCenterService', () => {
     expect(await attentionService.list({ workspaceId: workspace.id })).toEqual([]);
   });
 
+  it('preserva a mensagem completa e desabilita navegação para um agente removido', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'attention source', workingDir: '/tmp' });
+    const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'QA Web' });
+    const content = 'Revise toda a matriz de QA, incluindo operações, teclado, acessibilidade e os casos-limite descritos na tarefa.';
+
+    await controlCenterService.recordDelivery({
+      messageId: uuidv7(),
+      workspaceId: workspace.id,
+      toNodeId: agent.id,
+      state: 'failed',
+      content,
+      error: 'Structured transcript could not be confirmed.',
+    });
+
+    const [beforeDelete] = await attentionService.list({ workspaceId: workspace.id });
+    expect(beforeDelete).toMatchObject({
+      nodeTitle: 'QA Web',
+      sourceContent: content,
+      actionAvailable: true,
+    });
+
+    await workspaceRepository.deleteNode(agent.id);
+    const [afterDelete] = await attentionService.list({ workspaceId: workspace.id });
+    expect(afterDelete).toMatchObject({
+      nodeTitle: null,
+      sourceContent: content,
+      actionAvailable: false,
+    });
+  });
+
   it('reconstrói agentes desconectados sem criar ou acordar sessões PTY', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'restart', workingDir: '/tmp' });
     const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'Idle agent' });

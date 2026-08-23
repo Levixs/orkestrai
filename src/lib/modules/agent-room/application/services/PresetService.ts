@@ -483,6 +483,7 @@ export class PresetService {
         noteId: task.noteTitle ? (nodeIdByTitle.get(task.noteTitle) ?? null) : null,
         createdBy: 'preset',
         status: task.status,
+        dispatch: false,
       });
       tasksApplied += 1;
     }

@@ -142,4 +142,43 @@ describe('PtySessionManager', () => {
     await delivery;
     expect(writes).toEqual(['mensagem automatica', '\r', 'rascunho humano']);
   });
+
+  it('repete Enter quando um TUI WSL não confirma o primeiro submit', async () => {
+    const writes: string[] = [];
+    let emitData: ((data: string) => void) | null = null;
+    let enterCount = 0;
+    const fakePty = {
+      write: (data: string) => {
+        writes.push(data);
+        if (data === '\r') {
+          enterCount += 1;
+          if (enterCount === 2) emitData?.('Working');
+        }
+      },
+      resize: () => {},
+      kill: () => {},
+      onData: (callback: (data: string) => void) => {
+        emitData = callback;
+        return { dispose: () => {} };
+      },
+      onExit: () => ({ dispose: () => {} }),
+      pid: 1,
+    };
+    const manager = new PtySessionManager((() => fakePty) as unknown as typeof spawn);
+    const session = manager.create({
+      command: 'codex',
+      provider: 'codex',
+      cwd: process.cwd(),
+      runtime: { kind: 'wsl', distribution: 'Ubuntu-24.04', linuxWorkingDir: '/workspace' },
+    });
+
+    await manager.writeWithConfirmedSubmit(session.id, 'execute a tarefa', {
+      submitDelayMs: 5,
+      confirmationWindowMs: 20,
+      maxAttempts: 3,
+    });
+
+    expect(writes).toEqual(['execute a tarefa', '\r', '\r']);
+    manager.kill(session.id);
+  });
 });

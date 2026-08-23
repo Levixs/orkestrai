@@ -5,7 +5,7 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
-## Unreleased
+## 0.18.0 - 2026-08-23
 
 ### Added
 
@@ -53,6 +53,22 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Attention Center cards now expand in place to show the complete failure and
+  original agent message. Source navigation is a separate action and is clearly
+  disabled when its agent or task has already been removed.
+- Agent replies are now correlated to the exact historical provider turn rather
+  than only the latest prompt. Codex completion events, delayed session discovery,
+  long transcript windows, and concurrent messages to one terminal no longer
+  produce false "structured transcript could not be confirmed" failures or raw
+  TUI output as a reply.
+- Maestro recruitment now inherits the leader's active Floor and confirms success
+  only after the new provider has a functional PTY, including inside the selected
+  WSL distribution. Failed launches remove the incomplete node and connection;
+  Kanban assignments start or restore an offline agent before delivery and only
+  enter progress after the complete task prompt reaches that terminal.
+- Long task briefings sent to Codex through Windows ConPTY and WSL now wait for
+  the composer to render, verify activity after submission, and retry only the
+  Enter key when the TUI did not acknowledge it.
 - Team Pack import, export, and version-publishing failures now stay localized
   in the selected UI language instead of exposing internal server copy.
 - Huddles now use the available desktop viewport, preserve separate scrolling

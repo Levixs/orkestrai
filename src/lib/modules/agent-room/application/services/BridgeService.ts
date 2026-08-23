@@ -11,12 +11,14 @@ import { ptySessionManager, sanitizeComposerText } from '../../infrastructure/pt
 import { agentSessionTracker } from '../../infrastructure/pty/AgentSessionTracker.js';
 import { findReplyToPrompt, type MatchedTranscriptReply } from '../../infrastructure/transcript/AgentTranscript.js';
 import { floorService } from './FloorService.js';
-import { getAgentAdapter, hasAgentAdapter, listAgentAdapters } from '../adapters/registry.js';
+import { getAgentAdapter, hasAgentAdapter, listAgentAdapters, materializeInteractiveAgentCommand } from '../adapters/registry.js';
 import { nativeNotificationService, type NativeNotificationKind } from './NativeNotificationService.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
 import { FIGMA_MCP_URL, upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
 import { controlCenterService } from './ControlCenterService.js';
 import { AutomationTriggerReceived } from '../../domain/events/AutomationTriggerReceived.js';
+import { agentSessionService } from './AgentSessionService.js';
+import { roleService } from './RoleService.js';
 
 export function resolveAgentReplyText(
   transcriptText: string | null,
@@ -45,6 +47,26 @@ export type BridgeAgent = {
   maestro: boolean;
 };
 
+type BridgeAskInput = {
+  to: string;
+  message: string;
+  from?: string | null;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  messageId?: string;
+  metadata?: Record<string, unknown>;
+};
+
+type BridgeAskResult = {
+  to: string;
+  reply: string;
+  delivered: boolean;
+  replyConfirmed: boolean;
+  timedOut: boolean;
+  messageId: string;
+  deliveryState: 'replied' | 'failed';
+};
+
 // Remove sequencias ANSI (cores, cursor, etc.) do output de TUIs.
 const ANSI_PATTERN = /[[][0-9;?]*[a-zA-Z]|\][^]*|[()][0-9A-B]/g;
 
@@ -70,6 +92,8 @@ function defaultPortalUrl(url: string): string {
  * resposta), le/escreve notas e provisiona arquivos de skill/config.
  */
 export class BridgeService {
+  private readonly askTails = new Map<string, Promise<void>>();
+
   /** Resolve o workspace dono do token; lanca erro se inválido. */
   async resolveWorkspaceByToken(token: string): Promise<Workspace> {
     const model = await AgentWorkspace.query().where('bridge_token', token).first();
@@ -205,18 +229,42 @@ export class BridgeService {
     return { to: target.title, sent: true, messageId, deliveryState: 'delivered' };
   }
 
-  async ask(
-    workspaceId: string,
-    input: {
-      to: string;
-      message: string;
-      from?: string | null;
-      timeoutMs?: number;
-      signal?: AbortSignal;
-      messageId?: string;
-      metadata?: Record<string, unknown>;
+  async ask(workspaceId: string, input: BridgeAskInput): Promise<BridgeAskResult> {
+    const target = this.findAgent(await this.listAgents(workspaceId), input.to);
+    const key = `${workspaceId}:${target.nodeId}`;
+    const previous = this.askTails.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const tail = previous.catch(() => undefined).then(() => gate);
+    this.askTails.set(key, tail);
+
+    try {
+      if (input.signal?.aborted) throw new Error('Agent request cancelled.');
+      if (input.signal) {
+        await new Promise<void>((resolve, reject) => {
+          const onAbort = () => {
+            input.signal?.removeEventListener('abort', onAbort);
+            reject(new Error('Agent request cancelled.'));
+          };
+          input.signal?.addEventListener('abort', onAbort, { once: true });
+          previous.catch(() => undefined).then(() => {
+            input.signal?.removeEventListener('abort', onAbort);
+            resolve();
+          });
+        });
+      } else {
+        await previous.catch(() => undefined);
+      }
+      return await this.performAsk(workspaceId, input);
+    } finally {
+      release();
+      void tail.finally(() => {
+        if (this.askTails.get(key) === tail) this.askTails.delete(key);
+      });
     }
-  ): Promise<{ to: string; reply: string; delivered: boolean; replyConfirmed: boolean; timedOut: boolean; messageId: string; deliveryState: 'replied' | 'failed' }> {
+  }
+
+  private async performAsk(workspaceId: string, input: BridgeAskInput): Promise<BridgeAskResult> {
     const agents = await this.listAgents(workspaceId);
     const target = this.findAgent(agents, input.to);
     if (!target.sessionId || !target.sessionAlive) {
@@ -380,7 +428,9 @@ export class BridgeService {
     const transcriptText = transcriptMatch?.text ?? null;
     // Usa o provider da sessao PTY real, não apenas o metadata do nó. Isso
     // mantém shells explícitos utilizáveis e protege somente TUIs de agentes.
-    const activeProvider = target.sessionId ? ptySessionManager.get(target.sessionId)?.provider : null;
+    const activeProvider = target.sessionId
+      ? ptySessionManager.get(target.sessionId)?.provider ?? target.provider
+      : target.provider;
     let replyText: string;
     try {
       replyText = resolveAgentReplyText(transcriptText, reply.text, activeProvider, target.title);
@@ -515,8 +565,8 @@ export class BridgeService {
   ): Promise<MatchedTranscriptReply | null> {
     const node = await workspaceRepository.getNode(nodeId);
     const payload = (node?.payload ?? {}) as { provider?: string; agentSessionId?: string };
-    const preferredSessionId = agentSessionTracker.agentSessionIdForPty(ptySessionId) ?? payload.agentSessionId;
-    if (!node || !payload.provider || !preferredSessionId) return null;
+    const preferredSessionId = agentSessionTracker.agentSessionIdForPty(ptySessionId) ?? payload.agentSessionId ?? null;
+    if (!node || !payload.provider) return null;
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     let cwd = workspace?.workingDir ?? '.';
     if (node.floorId) {
@@ -748,10 +798,11 @@ export class BridgeService {
     const origin = await this.requireMaestro(workspaceId, input.from);
     const originNode = await workspaceRepository.getNode(origin.nodeId);
     const inheritedRuntime = (originNode?.payload as { executionRuntime?: unknown } | undefined)?.executionRuntime;
+    const targetFloorId = input.floorId ?? originNode?.floorId ?? null;
 
     const command = this.commandForProvider(input.provider, { model: input.model, effort: input.effort });
-    if (input.floorId) {
-      const floor = (await floorService.list(workspaceId)).find((candidate) => candidate.id === input.floorId);
+    if (targetFloorId) {
+      const floor = (await floorService.list(workspaceId)).find((candidate) => candidate.id === targetFloorId);
       if (!floor) throw new Error('Andar ativo não encontrado neste workspace.');
     }
 
@@ -759,7 +810,10 @@ export class BridgeService {
       const agents = await this.listAgents(workspaceId);
       const existing = this.findAgent(agents, input.replace);
       const node = (await workspaceRepository.getNode(existing.nodeId))!;
-      const payload = {
+      const previousPayload = { ...(node.payload as Record<string, unknown>) };
+      const previousTitle = node.title;
+      const previousSessionId = typeof previousPayload.sessionId === 'string' ? previousPayload.sessionId : null;
+      let payload = {
         ...(node.payload as Record<string, unknown>),
         ...command,
         env: command.env,
@@ -772,15 +826,37 @@ export class BridgeService {
       };
       delete payload.sessionId;
       delete payload.agentSessionId;
+      const role = input.role ? await roleService.launchContext(workspaceId, input.role).catch(() => null) : null;
+      payload = materializeInteractiveAgentCommand(payload, role).payload;
       const updated = await workspaceRepository.updateNode(node.id, { payload, title: input.title || node.title });
-      this.notifyWorkspaceChanged(workspaceId);
-      return { nodeId: updated!.id, title: updated!.title, replaced: true };
+      try {
+        const active = await agentSessionService.ensure(workspaceId, node.id);
+        if (previousSessionId && previousSessionId !== active.sessionId) ptySessionManager.kill(previousSessionId);
+        this.notifyWorkspaceChanged(workspaceId);
+        return { nodeId: updated!.id, title: updated!.title, replaced: true, sessionId: active.sessionId, sessionState: active.state };
+      } catch (error) {
+        await workspaceRepository.updateNode(node.id, { payload: previousPayload as never, title: previousTitle });
+        this.notifyWorkspaceChanged(workspaceId);
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(`Não foi possível iniciar o agente substituto "${input.title || node.title}": ${detail}`);
+      }
     }
 
     // Sem coordenadas explicitas: organograma — fileira abaixo do maestro.
     const position = input.x == null || input.y == null
-      ? await this.orgChartPosition(workspaceId, origin.nodeId, input.floorId)
+      ? await this.orgChartPosition(workspaceId, origin.nodeId, targetFloorId)
       : null;
+
+    let payload: Record<string, unknown> = {
+      ...command,
+      provider: input.provider ?? null,
+      model: input.model ?? null,
+      effort: input.effort ?? null,
+      role: input.role ? shortTitle(input.role, 60) : null,
+      ...(inheritedRuntime ? { executionRuntime: inheritedRuntime } : {}),
+    };
+    const role = input.role ? await roleService.launchContext(workspaceId, input.role).catch(() => null) : null;
+    payload = materializeInteractiveAgentCommand(payload, role).payload;
 
     const node = await workspaceRepository.createNode({
       workspaceId,
@@ -790,20 +866,22 @@ export class BridgeService {
       y: input.y ?? position!.y,
       width: 640,
       height: 400,
-      payload: {
-        ...command,
-        provider: input.provider ?? null,
-        model: input.model ?? null,
-        effort: input.effort ?? null,
-        role: input.role ? shortTitle(input.role, 60) : null,
-        ...(inheritedRuntime ? { executionRuntime: inheritedRuntime } : {}),
-      },
-      floorId: input.floorId ?? null,
+      payload,
+      floorId: targetFloorId,
     });
-    // Recruta nasce conectado ao maestro (canal de comunicacao visual).
-    await this.ensureEdge(workspaceId, origin.nodeId, node.id);
-    this.notifyWorkspaceChanged(workspaceId);
-    return { nodeId: node.id, title: node.title, replaced: false };
+    try {
+      // O recruit só confirma depois de o nó ter um PTY funcional. Isso evita
+      // agentes fantasma quando a UI ainda não renderizou o canvas, sobretudo no WSL.
+      await this.ensureEdge(workspaceId, origin.nodeId, node.id);
+      const active = await agentSessionService.ensure(workspaceId, node.id);
+      this.notifyWorkspaceChanged(workspaceId);
+      return { nodeId: node.id, title: node.title, replaced: false, sessionId: active.sessionId, sessionState: active.state };
+    } catch (error) {
+      await workspaceRepository.deleteNode(node.id);
+      this.notifyWorkspaceChanged(workspaceId);
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Não foi possível recrutar "${node.title}": ${detail}`);
+    }
   }
 
   /** Título único por workspace: "Dev" ocupado vira "Dev 2", "Dev 3"... (ask ambiguo quebra o roteamento). */

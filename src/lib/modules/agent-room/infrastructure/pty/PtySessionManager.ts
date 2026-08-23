@@ -84,6 +84,9 @@ type PtySession = PtySessionInfo & {
   deferredHumanInput: string[];
   humanComposerLength: number;
   lastOutputAt: number;
+  outputRevision: number;
+  lastSubmitOutputRevision: number;
+  conptySubmitGuard: boolean;
 };
 
 type ComposerDelivery = {
@@ -209,12 +212,16 @@ export class PtySessionManager {
       deferredHumanInput: [],
       humanComposerLength: 0,
       lastOutputAt: 0,
+      outputRevision: 0,
+      lastSubmitOutputRevision: 0,
+      conptySubmitGuard: platform() === 'win32' || input.runtime?.kind === 'wsl',
     };
 
     ptyProcess.onData((data) => {
       const firstOutput = session.scrollback.length === 0;
       const resumedFromIdle = session.waiting;
       session.lastOutputAt = Date.now();
+      session.outputRevision += 1;
       session.scrollback = (session.scrollback + data).slice(-SCROLLBACK_LIMIT);
       for (const listener of session.listeners) listener(data);
       this.scheduleAttentionCheck(session);
@@ -371,6 +378,36 @@ export class PtySessionManager {
     return this.queueWithSubmit(id, text, submitDelayMs).submitted;
   }
 
+  /**
+   * Envia uma mensagem e exige atividade do TUI depois do Enter. Em ConPTY +
+   * WSL, prompts longos podem chegar ao composer depois do primeiro Enter; um
+   * retry só acontece se o provider não produziu nenhuma saída desde o submit.
+   */
+  async writeWithConfirmedSubmit(
+    id: string,
+    text: string,
+    options: { submitDelayMs?: number; confirmationWindowMs?: number; maxAttempts?: number } = {},
+  ): Promise<void> {
+    const session = this.requireSession(id);
+    await this.queueWithSubmit(id, text, options.submitDelayMs ?? 200).submitted;
+    if (!session.provider || !session.conptySubmitGuard) return;
+
+    const confirmationWindowMs = options.confirmationWindowMs ?? 4_000;
+    const maxAttempts = Math.max(1, options.maxAttempts ?? 3);
+    let revisionAtSubmit = session.lastSubmitOutputRevision;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      if (await this.waitForOutputAfter(id, revisionAtSubmit, confirmationWindowMs)) return;
+      const current = this.requireSession(id);
+      if (current.exited) throw new Error(`Sessão PTY ${id} finalizada antes de confirmar o envio.`);
+      if (attempt === maxAttempts) break;
+      revisionAtSubmit = current.outputRevision;
+      if (!this.submitIfComposerFree(id)) {
+        throw new Error(`A sessão PTY ${id} não pôde confirmar o envio porque o composer está ocupado.`);
+      }
+    }
+    throw new Error(`A sessão PTY ${id} não confirmou o envio após ${maxAttempts} tentativas.`);
+  }
+
   /** Aguarda o primeiro prompt do TUI estabilizar antes de injetar contexto. */
   async waitUntilIdle(id: string, timeoutMs = 20_000): Promise<boolean> {
     const startedAt = Date.now();
@@ -490,8 +527,14 @@ export class PtySessionManager {
       return;
     }
 
+    // ConPTY/WSL precisa de mais tempo para processar prompts grandes antes do
+    // Enter. Shells mantêm o delay solicitado; TUIs usam um delay adaptativo.
+    const submitDelayMs = session.provider && session.conptySubmitGuard
+      ? Math.max(delivery.submitDelayMs, Math.min(2_000, 250 + Math.ceil(delivery.text.length / 8)))
+      : delivery.submitDelayMs;
     const timer = setTimeout(() => {
       try {
+        session.lastSubmitOutputRevision = session.outputRevision;
         this.write(session.id, '\r');
         delivery.resolve();
         session.awaitingDeliveryIdle = true;
@@ -509,8 +552,19 @@ export class PtySessionManager {
           session.deferredHumanInput.length = 0;
         }
       }
-    }, delivery.submitDelayMs);
+    }, submitDelayMs);
     timer.unref?.();
+  }
+
+  private async waitForOutputAfter(id: string, revision: number, timeoutMs: number): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const session = this.sessions.get(id);
+      if (!session || session.exited) return false;
+      if (session.outputRevision > revision) return true;
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+    }
+    return false;
   }
 
   private scheduleDeliveryBarrierFallback(session: PtySession): void {

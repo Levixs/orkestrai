@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { spawn } from 'node-pty';
 import { useSvelarTest } from '@beeblock/svelar/testing';
 import { bridgeService } from '$lib/modules/agent-room/application/services/BridgeService.js';
@@ -10,6 +10,19 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AgentFloor } from '$lib/modules/agent-room/domain/models/AgentFloor.js';
 import { uuidv7 } from '@beeblock/svelar/support';
+import { agentSessionService } from '$lib/modules/agent-room/application/services/AgentSessionService.js';
+
+beforeEach(() => {
+  vi.spyOn(agentSessionService, 'ensure').mockImplementation(async (_workspaceId, nodeId) => ({
+    nodeId,
+    sessionId: `test-session-${nodeId}`,
+    state: 'started',
+  }));
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function createWorkspaceWithTerminal() {
   const workspace = await workspaceRepository.createWorkspace({ name: 'bridge', workingDir: '/tmp' });
@@ -108,6 +121,21 @@ describe('BridgeService', () => {
     ]);
     ptySessionManager.kill(session.id);
   });
+
+  it('serializa mensagens concorrentes destinadas ao mesmo terminal', async () => {
+    const { workspace, session } = await createWorkspaceWithTerminal();
+
+    const [first, second] = await Promise.all([
+      bridgeService.ask(workspace.id, { to: 'Gato', message: 'primeira-mensagem', timeoutMs: 15_000 }),
+      bridgeService.ask(workspace.id, { to: 'Gato', message: 'segunda-mensagem', timeoutMs: 15_000 }),
+    ]);
+
+    expect(first.reply).toContain('primeira-mensagem');
+    expect(first.reply).not.toContain('segunda-mensagem');
+    expect(second.reply).toContain('segunda-mensagem');
+    expect(second.reply).not.toContain('primeira-mensagem');
+    ptySessionManager.kill(session.id);
+  }, 20_000);
 
   it('ask funciona nos dois sentidos entre terminais Claude e Codex', async () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'duplex', workingDir: '/tmp' });
@@ -241,6 +269,52 @@ describe('Modo Maestro', () => {
     })).rejects.toThrow('Andar ativo');
   });
 
+  it('herda o andar do maestro e só confirma depois de ativar a sessão', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'wsl-floor', workingDir: '/tmp' });
+    const floor = await AgentFloor.create({
+      id: uuidv7(),
+      workspace_id: workspace.id,
+      name: 'WSL team',
+      branch: 'orkestrai/wsl-team',
+      path: '/tmp/wsl-team',
+      status: 'active',
+    });
+    const floorId = String(floor.getAttribute('id'));
+    const leader = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Lider WSL',
+      payload: { command: 'claude', provider: 'claude', maestro: true },
+      floorId,
+    });
+
+    const recruited = await bridgeService.recruit(workspace.id, {
+      from: 'Lider WSL',
+      title: 'Dev WSL',
+      provider: 'codex',
+    });
+
+    expect(recruited).toMatchObject({ sessionState: 'started' });
+    expect(agentSessionService.ensure).toHaveBeenCalledWith(workspace.id, recruited.nodeId);
+    expect((await workspaceRepository.getNode(recruited.nodeId))?.floorId).toBe(floorId);
+    const edges = await workspaceRepository.listEdges(workspace.id);
+    expect(edges.some((edge) => edge.sourceNodeId === leader.id && edge.targetNodeId === recruited.nodeId)).toBe(true);
+  });
+
+  it('remove o nó e a aresta quando a sessão do recruta não inicia', async () => {
+    const { workspace, leader } = await setupMaestro(true);
+    vi.mocked(agentSessionService.ensure).mockRejectedValueOnce(new Error('WSL_COMMAND_NOT_FOUND'));
+
+    await expect(bridgeService.recruit(workspace.id, {
+      from: 'Lider',
+      title: 'Agente quebrado',
+      provider: 'codex',
+    })).rejects.toThrow('WSL_COMMAND_NOT_FOUND');
+
+    expect((await workspaceRepository.listNodes(workspace.id)).map((node) => node.id)).toEqual([leader.id]);
+    expect(await workspaceRepository.listEdges(workspace.id)).toHaveLength(0);
+  });
+
   it('bloqueia acoes sem Modo Maestro ativo', async () => {
     const { workspace } = await setupMaestro(false);
     await expect(bridgeService.recruit(workspace.id, { from: 'Lider', title: 'X' })).rejects.toThrow('Modo Maestro');
@@ -331,10 +405,10 @@ describe('Modo Maestro', () => {
   it('ask cria aresta entre os agentes que conversam', async () => {
     const { workspace, leader } = await setupMaestro(true);
     const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
-    await workspaceRepository.updateNode(leader.id, { payload: { command: 'claude', provider: 'claude', maestro: true, sessionId: session.id } });
+    await workspaceRepository.updateNode(leader.id, { payload: { command: '/bin/cat', maestro: true, sessionId: session.id } });
     const recruited = await bridgeService.recruit(workspace.id, { from: 'Lider', title: 'Recruta', provider: 'kimi' });
     const sessionB = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });
-    await workspaceRepository.updateNode(recruited.nodeId, { payload: { command: 'kimi', provider: 'kimi', sessionId: sessionB.id } });
+    await workspaceRepository.updateNode(recruited.nodeId, { payload: { command: '/bin/cat', sessionId: sessionB.id } });
 
     const before = await workspaceRepository.listEdges(workspace.id);
     await bridgeService.ask(workspace.id, { to: 'Recruta', message: 'ping', from: 'Lider', timeoutMs: 15_000 });

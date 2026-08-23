@@ -99,6 +99,25 @@ describe('parseCodexTranscriptReply', () => {
     expect(parseCodexTranscriptReplyForPrompt(jsonl, 'Oi tudo bem?')).toBeNull();
     expect(parseCodexTranscriptReplyForPrompt(jsonl, '  corrija   o lockfile ')).toBe('Vou restaurar o lock validado.');
   });
+
+  it('confirma o turno pelo task_complete e ainda encontra a resposta depois de uma pergunta nova', () => {
+    const jsonl = [
+      { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'primeira pergunta' }], internal_chat_message_metadata_passthrough: { turn_id: 'turn-1' } } },
+      { type: 'response_item', payload: { type: 'message', role: 'assistant', phase: 'commentary', content: [{ type: 'output_text', text: 'Vou verificar.' }] } },
+      { type: 'event_msg', payload: { type: 'task_complete', turn_id: 'turn-1', last_agent_message: 'Primeira resposta final.' } },
+      { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'segunda pergunta' }], internal_chat_message_metadata_passthrough: { turn_id: 'turn-2' } } },
+      { type: 'response_item', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Segunda resposta.' }] } },
+    ].map(JSON.stringify).join('\n');
+
+    expect(parseTranscriptReplyStateForPrompt('codex-rollout-jsonl', jsonl, 'primeira pergunta')).toEqual({
+      text: 'Primeira resposta final.',
+      complete: true,
+    });
+    expect(parseTranscriptReplyStateForPrompt('codex-rollout-jsonl', jsonl, 'segunda pergunta')).toEqual({
+      text: 'Segunda resposta.',
+      complete: false,
+    });
+  });
 });
 
 describe('parseKimiTranscriptReply (formato real do wire.jsonl, 0.33)', () => {
@@ -203,6 +222,62 @@ describe('transcritos estruturados dos providers adicionais', () => {
     for (const testCase of cases) {
       expect(parseTranscriptReplyForPrompt(testCase.storage, testCase.transcript, 'pergunta anterior')).toBeNull();
       expect(parseTranscriptReplyForPrompt(testCase.storage, testCase.transcript, '  pergunta   atual ')).toMatch(/respondeu\.$/);
+    }
+  });
+
+  it('correlaciona um turno anterior sem misturar a resposta do turno seguinte', () => {
+    const cases = [
+      {
+        storage: 'claude-project-jsonl',
+        transcript: [
+          { type: 'user', message: { content: 'pergunta anterior' } },
+          { type: 'assistant', message: { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Resposta anterior do Claude.' }] } },
+          { type: 'user', message: { content: 'pergunta atual' } },
+          { type: 'assistant', message: { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Resposta atual do Claude.' }] } },
+        ].map(JSON.stringify).join('\n'),
+      },
+      {
+        storage: 'kimi-session-dir',
+        transcript: [
+          { type: 'turn.prompt', input: [{ type: 'text', text: 'pergunta anterior' }] },
+          { type: 'context.append_loop_event', event: { type: 'content.part', part: { type: 'text', text: 'Resposta anterior do Kimi.' } } },
+          { type: 'turn.ended' },
+          { type: 'turn.prompt', input: [{ type: 'text', text: 'pergunta atual' }] },
+          { type: 'context.append_loop_event', event: { type: 'content.part', part: { type: 'text', text: 'Resposta atual do Kimi.' } } },
+        ].map(JSON.stringify).join('\n'),
+      },
+      {
+        storage: 'cursor-transcript-jsonl',
+        transcript: [
+          { role: 'user', content: 'pergunta anterior' },
+          { role: 'assistant', content: 'Resposta anterior do Cursor.' },
+          { role: 'user', content: 'pergunta atual' },
+          { role: 'assistant', content: 'Resposta atual do Cursor.' },
+        ].map(JSON.stringify).join('\n'),
+      },
+      {
+        storage: 'cline-session-manifest',
+        transcript: JSON.stringify([
+          { role: 'user', content: 'pergunta anterior' },
+          { role: 'assistant', content: 'Resposta anterior do Cline.' },
+          { role: 'user', content: 'pergunta atual' },
+          { role: 'assistant', content: 'Resposta atual do Cline.' },
+        ]),
+      },
+      {
+        storage: 'devin-session-db',
+        transcript: JSON.stringify({ steps: [
+          { source: 'user', message: 'pergunta anterior' },
+          { source: 'agent', message: 'Resposta anterior do Devin.' },
+          { source: 'user', message: 'pergunta atual' },
+          { source: 'agent', message: 'Resposta atual do Devin.' },
+        ] }),
+      },
+    ];
+
+    for (const testCase of cases) {
+      expect(parseTranscriptReplyForPrompt(testCase.storage, testCase.transcript, 'pergunta anterior')).toMatch(/Resposta anterior/);
+      expect(parseTranscriptReplyForPrompt(testCase.storage, testCase.transcript, 'pergunta anterior')).not.toMatch(/Resposta atual/);
     }
   });
 });

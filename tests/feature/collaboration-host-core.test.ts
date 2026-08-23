@@ -54,6 +54,7 @@ async function setup(role: 'viewer' | 'operator' | 'administrator' = 'operator')
     description: 'Use ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456 at http://localhost:3000.',
     assigneeNodeId: agent.id,
     createdBy: 'collaboration-test',
+    dispatch: false,
   });
   const share = await collaborationRepository.createShare({
     workspaceId: workspace.id,

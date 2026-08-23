@@ -5,6 +5,8 @@ import type {
   AgentActivitySeverity,
 } from '../../domain/types.js';
 import { attentionRepository } from '../../infrastructure/repositories/AttentionRepository.js';
+import { agentRoomRepository } from '../../infrastructure/repositories/AgentRoomRepository.js';
+import { controlCenterRepository } from '../../infrastructure/repositories/ControlCenterRepository.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 
 const ATTENTION_STATES = new Set(['waiting_input', 'waiting_permission', 'blocked', 'error']);
@@ -56,15 +58,38 @@ export class AttentionService {
     const workspaces = await workspaceRepository.listWorkspaces();
     const workspaceNames = new Map(workspaces.map((workspace) => [workspace.id, workspace.name]));
     const nodeIds = new Set(items.flatMap((item) => item.nodeId ? [item.nodeId] : []));
+    const taskIds = new Set(items.flatMap((item) => item.taskId ? [item.taskId] : []));
+    const messageIds = [...new Set(items.flatMap((item) => (
+      item.sourceType === 'bridge' && item.sourceId ? [item.sourceId] : []
+    )))];
     const nodes = new Map<string, string>();
-    await Promise.all([...nodeIds].map(async (nodeId) => {
-      const node = await workspaceRepository.getNode(nodeId);
-      if (node) nodes.set(nodeId, node.title ?? node.type);
-    }));
+    const availableTasks = new Set<string>();
+    const sourceContent = new Map<string, string>();
+    const envelopes = await controlCenterRepository.findEnvelopes(messageIds);
+    const envelopesById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
+    await Promise.all([
+      ...[...nodeIds].map(async (nodeId) => {
+        const node = await workspaceRepository.getNode(nodeId);
+        if (node) nodes.set(nodeId, node.title ?? node.type);
+      }),
+      ...[...taskIds].map(async (taskId) => {
+        if (await agentRoomRepository.getTask(taskId)) availableTasks.add(taskId);
+      }),
+      ...items.map(async (item) => {
+        if (item.sourceType !== 'bridge' || !item.sourceId) return;
+        const envelope = envelopesById.get(item.sourceId);
+        if (envelope?.workspaceId === item.workspaceId && envelope.content) sourceContent.set(item.id, envelope.content);
+      }),
+    ]);
     return items.map((item) => ({
       ...item,
       workspaceName: workspaceNames.get(item.workspaceId) ?? null,
       nodeTitle: item.nodeId ? nodes.get(item.nodeId) ?? null : null,
+      sourceContent: sourceContent.get(item.id) ?? null,
+      actionAvailable: Boolean(
+        (item.taskId && availableTasks.has(item.taskId))
+        || (item.nodeId && nodes.has(item.nodeId))
+      ),
     }));
   }
 

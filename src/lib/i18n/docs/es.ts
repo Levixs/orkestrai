@@ -18,7 +18,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'wsl-runtime',
       title: 'Workspaces de Windows con WSL',
-      body: `En Windows, el entorno seleccionado al crear o editar un workspace es el predeterminado del equipo. Cada terminal puede heredarlo o usar Entorno de ejecución en el diálogo de creación y en su menú compacto para forzar Windows nativo o una distribución WSL específica. Selecciona exactamente Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian u otra instalación e indica la ruta Linux de la misma carpeta del proyecto. Un único workspace puede combinar agentes Windows y WSL, incluso distribuciones diferentes. Un indicador WIN o WSL identifica la excepción. Detección y modelos del provider, PTY, reanudación exacta de la conversación, Council, agentes reclutados y el puente orkestrai siguen el runtime efectivo de cada terminal. Orkestrai valida la CLI dentro de esa distribución y confirma el transcript del provider en su propia home Linux antes de persistir o restaurar un id; un agente vacío comienza limpio en vez de adivinar la conversación más reciente. Cambiar el runtime reinicia solo esa terminal. Una distribución, directorio o comando ausente produce errores distintos y accionables, sin fallback silencioso a Windows nativo.`,
+      body: `En Windows, el entorno seleccionado al crear o editar un workspace es el predeterminado del equipo. Cada terminal puede heredarlo o usar Entorno de ejecución en el diálogo de creación y en su menú compacto para forzar Windows nativo o una distribución WSL específica. Selecciona exactamente Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian u otra instalación e indica la ruta Linux de la misma carpeta del proyecto. Un único workspace puede combinar agentes Windows y WSL, incluso distribuciones diferentes. Un indicador WIN o WSL identifica la excepción. Detección y modelos del provider, PTY, reanudación exacta de la conversación, Council, agentes reclutados y el puente orkestrai siguen el runtime efectivo de cada terminal. Los reclutas del Maestro heredan el Piso activo del líder y solo se confirman después de que la PTY inicia en el entorno correcto; un fallo elimina el nodo incompleto. Al asignar una tarea, Orkestrai inicia o reanuda un agente desconectado y solo mueve la tarjeta a En progreso después de entregar el briefing completo. Orkestrai valida la CLI dentro de esa distribución y confirma el transcript del provider en su propia home Linux antes de persistir o restaurar un id; un agente vacío comienza limpio en vez de adivinar la conversación más reciente. Cambiar el runtime reinicia solo esa terminal. Una distribución, directorio o comando ausente produce errores distintos y accionables, sin fallback silencioso a Windows nativo.`,
     },
     {
       id: 'agentes',
@@ -603,7 +603,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'triage-attention-across-workspaces',
       title: 'Gestionar todos los workspaces desde un centro de atención',
-      body: 'Abre la campana junto a Canvas/Workbench para ver preguntas, solicitudes de permiso, bloqueos y fallos de todos los workspaces, con el actual primero. Abre el agente, tarea, revisión o mensaje exacto que generó la señal; márcalo como leído, posponlo o resuélvelo sin perder el historial de auditoría. Usa Command/Ctrl+K con type:attention, workspace:"Nombre", agent:"Nombre", status:open, has:error, before: o after: para recuperar el mismo evento después.',
+      body: 'Abre la campana junto a Canvas/Workbench para ver preguntas, solicitudes de permiso, bloqueos y fallos de todos los workspaces, con el actual primero. Expande cualquier elemento para leer el fallo y la solicitud original completos sin salir del centro. Abrir origen es una acción separada y queda deshabilitada cuando el agente o la tarea ya fueron eliminados; el contenido persistido sigue siendo legible. Márcalo como leído, posponlo o resuélvelo sin perder el historial. Usa Command/Ctrl+K con type:attention, workspace:"Nombre", agent:"Nombre", status:open, has:error, before: o after: para recuperar el mismo evento después.',
       tags: ['Centro de atención', 'triaje entre workspaces', 'operadores de búsqueda'],
     },
     {
@@ -693,8 +693,8 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Próxima versión',
-      title: 'Coordinación duradera, conocimiento con fuentes y equipos reutilizables',
+      date: '23 ago 2026 · 0.18.0',
+      title: 'Orkestrai 0.18.0: coordinación duradera, conocimiento con fuentes y equipos reutilizables',
       summary: 'Mensajes, actividad, atención, entrega, memoria, anotaciones, Team Packs y Huddles conservan ahora su contexto operativo.',
       items: [
         'Cada mensaje entre agentes tiene ahora un sobre canónico con destinatario y contenido verificados, recibos duraderos, correlación, deduplicación y protección contra replay.',
@@ -711,6 +711,10 @@ Header: Authorization = Bearer {{accessToken}}`,
         'La paleta Command/Ctrl+P ahora usa la pila compartida de modales y vuelve a cerrarse correctamente con Escape o al hacer clic fuera, incluso después de abrir Huddles.',
         'Los agentes ahora vinculan colecciones Bruno, OpenCollection y Postman existentes mediante una ruta relativa del repositorio. Canvas y Workbench muestran las mismas solicitudes, mientras la sincronización atómica y protegida persiste scripts y pruebas en los archivos originales y muestra conflictos antes de reemplazar cualquier lado.',
         'En Windows, Ctrl+C y el clic derecho copian el texto seleccionado de la terminal mediante el portapapeles nativo; sin selección, Ctrl+C sigue interrumpiendo el proceso activo.',
+        'Los elementos del Centro de atención ahora se expanden en el lugar para mostrar el fallo y la solicitud original completos, separan la navegación al origen e identifican agentes o tareas eliminados.',
+        'Las respuestas de agentes ahora se correlacionan con el turno exacto del provider incluso después de mensajes posteriores o de descubrir tarde la sesión; las entregas concurrentes a una terminal se serializan y ya no generan falsos fallos de transcript estructurado.',
+        'El reclutamiento del Maestro ahora hereda el Piso activo, inicia y valida la PTY en el runtime correcto incluso en WSL y revierte nodos incompletos. Las tareas asignadas solo pasan a En progreso después de iniciar o reanudar el agente y entregar el briefing a su terminal.',
+        'Los briefings largos enviados a Codex en Windows y WSL ahora esperan que el composer procese el texto, confirman actividad después del envío y repiten solo Enter cuando el TUI no lo reconoce.',
       ],
     },
     {

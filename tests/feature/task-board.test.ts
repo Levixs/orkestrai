@@ -124,6 +124,30 @@ describe('TaskBoardService', () => {
     ptySessionManager.kill(session.id);
   });
 
+  it('não deixa tarefa fantasma em andamento quando o agente não pode iniciar', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'dispatch-failure', workingDir: '/tmp' });
+    const unavailable = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Agente indisponível',
+      payload: { provider: 'codex' },
+    });
+
+    await expect(taskBoardService.create(workspace.id, {
+      title: 'Não pode parecer em execução',
+      assigneeNodeId: unavailable.id,
+      createdBy: 'Lider',
+    })).rejects.toThrow('AGENT_COMMAND_UNAVAILABLE');
+
+    expect(await taskBoardService.list(workspace.id)).toEqual([
+      expect.objectContaining({
+        title: 'Não pode parecer em execução',
+        status: 'todo',
+        assigneeNodeId: null,
+      }),
+    ]);
+  });
+
   it('inclui o conteúdo integral da nota vinculada no despacho', async () => {
     const { workspace, terminal, session } = await createWorkspaceWithTerminal();
     const note = await workspaceRepository.createNode({
