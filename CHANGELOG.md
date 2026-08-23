@@ -61,6 +61,9 @@ pt-BR, English, and Spanish translations.
 - The Canvas `Command/Ctrl+P` palette now participates in the shared dialog
   focus stack, so Escape and outside clicks close it reliably even after a
   Huddle or another modal has been open.
+- Windows terminals now copy a real selection with `Ctrl+C` or right-click via
+  Electron's native clipboard while preserving `Ctrl+C` as process interrupt
+  when no text is selected.
 
 ## 0.17.0 - 2026-08-22
 

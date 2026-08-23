@@ -136,6 +136,50 @@ test.describe('terminais PTY', () => {
     }
   });
 
+  test('copia a selecao do terminal com atalho e clique direito', async ({ page, request, context }) => {
+    const runId = Date.now();
+    const marker = `ORKESTRAI_COPY_${runId}`;
+    const workspaceResponse = await request.post('/api/agent-room/workspaces', {
+      data: { name: `E2E terminal copy ${runId}`, workingDir: process.platform === 'win32' ? process.cwd() : '/tmp' },
+    });
+    const workspace = (await workspaceResponse.json()).data as { id: string };
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+    try {
+      await request.post(`/api/agent-room/workspaces/${workspace.id}/nodes`, {
+        data: {
+          type: 'terminal',
+          title: 'Shell copy',
+          x: 120,
+          y: 100,
+          width: 640,
+          height: 380,
+          payload: { command: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh', args: [] },
+        },
+      });
+      await page.goto(`/canvas?workspace=${workspace.id}`);
+      const terminal = page.locator('.canvas-terminal');
+      const input = terminal.locator('.xterm-helper-textarea');
+      await expect(input).toBeAttached({ timeout: 15_000 });
+      await input.focus();
+      await page.keyboard.type(`echo ${marker}`);
+      await page.keyboard.press('Enter');
+      const output = terminal.locator('.xterm-rows span').filter({ hasText: marker }).last();
+      await expect(output).toBeVisible({ timeout: 10_000 });
+
+      await output.dblclick();
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+C' : 'Control+C');
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(marker);
+
+      await page.evaluate(() => navigator.clipboard.writeText(''));
+      await output.dblclick();
+      await output.click({ button: 'right' });
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(marker);
+    } finally {
+      await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
+    }
+  });
+
   test('troca de workspace antes de abrir ao lado e nao mistura artefatos', async ({ page, request }) => {
     const runId = Date.now();
     const firstName = `E2E Workbench A ${runId}`;

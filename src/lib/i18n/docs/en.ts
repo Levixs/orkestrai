@@ -710,6 +710,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'The Huddles window now uses the available area, keeps history and transcript independently scrollable, rearranges content in narrow windows, and provides an always-visible close action.',
         'The Command/Ctrl+P palette now uses the shared modal stack and closes reliably with Escape or an outside click, including after opening Huddles.',
         'Agents can link existing Bruno, OpenCollection, and Postman project collections by repository-relative path. Canvas and Workbench show the same requests while guarded, atomic synchronization persists scripts and tests in the original files and exposes conflicts before either side is replaced.',
+        'On Windows, Ctrl+C and right-click copy selected terminal text through the native desktop clipboard; Ctrl+C still interrupts the running process when no text is selected.',
       ],
     },
     {

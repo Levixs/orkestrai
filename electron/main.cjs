@@ -7,7 +7,7 @@
  * node-pty) precisam estar rebuildados para o ABI do Electron
  * (npm run electron:rebuild).
  */
-const { app, BrowserWindow, dialog, ipcMain, Menu, Notification, Tray, nativeImage, safeStorage, session, shell } = require('electron');
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, Notification, Tray, nativeImage, safeStorage, session, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -735,6 +735,12 @@ ipcMain.handle('orkestrai:open-path', async (_event, candidate) => {
     return 'not_found';
   }
   return shell.openPath(candidate);
+});
+
+ipcMain.handle('orkestrai:clipboard-write', (_event, value) => {
+  if (typeof value !== 'string' || value.length > 5_000_000) return false;
+  clipboard.writeText(value);
+  return true;
 });
 
 ipcMain.handle('orkestrai:collaboration-invite-consume', () => {

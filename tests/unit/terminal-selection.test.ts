@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { terminalCellAtPoint, terminalSelectionRange } from '$lib/components/agent-room/terminal-selection.js';
+import { isTerminalCopyShortcut, terminalCellAtPoint, terminalSelectionRange } from '$lib/components/agent-room/terminal-selection.js';
 
 describe('terminal selection geometry', () => {
   it('mapeia coordenadas pelo retangulo visual escalado', () => {
@@ -13,5 +13,13 @@ describe('terminal selection geometry', () => {
       row: 6,
       length: 166,
     });
+  });
+
+  it('copia com Ctrl/Cmd+C somente quando ha selecao e preserva SIGINT sem selecao', () => {
+    const event = { type: 'keydown', key: 'c', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false };
+    expect(isTerminalCopyShortcut(event, true)).toBe(true);
+    expect(isTerminalCopyShortcut(event, false)).toBe(false);
+    expect(isTerminalCopyShortcut({ ...event, key: 'x' }, true)).toBe(false);
+    expect(isTerminalCopyShortcut({ ...event, type: 'keyup' }, true)).toBe(false);
   });
 });

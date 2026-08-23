@@ -20,7 +20,7 @@
   import { speakText } from './voice-speech.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
   import { terminalDictationInput } from './terminal-dictation.js';
-  import { terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
+  import { isTerminalCopyShortcut, terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
   import { workingDirectoryFromOsc } from './terminal-working-directory.js';
   import {
     LEADER_DICTATION_COMMAND,
@@ -330,6 +330,21 @@
     sendInput?.(data);
   }
 
+  async function copyTerminalSelection(terminal: Terminal) {
+    const selection = terminal.getSelection();
+    if (!selection) return false;
+    const desktop = (window as typeof window & {
+      orkestraiDesktop?: { writeClipboardText?: (value: string) => Promise<boolean> };
+    }).orkestraiDesktop;
+    try {
+      if (desktop?.writeClipboardText) return await desktop.writeClipboardText(selection);
+      await navigator.clipboard.writeText(selection);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   onMount(() => {
     let fontSize = 13;
     let fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
@@ -348,6 +363,10 @@
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(searchAddon);
     terminal.attachCustomKeyEventHandler((event) => {
+      if (isTerminalCopyShortcut(event, terminal.hasSelection())) {
+        void copyTerminalSelection(terminal);
+        return false;
+      }
       if (event.type !== 'keydown') return true;
       if (matchesCombo(event, dictateHotkey)) return false;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') return false;
@@ -388,7 +407,14 @@
       selectionStart = null;
       selectionOrigin = null;
     };
+    const copySelectionFromContextMenu = (event: MouseEvent) => {
+      if (!terminal.hasSelection()) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void copyTerminalSelection(terminal);
+    };
     screen?.addEventListener('pointerdown', selectionPointerDown);
+    screen?.addEventListener('contextmenu', copySelectionFromContextMenu);
     window.addEventListener('pointermove', selectionPointerMove);
     window.addEventListener('pointerup', selectionPointerUp);
 
@@ -652,6 +678,7 @@
     return () => {
       disposed = true;
       screen?.removeEventListener('pointerdown', selectionPointerDown);
+      screen?.removeEventListener('contextmenu', copySelectionFromContextMenu);
       window.removeEventListener('pointermove', selectionPointerMove);
       window.removeEventListener('pointerup', selectionPointerUp);
       window.removeEventListener('resize', refitForDisplayChange);

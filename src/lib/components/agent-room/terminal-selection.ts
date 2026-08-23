@@ -23,3 +23,12 @@ export function terminalSelectionRange(start: TerminalCell, end: TerminalCell, c
     length: last - first + 1,
   };
 }
+
+export function isTerminalCopyShortcut(event: Pick<KeyboardEvent, 'type' | 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>, hasSelection: boolean) {
+  return event.type === 'keydown'
+    && hasSelection
+    && (event.ctrlKey || event.metaKey)
+    && !event.altKey
+    && !event.shiftKey
+    && event.key.toLowerCase() === 'c';
+}
