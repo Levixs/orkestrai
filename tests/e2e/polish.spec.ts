@@ -28,7 +28,7 @@ test.describe('polimento do canvas', () => {
     await createWorkspaceIn(page, workspaceName);
 
     await page.keyboard.press('Control+p');
-    const palette = page.locator('.palette');
+    const palette = page.getByTestId('canvas-command-palette');
     await expect(palette).toBeVisible();
 
     await palette.locator('input').fill('Nova nota');
@@ -40,6 +40,26 @@ test.describe('polimento do canvas', () => {
     await palette.locator('input').fill('Nota');
     await page.keyboard.press('Enter');
     await expect(palette).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Huddles', exact: true }).click();
+    const huddle = page.getByTestId('huddle-dialog');
+    await expect(huddle).toBeVisible();
+
+    await page.keyboard.press('Control+p');
+    await expect(palette).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(palette).toHaveCount(0);
+    await expect(huddle).toBeVisible();
+
+    await page.keyboard.press('Control+p');
+    await expect(palette).toBeVisible();
+    await page.mouse.click(2, 2);
+    await expect(palette).toHaveCount(0);
+    await expect(huddle).toBeVisible();
+    await huddle.getByRole('button', { name: /Fechar Huddles|Close Huddles|Cerrar Huddles/ }).click();
+    await expect(huddle).toHaveCount(0);
 
     await cleanup(request, workspaceName);
   });

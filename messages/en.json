@@ -3145,6 +3145,7 @@
   "huddle.live": "Live",
   "huddle.finished": "Ended",
   "huddle.refresh": "Refresh huddles",
+  "huddle.close": "Close Huddles",
   "huddle.history": "History",
   "huddle.history_empty": "No huddles yet. Start a focused conversation with one or more agents.",
   "huddle.new": "New huddle",

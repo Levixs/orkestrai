@@ -707,6 +707,8 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Custom presets are now versioned Team Packs with semantic releases, immutable local history, SHA-256 verification, bounded import validation, and no live runtime or credential state.',
         'Team Pack import, export, and version-publishing failures now remain in the selected UI language instead of exposing internal server copy.',
         'Persistent Huddles bring selected people and agents into one bounded transcript with dictation, optional TTS, targeted replies, CLI/MCP contributions, encrypted remote permissions, lifecycle recovery, and linked Kanban/Workstream evidence.',
+        'The Huddles window now uses the available area, keeps history and transcript independently scrollable, rearranges content in narrow windows, and provides an always-visible close action.',
+        'The Command/Ctrl+P palette now uses the shared modal stack and closes reliably with Escape or an outside click, including after opening Huddles.',
       ],
     },
     {

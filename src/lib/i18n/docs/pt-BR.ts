@@ -711,6 +711,8 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Presets customizados agora são Team Packs versionados, com releases semânticas, histórico local imutável, verificação SHA-256, importação limitada e sem estado vivo ou credenciais.',
         'Falhas ao importar, exportar ou publicar versões de Team Packs agora permanecem no idioma selecionado na UI, sem expor mensagens internas do servidor.',
         'Huddles persistentes reúnem pessoas e agentes selecionados em uma transcrição limitada com ditado, TTS opcional, respostas direcionadas, contribuições por CLI/MCP, permissões remotas criptografadas, retomada do ciclo de vida e evidência vinculada ao Kanban e aos Fluxos de trabalho.',
+        'A janela de Huddles agora aproveita a área disponível, mantém histórico e transcrição com rolagem independente, reorganiza o conteúdo em janelas estreitas e oferece uma ação de fechar sempre visível.',
+        'A paleta Command/Ctrl+P agora usa a pilha compartilhada de modais e volta a fechar corretamente por Escape ou clique fora, inclusive após abrir Huddles.',
       ],
     },
     {

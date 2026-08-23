@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Node } from '@xyflow/svelte';
+  import { Box, Search, Zap } from '@lucide/svelte';
+  import * as Dialog from '$lib/components/ui/dialog';
   import * as m from '$lib/paraglide/messages.js';
 
   export type PaletteAction = {
@@ -53,9 +55,7 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      onClose();
-    } else if (event.key === 'ArrowDown') {
+    if (event.key === 'ArrowDown') {
       event.preventDefault();
       selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
     } else if (event.key === 'ArrowUp') {
@@ -78,112 +78,50 @@
   });
 </script>
 
-<div class="palette-backdrop" role="presentation" onclick={(event) => event.target === event.currentTarget && onClose()}>
-  <div class="palette" role="dialog" aria-label={m['palette.title']()}>
-    <input
-      bind:this={inputEl}
-      bind:value={query}
-      onkeydown={handleKeydown}
-      placeholder={m['ph.palette']()}
-      class="palette-input"
-    />
-    <ul class="palette-list">
+<Dialog.Root open={true} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+  <Dialog.Content
+    class="w-[min(560px,calc(100vw-2rem))]! max-w-none! gap-0! overflow-hidden p-0! sm:max-w-none!"
+    showCloseButton={false}
+    data-testid="canvas-command-palette"
+  >
+    <Dialog.Title class="sr-only">{m['palette.title']()}</Dialog.Title>
+    <div class="relative border-b border-[var(--app-border)]">
+      <Search class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]" size={15} />
+      <input
+        bind:this={inputEl}
+        bind:value={query}
+        onkeydown={handleKeydown}
+        placeholder={m['ph.palette']()}
+        class="h-12 w-full border-0 bg-transparent pr-4 pl-11 text-sm text-[var(--app-text)] outline-none placeholder:text-[var(--app-text-muted)]"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="canvas-command-palette-list"
+        aria-activedescendant={items[selectedIndex] ? `canvas-command-${items[selectedIndex].kind}-${items[selectedIndex].id}` : undefined}
+      />
+    </div>
+    <ul id="canvas-command-palette-list" class="max-h-[min(420px,60dvh)] list-none overflow-y-auto p-1.5" role="listbox">
       {#each items as item, index (item.kind + item.id)}
         <li>
-          <button class:active={index === selectedIndex} onclick={() => choose(item)}>
-            <span class="item-kind">{item.kind === 'node' ? '◈' : '⚡'}</span>
-            <span class="item-label">{item.label}</span>
-            <span class="item-hint">{item.hint}</span>
+          <button
+            id={`canvas-command-${item.kind}-${item.id}`}
+            type="button"
+            role="option"
+            aria-selected={index === selectedIndex}
+            class="flex min-h-10 w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] text-[var(--app-text)] transition-colors hover:bg-[var(--app-surface-raised)] focus-visible:bg-[var(--app-surface-raised)] focus-visible:outline-none"
+            class:bg-[var(--app-surface-raised)]={index === selectedIndex}
+            onpointerenter={() => (selectedIndex = index)}
+            onclick={() => choose(item)}
+          >
+            <span class="grid size-6 shrink-0 place-items-center rounded bg-[var(--app-surface-subtle)] text-[var(--app-secondary)]">
+              {#if item.kind === 'node'}<Box size={12} />{:else}<Zap size={12} />{/if}
+            </span>
+            <span class="min-w-0 flex-1 truncate">{item.label}</span>
+            <span class="shrink-0 text-[10px] text-[var(--app-text-muted)]">{item.hint}</span>
           </button>
         </li>
       {:else}
-        <li class="empty">{m['palette.empty']()}</li>
+        <li class="px-3 py-8 text-center text-xs text-[var(--app-text-muted)]">{m['palette.empty']()}</li>
       {/each}
     </ul>
-  </div>
-</div>
-
-<style>
-  .palette-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 12vh;
-    z-index: 200;
-  }
-
-  .palette {
-    width: 480px;
-    max-width: 92vw;
-    background: var(--app-surface);
-    border: 1px solid var(--app-border);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
-  }
-
-  .palette-input {
-    width: 100%;
-    padding: 12px 14px;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--app-text);
-    font-size: 14px;
-    border-bottom: 1px solid var(--app-border);
-    box-sizing: border-box;
-  }
-
-  .palette-list {
-    list-style: none;
-    margin: 0;
-    padding: 6px;
-    max-height: 320px;
-    overflow-y: auto;
-  }
-
-  .palette-list button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 7px 10px;
-    border: none;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--app-text);
-    font-size: 13px;
-    cursor: pointer;
-    text-align: left;
-  }
-
-  .palette-list button.active,
-  .palette-list button:hover {
-    background: var(--app-surface-raised);
-  }
-
-  .item-kind {
-    color: var(--app-secondary);
-  }
-
-  .item-label {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .item-hint {
-    color: var(--app-text-muted);
-    font-size: 11px;
-  }
-
-  .empty {
-    padding: 10px;
-    color: var(--app-text-muted);
-    font-size: 12px;
-  }
-</style>
+  </Dialog.Content>
+</Dialog.Root>

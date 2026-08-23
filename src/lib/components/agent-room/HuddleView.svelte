@@ -17,6 +17,7 @@
     Users,
     Volume2,
     VolumeX,
+    X,
   } from '@lucide/svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -30,7 +31,7 @@
   import type { CanvasNode, WorkspaceHuddle, WorkspaceHuddleSnapshot } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
 
-  let { workspaceId }: { workspaceId: string } = $props();
+  let { workspaceId, onClose }: { workspaceId: string; onClose?: () => void } = $props();
   let snapshot = $state<WorkspaceHuddleSnapshot | null>(null);
   let agents = $state<CanvasNode[]>([]);
   let selectedId = $state<string | null>(null);
@@ -251,15 +252,22 @@
         {m['huddle.description']()}
       </p>
     </div>
-    <Button variant="ghost" size="icon" class="size-8" aria-label={m['huddle.refresh']()} onclick={() => void load()}
-      ><RefreshCw size={14} class={loading ? 'animate-spin' : ''} /></Button
-    >
+    <div class="flex shrink-0 items-center gap-1">
+      <Button variant="ghost" size="icon" class="size-8" aria-label={m['huddle.refresh']()} onclick={() => void load()}
+        ><RefreshCw size={14} class={loading ? 'animate-spin' : ''} /></Button
+      >
+      {#if onClose}
+        <Button variant="ghost" size="icon" class="size-8" aria-label={m['huddle.close']()} onclick={onClose}>
+          <X size={15} />
+        </Button>
+      {/if}
+    </div>
   </header>
   {#if error}<div class="m-4 border-l-2 border-[var(--app-danger)] p-3 text-[10px] text-[var(--app-danger)]">
       {error}
     </div>{/if}
-  <div class="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)] max-[700px]:grid-cols-[190px_minmax(380px,1fr)]">
-    <aside class="min-h-0 overflow-y-auto border-r border-[var(--app-border)] p-2">
+  <div class="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[240px_minmax(0,1fr)] md:grid-rows-1 xl:grid-cols-[280px_minmax(0,1fr)]">
+    <aside class="max-h-36 min-h-0 overflow-y-auto border-b border-[var(--app-border)] p-2 md:max-h-none md:border-r md:border-b-0">
       <div class="mb-2 flex items-center justify-between px-2">
         <span class="flex items-center gap-1.5 text-[9px] font-semibold uppercase text-[var(--app-text-muted)]"
           ><History size={11} />{m['huddle.history']()}</span

@@ -50,6 +50,12 @@ pt-BR, English, and Spanish translations.
 
 - Team Pack import, export, and version-publishing failures now stay localized
   in the selected UI language instead of exposing internal server copy.
+- Huddles now use the available desktop viewport, preserve separate scrolling
+  for history and transcript, adapt to narrow windows, and expose an explicit
+  localized close action instead of clipping the room controls.
+- The Canvas `Command/Ctrl+P` palette now participates in the shared dialog
+  focus stack, so Escape and outside clicks close it reliably even after a
+  Huddle or another modal has been open.
 
 ## 0.17.0 - 2026-08-22
 
