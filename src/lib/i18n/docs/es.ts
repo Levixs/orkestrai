@@ -693,6 +693,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: '24 ago 2026 · 0.18.5',
+      title: 'Orkestrai 0.18.5: tema Obsidian en el terminal',
+      summary: 'Nuevo tema de terminal Obsidian — fondo negro puro y paleta ANSI de alto contraste.',
+      items: [
+        'Se agregó el tema de terminal Obsidian (fondo negro puro, paleta ANSI de alto contraste), llevando la selección de temas integrados a 11.',
+      ],
+    },
+    {
       date: '24 ago 2026 · 0.18.4',
       title: 'Orkestrai 0.18.4: estado en vivo de los providers',
       summary: 'La Central de Providers ahora muestra el estado público de cada provider, con enlace directo a su página oficial.',

@@ -5,6 +5,13 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.18.5 - 2026-08-24
+
+### Added
+
+- Added the Obsidian terminal theme (true-black background, high-contrast
+  ANSI palette), bringing the built-in selection to 11 themes.
+
 ## 0.18.4 - 2026-08-24
 
 ### Added
