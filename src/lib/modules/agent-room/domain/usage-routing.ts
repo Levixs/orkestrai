@@ -11,11 +11,25 @@ export type UsageRoutingPolicy = {
 export type ProviderUsageStatus = 'available' | 'near_limit' | 'exhausted' | 'unavailable';
 
 export type UsageRoutingReport = {
-  providers: Array<ProviderUsage & { status: ProviderUsageStatus; monitoredUsedPercent: number | null }>;
+  providers: Array<ProviderUsage & { status: ProviderUsageStatus; monitoredUsedPercent: number | null; routingId: string }>;
   policy: UsageRoutingPolicy;
   shouldFallback: boolean;
   recommendedProvider: string | null;
 };
+
+/** Chave de roteamento: a conta padrao de um provider mantem o proprio id
+    (compatibilidade com politicas ja salvas), um perfil vira uma entrada
+    independente para poder ser fonte/fallback sem ambiguidade. */
+export function usageRoutingId(usage: Pick<ProviderUsage, 'provider' | 'profileId'>): string {
+  return usage.profileId ? `${usage.provider}:profile:${usage.profileId}` : usage.provider;
+}
+
+/** Inverso de `usageRoutingId` — usado por quem recebe `recommendedProvider`
+    e precisa saber se deve passar `--profile` junto do `--provider`. */
+export function parseUsageRoutingId(routingId: string): { providerId: string; profileId: string | null } {
+  const match = /^(.+):profile:([^:]+)$/.exec(routingId);
+  return match ? { providerId: match[1], profileId: match[2] } : { providerId: routingId, profileId: null };
+}
 
 export const DEFAULT_USAGE_ROUTING_POLICY: UsageRoutingPolicy = {
   enabled: true,
@@ -55,10 +69,10 @@ export function buildUsageRoutingReport(usages: ProviderUsage[], value?: unknown
         : monitoredUsedPercent >= policy.thresholdPercent
           ? 'near_limit'
           : 'available';
-    return { ...usage, status, monitoredUsedPercent };
+    return { ...usage, status, monitoredUsedPercent, routingId: usageRoutingId(usage) };
   });
-  const source = providers.find((provider) => provider.provider === policy.sourceProvider);
-  const fallback = providers.find((provider) => provider.provider === policy.fallbackProvider);
+  const source = providers.find((provider) => provider.routingId === policy.sourceProvider);
+  const fallback = providers.find((provider) => provider.routingId === policy.fallbackProvider);
   const shouldFallback = Boolean(
     policy.enabled &&
     source &&

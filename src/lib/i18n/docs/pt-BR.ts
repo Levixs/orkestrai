@@ -32,7 +32,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'provider-center',
       title: 'Central de Providers',
-      body: `A Central verifica localmente as oito CLIs compatíveis e separa os agentes prontos daqueles que ainda precisam de configuração. Expanda um provider para ver o guia oficial, um comando de instalação para seu sistema quando disponível, instruções de login e capacidades detectadas como retomada de conversa, modelos e esforço ajustável. O Orkestrai nunca recebe credenciais nem autentica um agente silenciosamente; o login continua dentro da CLI oficial. Depois de instalar, use Verificar novamente e volte ao canvas.`,
+      body: `A Central verifica localmente as nove CLIs compatíveis (Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin e GitHub Copilot) e separa os agentes prontos daqueles que ainda precisam de configuração. Expanda um provider para ver o guia oficial, um comando de instalação para seu sistema quando disponível, instruções de login e capacidades detectadas como retomada de conversa, modelos e esforço ajustável. Providers com um mecanismo oficial de multi-conta (diretório de config, par de diretórios ou token) ganham uma seção Perfis: crie um perfil nomeado para usar uma conta diferente sem sair da CLI — a troca fica disponível também no menu do terminal, ao lado da troca de provider. O Orkestrai nunca recebe credenciais nem autentica um agente silenciosamente; o login continua dentro da CLI oficial, e o token de um perfil fica no armazenamento seguro do sistema. Depois de instalar, use Verificar novamente e volte ao canvas.`,
     },
     {
       id: 'roles',
@@ -696,6 +696,15 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '24 ago 2026 · 0.18.3',
+      title: 'Orkestrai 0.18.3: Perfis de multi-conta por provider',
+      summary: 'Crie perfis nomeados para trocar de conta de um provider sem sair da CLI — cada provider usa o mecanismo oficial dele, e um token de perfil nunca vai pro banco de dados.',
+      items: [
+        'Adicionados Perfis de provider: perfis nomeados de multi-conta por agente. Cada provider declara seu próprio mecanismo oficial (um diretório de config, um par de diretórios config+dados, ou um token — nunca um bloco genérico de env vars), perfis são identificados por um id estável em todo o fluxo (renomear nunca quebra um terminal), nomes são únicos por provider, e o token de um perfil nunca toca o banco — fica no armazenamento seguro de credenciais do desktop. Gerencie perfis na Central de Providers; troque o perfil ativo de um terminal no mesmo menu usado para trocar de provider.',
+        'O `orkestrai recruit` do Maestro (CLI, bridge HTTP e tool MCP) agora aceita `--profile <nome>` para recrutar um agente já numa conta alternativa. Uso e roteamento também reconhecem perfis: `orkestrai usage` lista cada perfil configurado como uma entrada roteável própria, ao lado da conta padrão, e o roteamento de fallback do nó Uso pode apontar para um perfil específico, não só para o provider inteiro.',
+      ],
+    },
     {
       date: '24 ago 2026 · 0.18.2',
       title: 'Orkestrai 0.18.2: GitHub Copilot e ícone de cada provider nos agentes do Canvas',

@@ -14,6 +14,7 @@ export const copilotAdapter: AgentAdapter = {
   id: 'copilot',
   displayName: 'GitHub Copilot',
   supportsResume: true,
+  profileStrategy: { kind: 'configDir', envVar: 'COPILOT_HOME', defaultDir: '~/.copilot' },
   setup: {
     docsUrl: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli',
     installCommands: {

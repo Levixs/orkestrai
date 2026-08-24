@@ -5,6 +5,26 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.18.3 - 2026-08-24
+
+### Added
+
+- Added Provider Profiles: named multi-account profiles per agent provider.
+  Each provider adapter declares its own official mechanism (a config
+  directory, a config/data directory pair, or a token — never a generic
+  env-var blob), profiles are identified by a stable id everywhere so a
+  rename never breaks a terminal, names are unique per provider, and a
+  profile's token never touches the database — it is stored through the
+  desktop's secure credential storage. Manage profiles from the Provider
+  Center; switch a terminal's active profile from the same menu used to
+  switch providers.
+- The Maestro's `orkestrai recruit` (CLI, bridge HTTP, and MCP tool) now
+  accepts `--profile <name>` to recruit an agent under an alternate account.
+  Usage and routing recognize profiles too: `orkestrai usage` lists each
+  configured profile as its own routable entry alongside the default
+  account, and the Usage node's fallback routing can target a specific
+  profile, not just a whole provider.
+
 ## 0.18.2 - 2026-08-24
 
 ### Added

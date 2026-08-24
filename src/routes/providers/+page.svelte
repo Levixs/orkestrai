@@ -11,14 +11,18 @@
     ExternalLink,
     MessageSquareText,
     MonitorCog,
+    Plus,
     RefreshCw,
     ShieldCheck,
     SquareTerminal,
+    Trash2,
+    UserRound,
   } from '@lucide/svelte';
   import { toast } from '@beeblock/svelar/ui';
   import { Button } from '$lib/components/ui/button';
   import { Skeleton } from '$lib/components/ui/skeleton';
-  import type { AgentProviderInfo } from '$lib/modules/agent-room/domain/types.js';
+  import { getCsrfToken } from '@beeblock/svelar/http';
+  import type { AgentProviderInfo, ProviderProfile } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type Filter = 'all' | 'ready' | 'setup';
@@ -30,6 +34,15 @@
   let filter = $state<Filter>('all');
   let expandedProvider = $state<string | null>(null);
   let platform = $state<Platform>('linux');
+
+  let profiles = $state<Record<string, ProviderProfile[]>>({});
+  let profileFormOpen = $state<string | null>(null);
+  let profileFormName = $state('');
+  let profileFormConfigDir = $state('');
+  let profileFormDataDir = $state('');
+  let profileFormToken = $state('');
+  let profileFormError = $state('');
+  let profileFormBusy = $state(false);
 
   const readyCount = $derived(providers.filter((provider) => provider.installed).length);
   const visibleProviders = $derived(
@@ -81,6 +94,69 @@
   async function copyCommand(command: string) {
     await navigator.clipboard.writeText(command);
     toast.success(m['providers.copied']());
+  }
+
+  async function loadProfiles(providerId: string) {
+    try {
+      const response = await fetch(`/api/agent-room/provider-profiles?providerId=${encodeURIComponent(providerId)}`);
+      const payload = await response.json();
+      profiles = { ...profiles, [providerId]: payload.data ?? [] };
+    } catch {
+      profiles = { ...profiles, [providerId]: [] };
+    }
+  }
+
+  function openProfileForm(providerId: string) {
+    profileFormOpen = providerId;
+    profileFormName = '';
+    profileFormConfigDir = '';
+    profileFormDataDir = '';
+    profileFormToken = '';
+    profileFormError = '';
+  }
+
+  async function saveProfile(provider: AgentProviderInfo) {
+    if (profileFormBusy) return;
+    profileFormBusy = true;
+    profileFormError = '';
+    try {
+      const strategy = provider.profileStrategy;
+      const response = await fetch('/api/agent-room/provider-profiles', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
+        },
+        body: JSON.stringify({
+          providerId: provider.id,
+          name: profileFormName,
+          ...(strategy?.kind === 'configDir' || strategy?.kind === 'configDirPair' ? { configDir: profileFormConfigDir } : {}),
+          ...(strategy?.kind === 'configDirPair' ? { dataDir: profileFormDataDir } : {}),
+          ...(strategy?.kind === 'token' ? { token: profileFormToken } : {}),
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? m['providers.profile_save_error']());
+      profileFormOpen = null;
+      await loadProfiles(provider.id);
+      toast.success(m['providers.profile_saved']());
+    } catch (error) {
+      profileFormError = error instanceof Error ? error.message : m['providers.profile_save_error']();
+    } finally {
+      profileFormBusy = false;
+    }
+  }
+
+  async function deleteProfile(providerId: string, profileId: string) {
+    try {
+      await fetch(`/api/agent-room/provider-profiles/${profileId}`, {
+        method: 'DELETE',
+        headers: getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {},
+      });
+      await loadProfiles(providerId);
+    } catch {
+      toast.error(m['providers.profile_delete_error']());
+    }
   }
 </script>
 
@@ -165,7 +241,10 @@
                 variant="outline"
                 size="sm"
                 aria-expanded={expanded}
-                onclick={() => (expandedProvider = expanded ? null : provider.id)}
+                onclick={() => {
+                  expandedProvider = expanded ? null : provider.id;
+                  if (!expanded && !profiles[provider.id]) loadProfiles(provider.id);
+                }}
               >
                 {expanded ? m['providers.setup_close']() : m['providers.setup_open']()}
                 {#if expanded}<ChevronUp size={13} />{:else}<ChevronDown size={13} />{/if}
@@ -210,6 +289,57 @@
                 <a class="guide-link" href={provider.setup.docsUrl} target="_blank" rel="noreferrer">
                   {m['providers.official_guide']()}<ExternalLink size={13} />
                 </a>
+              {/if}
+
+              {#if provider.profileStrategy && provider.profileStrategy.kind !== 'unsupported'}
+                {@const strategy = provider.profileStrategy}
+                <div class="setup-step profiles-step">
+                  <span class="step-icon"><UserRound size={15} /></span>
+                  <div class="step-copy">
+                    <h3>{m['providers.profiles_title']()}</h3>
+                    <p>{m['providers.profiles_body']()}</p>
+                    <ul class="profile-list">
+                      {#each profiles[provider.id] ?? [] as profile (profile.id)}
+                        <li>
+                          <span class="profile-name">{profile.name}</span>
+                          <span class="profile-detail">
+                            {#if strategy.kind === 'configDir'}{profile.configDir}
+                            {:else if strategy.kind === 'configDirPair'}{profile.configDir} · {profile.dataDir}
+                            {:else}{m['providers.profile_token_saved']()}{/if}
+                          </span>
+                          <button class="profile-remove" aria-label={m['providers.profile_delete']()} onclick={() => deleteProfile(provider.id, profile.id)}>
+                            <Trash2 size={13} />
+                          </button>
+                        </li>
+                      {:else}
+                        <li class="profile-empty">{m['providers.profiles_empty']()}</li>
+                      {/each}
+                    </ul>
+
+                    {#if profileFormOpen === provider.id}
+                      <form class="profile-form" onsubmit={(event) => { event.preventDefault(); saveProfile(provider); }}>
+                        <input placeholder={m['providers.profile_name_placeholder']()} bind:value={profileFormName} maxlength={48} required />
+                        {#if strategy.kind === 'configDir'}
+                          <input placeholder={strategy.defaultDir} bind:value={profileFormConfigDir} required />
+                        {:else if strategy.kind === 'configDirPair'}
+                          <input placeholder={`${m['providers.profile_config_dir']()} (${strategy.defaultConfigDir})`} bind:value={profileFormConfigDir} required />
+                          <input placeholder={`${m['providers.profile_data_dir']()} (${strategy.defaultDataDir})`} bind:value={profileFormDataDir} required />
+                        {:else if strategy.kind === 'token'}
+                          <input type="password" placeholder={m['providers.profile_token_placeholder']()} bind:value={profileFormToken} required />
+                        {/if}
+                        {#if profileFormError}<p class="profile-form-error">{profileFormError}</p>{/if}
+                        <div class="profile-form-actions">
+                          <Button type="submit" size="sm" disabled={profileFormBusy}>{m['providers.profile_save']()}</Button>
+                          <Button type="button" variant="ghost" size="sm" onclick={() => (profileFormOpen = null)}>{m['providers.profile_cancel']()}</Button>
+                        </div>
+                      </form>
+                    {:else}
+                      <Button variant="outline" size="sm" onclick={() => openProfileForm(provider.id)}>
+                        <Plus size={13} />{m['providers.profile_add']()}
+                      </Button>
+                    {/if}
+                  </div>
+                </div>
               {/if}
             </div>
           {/if}
@@ -303,6 +433,19 @@
   .command-row button:hover { color: var(--app-accent); background: var(--app-accent-soft); }
   .guide-link { position: absolute; right: 18px; bottom: 18px; display: inline-flex; align-items: center; gap: 6px; color: var(--app-accent); font-size: 11.5px; font-weight: 600; text-decoration: none; }
   .guide-link:hover { color: var(--app-accent); }
+
+  .profiles-step { padding-top: 3px; border-top: 1px dashed var(--line); }
+  .profile-list { display: grid; gap: 6px; margin: 9px 0; padding: 0; list-style: none; }
+  .profile-list li { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--app-page); }
+  .profile-list .profile-empty { color: var(--copy-muted); font-size: 11.5px; border-style: dashed; }
+  .profile-name { font-weight: 600; font-size: 12px; }
+  .profile-detail { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--copy-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+  .profile-remove { flex: 0 0 auto; border: 0; background: transparent; color: var(--copy-muted); cursor: pointer; }
+  .profile-remove:hover { color: var(--app-danger, #d94b4b); }
+  .profile-form { display: grid; gap: 7px; max-width: 420px; margin-top: 8px; }
+  .profile-form input { min-height: 32px; padding: 0 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--copy); font: inherit; font-size: 12px; }
+  .profile-form-error { margin: 0; color: var(--app-danger, #d94b4b); font-size: 11.5px; }
+  .profile-form-actions { display: flex; gap: 8px; }
 
   .empty-state { width: min(1100px, 100%); min-height: 180px; margin: 0 auto; display: grid; place-items: center; align-content: center; gap: 8px; border: 1px dashed var(--line); border-radius: 8px; color: var(--copy-muted); }
   .empty-state p { margin: 0; font-size: 12px; }

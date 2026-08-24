@@ -44,26 +44,37 @@
   const policy = $derived(normalizeUsageRoutingPolicy(data.payload));
   const report = $derived(buildUsageRoutingReport(usages, policy));
 
+  /** Fonte/fallback do roteamento: a conta padrao de cada provider routavel,
+      mais uma entrada por perfil de multi-conta (chaveada por routingId, nao
+      por nome — trocar de conta na Central de Providers nunca quebra a
+      politica salva). */
+  const routingOptions = $derived([
+    ...PROVIDERS.map((provider) => ({ id: provider.id, name: provider.name })),
+    ...report.providers
+      .filter((provider) => provider.profileId)
+      .map((provider) => ({ id: provider.routingId, name: `${usageProviderDefinition(provider.provider).name} · ${provider.profileName}` })),
+  ]);
+
   function persist(partial: Partial<UsageNodePayload>) {
     data.onPayloadChange?.(id, partial);
   }
 
+  function otherOption(exclude: string): string {
+    return routingOptions.find((option) => option.id !== exclude)?.id ?? exclude;
+  }
+
   function changeSource(sourceProvider: string) {
-    const fallbackProvider = sourceProvider === policy.fallbackProvider
-      ? (sourceProvider === 'codex' ? 'claude' : 'codex')
-      : policy.fallbackProvider;
+    const fallbackProvider = sourceProvider === policy.fallbackProvider ? otherOption(sourceProvider) : policy.fallbackProvider;
     persist({ sourceProvider, fallbackProvider });
   }
 
   function changeFallback(fallbackProvider: string) {
-    const sourceProvider = fallbackProvider === policy.sourceProvider
-      ? (fallbackProvider === 'claude' ? 'codex' : 'claude')
-      : policy.sourceProvider;
+    const sourceProvider = fallbackProvider === policy.sourceProvider ? otherOption(fallbackProvider) : policy.sourceProvider;
     persist({ sourceProvider, fallbackProvider });
   }
 
   function providerName(id: string): string {
-    return usageProviderDefinition(id).name;
+    return routingOptions.find((option) => option.id === id)?.name ?? usageProviderDefinition(id).name;
   }
 
   function diagnosticText(diagnostic: UsageDiagnostic): string {
@@ -173,12 +184,12 @@
         {/each}
       {/if}
 
-      {#each report.providers as provider (provider.provider)}
+      {#each report.providers as provider (provider.routingId)}
         {@const meta = usageProviderDefinition(provider.provider)}
         <section class="provider-row">
           <div class="provider-head">
             {#if meta.icon}<img src={meta.icon} width="18" height="18" alt="" />{:else}<Bot size={18} aria-hidden="true" />{/if}
-            <strong>{meta.name}</strong>
+            <strong>{meta.name}{#if provider.profileName} · {provider.profileName}{/if}</strong>
             {#if provider.plan}<span class="plan">{provider.plan}</span>{/if}
             <span class="status" style:color={statusColor(provider.status)}>{statusLabel(provider.status)}</span>
           </div>
@@ -235,7 +246,7 @@
           <Select.Root type="single" value={policy.sourceProvider} disabled={!policy.enabled} onValueChange={changeSource}>
             <Select.Trigger size="sm" class="routing-select">{providerName(policy.sourceProvider)}</Select.Trigger>
             <Select.Content>
-              {#each PROVIDERS as provider (provider.id)}<Select.Item value={provider.id}>{provider.name}</Select.Item>{/each}
+              {#each routingOptions as option (option.id)}<Select.Item value={option.id}>{option.name}</Select.Item>{/each}
             </Select.Content>
           </Select.Root>
         </label>
@@ -244,7 +255,7 @@
           <Select.Root type="single" value={policy.fallbackProvider} disabled={!policy.enabled} onValueChange={changeFallback}>
             <Select.Trigger size="sm" class="routing-select">{providerName(policy.fallbackProvider)}</Select.Trigger>
             <Select.Content>
-              {#each PROVIDERS as provider (provider.id)}<Select.Item value={provider.id}>{provider.name}</Select.Item>{/each}
+              {#each routingOptions as option (option.id)}<Select.Item value={option.id}>{option.name}</Select.Item>{/each}
             </Select.Content>
           </Select.Root>
         </label>
@@ -279,7 +290,7 @@
       </div>
 
       {#if policy.enabled}
-        {@const sourceReport = report.providers.find((provider) => provider.provider === policy.sourceProvider)}
+        {@const sourceReport = report.providers.find((provider) => provider.routingId === policy.sourceProvider)}
         <p class:recommendation={report.shouldFallback || sourceReport?.status === 'near_limit' || sourceReport?.status === 'exhausted'} class="routing-result">
           {#if report.shouldFallback}
             {m['usage.routing_recommendation']({ source: providerName(policy.sourceProvider), fallback: providerName(report.recommendedProvider ?? policy.fallbackProvider) })}

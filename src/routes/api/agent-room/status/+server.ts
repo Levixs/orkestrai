@@ -35,6 +35,7 @@ export const GET: RequestHandler = async ({ url }) => {
         efforts: adapter.efforts,
         sessionStorage: adapter.sessionStorage,
         setup: adapter.setup,
+        profileStrategy: adapter.profileStrategy,
         installed: detection.installed,
         detail: detection.detail,
         tui: {

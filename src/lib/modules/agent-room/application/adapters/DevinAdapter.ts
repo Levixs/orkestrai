@@ -16,6 +16,7 @@ export const devinAdapter: AgentAdapter = {
   displayName: 'Devin',
   supportsResume: true,
   sessionStorage: 'devin-session-db',
+  profileStrategy: { kind: 'token', envVar: 'DEVIN_API_TOKEN', optionalEnvVars: ['DEVIN_ORG_ID'] },
   setup: {
     docsUrl: 'https://docs.devin.ai/cli',
     installCommands: {

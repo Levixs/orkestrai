@@ -11,6 +11,7 @@ export const clineAdapter: AgentAdapter = {
   supportsResume: true,
   efforts: CLINE_EFFORTS,
   sessionStorage: 'cline-session-manifest',
+  profileStrategy: { kind: 'token', envVar: 'CLINE_API_KEY' },
   setup: {
     docsUrl: 'https://docs.cline.bot/getting-started/installing-cline',
     installCommands: {

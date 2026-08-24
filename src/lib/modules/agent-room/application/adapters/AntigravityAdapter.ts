@@ -10,6 +10,8 @@ export const antigravityAdapter: AgentAdapter = {
   supportsResume: true,
   efforts: ['low', 'medium', 'high'],
   sessionStorage: 'antigravity-workspace-cache',
+  // Sessao normal fica no keyring do SO; nao ha env var oficial de config dir.
+  profileStrategy: { kind: 'unsupported' },
   setup: {
     docsUrl: 'https://antigravity.google/docs/cli/getting-started',
     installCommands: {

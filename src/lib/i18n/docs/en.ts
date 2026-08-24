@@ -28,7 +28,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'provider-center',
       title: 'Provider Center',
-      body: `Provider Center checks all eight supported CLIs locally and separates agents that are ready from those that still need setup. Expand a provider to see its official guide, an installation command for your operating system when available, sign-in instructions, and detected capabilities such as conversation resume, models, and adjustable effort. Orkestrai never receives provider credentials or authenticates an agent silently; sign-in remains inside the official CLI. Use Check again after installing, then return to the canvas.`,
+      body: `Provider Center checks all nine supported CLIs locally (Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot) and separates agents that are ready from those that still need setup. Expand a provider to see its official guide, an installation command for your operating system when available, sign-in instructions, and detected capabilities such as conversation resume, models, and adjustable effort. Providers with an official multi-account mechanism (a config directory, a directory pair, or a token) get a Profiles section: create a named profile to switch accounts without leaving the CLI — the switch is also available from the terminal menu, next to the provider switch. Orkestrai never receives provider credentials or authenticates an agent silently; sign-in remains inside the official CLI, and a profile's token stays in the system's secure storage. Use Check again after installing, then return to the canvas.`,
     },
     {
       id: 'roles',
@@ -692,6 +692,15 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 24, 2026 · 0.18.3',
+      title: 'Orkestrai 0.18.3: per-provider multi-account Profiles',
+      summary: 'Create named profiles to switch a provider\'s account without leaving the CLI — each provider uses its own official mechanism, and a profile token never touches the database.',
+      items: [
+        'Added Provider Profiles: named multi-account profiles per agent provider. Each provider declares its own official mechanism (a config directory, a config+data directory pair, or a token — never a generic env-var blob), profiles are identified by a stable id throughout the flow (renaming never breaks a terminal), names are unique per provider, and a profile\'s token never touches the database — it lives in the desktop\'s secure credential storage. Manage profiles from the Provider Center; switch a terminal\'s active profile from the same menu used to switch providers.',
+        'The Maestro\'s `orkestrai recruit` (CLI, bridge HTTP, and MCP tool) now accepts `--profile <name>` to recruit an agent under an alternate account. Usage and routing recognize profiles too: `orkestrai usage` lists each configured profile as its own routable entry alongside the default account, and the Usage node\'s fallback routing can target a specific profile, not just a whole provider.',
+      ],
+    },
     {
       date: 'Aug 24, 2026 · 0.18.2',
       title: 'Orkestrai 0.18.2: GitHub Copilot and per-provider icons on Canvas agent nodes',

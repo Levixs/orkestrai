@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { USAGE_REFRESH_INTERVAL_MS, type UsageErrorCode } from '$lib/modules/agent-room/domain/usage.js';
 import { USAGE_PROVIDERS, usageProviderDefinition, type UsageDiagnostic } from '$lib/modules/agent-room/domain/usage-providers.js';
+import type { ProviderProfile } from '$lib/modules/agent-room/domain/types.js';
+import { providerProfileService } from './ProviderProfileService.js';
 
 const FETCH_TIMEOUT_MS = 10_000;
 /** OAuth do kimi-code (client publico da CLI). */
@@ -23,6 +25,9 @@ export type UsageWindow = {
 
 export type ProviderUsage = {
   provider: string;
+  /** Perfil de multi-conta desta leitura, ou null para a conta padrão do provider. */
+  profileId?: string | null;
+  profileName?: string | null;
   plan: string | null;
   windows: UsageWindow[];
   error: UsageErrorCode | null;
@@ -81,10 +86,22 @@ export class UsageService {
     private readonly home: string = homedir(),
     private readonly keychainReader: (service: string) => Promise<string | null> = readMacOsKeychain,
     private readonly platform: NodeJS.Platform = process.platform,
+    private readonly listProfiles: (providerId: string) => Promise<ProviderProfile[]> = (id) => providerProfileService.list(id),
   ) {}
 
+  /** Base de cada provider + uma linha por perfil de multi-conta configDir
+      (os unicos onde da pra ler a cota real: token strategy nao tem arquivo
+      de credenciais para ler sem rodar a CLI, e configDirPair/unsupported
+      nao tem collector). */
   async getAll(forceRefresh = false): Promise<ProviderUsage[]> {
-    return Promise.all(USAGE_PROVIDERS.map((provider) => this.getUsage(provider.id, forceRefresh)));
+    const base = await Promise.all(USAGE_PROVIDERS.map((provider) => this.getUsage(provider.id, forceRefresh)));
+    const profileRows = await Promise.all(USAGE_PROVIDERS
+      .filter((provider) => provider.collector)
+      .map(async (provider) => {
+        const profiles = await this.listProfiles(provider.id).catch(() => []);
+        return Promise.all(profiles.map((profile) => this.getUsage(provider.id, forceRefresh, profile)));
+      }));
+    return [...base, ...profileRows.flat()];
   }
 
   cached(): ProviderUsage[] {
@@ -93,17 +110,19 @@ export class UsageService {
       .filter((usage): usage is ProviderUsage => Boolean(usage));
   }
 
-  async getUsage(provider: string, forceRefresh = false): Promise<ProviderUsage> {
-    const cached = this.cache.get(provider);
+  async getUsage(provider: string, forceRefresh = false, profile: ProviderProfile | null = null): Promise<ProviderUsage> {
+    const cacheKey = profile ? `${provider}::${profile.id}` : provider;
+    const cached = this.cache.get(cacheKey);
     if (!forceRefresh && cached && Date.now() - cached.at < USAGE_REFRESH_INTERVAL_MS) return cached.usage;
 
     let usage: ProviderUsage;
     try {
       const definition = usageProviderDefinition(provider);
+      const configDir = profile?.configDir ?? undefined;
       const collectors = {
-        claude: () => this.claudeUsage(),
-        codex: () => this.codexUsage(),
-        kimi: () => this.kimiUsage(),
+        claude: () => this.claudeUsage(configDir),
+        codex: () => this.codexUsage(configDir),
+        kimi: () => this.kimiUsage(configDir),
       } satisfies Record<NonNullable<typeof definition.collector>, () => Promise<ProviderUsage>>;
       if (definition.collector) usage = await collectors[definition.collector]();
       else {
@@ -120,7 +139,8 @@ export class UsageService {
     } catch (error) {
       usage = this.failure(provider, error instanceof UsageCollectionError ? error.code : 'unexpected');
     }
-    this.cache.set(provider, { at: Date.now(), usage });
+    if (profile) { usage.profileId = profile.id; usage.profileName = profile.name; }
+    this.cache.set(cacheKey, { at: Date.now(), usage });
     return usage;
   }
 
@@ -130,14 +150,17 @@ export class UsageService {
 
   // -- Claude (OAuth do Claude Code; token no arquivo ou no Keychain do macOS) --
 
-  private async claudeToken(): Promise<string> {
-    const filePath = join(this.home, '.claude', '.credentials.json');
+  private async claudeToken(configDir?: string): Promise<string> {
+    const filePath = join(configDir ?? join(this.home, '.claude'), '.credentials.json');
     if (existsSync(filePath)) {
       const parsed = JSON.parse(readFileSync(filePath, 'utf8'));
       const token = parsed?.claudeAiOauth?.accessToken;
       if (token) return token as string;
     }
-    if (this.platform === 'darwin') {
+    // O Keychain do macOS nao e namespaced por CLAUDE_CONFIG_DIR — so serve
+    // de fallback para a conta padrao, nunca para um perfil (leria a conta
+    // errada silenciosamente).
+    if (!configDir && this.platform === 'darwin') {
       const raw = await this.keychainReader('Claude Code-credentials');
       if (raw) {
         const token = JSON.parse(raw)?.claudeAiOauth?.accessToken;
@@ -147,8 +170,8 @@ export class UsageService {
     throw usageError('credentials_missing');
   }
 
-  private async claudeUsage(): Promise<ProviderUsage> {
-    const token = await this.claudeToken();
+  private async claudeUsage(configDir?: string): Promise<ProviderUsage> {
+    const token = await this.claudeToken(configDir);
     const data = await this.fetchJson('https://api.anthropic.com/api/oauth/usage', {
       authorization: `Bearer ${token}`,
       'anthropic-beta': 'oauth-2025-04-20',
@@ -163,8 +186,8 @@ export class UsageService {
 
   // -- Codex (ChatGPT backend; auth.json do codex CLI) --
 
-  private async codexUsage(): Promise<ProviderUsage> {
-    const filePath = join(this.home, '.codex', 'auth.json');
+  private async codexUsage(configDir?: string): Promise<ProviderUsage> {
+    const filePath = join(configDir ?? join(this.home, '.codex'), 'auth.json');
     if (!existsSync(filePath)) throw usageError('credentials_missing');
     const auth = JSON.parse(readFileSync(filePath, 'utf8'));
     const token = auth?.tokens?.access_token;
@@ -264,8 +287,8 @@ export class UsageService {
     return data.access_token;
   }
 
-  private async kimiUsage(): Promise<ProviderUsage> {
-    const filePath = join(this.home, '.kimi-code', 'credentials', 'kimi-code.json');
+  private async kimiUsage(configDir?: string): Promise<ProviderUsage> {
+    const filePath = join(configDir ?? join(this.home, '.kimi-code'), 'credentials', 'kimi-code.json');
     if (!existsSync(filePath)) throw usageError('credentials_missing');
     const token = await this.kimiToken(filePath);
 

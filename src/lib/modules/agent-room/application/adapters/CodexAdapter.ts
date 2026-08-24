@@ -19,6 +19,7 @@ export const codexAdapter: AgentAdapter = {
   supportsResume: false,
   efforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
   sessionStorage: 'codex-rollout-jsonl',
+  profileStrategy: { kind: 'configDir', envVar: 'CODEX_HOME', defaultDir: '~/.codex' },
   setup: {
     docsUrl: 'https://developers.openai.com/codex/cli/',
     installCommands: {

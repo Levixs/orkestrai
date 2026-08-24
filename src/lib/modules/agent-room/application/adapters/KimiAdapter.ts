@@ -62,6 +62,7 @@ export const kimiAdapter: AgentAdapter = {
   displayName: 'Kimi',
   supportsResume: true,
   sessionStorage: 'kimi-session-dir',
+  profileStrategy: { kind: 'configDir', envVar: 'KIMI_CODE_HOME', defaultDir: '~/.kimi-code' },
   setup: {
     docsUrl: 'https://www.kimi.com/code/docs/en/',
     installCommands: {

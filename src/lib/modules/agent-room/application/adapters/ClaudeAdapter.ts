@@ -18,6 +18,7 @@ export const claudeAdapter: AgentAdapter = {
   supportsResume: false,
   efforts: CLAUDE_EFFORTS,
   sessionStorage: 'claude-project-jsonl',
+  profileStrategy: { kind: 'configDir', envVar: 'CLAUDE_CONFIG_DIR', defaultDir: '~/.claude' },
   setup: {
     docsUrl: 'https://code.claude.com/docs/en/setup',
     installCommands: {

@@ -10,6 +10,7 @@ import { agentSessionTracker, agentSessionTrackerForRuntime } from '../../infras
 import { bridgeService } from './BridgeService.js';
 import { designDocumentService } from './DesignDocumentService.js';
 import { roleService } from './RoleService.js';
+import { providerProfileService } from './ProviderProfileService.js';
 import { floorService } from './FloorService.js';
 import { controlCenterService } from './ControlCenterService.js';
 import { CreateWorkspaceDto } from '../dto/WorkspaceDtos.js';
@@ -375,21 +376,25 @@ export class WorkspaceService {
       () => adapter.detect(),
     );
     if (!detection.installed) throw new Error(`${adapter.displayName} não está disponível neste dispositivo.`);
+    const profileEnv = dto.profileId ? await providerProfileService.resolveEnv(dto.profileId, adapter.id) : {};
 
     const current = { ...((node.payload ?? {}) as Record<string, unknown>) };
     const sessionId = typeof current.sessionId === 'string' ? current.sessionId : null;
     if (sessionId) ptySessionManager.kill(sessionId);
     const command = adapter.interactiveCommand();
+    const env = { ...command.env, ...profileEnv };
     let payload: Record<string, unknown> = {
       ...current,
       provider: adapter.id,
+      profileId: dto.profileId,
       command: command.command,
       args: [...command.args],
-      ...(command.env && Object.keys(command.env).length ? { env: { ...command.env } } : {}),
+      ...(Object.keys(env).length ? { env } : {}),
     };
     delete payload.sessionId;
     delete payload.agentSessionId;
-    if (!command.env || Object.keys(command.env).length === 0) delete payload.env;
+    if (!Object.keys(env).length) delete payload.env;
+    if (!dto.profileId) delete payload.profileId;
     const roleName = typeof payload.role === 'string' ? payload.role : null;
     const role = roleName ? await roleService.launchContext(dto.workspaceId, roleName).catch(() => null) : null;
     payload = materializeInteractiveAgentCommand(payload, role).payload;

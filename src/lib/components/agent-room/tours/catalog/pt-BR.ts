@@ -811,7 +811,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'open-center',
         title: 'Abra a Central de Providers',
-        body: 'Use o ícone de cabo na barra lateral esquerda, Cmd/Ctrl+2 ou Workspace → Central de Providers. Ela verifica Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin localmente.',
+        body: 'Use o ícone de cabo na barra lateral esquerda, Cmd/Ctrl+2 ou Workspace → Central de Providers. Ela verifica Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin e GitHub Copilot localmente.',
       },
       {
         id: 'follow-setup',
@@ -822,6 +822,11 @@ export const TOURS_PT: Tour[] = [
         id: 'verify',
         title: 'Verifique novamente e crie o agente',
         body: 'Volte à Central e use Verificar novamente. Quando a CLI for detectada, retorne ao canvas e crie esse agente pela barra inferior.',
+      },
+      {
+        id: 'multi-account',
+        title: 'Use uma segunda conta com Perfis',
+        body: 'Se o provider suportar multi-conta oficialmente, a seção Perfis aparece ao expandi-lo: crie um perfil nomeado (ex.: "Trabalho") apontando pro diretório de config ou token dessa conta. A troca fica disponível no menu do terminal, junto da troca de provider, sem precisar sair da CLI.',
       },
     ],
   },
@@ -834,7 +839,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'available',
         title: 'Veja o que já está disponível',
-        body: 'A barra inferior detecta Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin. Os disponíveis ficam ativos; os desativados só precisam de instalação e login.',
+        body: 'A barra inferior detecta Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin e GitHub Copilot. Os disponíveis ficam ativos; os desativados só precisam de instalação e login.',
       },
       {
         id: 'outcome',
