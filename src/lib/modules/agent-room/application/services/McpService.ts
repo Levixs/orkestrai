@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
+import { fanOutMcpServer, removeFannedOutMcpServer } from '../../infrastructure/mcp-fanout.js';
+import type { Workspace } from '../../domain/types.js';
 
 export type McpServerDef = {
   name: string;
@@ -19,9 +21,14 @@ export type McpServerDef = {
  * servidores configurados a mao.
  */
 export class McpService {
-  private async mcpPath(workspaceId: string): Promise<string> {
+  private async getWorkspace(workspaceId: string): Promise<Workspace> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     if (!workspace) throw new Error('Workspace nao encontrado.');
+    return workspace;
+  }
+
+  private async mcpPath(workspaceId: string): Promise<string> {
+    const workspace = await this.getWorkspace(workspaceId);
     return resolve(workspace.workingDir, '.mcp.json');
   }
 
@@ -57,32 +64,44 @@ export class McpService {
     const name = input.name.trim();
     if (!name) throw new Error('Informe o nome do servidor.');
     if (!/^[a-z0-9-_]+$/i.test(name)) throw new Error('Nome so com letras, numeros, - e _.');
+    if (name === 'orkestrai' || name === 'figma') throw new Error(`O nome "${name}" e reservado para o servidor do Orkestrai.`);
+    const workspace = await this.getWorkspace(workspaceId);
     const config = await this.readConfig(workspaceId);
-    if (input.url?.trim()) {
+    const url = input.url?.trim();
+    let command = '';
+    let args: string[] = [];
+    let env: Record<string, string> = {};
+    if (url) {
       // Servidor remoto (streamable-http): so a URL, sem comando local.
-      config.mcpServers[name] = { type: 'http', url: input.url.trim() } as never;
+      config.mcpServers[name] = { type: 'http', url } as never;
     } else {
-      const command = (input.command ?? '').trim();
+      command = (input.command ?? '').trim();
       if (!command) throw new Error('Informe o comando (ex.: npx, node, uvx) ou uma URL.');
-      const args = Array.isArray(input.args)
+      args = Array.isArray(input.args)
         ? input.args.map(String)
         : String(input.args ?? '')
             .split(' ')
             .map((part) => part.trim())
             .filter(Boolean);
-      const env = Object.fromEntries(Object.entries(input.env ?? {}).filter(([, value]) => String(value).trim() !== ''));
-      config.mcpServers[name] = env && Object.keys(env).length ? { command, args, env } : { command, args };
+      env = Object.fromEntries(Object.entries(input.env ?? {}).filter(([, value]) => String(value).trim() !== ''));
+      config.mcpServers[name] = Object.keys(env).length ? { command, args, env } : { command, args };
     }
-    writeFileSync(await this.mcpPath(workspaceId), `${JSON.stringify(config, null, 2)}\n`);
+    writeFileSync(resolve(workspace.workingDir, '.mcp.json'), `${JSON.stringify(config, null, 2)}\n`);
+    // .mcp.json so e lido por Claude/Kimi — propaga para os outros formatos
+    // nativos (Cursor, Cline, Devin, Antigravity, OpenCode) igual a ponte faz
+    // para o servidor "orkestrai". Falha de escrita aqui nao bloqueia o add.
+    await fanOutMcpServer(workspace.workingDir, name, { command, args, env, url }).catch(() => undefined);
     return this.list(workspaceId);
   }
 
   async remove(workspaceId: string, name: string): Promise<McpServerDef[]> {
     if (name === 'orkestrai' || name === 'figma') throw new Error(`Servidor "${name}" e gerenciado pelo Orkestrai.`);
+    const workspace = await this.getWorkspace(workspaceId);
     const config = await this.readConfig(workspaceId);
     if (!(name in config.mcpServers)) throw new Error(`Servidor "${name}" nao encontrado.`);
     delete config.mcpServers[name];
-    writeFileSync(await this.mcpPath(workspaceId), `${JSON.stringify(config, null, 2)}\n`);
+    writeFileSync(resolve(workspace.workingDir, '.mcp.json'), `${JSON.stringify(config, null, 2)}\n`);
+    await removeFannedOutMcpServer(workspace.workingDir, name).catch(() => undefined);
     return this.list(workspaceId);
   }
 }

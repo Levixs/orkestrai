@@ -11,8 +11,9 @@
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
-  import { FolderOpen, Plug, Trash2 } from '@lucide/svelte';
+  import { FolderOpen, Trash2 } from '@lucide/svelte';
   import { onMount } from 'svelte';
+  import McpIcon from '../McpIcon.svelte';
   import { isLegacyEmojiIcon, WORKSPACE_ICONS } from '../workspace-icons.js';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
@@ -371,7 +372,7 @@
 
         <section class="space-y-2 border-t border-border/60 pt-4">
           <div class="flex items-center gap-2">
-            <Plug size={13} class="text-muted-foreground" aria-hidden="true" />
+            <McpIcon size={13} class="text-muted-foreground" aria-hidden="true" />
             <h3 class="text-sm font-medium">{m['dlg.mcp_title']()}</h3>
           </div>
           <p class="text-pretty text-xs text-muted-foreground">{m['dlg.mcp_desc']()}</p>

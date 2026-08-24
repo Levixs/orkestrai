@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ArrowLeft, Blocks, Download, ExternalLink, Plug, Search, Trash2 } from '@lucide/svelte';
+  import { ArrowLeft, Blocks, Download, ExternalLink, Search, Trash2 } from '@lucide/svelte';
+  import McpIcon from '$lib/components/agent-room/McpIcon.svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
@@ -239,7 +240,7 @@
       <Blocks size={14} aria-hidden="true" /> {m['skills.tab_skills']()}
     </button>
     <button class="tab-btn" class:active={tab === 'mcps'} role="tab" aria-selected={tab === 'mcps'} onclick={() => (tab = 'mcps')}>
-      <Plug size={14} aria-hidden="true" /> {m['skills.tab_mcps']()}
+      <McpIcon size={14} aria-hidden="true" /> {m['skills.tab_mcps']()}
     </button>
   </div>
 
@@ -329,7 +330,7 @@
   {:else}
     <section class="page-section">
       <header class="section-head">
-        <span class="icon-chip"><Plug size={15} aria-hidden="true" /></span>
+        <span class="icon-chip"><McpIcon size={15} aria-hidden="true" /></span>
         <div class="section-titles">
           <h2>{m['skills.mcp_installed_title']()}</h2>
           <p>{installedMcps.length ? (installedMcps.length === 1 ? m['skills.mcp_count_one']({ count: installedMcps.length }) : m['skills.mcp_count_other']({ count: installedMcps.length })) : m['skills.mcp_installed_empty']()}</p>
@@ -339,7 +340,7 @@
         <ul class="item-list">
           {#each installedMcps as server (server.name)}
             <li class="item-row installed-row">
-              <span class="item-icon"><Plug size={14} aria-hidden="true" /></span>
+              <span class="item-icon"><McpIcon size={14} aria-hidden="true" /></span>
               <div class="item-info">
                 <span class="item-name">{server.name}{#if server.builtin} <span class="builtin-tag">{m['skills.builtin_tag']()}</span>{/if}</span>
                 <span class="item-desc">{server.url ?? `${server.command} ${server.args.join(' ')}`}</span>
