@@ -57,8 +57,39 @@ test.describe('usage dos providers', () => {
       }
 
       await page.getByRole('button', { name: /Adicionar Uso ao canvas/i }).click();
-      await expect(page.locator('.canvas-usage')).toBeVisible();
-      await expect(page.locator('.canvas-usage .routing-policy')).toContainText('Roteamento');
+      const usageNode = page.locator('.canvas-usage');
+      const usageBody = usageNode.locator('.usage-node-body');
+      const routingPolicy = usageNode.locator('.routing-policy');
+      const providerList = usageNode.locator('.provider-list');
+      await expect(usageNode).toBeVisible();
+      await expect(routingPolicy).toBeVisible();
+      await expect(routingPolicy).toContainText('Roteamento');
+
+      const defaultLayout = await usageBody.evaluate((element) => {
+        const routing = element.querySelector('.routing-policy')!;
+        const providers = element.querySelector('.provider-list')!;
+        return {
+          clientHeight: element.clientHeight,
+          overflowY: getComputedStyle(element).overflowY,
+          routingBeforeProviders: routing.getBoundingClientRect().top < providers.getBoundingClientRect().top,
+        };
+      });
+      expect(defaultLayout.clientHeight).toBeGreaterThan(500);
+      expect(defaultLayout.overflowY).toBe('auto');
+      expect(defaultLayout.routingBeforeProviders).toBe(true);
+
+      // Nós persistidos por versões antigas podem continuar com apenas 300px.
+      // Eles precisam rolar internamente sem exigir resize nem aplicar zoom no canvas.
+      await usageNode.evaluate((element) => {
+        const node = element.closest('.svelte-flow__node') as HTMLElement | null;
+        if (node) node.style.height = '300px';
+      });
+      await expect.poll(() => usageBody.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+      const viewportTransform = await page.locator('.svelte-flow__viewport').getAttribute('style');
+      await usageBody.hover();
+      await page.mouse.wheel(0, 320);
+      await expect.poll(() => usageBody.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+      expect(await page.locator('.svelte-flow__viewport').getAttribute('style')).toBe(viewportTransform);
 
       const nodes = (await (await request.get(`/api/agent-room/workspaces/${workspace.id}/nodes`)).json()).data as Array<{ type: string; payload: Record<string, unknown> }>;
       expect(nodes.find((node) => node.type === 'usage')?.payload).toMatchObject({

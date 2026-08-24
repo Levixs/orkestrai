@@ -356,7 +356,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'usage-routing',
       title: 'Uso e roteamento por cota',
-      body: `Abra Uso na barra inferior e use Adicionar ao canvas para manter a capacidade dos providers visível no workspace. Claude, Codex e Kimi expõem janelas de 5 horas, semanais ou mensais legíveis por máquina usando as credenciais que já pertencem às CLIs; somente esses percentuais verificados participam do roteamento automático entre origem e fallback. O mesmo painel lista Antigravity, Cursor, Devin, OpenCode e Cline com sua capacidade oficial real: Antigravity expõe cota nos painéis AI Credits e Model Quotas, Cursor e Devin exigem credenciais administrativas separadas de Team/Enterprise e OpenCode/Cline mostram uso no console da conta, nas configurações ou no provider de modelo escolhido. Nenhum provider indisponível recebe percentual inventado. O nó atualiza as fontes automáticas a cada cinco minutos, oferece links para a documentação oficial e avisa quando a janela da política está indisponível. Uma tarefa já em execução nunca troca de terminal silenciosamente.`,
+      body: `Abra Uso na barra inferior e use Adicionar ao canvas para manter a capacidade dos providers visível no workspace. O Roteamento do líder aparece primeiro no nó: escolha origem, fallback, janela de 5 horas/semanal/mensal e percentual sem redimensionar. Os detalhes dos providers vêm depois numa área de rolagem contida compatível com mouse, trackpad, toque e teclado sem aplicar zoom no canvas; nós compactos salvos anteriormente usam o mesmo comportamento. Claude, Codex e Kimi expõem janelas legíveis por máquina usando as credenciais que já pertencem às CLIs; somente esses percentuais verificados participam do roteamento automático entre origem e fallback. O mesmo painel lista Antigravity, Cursor, Devin, OpenCode e Cline com sua capacidade oficial real: Antigravity expõe cota nos painéis AI Credits e Model Quotas, Cursor e Devin exigem credenciais administrativas separadas de Team/Enterprise e OpenCode/Cline mostram uso no console da conta, nas configurações ou no provider de modelo escolhido. Nenhum provider indisponível recebe percentual inventado. O nó atualiza as fontes automáticas a cada cinco minutos, oferece links para a documentação oficial e avisa quando a janela da política está indisponível. Uma tarefa já em execução nunca troca de terminal silenciosamente.`,
     },
     {
       id: 'appearance',
@@ -696,6 +696,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Próxima versão',
+      title: 'Roteamento por uso sempre visível e rolável',
+      summary: 'A política de cota fica clara assim que o nó é criado, inclusive em layouts compactos já salvos.',
+      items: [
+        'Uso e roteamento agora abre num tamanho inicial útil, mostra o Roteamento do líder antes dos providers, reorganiza controles em larguras estreitas e contém a rolagem por mouse, trackpad, toque e teclado sem ampliar o canvas.',
+      ],
+    },
     {
       date: '24 ago 2026 · 0.18.1',
       title: 'Orkestrai 0.18.1: estado confiável de projeto, Portal, voz e terminal',

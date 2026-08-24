@@ -915,7 +915,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'set-policy',
         title: 'Ajuste a política',
-        body: 'No nó, escolha a origem, um fallback diferente, a janela de 5 horas, semanal ou mensal e o percentual que significa "perto do limite". Se o provider não reportar esse período, o nó pede outra janela.',
+        body: 'Roteamento do líder é a primeira seção do nó. Escolha a origem, um fallback diferente, a janela de 5 horas, semanal ou mensal e o percentual que significa "perto do limite". Os detalhes dos providers rolam abaixo sem ampliar o canvas, inclusive em nós compactos já salvos. Se o provider não reportar esse período, o nó pede outra janela.',
       },
       {
         id: 'leader-checks',

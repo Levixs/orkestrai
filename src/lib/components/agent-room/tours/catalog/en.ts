@@ -911,7 +911,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'set-policy',
         title: 'Adjust the policy',
-        body: 'In the node, choose the source, a different fallback, the 5-hour, weekly, or monthly window, and the percentage that means "near the limit". If the provider does not report that period, the node asks for another window.',
+        body: 'Leader routing is the first section in the node. Choose the source, a different fallback, the 5-hour, weekly, or monthly window, and the percentage that means "near the limit". Provider details scroll below without zooming the canvas, including in compact saved nodes. If the provider does not report that period, the node asks for another window.',
       },
       {
         id: 'leader-checks',

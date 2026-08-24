@@ -352,7 +352,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'usage-routing',
       title: 'Uso y ruteo según la cuota',
-      body: `Abre Uso en la barra inferior y usa Agregar al canvas para mantener visible la capacidad de los providers en el workspace. Claude, Codex y Kimi exponen ventanas de 5 horas, semanales o mensuales legibles por máquina usando las credenciales que ya pertenecen a sus CLI; solo esos porcentajes verificados participan en el ruteo automático entre origen y fallback. El mismo panel lista Antigravity, Cursor, Devin, OpenCode y Cline con su capacidad oficial real: Antigravity expone la cuota en los paneles AI Credits y Model Quotas, Cursor y Devin requieren credenciales administrativas separadas de Team/Enterprise y OpenCode/Cline muestran el uso en la consola de la cuenta, los ajustes o el provider de modelo seleccionado. Ningún provider no disponible recibe un porcentaje inventado. El nodo actualiza las fuentes automáticas cada cinco minutos, enlaza la documentación oficial y avisa cuando la ventana elegida no está disponible. Una tarea en curso nunca cambia de terminal silenciosamente.`,
+      body: `Abre Uso en la barra inferior y usa Agregar al canvas para mantener visible la capacidad de los providers en el workspace. El ruteo del líder aparece primero en el nodo: elige origen, fallback, ventana de 5 horas/semanal/mensual y umbral sin redimensionarlo. Los detalles de providers quedan después en un área de desplazamiento contenida compatible con mouse, trackpad, tacto y teclado sin aplicar zoom al canvas; los nodos compactos guardados anteriormente usan el mismo comportamiento. Claude, Codex y Kimi exponen ventanas legibles por máquina usando las credenciales que ya pertenecen a sus CLI; solo esos porcentajes verificados participan en el ruteo automático entre origen y fallback. El mismo panel lista Antigravity, Cursor, Devin, OpenCode y Cline con su capacidad oficial real: Antigravity expone la cuota en los paneles AI Credits y Model Quotas, Cursor y Devin requieren credenciales administrativas separadas de Team/Enterprise y OpenCode/Cline muestran el uso en la consola de la cuenta, los ajustes o el provider de modelo seleccionado. Ningún provider no disponible recibe un porcentaje inventado. El nodo actualiza las fuentes automáticas cada cinco minutos, enlaza la documentación oficial y avisa cuando la ventana elegida no está disponible. Una tarea en curso nunca cambia de terminal silenciosamente.`,
     },
     {
       id: 'appearance',
@@ -692,6 +692,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Próxima versión',
+      title: 'El ruteo por uso permanece visible y desplazable',
+      summary: 'La política de cuota se descubre al crear el nodo, incluso en layouts compactos guardados.',
+      items: [
+        'Uso y ruteo ahora abre con un tamaño inicial útil, muestra el ruteo del líder antes de los providers, reorganiza controles en anchos estrechos y contiene el desplazamiento por mouse, trackpad, tacto y teclado sin ampliar el canvas.',
+      ],
+    },
     {
       date: '24 ago 2026 · 0.18.1',
       title: 'Orkestrai 0.18.1: estado confiable de proyecto, Portal, voz y terminal',

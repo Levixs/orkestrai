@@ -294,7 +294,9 @@ Download the latest installers from
   and let the leader consult the same recommendation through the CLI or MCP
   before assigning new work. The same panel inventories Antigravity, Cursor,
   Devin, OpenCode, and Cline and explains their documented CLI, admin-API, or
-  model-provider usage source without inventing a percentage.
+  model-provider usage source without inventing a percentage. Leader routing
+  stays at the top of the node, while provider details scroll independently in
+  compact nodes without zooming the canvas.
 - **Production Design quality:** audit naming, clipping, overlap, WCAG contrast,
   and accessibility, jump to the affected layer, start from complete editable
   product, marketing, mobile, and design-system templates, and rely on automatic

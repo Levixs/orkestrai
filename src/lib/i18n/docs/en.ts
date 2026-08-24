@@ -352,7 +352,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'usage-routing',
       title: 'Usage and quota-aware routing',
-      body: `Open Usage in the bottom toolbar and use Add to canvas to keep provider capacity visible in the workspace. Claude, Codex, and Kimi expose machine-readable 5-hour, weekly, or monthly windows through the credentials already owned by their CLIs; only these verified percentages participate in automatic source/fallback routing. The same panel lists Antigravity, Cursor, Devin, OpenCode, and Cline with their real official capability: Antigravity exposes quota in its AI Credits and Model Quotas panels, Cursor and Devin require separate Team/Enterprise administrative credentials, and OpenCode/Cline expose usage through their own account console, settings, or the selected model provider. No unavailable provider receives a fabricated percentage. The node refreshes automatic sources every five minutes, links to official documentation, and warns when the selected policy window is unavailable. A task already in progress is never moved to another terminal silently.`,
+      body: `Open Usage in the bottom toolbar and use Add to canvas to keep provider capacity visible in the workspace. Leader routing appears first in the node: choose the source, fallback, 5-hour/weekly/monthly window, and threshold without resizing it. Provider details follow in a contained scroll area that supports mouse, trackpad, touch, and keyboard without zooming the canvas; previously saved compact nodes use the same scrolling behavior. Claude, Codex, and Kimi expose machine-readable windows through the credentials already owned by their CLIs; only these verified percentages participate in automatic source/fallback routing. The same panel lists Antigravity, Cursor, Devin, OpenCode, and Cline with their real official capability: Antigravity exposes quota in its AI Credits and Model Quotas panels, Cursor and Devin require separate Team/Enterprise administrative credentials, and OpenCode/Cline expose usage through their own account console, settings, or the selected model provider. No unavailable provider receives a fabricated percentage. The node refreshes automatic sources every five minutes, links to official documentation, and warns when the selected policy window is unavailable. A task already in progress is never moved to another terminal silently.`,
     },
     {
       id: 'appearance',
@@ -692,6 +692,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Next release',
+      title: 'Usage routing stays visible and scrollable',
+      summary: 'The quota policy is discoverable as soon as the node is created, including in compact saved layouts.',
+      items: [
+        'Usage and routing now opens at a useful default size, shows Leader routing before provider details, wraps controls at narrow widths, and contains mouse, trackpad, touch, and keyboard scrolling without zooming the canvas.',
+      ],
+    },
     {
       date: 'Aug 24, 2026 · 0.18.1',
       title: 'Orkestrai 0.18.1: reliable project, Portal, voice, and terminal state',

@@ -142,7 +142,7 @@
   {selected}
   accent="var(--app-warning)"
   minWidth={380}
-  minHeight={300}
+  minHeight={360}
   onResize={data.onResize}
   connections={data.connections}
   onJumpToNode={data.onJumpToNode}
@@ -162,60 +162,15 @@
     </HeaderIconButton>
   {/snippet}
 
-  <div class="usage-node-body nodrag nowheel">
-    <div class="provider-list" aria-live="polite">
-      {#if loading && !report.providers.length}
-        {#each PROVIDERS as provider (provider.id)}
-          <div class="provider-row loading-row">
-            <span class="loading-dot"></span>
-            <span class="loading-line"></span>
-          </div>
-        {/each}
-      {/if}
-
-      {#each report.providers as provider (provider.provider)}
-        {@const meta = usageProviderDefinition(provider.provider)}
-        <section class="provider-row">
-          <div class="provider-head">
-            {#if meta.icon}<img src={meta.icon} width="18" height="18" alt="" />{:else}<Bot size={18} aria-hidden="true" />{/if}
-            <strong>{meta.name}</strong>
-            {#if provider.plan}<span class="plan">{provider.plan}</span>{/if}
-            <span class="status" style:color={statusColor(provider.status)}>{statusLabel(provider.status)}</span>
-          </div>
-          {#if provider.error}
-            <p class="provider-error"><TriangleAlert size={11} aria-hidden="true" /> {usageErrorText(provider.error, meta.name)}</p>
-          {:else if provider.diagnostic}
-            <p class="provider-error diagnostic">
-              <span>{diagnosticText(provider.diagnostic)}</span>
-              {#if provider.helpUrl}<a href={provider.helpUrl} target="_blank" rel="noreferrer" aria-label={m['usage.official_docs']()}><ExternalLink size={11} /></a>{/if}
-            </p>
-          {:else}
-            <div class="windows">
-              {#each provider.windows as window (window.kind)}
-                <div class="window">
-                  <div class="window-label">
-                    <span>{windowLabel(window)}</span>
-                    <strong>{window.usedPercent}%</strong>
-                  </div>
-                  <div
-                    class="bar"
-                    role="progressbar"
-                    aria-label={`${windowLabel(window)} ${window.usedPercent}%`}
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                    aria-valuenow={window.usedPercent}
-                  >
-                    <span style:width={`${window.usedPercent}%`} style:background={barColor(window.usedPercent)}></span>
-                  </div>
-                  {#if window.resetsAt}<small>{resetText(window.resetsAt)}</small>{/if}
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </section>
-      {/each}
-    </div>
-
+  <!-- Keyboard focus is required so a compact scroll region supports PageUp/PageDown. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div
+    class="usage-node-body nodrag nowheel"
+    role="region"
+    aria-label={m['usage.node_title']()}
+    tabindex="0"
+    onwheel={(event) => event.stopPropagation()}
+  >
     <section class="routing-policy">
       <header>
         <div class="routing-title"><Route size={13} aria-hidden="true" /><strong>{m['usage.routing_title']()}</strong></div>
@@ -294,6 +249,59 @@
       {/if}
     </section>
 
+    <div class="provider-list" aria-live="polite">
+      {#if loading && !report.providers.length}
+        {#each PROVIDERS as provider (provider.id)}
+          <div class="provider-row loading-row">
+            <span class="loading-dot"></span>
+            <span class="loading-line"></span>
+          </div>
+        {/each}
+      {/if}
+
+      {#each report.providers as provider (provider.provider)}
+        {@const meta = usageProviderDefinition(provider.provider)}
+        <section class="provider-row">
+          <div class="provider-head">
+            {#if meta.icon}<img src={meta.icon} width="18" height="18" alt="" />{:else}<Bot size={18} aria-hidden="true" />{/if}
+            <strong>{meta.name}</strong>
+            {#if provider.plan}<span class="plan">{provider.plan}</span>{/if}
+            <span class="status" style:color={statusColor(provider.status)}>{statusLabel(provider.status)}</span>
+          </div>
+          {#if provider.error}
+            <p class="provider-error"><TriangleAlert size={11} aria-hidden="true" /> {usageErrorText(provider.error, meta.name)}</p>
+          {:else if provider.diagnostic}
+            <p class="provider-error diagnostic">
+              <span>{diagnosticText(provider.diagnostic)}</span>
+              {#if provider.helpUrl}<a href={provider.helpUrl} target="_blank" rel="noreferrer" aria-label={m['usage.official_docs']()}><ExternalLink size={11} /></a>{/if}
+            </p>
+          {:else}
+            <div class="windows">
+              {#each provider.windows as window (window.kind)}
+                <div class="window">
+                  <div class="window-label">
+                    <span>{windowLabel(window)}</span>
+                    <strong>{window.usedPercent}%</strong>
+                  </div>
+                  <div
+                    class="bar"
+                    role="progressbar"
+                    aria-label={`${windowLabel(window)} ${window.usedPercent}%`}
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow={window.usedPercent}
+                  >
+                    <span style:width={`${window.usedPercent}%`} style:background={barColor(window.usedPercent)}></span>
+                  </div>
+                  {#if window.resetsAt}<small>{resetText(window.resetsAt)}</small>{/if}
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </section>
+      {/each}
+    </div>
+
     {#if lastFetchAt}<footer>{m['usage.updated']({ when: updatedText() })} · {m['usage.refresh_interval']()}</footer>{/if}
   </div>
 </NodeShell>
@@ -302,12 +310,41 @@
   .usage-node-body {
     display: flex;
     flex: 1;
+    width: 100%;
+    height: 100%;
     min-height: 0;
+    max-height: 100%;
     flex-direction: column;
     gap: 10px;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-border-strong) transparent;
+    touch-action: pan-y;
     padding: 10px;
     color: var(--app-text);
+  }
+
+  .usage-node-body:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
+    outline-offset: -2px;
+  }
+
+  .usage-node-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .usage-node-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .usage-node-body::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--app-border-strong);
+    background-clip: padding-box;
   }
 
   .provider-list {
@@ -417,9 +454,13 @@
 
   .routing-policy {
     display: flex;
+    flex: none;
     flex-direction: column;
     gap: 9px;
-    padding-top: 2px;
+    padding: 10px;
+    border: 1px solid color-mix(in srgb, var(--app-warning) 32%, var(--app-border));
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--app-warning) 5%, var(--app-surface-subtle));
   }
 
   .routing-policy header {
@@ -444,7 +485,7 @@
 
   .routing-fields {
     display: grid;
-    grid-template-columns: repeat(3, minmax(92px, 1fr)) minmax(140px, 1.25fr);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 8px;
   }
 

@@ -5,6 +5,15 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## Unreleased
+
+### Fixed
+
+- The Usage and routing node now opens at a useful default size, keeps Leader
+  routing above provider details, adapts its policy fields to narrow widths,
+  and provides contained mouse, trackpad, touch, and keyboard scrolling for
+  both new and previously saved small nodes.
+
 ## 0.18.1 - 2026-08-24
 
 ### Fixed
