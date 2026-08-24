@@ -5,6 +5,19 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.1 - 2026-08-24
+
+### Fixed
+
+- The Canvas "add agent" menu now shows each provider's real logo (OpenCode,
+  Cursor, Antigravity, Cline, Devin, and Copilot were falling back to a
+  generic icon; only Claude, Codex, and Kimi had one).
+- Canvas bottom toolbar icons now share one consistent brightness: raster
+  icons (Shell, Portal, Loop) no longer look brighter than their neighboring
+  Lucide icons, the Agents and Design menu triggers match the same muted
+  color as the rest of the toolbar, and Portal's icon is now visible in light
+  theme.
+
 ## 0.20.0 - 2026-08-24
 
 ### Added
