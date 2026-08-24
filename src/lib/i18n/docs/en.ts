@@ -694,7 +694,7 @@ Header: Authorization = Bearer {{accessToken}}`,
   changelog: [
     {
       date: 'Aug 24, 2026 · 0.18.1',
-      title: 'Reliable project, Portal, voice, and terminal state',
+      title: 'Orkestrai 0.18.1: reliable project, Portal, voice, and terminal state',
       summary: 'Project environments remain isolated while desktop browsing, dictation, and terminal rendering recover reliably.',
       items: [
         'Terminal processes keep the user operating-system environment and Orkestrai bridge, but remove the desktop APP_KEY and every private variable loaded from the app runtime. Laravel encrypted records, cookies, and sessions therefore use the project .env and no longer fail with “The MAC is invalid”.',
