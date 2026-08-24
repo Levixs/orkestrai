@@ -15,6 +15,7 @@
   import { terminalThemeLabel } from '../terminal-theme-label.js';
   import { normalizeTerminalTheme, TERMINAL_THEMES, TERMINAL_THEME_ORDER, type TerminalThemeName } from '../terminal-themes.js';
   import type { AgentProviderInfo, TerminalNodePayload, WorkspaceAttachment, WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
+  import { providerIcons } from '$lib/modules/agent-room/domain/provider-icons.js';
   import * as m from '$lib/paraglide/messages.js';
   import {
     attachmentPromptReference,
@@ -533,7 +534,13 @@
   onJumpToNode={data.onJumpToNode}
   onRemoveConnection={data.onRemoveConnection}
 >
-  {#snippet icon()}<SquareTerminal size={13} />{/snippet}
+  {#snippet icon()}
+    {#if currentProvider && providerIcons[currentProvider]}
+      <img src={providerIcons[currentProvider]} width="13" height="13" alt="" />
+    {:else}
+      <SquareTerminal size={13} />
+    {/if}
+  {/snippet}
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
     {#if runtimeOverride}

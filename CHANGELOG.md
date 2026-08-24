@@ -5,6 +5,15 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.18.1 - 2026-08-24
+
+### Fixed
+
+- Canvas agent nodes now show the provider's own mark (Claude, Codex, Kimi,
+  OpenCode, Cursor, Antigravity, Cline, Devin) in the terminal header instead
+  of a generic terminal icon, matching the marks already used on the Usage and
+  Provider Center surfaces.
+
 ## 0.18.0 - 2026-08-23
 
 ### Added

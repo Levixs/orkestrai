@@ -693,6 +693,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: 'Aug 24, 2026 · 0.18.1',
+      title: 'Orkestrai 0.18.1: per-provider icons on Canvas agent nodes',
+      summary: 'Canvas agent nodes now show the provider mark instead of a generic terminal icon.',
+      items: [
+        'Canvas agent nodes now show the provider\'s own mark for Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin in the terminal header instead of a generic icon — the same mark already used on Usage and the Provider Center.',
+      ],
+    },
+    {
       date: 'Aug 23, 2026 · 0.18.0',
       title: 'Orkestrai 0.18.0: durable coordination, sourced knowledge, and reusable teams',
       summary: 'Messages, activity, attention, delivery, memory, annotations, Team Packs, and Huddles now preserve their operational context.',

@@ -697,6 +697,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: '24 ago 2026 · 0.18.1',
+      title: 'Orkestrai 0.18.1: ícone de cada provider nos agentes do Canvas',
+      summary: 'Os nodes de agente no Canvas agora mostram a marca do provider em vez de um ícone genérico de terminal.',
+      items: [
+        'Os nodes de agente no Canvas agora exibem a marca própria de Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin no cabeçalho do terminal, em vez de um ícone genérico — a mesma marca já usada em Uso e na Central de Providers.',
+      ],
+    },
+    {
       date: '23 ago 2026 · 0.18.0',
       title: 'Orkestrai 0.18.0: coordenação durável, conhecimento com fontes e times reutilizáveis',
       summary: 'Mensagens, atividade, atenção, entrega, memória, anotações, Team Packs e Huddles agora preservam seu contexto operacional.',
