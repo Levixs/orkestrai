@@ -7,12 +7,17 @@ pt-BR, English, and Spanish translations.
 
 ## 0.18.2 - 2026-08-24
 
+### Added
+
+- Added GitHub Copilot as an agent provider, following the same adapter,
+  detection, and usage-catalog pattern as the other CLI providers.
+
 ### Fixed
 
 - Canvas agent nodes now show the provider's own mark (Claude, Codex, Kimi,
-  OpenCode, Cursor, Antigravity, Cline, Devin) in the terminal header instead
-  of a generic terminal icon, matching the marks already used on the Usage and
-  Provider Center surfaces.
+  OpenCode, Cursor, Antigravity, Cline, Devin, GitHub Copilot) in the terminal
+  header instead of a generic terminal icon, matching the marks already used
+  on the Usage and Provider Center surfaces.
 
 ## 0.18.1 - 2026-08-24
 

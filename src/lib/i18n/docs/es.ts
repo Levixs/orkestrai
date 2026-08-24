@@ -694,10 +694,11 @@ Header: Authorization = Bearer {{accessToken}}`,
   changelog: [
     {
       date: '24 ago 2026 · 0.18.2',
-      title: 'Orkestrai 0.18.2: icono de cada provider en los agentes del Canvas',
-      summary: 'Los nodos de agente en el Canvas ahora muestran la marca del provider en lugar de un icono genérico de terminal.',
+      title: 'Orkestrai 0.18.2: GitHub Copilot e icono de cada provider en los agentes del Canvas',
+      summary: 'GitHub Copilot se suma como provider de agente, y los nodos de agente en el Canvas ahora muestran la marca de cada provider en lugar de un icono genérico de terminal.',
       items: [
-        'Los nodos de agente en el Canvas ahora muestran la marca propia de Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin en el encabezado del terminal, en lugar de un icono genérico — la misma marca ya usada en Uso y en la Central de Providers.',
+        'Se agregó GitHub Copilot como provider de agente, siguiendo el mismo patrón de adapter, detección y catálogo de uso que los demás providers de CLI.',
+        'Los nodos de agente en el Canvas ahora muestran la marca propia de Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot en el encabezado del terminal, en lugar de un icono genérico — la misma marca ya usada en Uso y en la Central de Providers.',
       ],
     },
     {

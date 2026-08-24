@@ -8,4 +8,5 @@ export const providerIcons: Record<string, string> = {
   antigravity: '/images/antigravity.svg',
   cline: '/images/cline.svg',
   devin: '/images/devin.svg',
+  copilot: '/images/githubcopilot.svg',
 };

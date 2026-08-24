@@ -7,6 +7,7 @@ import { cursorAdapter } from './CursorAdapter.js';
 import { antigravityAdapter } from './AntigravityAdapter.js';
 import { clineAdapter } from './ClineAdapter.js';
 import { devinAdapter } from './DevinAdapter.js';
+import { copilotAdapter } from './CopilotAdapter.js';
 
 /**
  * Registry de adaptadores de agente. Novos providers (kimi, opencode, ...)
@@ -98,3 +99,4 @@ registerAgentAdapter(cursorAdapter);
 registerAgentAdapter(antigravityAdapter);
 registerAgentAdapter(clineAdapter);
 registerAgentAdapter(devinAdapter);
+registerAgentAdapter(copilotAdapter);
