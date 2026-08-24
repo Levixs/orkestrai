@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { ArrowLeft, Check, Keyboard, Languages, Layers, Mic, Palette, Pencil, Play, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
+  import { ArrowLeft, Check, Command, Keyboard, Languages, Layers, Mic, Palette, Pencil, Play, RefreshCw, SquareTerminal, Trash2, Volume2 } from '@lucide/svelte';
+  import { isMacPlatform } from '$lib/components/agent-room/platform.js';
   import WorkspaceIcon from '$lib/components/agent-room/WorkspaceIcon.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { Button } from '$lib/components/ui/button';
@@ -12,7 +13,7 @@
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
   import { terminalThemeLabel } from '$lib/components/agent-room/terminal-theme-label.js';
-  import { TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
+  import { normalizeTerminalTheme, TERMINAL_THEMES, TERMINAL_THEME_ORDER } from '$lib/components/agent-room/terminal-themes.js';
   import { DEFAULT_DICTATION_HOTKEY, comboFromEvent, comboLabel } from '$lib/components/agent-room/dictation-hotkey.js';
   import { appSettingsStore, getAppSettings, invalidateAppSettings } from '$lib/components/agent-room/app-settings.svelte.js';
   import VoiceConfirmDialog from '$lib/components/agent-room/VoiceConfirmDialog.svelte';
@@ -33,6 +34,21 @@
   let loaded = $state(false);
   let saved = $state(false);
   let capturingHotkey = $state(false);
+
+  // ssr = false nesta rota — navigator sempre existe aqui.
+  const isMac = isMacPlatform();
+
+  /** "Cmd/Ctrl" vira o icone ⌘ no macOS ou o texto "Ctrl" nos demais. */
+  function shortcutSegments(keys: string): string[] {
+    return keys.split('+').map((segment) => (segment === 'Cmd/Ctrl' ? (isMac ? '⌘' : 'Ctrl') : segment));
+  }
+
+  function themeSwatchColors(name: string): string[] {
+    const theme = TERMINAL_THEMES[normalizeTerminalTheme(name)].theme;
+    return [theme.background, theme.red, theme.green, theme.yellow, theme.blue].filter((color): color is string => Boolean(color));
+  }
+
+  const previewTheme = $derived(TERMINAL_THEMES[normalizeTerminalTheme(settings.terminalTheme)].theme);
 
   const hotkeyLabel = $derived(comboLabel(settings.dictationHotkey || DEFAULT_DICTATION_HOTKEY));
   const ttsSpeed = $derived(normalizeEmbeddedTtsSpeed(settings.voiceTtsSpeed));
@@ -392,11 +408,19 @@
         <span class="field-label">{m['settings.theme']()}</span>
         <Select.Root type="single" value={settings.terminalTheme} onValueChange={(value: string) => (settings = { ...settings, terminalTheme: value })}>
           <Select.Trigger data-slot="select-trigger">
+            <span class="theme-select-swatch" aria-hidden="true">
+              {#each themeSwatchColors(settings.terminalTheme) as color, i (i)}<span style={`background:${color}`}></span>{/each}
+            </span>
             {terminalThemeLabel(settings.terminalTheme)}
           </Select.Trigger>
           <Select.Content>
             {#each TERMINAL_THEME_ORDER as theme}
-              <Select.Item value={theme}>{terminalThemeLabel(theme)}</Select.Item>
+              <Select.Item value={theme}>
+                <span class="theme-select-swatch" aria-hidden="true">
+                  {#each themeSwatchColors(theme) as color, i (i)}<span style={`background:${color}`}></span>{/each}
+                </span>
+                {terminalThemeLabel(theme)}
+              </Select.Item>
             {/each}
           </Select.Content>
         </Select.Root>
@@ -416,6 +440,15 @@
         <span class="field-label">{m['settings.padding']()}</span>
         <Input type="number" min="0" max="24" bind:value={settings.terminalPadding} />
       </div>
+    </div>
+
+    <div
+      class="terminal-preview"
+      style={`background:${previewTheme.background};color:${previewTheme.foreground};font-family:${settings.terminalFontFamily || 'ui-monospace, Menlo, monospace'};font-size:${settings.terminalFontSize || 13}px;padding:${settings.terminalPadding ?? 8}px`}
+    >
+      <div><span style={`color:${previewTheme.green}`}>➜</span> <span style={`color:${previewTheme.blue}`}>~/orkestrai</span> npm run dev</div>
+      <div><span style={`color:${previewTheme.yellow}`}>warn</span> {m['settings.preview_sample_warn']()}</div>
+      <div><span style={`color:${previewTheme.red}`}>✗</span> {m['settings.preview_sample_error']()}</div>
     </div>
 
     <div class="grid-fields">
@@ -695,7 +728,12 @@
     <div class="shortcuts-grid">
       {#each SHORTCUTS as [keys, description]}
         <div class="shortcut-row">
-          <kbd>{keys}</kbd>
+          <kbd>
+            {#each shortcutSegments(keys) as segment, i (i)}
+              {#if i > 0}<span aria-hidden="true">+</span>{/if}
+              {#if segment === '⌘'}<Command size={10} class="inline-block align-[-1px]" aria-label="Command" />{:else}{segment}{/if}
+            {/each}
+          </kbd>
           <span class="shortcut-desc">{description}</span>
         </div>
       {/each}
@@ -987,6 +1025,31 @@
     color: var(--copy-soft);
   }
 
+  .theme-select-swatch {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 2px;
+    margin-right: 4px;
+  }
+
+  .theme-select-swatch span {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    border: 1px solid rgb(0 0 0 / 15%);
+  }
+
+  .terminal-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    white-space: pre;
+  }
+
   .speed-head,
   .speed-value-row,
   .speed-control {
@@ -1119,6 +1182,10 @@
   }
 
   kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
     flex-shrink: 0;
     min-width: 44px;
     text-align: center;
