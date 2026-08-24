@@ -8,7 +8,7 @@ import {
 
 describe('terminal themes', () => {
   it('keeps every built-in theme selectable and complete', () => {
-    expect(TERMINAL_THEME_ORDER).toHaveLength(11);
+    expect(TERMINAL_THEME_ORDER).toHaveLength(15);
     expect(new Set(TERMINAL_THEME_ORDER).size).toBe(TERMINAL_THEME_ORDER.length);
 
     for (const name of TERMINAL_THEME_ORDER) {

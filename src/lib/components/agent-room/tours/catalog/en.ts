@@ -982,7 +982,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'terminal-options',
         title: 'Keep terminal options organized',
-        body: 'Open the ellipsis menu in the header to change provider or role, visually choose 1 of 11 ANSI themes, reload, toggle Maestro Mode, or remove the terminal.',
+        body: 'Open the ellipsis menu in the header to change provider or role, visually choose 1 of 15 ANSI themes, reload, toggle Maestro Mode, or remove the terminal.',
       },
       {
         id: 'dictate-to-leader',

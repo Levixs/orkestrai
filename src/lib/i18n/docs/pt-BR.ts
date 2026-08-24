@@ -27,7 +27,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: criar, nomear, modelo & esforço',
-      body: `O menu Agentes na barra inferior lista Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin e GitHub Copilot sem lotar o canvas. Fixe até quatro favoritos para mantê-los ao lado do menu; a ordem escolhida persiste entre workspaces e reinícios, e um agente fixado indisponível continua salvo sem ocupar a barra. Você não precisa conhecer terminal nem usar todos: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Agentes que precisam de configuração levam à Central de Providers, também disponível pelo ícone de cabo na barra lateral, Cmd/Ctrl+2 ou pelo menu nativo Workspace. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Depois de criado, o menu compacto no cabeçalho reúne troca de provider e perfil, role, uma seleção visual de 11 temas ANSI, recarga com contexto, Modo Maestro e remoção; o título continua editável com duplo-clique. Trocar o provider preserva conexões, role, andar e posição, encerra a conversa anterior e inicia uma sessão limpa.`,
+      body: `O menu Agentes na barra inferior lista Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin e GitHub Copilot sem lotar o canvas. Fixe até quatro favoritos para mantê-los ao lado do menu; a ordem escolhida persiste entre workspaces e reinícios, e um agente fixado indisponível continua salvo sem ocupar a barra. Você não precisa conhecer terminal nem usar todos: comece pelo serviço que já assina ou prefere e combine outro quando quiser uma segunda perspectiva. Agentes que precisam de configuração levam à Central de Providers, também disponível pelo ícone de cabo na barra lateral, Cmd/Ctrl+2 ou pelo menu nativo Workspace. Ao desenhar um agente, o diálogo pergunta nome, modelo e esforço apenas quando o provider oferece essas opções, além de Líder (Modo Maestro). Depois de criado, o menu compacto no cabeçalho reúne troca de provider e perfil, role, uma seleção visual de 15 temas ANSI, recarga com contexto, Modo Maestro e remoção; o título continua editável com duplo-clique. Trocar o provider preserva conexões, role, andar e posição, encerra a conversa anterior e inicia uma sessão limpa.`,
     },
     {
       id: 'provider-center',
@@ -702,6 +702,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '24 ago 2026 · 0.20.4',
+      title: 'Orkestrai 0.20.4: 4 temas de terminal novos',
+      summary: 'Monokai, Ayu Dark, Rosé Pine e Solarized Light entram no seletor de tema do terminal, chegando a 15 no total.',
+      items: [
+        'Adicionados Monokai, Ayu Dark, Rosé Pine e Solarized Light como temas ANSI de terminal.',
+      ],
+    },
     {
       date: '24 ago 2026 · 0.20.3',
       title: 'Orkestrai 0.20.3: veja antes de escolher',

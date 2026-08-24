@@ -23,7 +23,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider and profile switching, roles, a visual choice of 11 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
+      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider and profile switching, roles, a visual choice of 15 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
     },
     {
       id: 'provider-center',
@@ -698,6 +698,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 24, 2026 · 0.20.4',
+      title: 'Orkestrai 0.20.4: 4 new terminal themes',
+      summary: 'Monokai, Ayu Dark, Rosé Pine, and Solarized Light join the terminal theme picker, bringing the total to 15.',
+      items: [
+        'Added Monokai, Ayu Dark, Rosé Pine, and Solarized Light as terminal ANSI themes.',
+      ],
+    },
     {
       date: 'Aug 24, 2026 · 0.20.3',
       title: 'Orkestrai 0.20.3: see it before you pick it',
