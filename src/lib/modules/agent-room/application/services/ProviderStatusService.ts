@@ -40,6 +40,23 @@ export const PROVIDER_STATUS_SOURCES: Record<string, ProviderStatusSource> = {
 
 const UNKNOWN: ProviderStatus = { indicator: 'none', description: '', incidents: [], checked: false, checkedAt: new Date(0).toISOString() };
 
+function statusIndicator(value: unknown): ProviderStatusIndicator {
+  return value === 'minor' || value === 'major' || value === 'critical' ? value : 'none';
+}
+
+function safeIncident(value: unknown): { name: string; shortlink: string } | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.name !== 'string' || !record.name.trim() || typeof record.shortlink !== 'string') return null;
+  try {
+    const url = new URL(record.shortlink);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    return { name: record.name.trim().slice(0, 200), shortlink: url.toString() };
+  } catch {
+    return null;
+  }
+}
+
 export class ProviderStatusService {
   private cache = new Map<string, { at: number; status: ProviderStatus }>();
 
@@ -67,18 +84,23 @@ export class ProviderStatusService {
     try {
       const response = await this.fetchFn(apiUrl, { signal: controller.signal });
       if (!response.ok) throw new Error(`${apiUrl} respondeu ${response.status}`);
-      const payload = await response.json() as { status?: { indicator?: string; description?: string }; incidents?: Array<{ name: string; shortlink: string }> };
+      const payload = await response.json() as Record<string, unknown>;
+      const rawStatus = payload.status && typeof payload.status === 'object'
+        ? payload.status as Record<string, unknown>
+        : {};
       return {
-        indicator: (payload.status?.indicator ?? 'none') as ProviderStatusIndicator,
-        description: payload.status?.description ?? 'All Systems Operational',
-        incidents: (payload.incidents ?? []).map((incident) => ({ name: incident.name, shortlink: incident.shortlink })),
+        indicator: statusIndicator(rawStatus.indicator),
+        description: typeof rawStatus.description === 'string' ? rawStatus.description.slice(0, 300) : '',
+        incidents: (Array.isArray(payload.incidents) ? payload.incidents : []).slice(0, 20).flatMap((incident) => {
+          const safe = safeIncident(incident);
+          return safe ? [safe] : [];
+        }),
         checked: true,
         checkedAt: new Date().toISOString(),
       };
     } catch {
-      // Pagina de status fora do ar/inacessivel/expirou: nao alarma o
-      // usuario, so esconde o indicador (mesmo efeito visual de "tudo
-      // operacional"), mas `checked: false` preserva a distincao internamente.
+      // A falha fica neutra e explicitamente indisponivel; nunca afirma que
+      // um provider esta saudavel quando a consulta externa nao respondeu.
       return { ...UNKNOWN, checkedAt: new Date().toISOString() };
     } finally {
       clearTimeout(timeout);

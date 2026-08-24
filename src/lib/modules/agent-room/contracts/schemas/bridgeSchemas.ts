@@ -88,6 +88,14 @@ export const bridgeRecruitSchema = z.object({
   y: z.coerce.number().optional(),
   replace: z.string().trim().nullish(),
   floorId: z.string().trim().nullish(),
+}).superRefine((input, ctx) => {
+  if (input.profile && !input.provider) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['provider'],
+      message: 'Informe --provider junto com --profile.',
+    });
+  }
 });
 
 export const bridgeReassignSchema = z.object({

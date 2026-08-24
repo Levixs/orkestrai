@@ -9,9 +9,15 @@ import type { Handle } from '@sveltejs/kit';
 // Import app.ts to trigger database + hashing + auth configuration
 import { auth } from './app.js';
 import { routineService } from '$lib/modules/agent-room/application/services/RoutineService.js';
+import { providerProfileService } from '$lib/modules/agent-room/application/services/ProviderProfileService.js';
 
 // Scheduler de rotinas do Agent Room (tick a cada 15s em processo).
-const globalRef = globalThis as unknown as { __orkestraiRoutineScheduler?: boolean };
+const globalRef = globalThis as unknown as {
+  __orkestraiRoutineScheduler?: boolean;
+  __orkestraiResolveProviderProfileEnv?: (profileId: string, providerId: string, options?: { runtimeHome?: string }) => Promise<Record<string, string>>;
+};
+globalRef.__orkestraiResolveProviderProfileEnv = (profileId, providerId, options) =>
+  providerProfileService.resolveEnv(profileId, providerId, options);
 if (!globalRef.__orkestraiRoutineScheduler) {
   globalRef.__orkestraiRoutineScheduler = true;
   routineService.startScheduler();

@@ -29,6 +29,7 @@ export class WslLaunchError extends Error {
 
 export type WslTrackingContext = {
   homeHostPath: string;
+  linuxHomePath: string;
   linuxWorkingDir: string;
 };
 
@@ -234,7 +235,7 @@ export async function resolveWslTrackingContext(input: {
     ], { encoding: 'utf8', windowsHide: true, timeout: 15_000 });
     const home = stdout.split(/\r?\n/).find((line) => line.startsWith('__ORKESTRAI_HOME__'))?.slice('__ORKESTRAI_HOME__'.length).trim();
     if (!home?.startsWith('/')) throw new Error('WSL did not report its home directory.');
-    return { homeHostPath: wslHostPath(input.runtime.distribution, home), linuxWorkingDir };
+    return { homeHostPath: wslHostPath(input.runtime.distribution, home), linuxHomePath: home, linuxWorkingDir };
   } catch (error) {
     throw wslFailure(error, input.runtime);
   }
@@ -290,6 +291,9 @@ export function buildWslLaunch(input: {
   hostCwd: string;
   workspaceRoot?: string;
   hostEnv: Record<string, string>;
+  /** Names resolved from a server-side Provider Profile. Values stay in the
+      child environment; WSLENV forwards only these explicit names. */
+  forwardEnvToWsl?: string[];
 }): { command: string; args: string[]; cwd: string; env: Record<string, string> } {
   const { runtime } = input;
   const linuxRoot = runtime.linuxWorkingDir.replace(/\/$/, '') || '/';
@@ -316,6 +320,7 @@ export function buildWslLaunch(input: {
     'ORKESTRAI_CLI',
     'ORKESTRAI_RUNTIME_WIN',
     'ORKESTRAI_CLI_JS_WIN',
+    ...(input.forwardEnvToWsl ?? []).filter((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name)),
   ];
   env.WSLENV = appendWslEnv(env.WSLENV, forwarded);
 

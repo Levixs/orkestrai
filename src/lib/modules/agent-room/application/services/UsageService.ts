@@ -13,6 +13,10 @@ const FETCH_TIMEOUT_MS = 10_000;
 const KIMI_OAUTH_TOKEN_URL = 'https://auth.kimi.com/api/oauth/token';
 const KIMI_OAUTH_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098';
 
+function expandProfileHome(path: string, home: string): string {
+  return path === '~' || path.startsWith('~/') ? path.replace(/^~/, home) : path;
+}
+
 export type UsageWindowKind = '5h' | 'weekly' | 'monthly';
 
 export type UsageWindow = {
@@ -118,7 +122,7 @@ export class UsageService {
     let usage: ProviderUsage;
     try {
       const definition = usageProviderDefinition(provider);
-      const configDir = profile?.configDir ?? undefined;
+      const configDir = profile?.configDir ? expandProfileHome(profile.configDir, this.home) : undefined;
       const collectors = {
         claude: () => this.claudeUsage(configDir),
         codex: () => this.codexUsage(configDir),

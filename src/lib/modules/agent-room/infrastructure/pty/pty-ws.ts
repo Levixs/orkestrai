@@ -6,7 +6,7 @@
  * (scripts/orkestrai-server.mjs, rodado com type stripping do Node 24+).
  *
  * Protocolo (frames JSON texto):
- *   C->S {type:'create', command, args?, cwd, cols?, rows?, env?}
+ *   C->S {type:'create', command, args?, cwd, cols?, rows?, env?, profileId?}
  *   C->S {type:'attach', sessionId, cols?, rows?}
  *   C->S {type:'input', sessionId, data}
  *   C->S {type:'resize', sessionId, cols, rows}
@@ -31,7 +31,7 @@ import { preflightWslLaunch, WslLaunchError, type WslTrackingContext } from '../
 export const PTY_WS_PATH = '/ws/agent-room/pty';
 
 type ClientMessage =
-  | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; sessionStorage?: string; label?: string; workspace?: string; workspaceId?: string; nodeId?: string; runtime?: WorkspaceExecutionRuntime; workspaceRoot?: string }
+  | { type: 'create'; command: string; args?: string[]; freshSessionArgs?: string[]; cwd: string; cols?: number; rows?: number; env?: Record<string, string>; provider?: string; profileId?: string | null; sessionStorage?: string; label?: string; workspace?: string; workspaceId?: string; nodeId?: string; runtime?: WorkspaceExecutionRuntime; workspaceRoot?: string }
   | { type: 'attach'; sessionId: string; cols?: number; rows?: number }
   | { type: 'input'; sessionId: string; data: string }
   | { type: 'resize'; sessionId: string; cols: number; rows: number }
@@ -48,6 +48,7 @@ export function isPtyWsPath(pathname: string): boolean {
 const wsGlobal = globalThis as unknown as {
   __orkestraiWsClients?: Set<WebSocket>;
   __orkestraiBroadcast?: (payload: Record<string, unknown>) => void;
+  __orkestraiResolveProviderProfileEnv?: (profileId: string, providerId: string, options?: { runtimeHome?: string }) => Promise<Record<string, string>>;
 };
 const allSockets = (wsGlobal.__orkestraiWsClients ??= new Set<WebSocket>());
 wsGlobal.__orkestraiBroadcast = (payload) => {
@@ -63,11 +64,19 @@ wsGlobal.__orkestraiBroadcast = (payload) => {
  */
 export function isAllowedPtyWsOrigin(origin: string | undefined, host: string | undefined): boolean {
   if (!origin) return true;
+  if (!host) return false;
   try {
-    const originHost = new URL(origin).host;
-    if (host && originHost === host) return true;
-    const hostname = new URL(origin).hostname;
-    return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '[::1]';
+    const originUrl = new URL(origin);
+    const serverUrl = new URL(`http://${host}`);
+    if (originUrl.host === serverUrl.host) return true;
+
+    // Electron may load 127.0.0.1 while a renderer resolves the same server as
+    // localhost. Treat those spellings as equivalent only on the exact port;
+    // a different localhost service must never gain PTY access.
+    const loopback = new Set(['127.0.0.1', 'localhost', '[::1]']);
+    return loopback.has(originUrl.hostname.toLowerCase())
+      && loopback.has(serverUrl.hostname.toLowerCase())
+      && originUrl.port === serverUrl.port;
   } catch {
     return false;
   }
@@ -146,6 +155,15 @@ export function handlePtyConnection(socket: WebSocket): void {
             ? message.freshSessionArgs!.map((arg) => String(arg).replace('__ORKESTRAI_SESSION_ID__', freshSessionId))
             : [];
           if (freshSessionId) tracker.claim(freshSessionId);
+          let profileEnv: Record<string, string> = {};
+          if (message.profileId) {
+            if (!message.provider) throw new Error('A provider is required when launching a profile.');
+            const resolveProfileEnv = wsGlobal.__orkestraiResolveProviderProfileEnv;
+            if (!resolveProfileEnv) throw new Error('Provider profile resolution is unavailable.');
+            profileEnv = await resolveProfileEnv(message.profileId, message.provider, {
+              runtimeHome: wslContext?.linuxHomePath,
+            });
+          }
           const session = ptySessionManager.create({
             command: message.command.trim(),
             args: [
@@ -155,7 +173,8 @@ export function handlePtyConnection(socket: WebSocket): void {
             cwd: resolvedCwd,
             cols: message.cols,
             rows: message.rows,
-            env: message.env,
+            env: { ...(message.env ?? {}), ...profileEnv },
+            forwardEnvToWsl: Object.keys(profileEnv),
             label: typeof message.label === 'string' ? message.label : null,
             workspace: typeof message.workspace === 'string' ? message.workspace : null,
             workspaceId: typeof message.workspaceId === 'string' ? message.workspaceId : null,

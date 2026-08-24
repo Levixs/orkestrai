@@ -23,12 +23,12 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider switching, roles, a visual choice of 10 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
+      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider and profile switching, roles, a visual choice of 11 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
     },
     {
       id: 'provider-center',
       title: 'Provider Center',
-      body: `Provider Center checks all eight supported CLIs locally and separates agents that are ready from those that still need setup. Expand a provider to see its official guide, an installation command for your operating system when available, sign-in instructions, and detected capabilities such as conversation resume, models, and adjustable effort. Orkestrai never receives provider credentials or authenticates an agent silently; sign-in remains inside the official CLI. Use Check again after installing, then return to the canvas.`,
+      body: `Provider Center checks all nine supported CLIs locally and separates agents that are ready from those that still need setup. Expand a provider to see its official guide, an installation command for your operating system when available, sign-in instructions, detected capabilities, live public status when available, and named Profiles through the CLI's documented account-directory mechanism. Orkestrai never authenticates an agent silently or stores Profile credentials in canvas data; sign-in remains inside the official CLI and profile values are resolved server-side only when a PTY starts. Use Check again after installing, then return to the canvas.`,
     },
     {
       id: 'roles',
@@ -685,6 +685,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Windows + WSL', 'multiple distributions', 'local providers'],
     },
     {
+      id: 'provider-profiles',
+      title: 'Keep work and personal provider accounts separate',
+      body: 'Open Provider Center, expand Claude, Codex, Kimi, GitHub Copilot, Cursor, Cline, or OpenCode, and add a named Profile that points to the account-specific config directory or directories documented by that CLI. Then select the Profile from the terminal menu or route new work to it through the Usage node. Orkestrai stores only the Profile reference and directory paths in its database; credentials remain in the provider-owned files and are resolved server-side only when the PTY starts. A Profile in use by a terminal or routing rule cannot be deleted. Antigravity and Devin remain unavailable here because no safe, documented cross-platform CLI account override has been verified.',
+      tags: ['Provider Profiles', 'multiple accounts', 'credential isolation'],
+    },
+    {
       id: 'saved-terminal-commands',
       title: 'Reopen a shell ready to work',
       body: 'Open a terminal options menu and choose Saved commands. Store shortcuts for that terminal or global commands available everywhere, search by name or content, and run any item manually. In pure shells, enable Run on resume to submit commands once when the session is created or restored, including WSL. Orkestrai never auto-runs text in Claude, Codex, Kimi, or another agent, preventing conversation contamination. Commands are plain text: use environment variables or the tool vault for secrets, never passwords or tokens inside a saved command. Shells preserve your operating-system environment and the Orkestrai bridge, but exclude private desktop-server values so each project .env remains authoritative, including Laravel APP_KEY.',
@@ -699,6 +705,9 @@ Header: Authorization = Bearer {{accessToken}}`,
       items: [
         'Usage and routing now opens at a useful default size, shows Leader routing before provider details, wraps controls at narrow widths, and contains mouse, trackpad, touch, and keyboard scrolling without zooming the canvas.',
         'Added named Provider Profiles, profile-aware Usage routing, live public provider status, provider-specific marks on Canvas agent nodes, GitHub Copilot as an agent provider, and the Obsidian terminal theme.',
+        'Provider Profile credentials never enter canvas payloads: only the profile reference and non-secret paths persist, values are resolved server-side at PTY launch, secure storage is verified, active references block deletion, and unsupported Devin API keys are not accepted as local CLI profiles.',
+        'Profile names are unique case-insensitively, legacy collisions migrate safely, full UUIDs survive Usage routing, errors are localized, and a failed public status check is shown as unavailable instead of healthy.',
+        'The PTY WebSocket accepts browser connections only from Orkestrai on the exact application port, preventing another localhost website from opening or controlling terminal sessions.',
       ],
     },
     {

@@ -822,7 +822,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'multi-account',
         title: 'Usa una segunda cuenta con Perfiles',
-        body: 'Si el provider admite multi-cuenta oficialmente, aparece una sección Perfiles al expandirlo: crea un perfil con nombre (ej.: "Trabajo") que apunte al directorio de config o token de esa cuenta. El cambio está disponible en el menú del terminal, junto al cambio de provider, sin salir de la CLI.',
+        body: 'Si el provider tiene un override verificado de directorio de cuenta, aparece la sección Perfiles: crea un perfil con nombre (ej.: "Trabajo") que apunte a la configuración oficial de esa cuenta. El menú de la terminal y el ruteo de Uso pueden seleccionarlo. Las credenciales permanecen en los archivos de la CLI y solo se resuelven al iniciar la PTY.',
       },
     ],
   },

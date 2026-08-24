@@ -389,7 +389,10 @@
   }
 
   .provider-head img {
+    box-sizing: content-box;
+    padding: 3px;
     border-radius: 4px;
+    background: #20242c;
   }
 
   .provider-head strong {

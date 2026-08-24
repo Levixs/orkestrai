@@ -39,6 +39,7 @@
     freshSessionArgs?: string[];
     cwd: string;
     env?: Record<string, string>;
+    profileId?: string | null;
     runtime?: WorkspaceExecutionRuntime;
     workspaceRoot?: string;
   };

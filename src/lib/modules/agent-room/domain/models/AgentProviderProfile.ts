@@ -5,7 +5,7 @@ export class AgentProviderProfile extends Model {
   static primaryKey = 'id';
   static incrementing = false;
   static timestamps = true;
-  static fillable = ['id', 'provider_id', 'name', 'config_dir', 'data_dir', 'has_token'];
+  static fillable = ['id', 'provider_id', 'name', 'normalized_name', 'config_dir', 'data_dir', 'has_token'];
 
   static casts = {
     has_token: 'boolean' as const,
@@ -16,6 +16,7 @@ export class AgentProviderProfile extends Model {
   declare id: string;
   declare provider_id: string;
   declare name: string;
+  declare normalized_name: string;
   declare config_dir: string | null;
   declare data_dir: string | null;
   declare has_token: boolean;

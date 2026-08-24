@@ -77,4 +77,16 @@ describe('usage routing', () => {
       fallbackProvider: 'claude',
     });
   });
+
+  it('preserva ids UUID completos dos perfis na politica persistida', () => {
+    const profileId = '0198db82-7eaf-7000-8b8e-fd721c2db512';
+    const routingId = `claude:profile:${profileId}`;
+    const policy = normalizeUsageRoutingPolicy({ sourceProvider: routingId, fallbackProvider: 'codex', windowKind: '5h' });
+    expect(policy.sourceProvider).toBe(routingId);
+
+    const profileUsage: ProviderUsage = { ...usage('claude', 95), profileId, profileName: 'Work' };
+    const report = buildUsageRoutingReport([profileUsage, usage('codex', 10)], policy);
+    expect(report.providers[0].routingId).toBe(routingId);
+    expect(report.recommendedProvider).toBe('codex');
+  });
 });

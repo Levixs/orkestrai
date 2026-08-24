@@ -81,7 +81,9 @@ describe('WSL workspace runtime', () => {
         PATH: 'C:\\Windows',
         ORKESTRAI_API_URL: 'http://127.0.0.1:4321',
         ORKESTRAI_CLI_JS: 'C:\\Orkestrai\\orkestrai.js',
+        CODEX_HOME: '/home/raoni/.codex-work',
       },
+      forwardEnvToWsl: ['CODEX_HOME'],
     });
 
     expect(launch.command).toBe('wsl.exe');
@@ -100,6 +102,7 @@ describe('WSL workspace runtime', () => {
     ]);
     expect(launch.env.ORKESTRAI_CLI).toBe('/home/raoni/app/.orkestrai/bin/orkestrai');
     expect(launch.env.WSLENV).toContain('ORKESTRAI_NODE_ID');
+    expect(launch.env.WSLENV.split(':')).toContain('CODEX_HOME');
     expect(launch.env.WSLENV.split(':')).not.toContain('PATH');
   });
 

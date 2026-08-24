@@ -27,9 +27,9 @@ export const openCodeAdapter: AgentAdapter = {
   // a conta "vaza" pro XDG_DATA_HOME compartilhado do sistema.
   profileStrategy: {
     kind: 'configDirPair',
-    configEnvVar: 'OPENCODE_CONFIG_DIR',
+    configEnvVar: 'XDG_CONFIG_HOME',
     dataEnvVar: 'XDG_DATA_HOME',
-    defaultConfigDir: '~/.config/opencode',
+    defaultConfigDir: '~/.config',
     defaultDataDir: '~/.local/share',
   },
   setup: {

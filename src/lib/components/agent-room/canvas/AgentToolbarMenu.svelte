@@ -157,7 +157,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    background: var(--app-border);
+    background: #20242c;
     color: var(--app-text-soft);
     flex-shrink: 0;
   }

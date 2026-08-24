@@ -9,6 +9,7 @@ import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/Pt
 import { getAgentAdapter } from '$lib/modules/agent-room/application/adapters/registry.js';
 import { agentSessionTracker } from '$lib/modules/agent-room/infrastructure/pty/AgentSessionTracker.ts';
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
+import { providerProfileService } from '$lib/modules/agent-room/application/services/ProviderProfileService.js';
 
 describe('WorkspaceService.reloadNode', () => {
   useSvelarTest({ refreshDatabase: true });
@@ -169,6 +170,34 @@ describe('WorkspaceService.reloadNode', () => {
     expect(payload).toMatchObject({ role: 'Arquiteto', maestro: true, floorId: 'floor-1', theme: 'emerald' });
     expect(changed).toMatchObject({ title: 'Arquiteto', x: 345, y: 678 });
     expect(ptySessionManager.get(session.id)?.exited).not.toBe(false);
+  });
+
+  it('persiste somente a referencia do perfil, nunca seu ambiente resolvido', async () => {
+    const workspace = await workspaceRepository.createWorkspace({ name: 'perfil seguro', workingDir: '/tmp' });
+    const node = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'terminal',
+      title: 'Codex perfil',
+      payload: { command: 'claude', provider: 'claude' },
+    });
+    const profile = await providerProfileService.create({
+      providerId: 'codex',
+      name: 'Work',
+      configDir: '/tmp/codex-work',
+    });
+    vi.spyOn(getAgentAdapter('codex'), 'detect').mockResolvedValue({ installed: true, detail: 'test' });
+
+    const changed = await workspaceService.changeTerminalProvider({
+      workspaceId: workspace.id,
+      nodeId: node.id,
+      provider: 'codex',
+      profileId: profile.id,
+    });
+    const payload = changed!.payload as Record<string, unknown>;
+
+    expect(payload.profileId).toBe(profile.id);
+    expect(payload.env).not.toMatchObject({ CODEX_HOME: expect.anything() });
+    expect(JSON.stringify(payload)).not.toContain('/tmp/codex-work');
   });
 
   it('altera o runtime de um unico terminal e preserva a sessao quando o ambiente efetivo nao muda', async () => {

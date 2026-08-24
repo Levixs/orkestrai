@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
-import { describe, expect, it } from 'vitest';
-import { handlePtyConnection } from '$lib/modules/agent-room/infrastructure/pty/pty-ws.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { handlePtyConnection, isAllowedPtyWsOrigin } from '$lib/modules/agent-room/infrastructure/pty/pty-ws.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
 
 class FakeSocket extends EventEmitter {
@@ -14,6 +14,11 @@ class FakeSocket extends EventEmitter {
 }
 
 describe('PTY WebSocket protocol', () => {
+  afterEach(() => {
+    delete (globalThis as { __orkestraiResolveProviderProfileEnv?: unknown }).__orkestraiResolveProviderProfileEnv;
+    vi.restoreAllMocks();
+  });
+
   it('classifica attach de sessao inexistente com codigo estavel', () => {
     const socket = new FakeSocket();
     handlePtyConnection(socket as never);
@@ -48,5 +53,45 @@ describe('PTY WebSocket protocol', () => {
       socket.emit('close');
       ptySessionManager.kill(session.id);
     }
+  });
+
+  it('resolve o perfil no servidor somente ao criar a PTY', async () => {
+    const create = vi.spyOn(ptySessionManager, 'create');
+    (globalThis as {
+      __orkestraiResolveProviderProfileEnv?: (profileId: string, providerId: string) => Promise<Record<string, string>>;
+    }).__orkestraiResolveProviderProfileEnv = vi.fn(async () => ({ TEST_PROFILE_SECRET: 'runtime-only' }));
+    const socket = new FakeSocket();
+    handlePtyConnection(socket as never);
+
+    socket.emit('message', JSON.stringify({
+      type: 'create',
+      command: '/bin/cat',
+      cwd: '/tmp',
+      provider: 'codex',
+      profileId: 'profile-1',
+      env: { SAFE_VALUE: 'kept' },
+    }));
+
+    await vi.waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].env).toEqual({
+      SAFE_VALUE: 'kept',
+      TEST_PROFILE_SECRET: 'runtime-only',
+    });
+    expect(create.mock.calls[0][0].forwardEnvToWsl).toEqual(['TEST_PROFILE_SECRET']);
+    const created = socket.frames.find((frame) => frame.type === 'created');
+    expect(JSON.stringify(created)).not.toContain('runtime-only');
+    const sessionId = String((created?.session as { id?: string } | undefined)?.id ?? '');
+    if (sessionId) ptySessionManager.kill(sessionId);
+    socket.emit('close');
+  });
+});
+
+describe('PTY WebSocket origin validation', () => {
+  it('aceita a mesma origem e spellings loopback somente na mesma porta', () => {
+    expect(isAllowedPtyWsOrigin('http://127.0.0.1:5199', '127.0.0.1:5199')).toBe(true);
+    expect(isAllowedPtyWsOrigin('http://localhost:5199', '127.0.0.1:5199')).toBe(true);
+    expect(isAllowedPtyWsOrigin('http://localhost:3000', '127.0.0.1:5199')).toBe(false);
+    expect(isAllowedPtyWsOrigin('https://example.com', '127.0.0.1:5199')).toBe(false);
+    expect(isAllowedPtyWsOrigin('not-a-url', '127.0.0.1:5199')).toBe(false);
   });
 });

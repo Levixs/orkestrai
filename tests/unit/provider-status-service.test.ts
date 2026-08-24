@@ -26,10 +26,24 @@ describe('ProviderStatusService', () => {
     expect(status).toMatchObject({ indicator: 'none', checked: false });
   });
 
-  it('falls back to a checked:false operational-looking status when the fetch fails, without throwing', async () => {
+  it('falls back to an explicitly unchecked status when the fetch fails, without throwing', async () => {
     const svc = new ProviderStatusService(fakeFetch(async () => jsonResponse({}, false)));
     const status = await svc.getStatus('codex');
     expect(status).toMatchObject({ indicator: 'none', checked: false });
+  });
+
+  it('normalizes unexpected external values and drops unsafe incident links', async () => {
+    const svc = new ProviderStatusService(fakeFetch(async () => jsonResponse({
+      status: { indicator: 'unknown-value', description: 42 },
+      incidents: [
+        { name: 'Unsafe', shortlink: 'javascript:alert(1)' },
+        { name: 'Valid', shortlink: 'https://status.example/incidents/1' },
+        { name: 42, shortlink: 'https://status.example/incidents/2' },
+      ],
+    })));
+    const status = await svc.getStatus('claude');
+    expect(status).toMatchObject({ indicator: 'none', description: '', checked: true });
+    expect(status.incidents).toEqual([{ name: 'Valid', shortlink: 'https://status.example/incidents/1' }]);
   });
 
   it('caches within the TTL and only refetches when forced or expired', async () => {

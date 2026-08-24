@@ -7,6 +7,7 @@ import { cursorAdapter } from '$lib/modules/agent-room/application/adapters/Curs
 import { antigravityAdapter } from '$lib/modules/agent-room/application/adapters/AntigravityAdapter.js';
 import { clineAdapter } from '$lib/modules/agent-room/application/adapters/ClineAdapter.js';
 import { devinAdapter } from '$lib/modules/agent-room/application/adapters/DevinAdapter.js';
+import { copilotAdapter } from '$lib/modules/agent-room/application/adapters/CopilotAdapter.js';
 import type { AgentRunRequest } from '$lib/modules/agent-room/domain/types.js';
 
 function request(overrides: Partial<AgentRunRequest> = {}): AgentRunRequest {
@@ -168,6 +169,10 @@ describe('antigravityAdapter', () => {
 });
 
 describe('devinAdapter', () => {
+  it('does not treat cloud API keys as interactive CLI profiles', () => {
+    expect(devinAdapter.profileStrategy).toEqual({ kind: 'unsupported' });
+  });
+
   it('usa print headless com trust explicito e permissoes coerentes', () => {
     const review = devinAdapter.buildCommand(request({ agent: 'devin', prompt: 'revise' }));
     expect(review.command).toBe('devin');
@@ -232,5 +237,27 @@ describe('clineAdapter', () => {
     expect(clineAdapter.interactiveCommand().env?.CLINE_MCP_SETTINGS_PATH).toBe('.cline/mcp.json');
     expect(clineAdapter.resumeArgs('cline-1')).toEqual(['--id', 'cline-1']);
     expect(clineAdapter.resumeArgs()).toBeNull();
+  });
+});
+
+describe('copilotAdapter', () => {
+  it('uses official silent programmatic mode without leaking JSONL into the transcript', () => {
+    const review = copilotAdapter.buildCommand(request({ agent: 'copilot', prompt: 'review this' }));
+    expect(review.command).toBe('copilot');
+    expect(review.args).toContain('--prompt');
+    expect(review.args).toContain('--silent');
+    expect(review.args).not.toContain('--output-format=json');
+    expect(review.args).not.toContain('--yolo');
+    expect(review.promptDelivery).toBe('args');
+
+    const write = copilotAdapter.buildCommand(request({ agent: 'copilot', allowWrites: true }));
+    expect(write.args).toContain('--yolo');
+    expect(copilotAdapter.parseOutput('final answer\n').content).toBe('final answer');
+  });
+
+  it('reserves and resumes only the exact UUID session', () => {
+    const id = '0198db82-7eaf-7000-8b8e-fd721c2db512';
+    expect(copilotAdapter.freshSessionArgs?.(id)).toEqual(['--session-id', id]);
+    expect(copilotAdapter.resumeArgs(id)).toEqual(['--session-id', id]);
   });
 });

@@ -801,11 +801,16 @@ export class BridgeService {
     const inheritedRuntime = (originNode?.payload as { executionRuntime?: unknown } | undefined)?.executionRuntime;
     const targetFloorId = input.floorId ?? originNode?.floorId ?? null;
 
+    if (input.profile && !input.provider) {
+      throw new Error('Use --provider together with --profile when recruiting an agent.');
+    }
     const profileId = input.provider && input.profile
       ? (await providerProfileService.resolveByIdOrName(input.provider, input.profile))?.id ?? (() => { throw new Error(`Perfil "${input.profile}" não encontrado para o provider "${input.provider}".`); })()
       : null;
     const command = this.commandForProvider(input.provider, { model: input.model, effort: input.effort });
-    if (profileId) command.env = { ...command.env, ...(await providerProfileService.resolveEnv(profileId, input.provider!)) };
+    // Fail before changing the canvas when a profile is incomplete, without
+    // serializing its resolved environment (which may contain a token).
+    if (profileId) await providerProfileService.resolveEnv(profileId, input.provider!);
     if (targetFloorId) {
       const floor = (await floorService.list(workspaceId)).find((candidate) => candidate.id === targetFloorId);
       if (!floor) throw new Error('Andar ativo não encontrado neste workspace.');

@@ -16,6 +16,18 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Provider Profile credentials are no longer serialized into terminal canvas
+  payloads. Only the profile id and non-secret paths are persisted; credentials
+  are resolved server-side at PTY spawn time, secure-store writes are verified,
+  profiles in use cannot be deleted, and unsupported Devin API keys are no
+  longer presented as interactive CLI account profiles.
+- Provider Profile names are unique case-insensitively at the database layer,
+  legacy name collisions migrate deterministically, routing preserves full UUID
+  profile ids, profile validation uses stable localized errors, and unavailable
+  public status checks are shown as unknown instead of falsely operational.
+- The PTY WebSocket now accepts browser connections only from the Orkestrai
+  server's exact port, including equivalent localhost loopback spellings. A
+  different local web service can no longer open or control terminal sessions.
 - The Usage and routing node now opens at a useful default size, keeps Leader
   routing above provider details, adapts its policy fields to narrow widths,
   and provides contained mouse, trackpad, touch, and keyboard scrolling for

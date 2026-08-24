@@ -14,6 +14,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'choose-agent-provider': 'choose-agent-provider',
   'pin-favorite-agents': 'pin-favorite-agents',
   'setup-agent-provider': 'provider-center-setup',
+  'provider-profiles': 'provider-center-setup',
   'deploy-sentinel': 'sentinela-deploy',
   'automate-workspace': 'workspace-automations',
   'framework-preset': 'preset-bootstrap',

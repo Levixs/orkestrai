@@ -42,8 +42,8 @@ export const DEFAULT_USAGE_ROUTING_POLICY: UsageRoutingPolicy = {
 export function normalizeUsageRoutingPolicy(value: unknown): UsageRoutingPolicy {
   const input = value && typeof value === 'object' ? value as Partial<UsageRoutingPolicy> : {};
   const threshold = Number(input.thresholdPercent);
-  const sourceProvider = String(input.sourceProvider || DEFAULT_USAGE_ROUTING_POLICY.sourceProvider).trim().slice(0, 40);
-  const requestedFallback = String(input.fallbackProvider || DEFAULT_USAGE_ROUTING_POLICY.fallbackProvider).trim().slice(0, 40);
+  const sourceProvider = String(input.sourceProvider || DEFAULT_USAGE_ROUTING_POLICY.sourceProvider).trim().slice(0, 128);
+  const requestedFallback = String(input.fallbackProvider || DEFAULT_USAGE_ROUTING_POLICY.fallbackProvider).trim().slice(0, 128);
   const windowKind = input.windowKind === '5h' || input.windowKind === 'monthly'
     ? input.windowKind
     : DEFAULT_USAGE_ROUTING_POLICY.windowKind;

@@ -822,7 +822,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'multi-account',
         title: 'Use a second account with Profiles',
-        body: 'If the provider officially supports multiple accounts, a Profiles section appears when you expand it: create a named profile (e.g. "Work") pointing to that account\'s config directory or token. The switch is available from the terminal menu, right next to the provider switch, without leaving the CLI.',
+        body: 'If the provider has a verified account-directory override, a Profiles section appears when you expand it: create a named profile (e.g. "Work") pointing to that account\'s official config location. The terminal menu and Usage routing can select it. Credentials stay in provider-owned files and are resolved only when the PTY starts.',
       },
     ],
   },

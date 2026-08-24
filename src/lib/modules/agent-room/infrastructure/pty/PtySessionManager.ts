@@ -109,6 +109,8 @@ export type CreatePtySessionInput = {
   cols?: number;
   rows?: number;
   env?: Record<string, string>;
+  /** Environment names intentionally forwarded into a WSL guest. */
+  forwardEnvToWsl?: string[];
   /** Rotulos humanos (título do no / workspace) para notificações. */
   label?: string | null;
   workspace?: string | null;
@@ -167,6 +169,7 @@ export class PtySessionManager {
           hostCwd: input.cwd,
           workspaceRoot: input.workspaceRoot,
           hostEnv: env,
+          forwardEnvToWsl: input.forwardEnvToWsl,
         })
       : { ...resolveCommand(input.command, input.args ?? [], env), cwd: input.cwd, env };
     const ptyProcess = this.spawnPty(target.command, target.args, {

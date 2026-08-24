@@ -376,13 +376,15 @@ export class WorkspaceService {
       () => adapter.detect(),
     );
     if (!detection.installed) throw new Error(`${adapter.displayName} não está disponível neste dispositivo.`);
-    const profileEnv = dto.profileId ? await providerProfileService.resolveEnv(dto.profileId, adapter.id) : {};
+    // Validate now, but resolve the environment only at PTY spawn time. It may
+    // contain credentials and therefore must never enter the persisted payload.
+    if (dto.profileId) await providerProfileService.resolveEnv(dto.profileId, adapter.id);
 
     const current = { ...((node.payload ?? {}) as Record<string, unknown>) };
     const sessionId = typeof current.sessionId === 'string' ? current.sessionId : null;
     if (sessionId) ptySessionManager.kill(sessionId);
     const command = adapter.interactiveCommand();
-    const env = { ...command.env, ...profileEnv };
+    const env = { ...command.env };
     let payload: Record<string, unknown> = {
       ...current,
       provider: adapter.id,

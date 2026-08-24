@@ -7,12 +7,14 @@ import { getAgentAdapter, hasAgentAdapter } from '../adapters/registry.js';
 import { floorService } from './FloorService.js';
 import { preflightWslLaunch, terminalExecutionRuntime } from '../../infrastructure/WslRuntime.js';
 import type { WorkspaceExecutionRuntime } from '../../domain/types.js';
+import { providerProfileService } from './ProviderProfileService.js';
 
 type AgentNodePayload = {
   sessionId?: string;
   agentSessionId?: string;
   resumeRecovery?: boolean;
   provider?: string;
+  profileId?: string | null;
   command?: string;
   args?: string[];
   initialRoleArgs?: string[];
@@ -86,6 +88,11 @@ export class AgentSessionService {
         : [];
     if (freshAgentSessionId) tracker.claim(freshAgentSessionId);
 
+    const profileEnv = payload.profileId && payload.provider
+      ? await providerProfileService.resolveEnv(payload.profileId, payload.provider, {
+          runtimeHome: wslContext?.linuxHomePath,
+        })
+      : {};
     const session = ptySessionManager.create({
       command: payload.command,
       args: [...(payload.args ?? []), ...(!resumableAgentSessionId ? (payload.initialRoleArgs ?? []) : []), ...conversationArgs],
@@ -95,7 +102,13 @@ export class AgentSessionService {
       workspaceId,
       nodeId: target.id,
       provider: payload.provider ?? null,
-      env: { ...(payload.env ?? {}), ORKESTRAI_NODE_ID: target.id, ORKESTRAI_AGENT_TITLE: title },
+      env: {
+        ...(payload.env ?? {}),
+        ...profileEnv,
+        ORKESTRAI_NODE_ID: target.id,
+        ORKESTRAI_AGENT_TITLE: title,
+      },
+      forwardEnvToWsl: Object.keys(profileEnv),
       runtime,
       workspaceRoot: workspace?.workingDir,
     });

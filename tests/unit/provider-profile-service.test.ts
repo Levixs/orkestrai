@@ -18,7 +18,7 @@ const STRATEGIES: Record<string, AgentProfileStrategy> = {
     defaultConfigDir: '~/.config/opencode',
     defaultDataDir: '~/.local/share',
   },
-  cline: { kind: 'token', envVar: 'CLINE_API_KEY' },
+  tokenProvider: { kind: 'token', envVar: 'TEST_PROVIDER_TOKEN' },
   antigravity: { kind: 'unsupported' },
 };
 
@@ -32,8 +32,8 @@ function fakeRepository(seed: ProviderProfile[] = []): ProviderProfileRepository
     async find(id: string) {
       return rows.find((row) => row.id === id) ?? null;
     },
-    async findByName(providerId: string, name: string) {
-      return rows.find((row) => row.providerId === providerId && row.name === name) ?? null;
+    async findByNormalizedName(providerId: string, normalizedName: string) {
+      return rows.find((row) => row.providerId === providerId && row.name.normalize('NFKC').toLocaleLowerCase('en-US') === normalizedName) ?? null;
     },
     async create(input: CreateProviderProfileInput) {
       const now = new Date().toISOString();
@@ -83,6 +83,7 @@ function service(seed: ProviderProfile[] = []) {
   return new ProviderProfileService({
     repository: fakeRepository(seed),
     secrets: fakeSecrets(),
+    isProfileReferenced: async () => false,
     adapterProfileStrategy: (providerId) => {
       const strategy = STRATEGIES[providerId];
       if (!strategy) throw new Error(`unknown provider: ${providerId}`);
@@ -100,16 +101,22 @@ describe('ProviderProfileService', () => {
     await expect(svc.resolveEnv(created.id, 'claude')).resolves.toEqual({ CLAUDE_CONFIG_DIR: '/tmp/claude-trabalho' });
   });
 
-  it('expands a leading ~ at save time, since child processes never expand it themselves', async () => {
+  it('keeps ~ portable and expands it for the runtime home at spawn time', async () => {
     const svc = service();
     const created = await svc.create({ providerId: 'claude', name: 'Trabalho', configDir: '~/.claude-trabalho' });
-    expect(created.configDir).toBe(join(homedir(), '.claude-trabalho'));
+    expect(created.configDir).toBe('~/.claude-trabalho');
+    await expect(svc.resolveEnv(created.id, 'claude')).resolves.toEqual({
+      CLAUDE_CONFIG_DIR: join(homedir(), '.claude-trabalho'),
+    });
+    await expect(svc.resolveEnv(created.id, 'claude', { runtimeHome: '/home/dev' })).resolves.toEqual({
+      CLAUDE_CONFIG_DIR: '/home/dev/.claude-trabalho',
+    });
   });
 
   it('requires both directories for a configDirPair strategy', async () => {
     const svc = service();
     await expect(svc.create({ providerId: 'opencode', name: 'Trabalho', configDir: '/tmp/opencode-trabalho' }))
-      .rejects.toThrow('Informe os dois diretórios');
+      .rejects.toMatchObject({ code: 'profile_directories_required' });
     const created = await svc.create({
       providerId: 'opencode',
       name: 'Trabalho',
@@ -124,21 +131,21 @@ describe('ProviderProfileService', () => {
 
   it('stores a token profile secret out of band and resolves it back as env', async () => {
     const svc = service();
-    const created = await svc.create({ providerId: 'cline', name: 'Trabalho', token: 'secret-token' });
+    const created = await svc.create({ providerId: 'tokenProvider', name: 'Trabalho', token: 'secret-token' });
     expect(created.hasToken).toBe(true);
-    await expect(svc.resolveEnv(created.id, 'cline')).resolves.toEqual({ CLINE_API_KEY: 'secret-token' });
+    await expect(svc.resolveEnv(created.id, 'tokenProvider')).resolves.toEqual({ TEST_PROVIDER_TOKEN: 'secret-token' });
   });
 
   it('rejects creating a profile for a provider without an official multi-account mechanism', async () => {
     const svc = service();
-    await expect(svc.create({ providerId: 'antigravity', name: 'Trabalho' })).rejects.toThrow('multi-conta');
+    await expect(svc.create({ providerId: 'antigravity', name: 'Trabalho' })).rejects.toMatchObject({ code: 'profile_unsupported' });
   });
 
-  it('rejects a duplicate profile name for the same provider', async () => {
+  it('rejects a duplicate profile name for the same provider case-insensitively', async () => {
     const svc = service();
     await svc.create({ providerId: 'claude', name: 'Trabalho', configDir: '~/.claude-trabalho' });
-    await expect(svc.create({ providerId: 'claude', name: 'Trabalho', configDir: '~/.claude-outro' }))
-      .rejects.toThrow('Já existe um perfil');
+    await expect(svc.create({ providerId: 'claude', name: 'trabalho', configDir: '~/.claude-outro' }))
+      .rejects.toMatchObject({ code: 'profile_duplicate' });
   });
 
   it('resolves by stable id, so renaming a profile never breaks resolution', async () => {
@@ -151,6 +158,73 @@ describe('ProviderProfileService', () => {
   it('rejects resolving a profile against the wrong provider', async () => {
     const svc = service();
     const created = await svc.create({ providerId: 'claude', name: 'Trabalho', configDir: '~/.claude-trabalho' });
-    await expect(svc.resolveEnv(created.id, 'codex')).rejects.toThrow('não encontrado');
+    await expect(svc.resolveEnv(created.id, 'codex')).rejects.toMatchObject({ code: 'profile_not_found' });
+  });
+
+  it('rolls back the database row when secure token storage fails', async () => {
+    const repository = fakeRepository();
+    const svc = new ProviderProfileService({
+      repository,
+      secrets: {
+        get: async () => null,
+        set: async () => { throw new Error('keychain unavailable'); },
+        delete: async () => undefined,
+      },
+      isProfileReferenced: async () => false,
+      adapterProfileStrategy: () => STRATEGIES.tokenProvider,
+    });
+
+    await expect(svc.create({ providerId: 'tokenProvider', name: 'Work', token: 'secret' })).rejects.toThrow('keychain unavailable');
+    await expect(repository.list('tokenProvider')).resolves.toEqual([]);
+  });
+
+  it('does not claim a token was saved when the secure store silently drops it', async () => {
+    const repository = fakeRepository();
+    const svc = new ProviderProfileService({
+      repository,
+      secrets: {
+        get: async () => null,
+        set: async () => undefined,
+        delete: async () => undefined,
+      },
+      isProfileReferenced: async () => false,
+      adapterProfileStrategy: () => STRATEGIES.tokenProvider,
+    });
+
+    await expect(svc.create({ providerId: 'tokenProvider', name: 'Work', token: 'secret' }))
+      .rejects.toThrow('did not persist');
+    await expect(repository.list('tokenProvider')).resolves.toEqual([]);
+  });
+
+  it('refuses to remove a profile still referenced by a terminal or Usage routing', async () => {
+    const repository = fakeRepository();
+    const svc = new ProviderProfileService({
+      repository,
+      secrets: fakeSecrets(),
+      isProfileReferenced: async () => true,
+      adapterProfileStrategy: () => STRATEGIES.claude,
+    });
+    const created = await svc.create({ providerId: 'claude', name: 'Work', configDir: '/tmp/claude-work' });
+
+    await expect(svc.delete(created.id)).rejects.toMatchObject({ code: 'profile_in_use' });
+    await expect(repository.find(created.id)).resolves.toMatchObject({ id: created.id });
+  });
+
+  it('keeps a token profile reachable when secure credential deletion fails', async () => {
+    const repository = fakeRepository();
+    const secrets = fakeSecrets();
+    const svc = new ProviderProfileService({
+      repository,
+      secrets: {
+        ...secrets,
+        delete: async () => { throw new Error('keychain locked'); },
+      },
+      isProfileReferenced: async () => false,
+      adapterProfileStrategy: () => STRATEGIES.tokenProvider,
+    });
+    const created = await svc.create({ providerId: 'tokenProvider', name: 'Work', token: 'secret' });
+
+    await expect(svc.delete(created.id)).rejects.toThrow('keychain locked');
+    await expect(repository.find(created.id)).resolves.toMatchObject({ id: created.id });
   });
 });

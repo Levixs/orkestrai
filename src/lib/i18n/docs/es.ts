@@ -23,12 +23,12 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: crear, nombrar, modelo y esfuerzo',
-      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después, el menú compacto del encabezado reúne cambio de provider, rol, una selección visual de 10 temas ANSI, recarga con contexto, Modo Maestro y eliminación; el título sigue siendo editable con doble clic. Cambiar el provider conserva conexiones, rol, piso y posición, cierra la conversación anterior e inicia una sesión limpia.`,
+      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después, el menú compacto del encabezado reúne cambio de provider y perfil, rol, una selección visual de 11 temas ANSI, recarga con contexto, Modo Maestro y eliminación; el título sigue siendo editable con doble clic. Cambiar el provider conserva conexiones, rol, piso y posición, cierra la conversación anterior e inicia una sesión limpia.`,
     },
     {
       id: 'provider-center',
       title: 'Central de Providers',
-      body: `La Central verifica localmente las ocho CLIs compatibles y separa los agentes listos de los que todavía requieren configuración. Expande un provider para ver su guía oficial, un comando de instalación para tu sistema cuando esté disponible, instrucciones de inicio de sesión y capacidades detectadas como reanudación de conversaciones, modelos y esfuerzo ajustable. Orkestrai nunca recibe credenciales ni autentica agentes en silencio; el inicio de sesión permanece en la CLI oficial. Después de instalar, usa Verificar de nuevo y regresa al canvas.`,
+      body: `La Central verifica localmente las nueve CLIs compatibles y separa los agentes listos de los que todavía requieren configuración. Expande un provider para ver su guía oficial, un comando de instalación para tu sistema cuando esté disponible, instrucciones de inicio de sesión, capacidades detectadas, estado público en vivo cuando exista y Perfiles con nombre mediante el mecanismo documentado de directorio de cuenta de la CLI. Orkestrai nunca autentica un agente en silencio ni guarda credenciales de Perfil en los datos del canvas; el inicio de sesión permanece en la CLI oficial y los valores del perfil se resuelven en el servidor solo al iniciar la PTY. Después de instalar, usa Verificar de nuevo y regresa al canvas.`,
     },
     {
       id: 'roles',
@@ -685,6 +685,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Windows + WSL', 'múltiples distribuciones', 'providers locales'],
     },
     {
+      id: 'provider-profiles',
+      title: 'Separar cuentas personales y de trabajo de los providers',
+      body: 'Abre la Central de Providers, expande Claude, Codex, Kimi, GitHub Copilot, Cursor, Cline u OpenCode y agrega un Perfil con nombre que apunte al directorio o los directorios de configuración de esa cuenta, según la documentación de la CLI. Luego selecciona el Perfil en el menú de la terminal o enruta trabajo nuevo hacia él desde el nodo Uso. Orkestrai guarda en la base solo la referencia del Perfil y las rutas; las credenciales permanecen en los archivos de la propia CLI y se resuelven en el servidor únicamente al iniciar la PTY. No se puede eliminar un Perfil usado por una terminal o regla de ruteo. Antigravity y Devin quedan deshabilitados aquí hasta contar con un override de cuenta de CLI seguro, documentado y verificable en todas las plataformas.',
+      tags: ['Perfiles de provider', 'múltiples cuentas', 'aislamiento de credenciales'],
+    },
+    {
       id: 'saved-terminal-commands',
       title: 'Reabrir una terminal lista para trabajar',
       body: 'Abre el menú de opciones de una terminal y elige Comandos guardados. Guarda atajos exclusivos de esa terminal o comandos globales disponibles en todas, busca por nombre o contenido y ejecuta cualquier elemento manualmente. En shells puros, activa Ejecutar al reanudar para enviar los comandos una sola vez al crear o restaurar la sesión, incluso en WSL. Orkestrai nunca autoejecuta texto en Claude, Codex, Kimi u otro agente para no contaminar conversaciones. Los comandos se guardan como texto simple: usa variables de entorno o la bóveda de la herramienta para secretos, nunca contraseñas ni tokens en el comando. Las terminales conservan el entorno del sistema operativo y el puente de Orkestrai, pero excluyen los valores privados del servidor de escritorio para que el .env de cada proyecto, incluida APP_KEY de Laravel, tenga prioridad.',
@@ -699,6 +705,9 @@ Header: Authorization = Bearer {{accessToken}}`,
       items: [
         'Uso y ruteo ahora abre con un tamaño inicial útil, muestra el ruteo del líder antes de los providers, reorganiza controles en anchos estrechos y contiene el desplazamiento por mouse, trackpad, tacto y teclado sin ampliar el canvas.',
         'Se agregaron Perfiles de provider con nombre, enrutamiento de Uso por perfil, estado público en vivo, marcas específicas en los agentes del Canvas, GitHub Copilot como provider de agente y el tema de terminal Obsidian.',
+        'Las credenciales de Perfiles nunca entran en el payload del canvas: solo persisten la referencia y rutas no secretas, los valores se resuelven en el servidor al iniciar la PTY, se verifica el almacenamiento seguro, las referencias activas impiden borrar y las claves API de Devin no se aceptan como perfil de su CLI local.',
+        'Los nombres de Perfil son únicos sin distinguir mayúsculas, las colisiones heredadas migran con seguridad, los UUID completos sobreviven al ruteo de Uso, los errores están traducidos y un fallo al consultar el estado público aparece como no disponible, no como saludable.',
+        'El WebSocket de PTY acepta conexiones del navegador solo desde Orkestrai en el puerto exacto de la aplicación, evitando que otro sitio en localhost abra o controle sesiones de terminal.',
       ],
     },
     {

@@ -34,7 +34,7 @@ export const copilotAdapter: AgentAdapter = {
       : `READ-ONLY TASK. Do not modify files, dependencies, repositories, or system state.\n\n${request.prompt}`;
     const args = [
       '--prompt', prompt,
-      '--output-format=json',
+      '--silent',
       '--no-ask-user',
       '--no-remote',
       ...(request.mode === 'plan' ? ['--plan'] : []),

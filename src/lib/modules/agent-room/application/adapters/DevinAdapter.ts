@@ -16,7 +16,11 @@ export const devinAdapter: AgentAdapter = {
   displayName: 'Devin',
   supportsResume: true,
   sessionStorage: 'devin-session-db',
-  profileStrategy: { kind: 'token', envVar: 'DEVIN_API_TOKEN', optionalEnvVars: ['DEVIN_ORG_ID'] },
+  // Devin CLI authenticates with `devin auth login` and stores credentials in
+  // platform-specific files. DEVIN_API_KEY is documented for the cloud REST
+  // API, not as an interactive CLI account override, so exposing a token
+  // profile here would promise an unsupported and unsafe login mechanism.
+  profileStrategy: { kind: 'unsupported' },
   setup: {
     docsUrl: 'https://docs.devin.ai/cli',
     installCommands: {

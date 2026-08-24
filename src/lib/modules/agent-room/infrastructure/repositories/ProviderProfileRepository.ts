@@ -22,6 +22,7 @@ function map(model: AgentProviderProfile): ProviderProfile {
 export type CreateProviderProfileInput = {
   providerId: string;
   name: string;
+  normalizedName: string;
   configDir: string | null;
   dataDir: string | null;
   hasToken: boolean;
@@ -40,10 +41,10 @@ export class ProviderProfileRepository {
     return model ? map(model) : null;
   }
 
-  async findByName(providerId: string, name: string): Promise<ProviderProfile | null> {
+  async findByNormalizedName(providerId: string, normalizedName: string): Promise<ProviderProfile | null> {
     const model = await AgentProviderProfile.query()
       .where('provider_id', providerId)
-      .where('name', name)
+      .where('normalized_name', normalizedName)
       .first();
     return model ? map(model) : null;
   }
@@ -54,6 +55,7 @@ export class ProviderProfileRepository {
       id: uuidv7(),
       provider_id: input.providerId,
       name: input.name,
+      normalized_name: input.normalizedName,
       config_dir: input.configDir,
       data_dir: input.dataDir,
       has_token: input.hasToken,
@@ -66,6 +68,7 @@ export class ProviderProfileRepository {
   async update(id: string, input: Partial<CreateProviderProfileInput>): Promise<ProviderProfile | null> {
     await AgentProviderProfile.query().where('id', id).update({
       ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.normalizedName !== undefined ? { normalized_name: input.normalizedName } : {}),
       ...(input.configDir !== undefined ? { config_dir: input.configDir } : {}),
       ...(input.dataDir !== undefined ? { data_dir: input.dataDir } : {}),
       ...(input.hasToken !== undefined ? { has_token: input.hasToken } : {}),

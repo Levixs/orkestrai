@@ -237,6 +237,7 @@
     restartGeneration,
     data.payload.command,
     data.payload.provider ?? '',
+    currentProfileId ?? '__default__',
     JSON.stringify(data.payload.args ?? []),
     data.executionRuntime.kind === 'wsl'
       ? `${data.executionRuntime.distribution}:${data.executionRuntime.linuxWorkingDir}`
@@ -502,6 +503,7 @@
         args: [...(data.payload.args ?? []), ...exactArgs],
         cwd: launchWorkingDir,
         env: agentEnv,
+        profileId: currentProfileId,
         runtime: data.executionRuntime,
         workspaceRoot: data.workspaceRoot,
       };
@@ -518,6 +520,7 @@
         : undefined,
       cwd: launchWorkingDir,
       env: agentEnv,
+      profileId: currentProfileId,
       runtime: data.executionRuntime,
       workspaceRoot: data.workspaceRoot,
     };
@@ -538,6 +541,7 @@
       freshSessionArgs: data.freshSessionArgsFor?.() ?? undefined,
       cwd: launchWorkingDir,
       env: agentEnv,
+      profileId: currentProfileId,
       runtime: data.executionRuntime,
       workspaceRoot: data.workspaceRoot,
     };
@@ -560,7 +564,7 @@
 >
   {#snippet icon()}
     {#if currentProvider && providerIcons[currentProvider]}
-      <img src={providerIcons[currentProvider]} width="13" height="13" alt="" />
+      <span class="terminal-provider-mark"><img src={providerIcons[currentProvider]} width="13" height="13" alt="" /></span>
     {:else}
       <SquareTerminal size={13} />
     {/if}
@@ -1045,6 +1049,16 @@
     background: color-mix(in srgb, var(--app-success) 8%, transparent);
     color: var(--app-success);
     font-size: 10px;
+  }
+
+  .terminal-provider-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 19px;
+    height: 19px;
+    border-radius: 5px;
+    background: #20242c;
   }
 
   .terminal-status-chip span {

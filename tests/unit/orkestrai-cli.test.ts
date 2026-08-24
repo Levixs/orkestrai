@@ -386,6 +386,16 @@ describe('orkestrai CLI', () => {
     expect(request.body.effort).toBe('high');
   });
 
+  it('recruit rejeita --profile sem --provider antes de chamar a bridge', async () => {
+    const before = requests.length;
+    await expect(run(['recruit', 'QA', '--profile', 'Work'], {
+      env: { ORKESTRAI_NODE_ID: 'n1' },
+      cwd,
+      out: () => undefined,
+    })).rejects.toThrow('--profile exige --provider');
+    expect(requests).toHaveLength(before);
+  });
+
   it('flag --from explicito tem precedencia sobre o env', async () => {
     const { out } = capture();
     await run(['recruit', 'QA', '--from', 'Outro'], { env: { ORKESTRAI_NODE_ID: 'n1' }, cwd, out });

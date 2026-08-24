@@ -305,7 +305,7 @@ Download the latest installers from
 - **Custom appearance:** start from a coherent graphite-and-gold dark system or
   a high-contrast light palette, choose the other built-in themes, or duplicate
   one and edit semantic tokens with live preview and JSON import/export.
-- **Readable terminals:** choose 1 of 10 complete ANSI palettes from the compact
+- **Readable terminals:** choose 1 of 11 complete ANSI palettes from the compact
   terminal options menu, alongside provider, role, reload, and Maestro controls.
   Font metrics settle before PTY reattachment so the cursor remains aligned
   after switching between Canvas, Workbench, Settings, and documentation.
@@ -319,9 +319,10 @@ Download the latest installers from
   Laravel's `APP_KEY` for encrypted application data.
 - **Operational controls:** manage local portal ports, configure recurring
   routines, and install skills from the marketplace.
-- **Provider Center:** detect all eight supported CLIs locally, follow OS-aware
-  installation and official sign-in guidance, and inspect capabilities without
-  sending provider credentials to Orkestrai.
+- **Provider Center:** detect all nine supported CLIs locally, follow OS-aware
+  installation and official sign-in guidance, inspect public service status,
+  and route named account profiles without persisting credentials in canvas
+  data.
 - **Personal agent toolbar:** choose any service from one compact Agents menu
   and pin up to four ready favorites globally across workspaces and restarts.
 - **Replaceable providers:** switch a team member from Claude to Codex, Kimi, or
@@ -348,6 +349,7 @@ authenticate only the providers you plan to use:
 - [Antigravity CLI](https://antigravity.google/docs/cli/getting-started)
 - [Cline CLI](https://docs.cline.bot/cli/cli-reference)
 - [Devin CLI](https://docs.devin.ai/cli)
+- [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli)
 
 You do not need every provider or terminal expertise. Orkestrai enables the CLIs
 it detects, keeps their conversations separate, and lets you organize agents by

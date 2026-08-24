@@ -12,6 +12,7 @@
     ExternalLink,
     MessageSquareText,
     MonitorCog,
+    Pencil,
     Plus,
     RefreshCw,
     ShieldCheck,
@@ -21,9 +22,11 @@
   } from '@lucide/svelte';
   import { toast } from '@beeblock/svelar/ui';
   import { Button } from '$lib/components/ui/button';
+  import * as AlertDialog from '$lib/components/ui/alert-dialog';
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import type { AgentProviderInfo, ProviderProfile } from '$lib/modules/agent-room/domain/types.js';
+  import { providerIcons } from '$lib/modules/agent-room/domain/provider-icons.js';
   import { PROVIDER_STATUS_SOURCES } from '$lib/modules/agent-room/application/services/ProviderStatusService.js';
   import { getProviderStatus, providerStatusStore } from '$lib/components/agent-room/provider-status.svelte.js';
   import * as m from '$lib/paraglide/messages.js';
@@ -40,12 +43,14 @@
 
   let profiles = $state<Record<string, ProviderProfile[]>>({});
   let profileFormOpen = $state<string | null>(null);
+  let profileEditingId = $state<string | null>(null);
   let profileFormName = $state('');
   let profileFormConfigDir = $state('');
   let profileFormDataDir = $state('');
   let profileFormToken = $state('');
   let profileFormError = $state('');
   let profileFormBusy = $state(false);
+  let deletingProfile = $state<{ providerId: string; profile: ProviderProfile } | null>(null);
 
   const readyCount = $derived(providers.filter((provider) => provider.installed).length);
   const visibleProviders = $derived(
@@ -67,11 +72,25 @@
     ]);
   });
 
-  function statusLabel(indicator: string): string {
+  function statusLabel(indicator: string, checked: boolean): string {
+    if (!checked) return m['providers.status_unavailable']();
     if (indicator === 'critical') return m['providers.status_critical']();
     if (indicator === 'major') return m['providers.status_major']();
     if (indicator === 'minor') return m['providers.status_minor']();
     return m['providers.status_operational']();
+  }
+
+  function profileErrorText(code: unknown, fallback: string): string {
+    if (code === 'profile_unknown_provider') return m['providers.profile_error_unknown_provider']();
+    if (code === 'profile_not_found') return m['providers.profile_error_not_found']();
+    if (code === 'profile_unsupported') return m['providers.profile_error_unsupported']();
+    if (code === 'profile_name_required') return m['providers.profile_error_name_required']();
+    if (code === 'profile_duplicate') return m['providers.profile_error_duplicate']();
+    if (code === 'profile_config_required') return m['providers.profile_error_config_required']();
+    if (code === 'profile_directories_required') return m['providers.profile_error_directories_required']();
+    if (code === 'profile_token_required') return m['providers.profile_error_token_required']();
+    if (code === 'profile_in_use') return m['providers.profile_error_in_use']();
+    return fallback;
   }
 
   async function loadProviders(refresh = false) {
@@ -119,11 +138,23 @@
     }
   }
 
-  function openProfileForm(providerId: string) {
+  function openProfileForm(providerId: string, profile: ProviderProfile | null = null) {
     profileFormOpen = providerId;
+    profileEditingId = profile?.id ?? null;
+    profileFormName = profile?.name ?? '';
+    profileFormConfigDir = profile?.configDir ?? '';
+    profileFormDataDir = profile?.dataDir ?? '';
+    profileFormToken = '';
+    profileFormError = '';
+  }
+
+  function closeProfileForm() {
+    profileFormOpen = null;
+    profileEditingId = null;
     profileFormName = '';
     profileFormConfigDir = '';
     profileFormDataDir = '';
+    // Do not retain a credential in renderer memory after submit/cancel.
     profileFormToken = '';
     profileFormError = '';
   }
@@ -134,8 +165,10 @@
     profileFormError = '';
     try {
       const strategy = provider.profileStrategy;
-      const response = await fetch('/api/agent-room/provider-profiles', {
-        method: 'POST',
+      const response = await fetch(profileEditingId
+        ? `/api/agent-room/provider-profiles/${profileEditingId}`
+        : '/api/agent-room/provider-profiles', {
+        method: profileEditingId ? 'PATCH' : 'POST',
         headers: {
           'content-type': 'application/json',
           ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
@@ -149,8 +182,8 @@
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? m['providers.profile_save_error']());
-      profileFormOpen = null;
+      if (!response.ok) throw new Error(profileErrorText(payload.error, m['providers.profile_save_error']()));
+      closeProfileForm();
       await loadProfiles(provider.id);
       toast.success(m['providers.profile_saved']());
     } catch (error) {
@@ -160,15 +193,20 @@
     }
   }
 
-  async function deleteProfile(providerId: string, profileId: string) {
+  async function deleteProfile() {
+    if (!deletingProfile) return;
+    const { providerId, profile } = deletingProfile;
     try {
-      await fetch(`/api/agent-room/provider-profiles/${profileId}`, {
+      const response = await fetch(`/api/agent-room/provider-profiles/${profile.id}`, {
         method: 'DELETE',
         headers: getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {},
       });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(profileErrorText(payload.error, m['providers.profile_delete_error']()));
+      deletingProfile = null;
       await loadProfiles(providerId);
-    } catch {
-      toast.error(m['providers.profile_delete_error']());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : m['providers.profile_delete_error']());
     }
   }
 </script>
@@ -223,7 +261,13 @@
         {@const command = installCommand(provider)}
         <article class="provider-row" class:available={provider.installed}>
           <div class="provider-main">
-            <span class="provider-icon"><SquareTerminal size={18} aria-hidden="true" /></span>
+            <span class="provider-icon">
+              {#if providerIcons[provider.id]}
+                <img src={providerIcons[provider.id]} width="20" height="20" alt="" />
+              {:else}
+                <SquareTerminal size={18} aria-hidden="true" />
+              {/if}
+            </span>
             <div class="provider-copy">
               <div class="provider-title-row">
                 <h2>{provider.displayName}</h2>
@@ -236,14 +280,14 @@
               {#if PROVIDER_STATUS_SOURCES[provider.id]}
                 {@const status = providerStatusStore.value(provider.id)}
                 <a
-                  class="provider-status-line status-{status.indicator}"
+                  class="provider-status-line status-{status.checked ? status.indicator : 'unavailable'}"
                   href={PROVIDER_STATUS_SOURCES[provider.id].pageUrl}
                   target="_blank"
                   rel="noreferrer"
-                  title={status.description || m['providers.status_operational']()}
+                  title={status.description || statusLabel(status.indicator, status.checked)}
                 >
                   <Activity size={12} aria-hidden="true" />
-                  <span>{statusLabel(status.indicator)}</span>
+                  <span>{statusLabel(status.indicator, status.checked)}</span>
                   <ExternalLink size={11} aria-hidden="true" />
                 </a>
               {/if}
@@ -269,6 +313,7 @@
                 size="sm"
                 aria-expanded={expanded}
                 onclick={() => {
+                  if (expanded && profileFormOpen === provider.id) closeProfileForm();
                   expandedProvider = expanded ? null : provider.id;
                   if (!expanded && !profiles[provider.id]) loadProfiles(provider.id);
                 }}
@@ -334,7 +379,20 @@
                             {:else if strategy.kind === 'configDirPair'}{profile.configDir} · {profile.dataDir}
                             {:else}{m['providers.profile_token_saved']()}{/if}
                           </span>
-                          <button class="profile-remove" aria-label={m['providers.profile_delete']()} onclick={() => deleteProfile(provider.id, profile.id)}>
+                          <button
+                            class="profile-remove"
+                            aria-label={m['providers.profile_edit']()}
+                            title={m['providers.profile_edit']()}
+                            onclick={() => openProfileForm(provider.id, profile)}
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            class="profile-remove"
+                            aria-label={m['providers.profile_delete']()}
+                            title={m['providers.profile_delete']()}
+                            onclick={() => (deletingProfile = { providerId: provider.id, profile })}
+                          >
                             <Trash2 size={13} />
                           </button>
                         </li>
@@ -352,12 +410,17 @@
                           <input placeholder={`${m['providers.profile_config_dir']()} (${strategy.defaultConfigDir})`} bind:value={profileFormConfigDir} required />
                           <input placeholder={`${m['providers.profile_data_dir']()} (${strategy.defaultDataDir})`} bind:value={profileFormDataDir} required />
                         {:else if strategy.kind === 'token'}
-                          <input type="password" placeholder={m['providers.profile_token_placeholder']()} bind:value={profileFormToken} required />
+                          <input
+                            type="password"
+                            placeholder={m['providers.profile_token_placeholder']()}
+                            bind:value={profileFormToken}
+                            required={!profileEditingId}
+                          />
                         {/if}
                         {#if profileFormError}<p class="profile-form-error">{profileFormError}</p>{/if}
                         <div class="profile-form-actions">
                           <Button type="submit" size="sm" disabled={profileFormBusy}>{m['providers.profile_save']()}</Button>
-                          <Button type="button" variant="ghost" size="sm" onclick={() => (profileFormOpen = null)}>{m['providers.profile_cancel']()}</Button>
+                          <Button type="button" variant="ghost" size="sm" onclick={closeProfileForm}>{m['providers.profile_cancel']()}</Button>
                         </div>
                       </form>
                     {:else}
@@ -377,6 +440,21 @@
     <div class="empty-state"><SquareTerminal size={22} /><p>{m['providers.empty']()}</p></div>
   {/if}
 </main>
+
+<AlertDialog.Root open={deletingProfile !== null} onOpenChange={(open) => !open && (deletingProfile = null)}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>{m['providers.profile_delete_title']()}</AlertDialog.Title>
+      <AlertDialog.Description>
+        {m['providers.profile_delete_description']({ name: deletingProfile?.profile.name ?? '' })}
+      </AlertDialog.Description>
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel>{m['settings.cancel']()}</AlertDialog.Cancel>
+      <AlertDialog.Action variant="destructive" onclick={deleteProfile}>{m['settings.delete']()}</AlertDialog.Action>
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>
 
 <style>
   .providers-page {
@@ -437,7 +515,7 @@
   .provider-row:hover { border-color: var(--line-strong); background: var(--surface); }
   .provider-row.available { border-color: color-mix(in srgb, var(--app-success) 36%, var(--line)); }
   .provider-main { min-height: 126px; padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 14px; }
-  .provider-icon { width: 38px; height: 38px; border-radius: 7px; }
+  .provider-icon { width: 38px; height: 38px; border-radius: 7px; background: #20242c; }
   .provider-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
   .provider-copy h2 { margin: 0; font-size: 15px; font-weight: 650; }
   .provider-copy > p { max-width: 680px; margin: 7px 0 0; color: var(--copy-soft); font-size: 12.5px; line-height: 1.55; }
@@ -447,6 +525,7 @@
   .provider-status-line:hover { text-decoration: underline; }
   .provider-status-line.status-minor { color: var(--app-warning); }
   .provider-status-line.status-major, .provider-status-line.status-critical { color: var(--app-danger); }
+  .provider-status-line.status-unavailable { color: var(--copy-muted); }
   .capabilities { min-height: 24px; margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .capabilities span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 5px; background: var(--app-surface-raised); color: var(--copy-muted); font-size: 10.5px; }
   .capabilities .version { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

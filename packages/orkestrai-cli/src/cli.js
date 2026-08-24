@@ -676,6 +676,7 @@ export async function run(argv, options = {}) {
     case 'recruit': {
       const [title] = rest;
       if (!title || !flags.from) throw new Error('Uso: orkestrai recruit <titulo> --from <maestro> [--provider id] [--profile nome] [--model id] [--effort medium] [--role papel] [--replace agente] [--floor id]');
+      if (flags.profile && !flags.provider) throw new Error('--profile exige --provider para identificar a CLI da conta.');
       const data = await bridge(config, 'POST', '/api/agent-room/bridge/recruit', {
         title,
         from: flags.from,
