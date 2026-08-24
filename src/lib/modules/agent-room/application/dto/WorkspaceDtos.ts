@@ -20,11 +20,12 @@ export class ChangeTerminalProviderDto {
   constructor(
     public readonly workspaceId: string,
     public readonly nodeId: string,
-    public readonly provider: string
+    public readonly provider: string,
+    public readonly profileId: string | null = null,
   ) {}
 
   static from(workspaceId: string, nodeId: string, input: ChangeTerminalProviderInput): ChangeTerminalProviderDto {
-    return new ChangeTerminalProviderDto(workspaceId, nodeId, input.provider);
+    return new ChangeTerminalProviderDto(workspaceId, nodeId, input.provider, input.profileId ?? null);
   }
 }
 

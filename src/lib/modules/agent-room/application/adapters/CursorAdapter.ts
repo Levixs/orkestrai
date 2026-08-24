@@ -13,6 +13,7 @@ export const cursorAdapter: AgentAdapter = {
   displayName: 'Cursor',
   supportsResume: true,
   sessionStorage: 'cursor-transcript-jsonl',
+  profileStrategy: { kind: 'configDir', envVar: 'CURSOR_CONFIG_DIR', defaultDir: '~/.cursor' },
   setup: {
     docsUrl: 'https://cursor.com/docs/cli/installation',
     installCommands: {

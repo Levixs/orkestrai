@@ -198,7 +198,7 @@ describe('UsageService', () => {
     const usages = await service.getAll();
 
     expect(usages.map((usage) => usage.provider)).toEqual([
-      'claude', 'codex', 'kimi', 'antigravity', 'cursor', 'devin', 'opencode', 'cline',
+      'claude', 'codex', 'kimi', 'antigravity', 'cursor', 'devin', 'opencode', 'cline', 'copilot',
     ]);
     expect(usages.find((usage) => usage.provider === 'antigravity')).toMatchObject({
       diagnostic: 'provider_cli_only',

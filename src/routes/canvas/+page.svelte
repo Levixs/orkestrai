@@ -889,11 +889,11 @@
       providers.find((item) => item.tui?.command === payload.command);
   }
 
-  async function changeNodeProvider(id: string, provider: string) {
+  async function changeNodeProvider(id: string, provider: string, profileId?: string | null) {
     if (!activeWorkspace) return;
     const updated = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes/${id}/provider`, {
       method: 'PUT',
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify({ provider, profileId: profileId ?? null }),
     });
     nodes = nodes.map((node) => node.id === id
       ? { ...node, data: { ...node.data, payload: updated.payload } }

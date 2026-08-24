@@ -19,6 +19,7 @@ import { controlCenterService } from './ControlCenterService.js';
 import { AutomationTriggerReceived } from '../../domain/events/AutomationTriggerReceived.js';
 import { agentSessionService } from './AgentSessionService.js';
 import { roleService } from './RoleService.js';
+import { providerProfileService } from './ProviderProfileService.js';
 
 export function resolveAgentReplyText(
   transcriptText: string | null,
@@ -793,14 +794,18 @@ export class BridgeService {
    */
   async recruit(
     workspaceId: string,
-    input: { from: string; title: string; provider?: string | null; model?: string | null; effort?: ModelEffort | null; role?: string | null; x?: number; y?: number; replace?: string | null; floorId?: string | null }
+    input: { from: string; title: string; provider?: string | null; profile?: string | null; model?: string | null; effort?: ModelEffort | null; role?: string | null; x?: number; y?: number; replace?: string | null; floorId?: string | null }
   ) {
     const origin = await this.requireMaestro(workspaceId, input.from);
     const originNode = await workspaceRepository.getNode(origin.nodeId);
     const inheritedRuntime = (originNode?.payload as { executionRuntime?: unknown } | undefined)?.executionRuntime;
     const targetFloorId = input.floorId ?? originNode?.floorId ?? null;
 
+    const profileId = input.provider && input.profile
+      ? (await providerProfileService.resolveByIdOrName(input.provider, input.profile))?.id ?? (() => { throw new Error(`Perfil "${input.profile}" não encontrado para o provider "${input.provider}".`); })()
+      : null;
     const command = this.commandForProvider(input.provider, { model: input.model, effort: input.effort });
+    if (profileId) command.env = { ...command.env, ...(await providerProfileService.resolveEnv(profileId, input.provider!)) };
     if (targetFloorId) {
       const floor = (await floorService.list(workspaceId)).find((candidate) => candidate.id === targetFloorId);
       if (!floor) throw new Error('Andar ativo não encontrado neste workspace.');
@@ -813,11 +818,12 @@ export class BridgeService {
       const previousPayload = { ...(node.payload as Record<string, unknown>) };
       const previousTitle = node.title;
       const previousSessionId = typeof previousPayload.sessionId === 'string' ? previousPayload.sessionId : null;
-      let payload = {
+      let payload: Record<string, unknown> = {
         ...(node.payload as Record<string, unknown>),
         ...command,
         env: command.env,
         provider: input.provider ?? null,
+        profileId,
         model: input.model ?? null,
         effort: input.effort ?? null,
         role: input.role ?? (node.payload as { role?: string }).role,
@@ -850,6 +856,7 @@ export class BridgeService {
     let payload: Record<string, unknown> = {
       ...command,
       provider: input.provider ?? null,
+      profileId,
       model: input.model ?? null,
       effort: input.effort ?? null,
       role: input.role ? shortTitle(input.role, 60) : null,
@@ -1054,7 +1061,7 @@ Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.:
 Se as tools \`orkestrai\` (list/usage/ask/huddle_*/memory_*/note_*/api_client_*/design_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
 - \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas, portais e designs conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
-- \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage. Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\`. Não troque silenciosamente o provider de um terminal que já executa trabalho.
+- \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage; perfis de multi-conta aparecem como linhas próprias (\`profileId\`/\`profileName\`). Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\` (se ele tiver \`:profile:\`, use \`--provider\` + \`--profile\` juntos no recruit). Não troque silenciosamente o provider ou perfil de um terminal que já executa trabalho.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda uma resposta confirmada. Só diga que falou/consultou o agente quando o comando terminar com sucesso e imprimir \`Resposta confirmada de ...\`. Timeout, erro ou \`Resposta nao confirmada\` significam que a conversa NÃO foi concluída — informe isso sem inventar resposta.
 - Tools MCP \`huddle_list\` e \`huddle_say\` (ou \`orkestrai huddle list/say\`) — acompanhe a transcrição de um huddle e registre sua contribuição quando você for participante. \`huddle_say\` apenas registra sua fala; não use para simular outra pessoa nem para disparar fan-out recursivo.
 - \`orkestrai status working "<ação atual>" --task <taskId>\` — registra o trabalho atual no Control Center. Use \`waiting_input\`, \`waiting_permission\`, \`blocked\`, \`idle\`, \`done\` ou \`error\` sempre que houver uma transição real; não use como heartbeat.
@@ -1122,10 +1129,10 @@ Se você é o líder (Modo Maestro), você NUNCA executa o trabalho sozinho: voc
 
 PROIBIDO usar subagentes internos da sua CLI (Task, background agents, subagentes em segundo plano) para montar o time: eles NÃO aparecem no canvas, NÃO têm terminal próprio e o usuário não vê nem gerencia nada. TODO agente do time precisa existir no canvas — recrute SEMPRE com \`orkestrai recruit\`.
 
-Antes de propor o time e antes de cada nova rodada de delegação, consulte \`orkestrai usage\`. Se \`shouldFallback\` vier verdadeiro, use o provider recomendado para novas tarefas ou reatribua somente tarefas que ainda não começaram. Se não houver fallback saudável, avise o usuário com \`orkestrai notify --kind attention\`; nunca invente estimativas de cota e nunca interrompa um agente no meio de uma tarefa apenas para trocar de provider.
+Antes de propor o time e antes de cada nova rodada de delegação, consulte \`orkestrai usage\`. Cada perfil de multi-conta configurado na Central de Providers aparece como uma linha própria (\`profileId\`/\`profileName\`), roteável separadamente da conta padrão do mesmo provider. Se \`shouldFallback\` vier verdadeiro, use o \`recommendedProvider\` para novas tarefas — se ele tiver \`:profile:\`, passe o \`--provider\` base e o \`--profile\` (nome do perfil) juntos no recruit; ou reatribua somente tarefas que ainda não começaram. Se não houver fallback saudável, avise o usuário com \`orkestrai notify --kind attention\`; nunca invente estimativas de cota e nunca interrompa um agente no meio de uma tarefa apenas para trocar de provider ou perfil.
 
 1. PRIMEIRO proponha o time: liste os agentes sugeridos (título, provider, role de cada um) e pergunte quais ele quer criar — não crie nada sem aprovação. VARIE os providers instalados: times com 3+ agentes devem combinar perspectivas diferentes — NUNCA crie o time inteiro com um provider só.
-2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider ${providerIds}] [--model <id>] [--effort medium|high|xhigh] [--role <papel>]\`. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Para composição visual estruturada, use \`medium\` ou \`high\`: \`xhigh\` aumenta muito a latência de payloads sem melhorar o gate visual. Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
+2. Aprovado, crie com \`orkestrai recruit "<Título>" [--provider ${providerIds}] [--profile <nome-do-perfil>] [--model <id>] [--effort medium|high|xhigh] [--role <papel>]\`. \`--profile\` usa uma conta alternativa já cadastrada na Central de Providers para esse provider (multi-conta); sem isso, usa a conta padrão. Recrutas nascem CONECTADOS a você no organograma (não precisa de \`connect\`). Para composição visual estruturada, use \`medium\` ou \`high\`: \`xhigh\` aumenta muito a latência de payloads sem melhorar o gate visual. Use títulos CURTOS (2-3 palavras, ex.: "Dev API", "Designer UI") e roles de UMA palavra ("frontend", "qa", "design") — descrições longas vão para a nota de briefing.
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota já conecta ao time inteiro por padrão).
 4. Trabalho em código? Cada agente trabalha no PRÓPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente começar — NUNCA deixe vários agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (vê conflitos) e \`orkestrai floor land\`.
 5. Distribua TODO trabalho com \`orkestrai task add --assign\` ANTES de usar \`orkestrai ask\` para o handoff (o quadro kanban aparece no canvas sozinho na primeira tarefa). É PROIBIDO delegar trabalho apenas por mensagem direta. Use notas com \`orkestrai note create\`; cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.

@@ -23,6 +23,15 @@ export const openCodeAdapter: AgentAdapter = {
   displayName: 'OpenCode',
   supportsResume: true,
   sessionStorage: 'opencode-session-json',
+  // Config e credenciais moram em diretorios diferentes: sem as duas juntas
+  // a conta "vaza" pro XDG_DATA_HOME compartilhado do sistema.
+  profileStrategy: {
+    kind: 'configDirPair',
+    configEnvVar: 'OPENCODE_CONFIG_DIR',
+    dataEnvVar: 'XDG_DATA_HOME',
+    defaultConfigDir: '~/.config/opencode',
+    defaultDataDir: '~/.local/share',
+  },
   setup: {
     docsUrl: 'https://opencode.ai/docs/',
     installCommands: {

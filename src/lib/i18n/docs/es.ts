@@ -694,10 +694,11 @@ Header: Authorization = Bearer {{accessToken}}`,
   changelog: [
     {
       date: 'Próxima versión',
-      title: 'El ruteo por uso permanece visible y desplazable',
-      summary: 'La política de cuota se descubre al crear el nodo, incluso en layouts compactos guardados.',
+      title: 'Cuentas, estado, identidad de providers y enrutamiento más claro',
+      summary: 'Es más fácil identificar, monitorear y enrutar providers entre varias cuentas, con un nuevo tema de terminal y un nodo de Uso realmente utilizable.',
       items: [
         'Uso y ruteo ahora abre con un tamaño inicial útil, muestra el ruteo del líder antes de los providers, reorganiza controles en anchos estrechos y contiene el desplazamiento por mouse, trackpad, tacto y teclado sin ampliar el canvas.',
+        'Se agregaron Perfiles de provider con nombre, enrutamiento de Uso por perfil, estado público en vivo, marcas específicas en los agentes del Canvas, GitHub Copilot como provider de agente y el tema de terminal Obsidian.',
       ],
     },
     {

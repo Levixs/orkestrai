@@ -807,7 +807,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'open-center',
         title: 'Abre la Central de Providers',
-        body: 'Usa el icono de cable en la barra lateral izquierda, Cmd/Ctrl+2 o Workspace → Central de Providers. Verifica Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin localmente.',
+        body: 'Usa el icono de cable en la barra lateral izquierda, Cmd/Ctrl+2 o Workspace → Central de Providers. Verifica Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot localmente.',
       },
       {
         id: 'follow-setup',
@@ -818,6 +818,11 @@ export const TOURS_ES: Tour[] = [
         id: 'verify',
         title: 'Verifica de nuevo y crea el agente',
         body: 'Regresa a la Central y usa Verificar de nuevo. Cuando se detecte la CLI, vuelve al canvas y crea ese agente desde la barra inferior.',
+      },
+      {
+        id: 'multi-account',
+        title: 'Usa una segunda cuenta con Perfiles',
+        body: 'Si el provider admite multi-cuenta oficialmente, aparece una sección Perfiles al expandirlo: crea un perfil con nombre (ej.: "Trabajo") que apunte al directorio de config o token de esa cuenta. El cambio está disponible en el menú del terminal, junto al cambio de provider, sin salir de la CLI.',
       },
     ],
   },
@@ -830,7 +835,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'available',
         title: 'Mira lo que ya está disponible',
-        body: 'La barra inferior detecta Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline y Devin. Los disponibles quedan activos; los desactivados solo necesitan instalación e inicio de sesión.',
+        body: 'La barra inferior detecta Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot. Los disponibles quedan activos; los desactivados solo necesitan instalación e inicio de sesión.',
       },
       {
         id: 'outcome',
@@ -977,7 +982,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'terminal-options',
         title: 'Mantén organizadas las opciones',
-        body: 'Abre el menú de puntos suspensivos del encabezado para cambiar provider o rol, elegir visualmente 1 de 10 temas ANSI, recargar, alternar el Modo Maestro o eliminar la terminal.',
+        body: 'Abre el menú de puntos suspensivos del encabezado para cambiar provider o rol, elegir visualmente 1 de 11 temas ANSI, recargar, alternar el Modo Maestro o eliminar la terminal.',
       },
       {
         id: 'dictate-to-leader',

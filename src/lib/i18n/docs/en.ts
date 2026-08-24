@@ -694,10 +694,11 @@ Header: Authorization = Bearer {{accessToken}}`,
   changelog: [
     {
       date: 'Next release',
-      title: 'Usage routing stays visible and scrollable',
-      summary: 'The quota policy is discoverable as soon as the node is created, including in compact saved layouts.',
+      title: 'Provider accounts, status, identity, and clearer routing',
+      summary: 'Providers are easier to identify, monitor, and route across multiple accounts, with a new terminal theme and a usable Usage node.',
       items: [
         'Usage and routing now opens at a useful default size, shows Leader routing before provider details, wraps controls at narrow widths, and contains mouse, trackpad, touch, and keyboard scrolling without zooming the canvas.',
+        'Added named Provider Profiles, profile-aware Usage routing, live public provider status, provider-specific marks on Canvas agent nodes, GitHub Copilot as an agent provider, and the Obsidian terminal theme.',
       ],
     },
     {

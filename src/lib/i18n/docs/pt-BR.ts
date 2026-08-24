@@ -698,10 +698,11 @@ Header: Authorization = Bearer {{accessToken}}`,
   changelog: [
     {
       date: 'Próxima versão',
-      title: 'Roteamento por uso sempre visível e rolável',
-      summary: 'A política de cota fica clara assim que o nó é criado, inclusive em layouts compactos já salvos.',
+      title: 'Contas, status, identidade dos providers e roteamento mais claro',
+      summary: 'Ficou mais fácil identificar, monitorar e rotear providers entre várias contas, com novo tema de terminal e um nó de Uso realmente utilizável.',
       items: [
         'Uso e roteamento agora abre num tamanho inicial útil, mostra o Roteamento do líder antes dos providers, reorganiza controles em larguras estreitas e contém a rolagem por mouse, trackpad, toque e teclado sem ampliar o canvas.',
+        'Adicionados Perfis de provider nomeados, roteamento de Uso por perfil, status público ao vivo, marcas específicas nos agentes do Canvas, GitHub Copilot como provider de agente e o tema de terminal Obsidian.',
       ],
     },
     {

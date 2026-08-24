@@ -1,4 +1,4 @@
-import type { AgentModelOption, AgentName, AgentProviderSetup, AgentRunRequest, ModelEffort } from '../../domain/types.js';
+import type { AgentModelOption, AgentName, AgentProfileStrategy, AgentProviderSetup, AgentRunRequest, ModelEffort } from '../../domain/types.js';
 import type { AgentSessionStorage } from '../../infrastructure/pty/AgentSessionTracker.js';
 
 /**
@@ -32,6 +32,8 @@ export type AgentRoleLaunchContext = {
   instructionFile: string;
 };
 
+export type { AgentProfileStrategy };
+
 /**
  * Resultado do parse do stream de saida da CLI.
  * `cliError` sinaliza erro reportado pela propria CLI no payload (ex.: is_error),
@@ -64,6 +66,8 @@ export interface AgentAdapter {
   sessionStorage?: AgentSessionStorage;
   /** Guia oficial e instaladores exibidos pela Central de Providers. */
   setup: AgentProviderSetup;
+  /** Mecanismo oficial de multi-conta dessa CLI (ou 'unsupported'). */
+  profileStrategy: AgentProfileStrategy;
   /** Verifica se a CLI esta instalada (hoje via `<cli> --version`). */
   detect(): Promise<AgentDetection>;
   /** Monta o comando headless one-shot a partir do payload de execucao. */

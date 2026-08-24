@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowLeftRight, BadgeCheck, Ellipsis, Globe2, History, ListRestart, MonitorCog, Paperclip, RotateCcw, Scale, SendHorizontal, SquareTerminal, Star, SwatchBook, X } from '@lucide/svelte';
+  import { ArrowLeftRight, BadgeCheck, Ellipsis, Globe2, History, ListRestart, MonitorCog, Paperclip, RotateCcw, Scale, SendHorizontal, SquareTerminal, Star, SwatchBook, UserRound, X } from '@lucide/svelte';
   import { toast } from '@beeblock/svelar/ui';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
@@ -14,7 +14,8 @@
   import { speakText } from '../voice-speech.js';
   import { terminalThemeLabel } from '../terminal-theme-label.js';
   import { normalizeTerminalTheme, TERMINAL_THEMES, TERMINAL_THEME_ORDER, type TerminalThemeName } from '../terminal-themes.js';
-  import type { AgentProviderInfo, TerminalNodePayload, WorkspaceAttachment, WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
+  import type { AgentProviderInfo, ProviderProfile, TerminalNodePayload, WorkspaceAttachment, WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
+  import { providerIcons } from '$lib/modules/agent-room/domain/provider-icons.js';
   import * as m from '$lib/paraglide/messages.js';
   import {
     attachmentPromptReference,
@@ -54,7 +55,7 @@
     /** Promise da pagina: providers carregados (para o respawn nao correr a race). */
     providersReady?: Promise<void>;
     providers?: AgentProviderInfo[];
-    onProviderChange?: (id: string, provider: string) => Promise<void>;
+    onProviderChange?: (id: string, provider: string, profileId?: string | null) => Promise<void>;
     onRuntimeChange?: (id: string, selection: { mode: 'default' | 'native' | 'wsl'; wslDistribution: string | null; wslWorkingDir: string | null }) => Promise<void>;
     onRoleChange?: (id: string, role: string | null) => void;
     onDelete: (id: string) => void;
@@ -100,6 +101,7 @@
   $effect(() => {
     if (!actionsOpen) return;
     loadRoles();
+    void loadProfiles();
     void getAppSettings();
   });
 
@@ -221,7 +223,9 @@
   /** Role exibida no header: curta (o nome completo fica no dropdown/aria). */
   const roleLabel = $derived(currentRole && currentRole.length > 24 ? `${currentRole.slice(0, 23).trimEnd()}…` : currentRole);
   const currentProvider = $derived((data.payload as TerminalNodePayload).provider ?? null);
+  const currentProfileId = $derived((data.payload as TerminalNodePayload).profileId ?? null);
   const availableProviders = $derived(runtimeProviders.length ? runtimeProviders : (data.providers ?? []));
+  const currentProviderStrategy = $derived(availableProviders.find((provider) => provider.id === currentProvider)?.profileStrategy ?? null);
   const runtimeOverride = $derived((data.payload as TerminalNodePayload).executionRuntime ?? null);
   const runtimeTitle = $derived(
     data.executionRuntime.kind === 'wsl'
@@ -241,20 +245,41 @@
   let switchingProvider = $state(false);
   let providerError = $state('');
 
-  async function changeProvider(provider: string) {
-    if (!provider || provider === currentProvider || switchingProvider) return;
+  async function changeProvider(provider: string, profileId: string | null = null) {
+    if (!provider || (provider === currentProvider && profileId === currentProfileId) || switchingProvider) return;
     switchingProvider = true;
     providerError = '';
     try {
       forceRespawn = false;
       respawnAgentSessionId = null;
-      await data.onProviderChange?.(id, provider);
+      await data.onProviderChange?.(id, provider, profileId);
     } catch {
       providerError = m['term.provider_switch_error']();
       setTimeout(() => (providerError = ''), 6_000);
     } finally {
       switchingProvider = false;
     }
+  }
+
+  // -- Perfis de multi-conta (por provider) --------------------------------------
+  let profiles = $state<ProviderProfile[]>([]);
+  let profilesLoadedForProvider: string | null = null;
+
+  async function loadProfiles() {
+    if (!currentProvider || profilesLoadedForProvider === currentProvider) return;
+    profilesLoadedForProvider = currentProvider;
+    try {
+      const response = await fetch(`/api/agent-room/provider-profiles?providerId=${encodeURIComponent(currentProvider)}`);
+      const payload = await response.json();
+      profiles = payload.data ?? [];
+    } catch {
+      profiles = [];
+    }
+  }
+
+  async function changeProfile(profileId: string | null) {
+    if (!currentProvider) return;
+    await changeProvider(currentProvider, profileId);
   }
 
   async function changeRuntime(selection: { mode: 'default' | 'native' | 'wsl'; wslDistribution: string | null; wslWorkingDir: string | null }) {
@@ -533,7 +558,13 @@
   onJumpToNode={data.onJumpToNode}
   onRemoveConnection={data.onRemoveConnection}
 >
-  {#snippet icon()}<SquareTerminal size={13} />{/snippet}
+  {#snippet icon()}
+    {#if currentProvider && providerIcons[currentProvider]}
+      <img src={providerIcons[currentProvider]} width="13" height="13" alt="" />
+    {:else}
+      <SquareTerminal size={13} />
+    {/if}
+  {/snippet}
   {#snippet title()}{data.title}{/snippet}
   {#snippet actions()}
     {#if runtimeOverride}
@@ -584,6 +615,30 @@
             {/each}
           </DropdownMenu.SubContent>
         </DropdownMenu.Sub>
+        {#if currentProviderStrategy && currentProviderStrategy.kind !== 'unsupported'}
+          <DropdownMenu.Sub>
+            <DropdownMenu.SubTrigger>
+              <UserRound size={14} />
+              {m['term.profile_switch']()}
+            </DropdownMenu.SubTrigger>
+            <DropdownMenu.SubContent sideOffset={6} class="w-52">
+              <DropdownMenu.RadioGroup
+                value={currentProfileId ?? '__default__'}
+                onValueChange={(value: string) => changeProfile(value === '__default__' ? null : value)}
+              >
+                <DropdownMenu.RadioItem value="__default__">{m['term.profile_default']()}</DropdownMenu.RadioItem>
+                <DropdownMenu.Separator />
+                {#each profiles as profile (profile.id)}
+                  <DropdownMenu.RadioItem value={profile.id}>
+                    <span class="min-w-0 flex-1 truncate">{profile.name}</span>
+                  </DropdownMenu.RadioItem>
+                {:else}
+                  <DropdownMenu.Item disabled>{m['term.profile_empty']()}</DropdownMenu.Item>
+                {/each}
+              </DropdownMenu.RadioGroup>
+            </DropdownMenu.SubContent>
+          </DropdownMenu.Sub>
+        {/if}
         {#if isWindows}
           <DropdownMenu.Item onclick={() => (runtimeOpen = true)}>
             <MonitorCog size={14} />

@@ -3,6 +3,7 @@ import type { ITheme } from '@xterm/xterm';
 /** Temas xterm persistidos por terminal em payload.theme. */
 export type TerminalThemeName =
   | 'dark'
+  | 'obsidian'
   | 'dracula'
   | 'nord'
   | 'solarized'
@@ -25,6 +26,14 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
       background: '#090820', foreground: '#e6e6eb', cursor: '#e6e6eb', selectionBackground: '#35334f',
       black: '#18172d', red: '#ff6b7a', green: '#61e5a7', yellow: '#ffc857', blue: '#58a6ff', magenta: '#d68cff', cyan: '#58d6ff', white: '#d9d9e3',
       brightBlack: '#68677a', brightRed: '#ff8c98', brightGreen: '#84efbc', brightYellow: '#ffd77a', brightBlue: '#80bcff', brightMagenta: '#e2adff', brightCyan: '#83e2ff', brightWhite: '#ffffff',
+    },
+  },
+  obsidian: {
+    label: 'Obsidian',
+    theme: {
+      background: '#000000', foreground: '#f2f2f2', cursor: '#ffffff', selectionBackground: '#2b2b2b',
+      black: '#000000', red: '#ff5c57', green: '#5af78e', yellow: '#f3f99d', blue: '#57c7ff', magenta: '#ff6ac1', cyan: '#9aedfe', white: '#f1f1f0',
+      brightBlack: '#686868', brightRed: '#ff5c57', brightGreen: '#5af78e', brightYellow: '#f3f99d', brightBlue: '#57c7ff', brightMagenta: '#ff6ac1', brightCyan: '#9aedfe', brightWhite: '#ffffff',
     },
   },
   dracula: {

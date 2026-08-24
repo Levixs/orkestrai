@@ -62,7 +62,7 @@ Uso:
   orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
   orkestrai notify <mensagem> [--kind info|attention|project|task] [--title <titulo>]
   orkestrai status <starting|working|waiting_input|waiting_permission|blocked|idle|done|error|disconnected> [acao] [--task <id>]
-  orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--model <id>] [--effort low|medium|high|xhigh|max|ultra] [--role <papel>] [--replace <agente>] [--floor <id>] [--json]
+  orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--profile <nome>] [--model <id>] [--effort low|medium|high|xhigh|max|ultra] [--role <papel>] [--replace <agente>] [--floor <id>] [--json]
   orkestrai dismiss <agente> --from <maestro>
   orkestrai connect <de> <para> --from <maestro>
   orkestrai task list [--json]
@@ -675,11 +675,12 @@ export async function run(argv, options = {}) {
     }
     case 'recruit': {
       const [title] = rest;
-      if (!title || !flags.from) throw new Error('Uso: orkestrai recruit <titulo> --from <maestro> [--provider id] [--model id] [--effort medium] [--role papel] [--replace agente] [--floor id]');
+      if (!title || !flags.from) throw new Error('Uso: orkestrai recruit <titulo> --from <maestro> [--provider id] [--profile nome] [--model id] [--effort medium] [--role papel] [--replace agente] [--floor id]');
       const data = await bridge(config, 'POST', '/api/agent-room/bridge/recruit', {
         title,
         from: flags.from,
         provider: flags.provider,
+        profile: flags.profile,
         model: flags.model,
         effort: flags.effort,
         role: flags.role,

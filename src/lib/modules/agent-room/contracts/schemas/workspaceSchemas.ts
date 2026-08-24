@@ -47,6 +47,7 @@ export const updateCanvasNodeSchema = z.object({
 
 export const changeTerminalProviderSchema = z.object({
   provider: z.string().trim().min(1, 'Informe o provider.'),
+  profileId: z.string().trim().nullish(),
 });
 
 export const changeTerminalRuntimeSchema = z.object({

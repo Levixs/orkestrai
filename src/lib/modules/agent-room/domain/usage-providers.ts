@@ -20,11 +20,12 @@ export const USAGE_PROVIDERS: readonly UsageProviderDefinition[] = [
   { id: 'claude', name: 'Claude', icon: '/images/claude.svg', collector: 'claude', diagnostic: null, helpUrl: null },
   { id: 'codex', name: 'Codex', icon: '/images/codex.svg', collector: 'codex', diagnostic: null, helpUrl: null },
   { id: 'kimi', name: 'Kimi', icon: '/images/kimi.svg', collector: 'kimi', diagnostic: null, helpUrl: null },
-  { id: 'antigravity', name: 'Antigravity', icon: null, collector: null, diagnostic: 'provider_cli_only', helpUrl: 'https://antigravity.google/docs/cli/credits' },
-  { id: 'cursor', name: 'Cursor', icon: null, collector: null, diagnostic: 'admin_api_required', helpUrl: 'https://cursor.com/docs/account/teams/admin-api' },
-  { id: 'devin', name: 'Devin', icon: null, collector: null, diagnostic: 'enterprise_api_required', helpUrl: 'https://docs.devin.ai/use-cases/gallery/build-usage-dashboard' },
-  { id: 'opencode', name: 'OpenCode', icon: null, collector: null, diagnostic: 'model_provider_managed', helpUrl: 'https://dev.opencode.ai/docs/go/' },
-  { id: 'cline', name: 'Cline', icon: null, collector: null, diagnostic: 'model_provider_managed', helpUrl: 'https://docs.cline.bot/getting-started/cline-provider' },
+  { id: 'antigravity', name: 'Antigravity', icon: '/images/antigravity.svg', collector: null, diagnostic: 'provider_cli_only', helpUrl: 'https://antigravity.google/docs/cli/credits' },
+  { id: 'cursor', name: 'Cursor', icon: '/images/cursor.svg', collector: null, diagnostic: 'admin_api_required', helpUrl: 'https://cursor.com/docs/account/teams/admin-api' },
+  { id: 'devin', name: 'Devin', icon: '/images/devin.svg', collector: null, diagnostic: 'enterprise_api_required', helpUrl: 'https://docs.devin.ai/use-cases/gallery/build-usage-dashboard' },
+  { id: 'opencode', name: 'OpenCode', icon: '/images/opencode.svg', collector: null, diagnostic: 'model_provider_managed', helpUrl: 'https://dev.opencode.ai/docs/go/' },
+  { id: 'cline', name: 'Cline', icon: '/images/cline.svg', collector: null, diagnostic: 'model_provider_managed', helpUrl: 'https://docs.cline.bot/getting-started/cline-provider' },
+  { id: 'copilot', name: 'GitHub Copilot', icon: '/images/githubcopilot.svg', collector: null, diagnostic: 'model_provider_managed', helpUrl: 'https://docs.github.com/en/copilot/concepts/billing/copilot-requests' },
 ];
 
 export const ROUTABLE_USAGE_PROVIDERS = USAGE_PROVIDERS.filter(

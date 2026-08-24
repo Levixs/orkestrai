@@ -807,7 +807,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'open-center',
         title: 'Open Provider Center',
-        body: 'Use the cable icon in the left sidebar, Cmd/Ctrl+2, or Workspace → Provider Center. It checks Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin locally.',
+        body: 'Use the cable icon in the left sidebar, Cmd/Ctrl+2, or Workspace → Provider Center. It checks Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot locally.',
       },
       {
         id: 'follow-setup',
@@ -818,6 +818,11 @@ export const TOURS_EN: Tour[] = [
         id: 'verify',
         title: 'Check again and create the agent',
         body: 'Return to Provider Center and use Check again. When the CLI is detected, go back to the canvas and create that agent from the bottom toolbar.',
+      },
+      {
+        id: 'multi-account',
+        title: 'Use a second account with Profiles',
+        body: 'If the provider officially supports multiple accounts, a Profiles section appears when you expand it: create a named profile (e.g. "Work") pointing to that account\'s config directory or token. The switch is available from the terminal menu, right next to the provider switch, without leaving the CLI.',
       },
     ],
   },
@@ -830,7 +835,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'available',
         title: 'See what is already available',
-        body: 'The bottom toolbar detects Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, and Devin. Available services are active; disabled ones only need installation and sign-in.',
+        body: 'The bottom toolbar detects Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot. Available services are active; disabled ones only need installation and sign-in.',
       },
       {
         id: 'outcome',
@@ -977,7 +982,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'terminal-options',
         title: 'Keep terminal options organized',
-        body: 'Open the ellipsis menu in the header to change provider or role, visually choose 1 of 10 ANSI themes, reload, toggle Maestro Mode, or remove the terminal.',
+        body: 'Open the ellipsis menu in the header to change provider or role, visually choose 1 of 11 ANSI themes, reload, toggle Maestro Mode, or remove the terminal.',
       },
       {
         id: 'dictate-to-leader',

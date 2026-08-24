@@ -7,6 +7,13 @@ pt-BR, English, and Spanish translations.
 
 ## Unreleased
 
+### Added
+
+- Added GitHub Copilot as an agent provider, provider-specific marks on Canvas
+  agent nodes, named multi-account Provider Profiles with profile-aware usage
+  routing, live public provider status in Provider Center, and the Obsidian
+  terminal theme.
+
 ### Fixed
 
 - The Usage and routing node now opens at a useful default size, keeps Leader

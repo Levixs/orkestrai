@@ -33,6 +33,21 @@ export type AgentProviderSetup = {
 };
 
 /**
+ * Como um perfil alternativo (multi-conta) e aplicado ao spawnar esse provider.
+ * Cada adapter declara a estrategia real da sua CLI em vez de o app assumir
+ * um `env` generico — providers diferentes isolam conta de jeitos diferentes:
+ * um diretorio de config só (`configDir`), dois diretorios que precisam andar
+ * juntos (`configDirPair`, ex. OpenCode: config + credenciais em XDG_DATA_HOME),
+ * um token direto sem diretorio nenhum (`token`), ou nenhum mecanismo oficial
+ * (`unsupported` — o provider nao aparece na gestao de perfis).
+ */
+export type AgentProfileStrategy =
+  | { kind: 'configDir'; envVar: string; defaultDir: string }
+  | { kind: 'configDirPair'; configEnvVar: string; dataEnvVar: string; defaultConfigDir: string; defaultDataDir: string }
+  | { kind: 'token'; envVar: string; optionalEnvVars?: string[] }
+  | { kind: 'unsupported' };
+
+/**
  * Metadados publicos de um adapter de agente, expostos pela rota
  * /api/agent-room/status para a UI montar seletores dinamicamente.
  */
@@ -43,6 +58,7 @@ export type AgentProviderInfo = {
   efforts?: string[];
   sessionStorage?: string;
   setup?: AgentProviderSetup;
+  profileStrategy?: AgentProfileStrategy;
   installed?: boolean;
   detail?: string;
   /** Comando TUI interativo do agente para sessoes PTY. */
@@ -603,6 +619,8 @@ export type TerminalNodePayload = {
   args?: string[];
   env?: Record<string, string>;
   provider?: AgentProviderId;
+  /** Perfil de multi-conta ativo (id de ProviderProfile), quando aplicavel. */
+  profileId?: string | null;
   /** Ausente = herda o ambiente padrão do workspace. */
   executionRuntime?: WorkspaceExecutionRuntime | null;
   role?: string | null;
@@ -974,6 +992,25 @@ export type AutomationIntegration = {
   status: 'connected' | 'disconnected' | 'error';
   lastCheckedAt: string | null;
   error: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Perfil de multi-conta de um provider (ex.: "Trabalho" apontando pra um
+ * CLAUDE_CONFIG_DIR diferente). Os campos usados dependem da
+ * `AgentProfileStrategy` declarada pelo adapter do provider — `configDir`
+ * para 'configDir'/'configDirPair' (primeiro diretorio), `dataDir` só para
+ * 'configDirPair' (segundo diretorio), `hasToken` para 'token' (o valor real
+ * do token nunca sai do secret storage do desktop).
+ */
+export type ProviderProfile = {
+  id: string;
+  providerId: string;
+  name: string;
+  configDir: string | null;
+  dataDir: string | null;
+  hasToken: boolean;
   createdAt: string;
   updatedAt: string;
 };
