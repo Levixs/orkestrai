@@ -132,7 +132,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'portal',
         title: 'O portal (navegador dos agentes)',
-        body: 'O portal é um navegador embutido que os agentes controlam. Crio um apontado para o seu dev server — ajuste a URL depois se não for localhost:5173.',
+        body: 'O portal é um navegador embutido que os agentes controlam. Crio um apontado para o seu dev server — ajuste a URL depois se não for localhost:5173. Pop-ups de login ficam numa janela sandboxed do Orkestrai com a mesma sessão persistente, e o nó restaura a última página navegada após reiniciar.',
         action: { kind: 'createPortal', url: 'http://localhost:5173', title: 'Portal App' },
         check: { kind: 'nodeExists', nodeType: 'portal' },
       },
@@ -658,7 +658,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'recover',
         title: 'Recupere sem adivinhação',
-        body: 'Se o dispositivo selecionado for desconectado, o Orkestrai volta ao padrão do sistema. Erros de captura distinguem permissão, hardware ausente, interrupção e provável disputa pelo único microfone.',
+        body: 'O ditado captura PCM direto pela mesma rota Web Audio do medidor e normaliza fala baixa localmente. Se o dispositivo selecionado for desconectado, o Orkestrai volta ao padrão do sistema. Erros de captura distinguem permissão, hardware ausente, interrupção, provável disputa e um microfone que abre sem produzir sinal.',
       },
     ],
   },
@@ -956,7 +956,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'switch-view',
         title: 'Alterne a visualização',
-        body: 'Use Canvas/Workbench no canto superior esquerdo ou abra Workbench pelo menu Workspace. Os agentes continuam nas mesmas sessões enquanto você troca de modo.',
+        body: 'Use Canvas/Workbench no canto superior esquerdo ou abra Workbench pelo menu Workspace. Os agentes continuam nas mesmas sessões enquanto você troca de modo; as métricas da fonte estabilizam antes do reattach para manter o cursor alinhado após visitar Configurações ou documentação.',
       },
       {
         id: 'choose-item',

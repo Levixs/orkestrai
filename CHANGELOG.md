@@ -5,7 +5,7 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
-## 0.18.1 - 2026-08-24
+## 0.18.2 - 2026-08-24
 
 ### Fixed
 
@@ -13,6 +13,27 @@ pt-BR, English, and Spanish translations.
   OpenCode, Cursor, Antigravity, Cline, Devin) in the terminal header instead
   of a generic terminal icon, matching the marks already used on the Usage and
   Provider Center surfaces.
+
+## 0.18.1 - 2026-08-24
+
+### Fixed
+
+- Shells and agent terminals no longer inherit the Orkestrai server's
+  `APP_KEY` or other private Svelar runtime variables. Project `.env` files
+  remain authoritative, preventing Laravel encrypted records, cookies, and
+  sessions from failing with `The MAC is invalid` while user-owned system
+  variables and the Orkestrai bridge remain available.
+- Portal links that open a new window now stay inside a sandboxed Orkestrai
+  Portal window instead of escaping to the system browser. Pop-ups share the
+  persistent Portal session, cookies and web storage are flushed to disk, and
+  the main Portal restores its last navigated URL after restarting the app.
+- Dictation now captures raw PCM from the selected input through the same Web
+  Audio path as the live meter, avoiding silent MediaRecorder files on macOS
+  and other Electron/device combinations. Quiet speech is normalized locally,
+  and a microphone that opens without producing signal gets a specific error.
+- Remounting the Canvas after visiting Settings no longer leaves the xterm
+  cursor blinking at a stale position. Terminal font and geometry now settle
+  before PTY attachment, and ANSI scrollback completes before the final redraw.
 
 ## 0.18.0 - 2026-08-23
 

@@ -112,13 +112,57 @@ function windowsRegistryPathDirs(): string[] {
   return cachedRegistryPathDirs;
 }
 
+const ALWAYS_PRIVATE_CHILD_ENV_KEYS = [
+  'APP_KEY',
+  'INTERNAL_SECRET',
+  'ELECTRON_RUN_AS_NODE',
+  'HOST',
+  'PORT',
+  'ORIGIN',
+  'BODY_SIZE_LIMIT',
+  'DB_PATH',
+  'ORKESTRAI_DATA_DIR',
+  'ORKESTRAI_PTY_MODULE',
+  'ORKESTRAI_PRIVATE_ENV_KEYS',
+] as const;
+
+const REQUIRED_AGENT_ENV_KEYS = new Set([
+  'ORKESTRAI_API_URL',
+  'ORKESTRAI_SHIM_DIR',
+  'ORKESTRAI_CLI',
+  'ORKESTRAI_CLI_JS',
+  'ORKESTRAI_CLI_RUNTIME',
+  'ORKESTRAI_CLI_RUNTIME_IS_ELECTRON',
+]);
+
+/**
+ * Impede que a configuracao do servidor desktop vaze para projetos abertos em
+ * PTYs. Frameworks como Laravel tratam variaveis ja exportadas como imutaveis;
+ * uma APP_KEY herdada venceria o .env do projeto e invalidaria dados cifrados.
+ */
+export function sanitizeAgentEnvironment(
+  source: NodeJS.ProcessEnv | Record<string, string | undefined>
+): Record<string, string> {
+  const env = Object.fromEntries(
+    Object.entries(source).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+  );
+  const privateKeys = new Set([
+    ...ALWAYS_PRIVATE_CHILD_ENV_KEYS,
+    ...(source.ORKESTRAI_PRIVATE_ENV_KEYS ?? '').split(',').map((key) => key.trim()).filter(Boolean),
+  ]);
+  for (const key of privateKeys) {
+    if (!REQUIRED_AGENT_ENV_KEYS.has(key)) delete env[key];
+  }
+  return env;
+}
+
 /**
  * Copia de process.env com o PATH aumentado: shim -> PATH herdado -> PATH do
  * registro (shell nova, so Win) -> dirs conhecidos -> nvm. O Set dedup mantendo
  * a primeira ocorrencia (preserva a prioridade herdada).
  */
 export function agentEnv(): Record<string, string> {
-  const env = { ...process.env } as Record<string, string>;
+  const env = sanitizeAgentEnvironment(process.env);
   const current = (env.PATH ?? '').split(delimiter).filter(Boolean);
   const shimDir = env.ORKESTRAI_SHIM_DIR ? [env.ORKESTRAI_SHIM_DIR] : [];
   const merged = [...shimDir, ...current, ...windowsRegistryPathDirs(), ...EXTRA_PATH_DIRS, ...nvmBins()];

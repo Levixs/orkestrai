@@ -6,6 +6,7 @@ import {
   normalizeEmbeddedTtsVoice,
 } from '../../domain/voice.js';
 import { embeddedModelsReady, speakWav, transcribePcm, wavToPcm16 } from '../../infrastructure/voice/EmbeddedVoice.js';
+import { normalizeSpeechAudio } from '../../domain/voice-audio.js';
 
 const DEFAULT_VOICE_STACK_URL = 'http://localhost:8000';
 const DEFAULT_STT_MODEL = 'whisper-large-v3-turbo';
@@ -78,7 +79,7 @@ export class VoiceService {
     if (backend === 'embedded') {
       if (!this.embeddedReady()) throw new Error(VOICE_MODELS_MISSING_ERROR);
       const { samples } = wavToPcm16(audio);
-      return transcribePcm(samples);
+      return transcribePcm(normalizeSpeechAudio(samples));
     }
     const url = await this.baseUrl();
     const form = new FormData();

@@ -4,6 +4,7 @@ import type { Plugin, PreviewServer, ViteDevServer } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { createRequire } from 'module';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'path';
 import { WebSocketServer } from 'ws';
 import { handlePtyConnection, isAllowedPtyWsOrigin, isPtyWsPath } from './src/lib/modules/agent-room/infrastructure/pty/pty-ws.ts';
@@ -72,8 +73,36 @@ function crossOriginIsolationPlugin(): Plugin {
   };
 }
 
+function envFileKeys(mode: string): string[] {
+  const keys = new Set<string>();
+  for (const name of ['.env', '.env.local', `.env.${mode}`, `.env.${mode}.local`]) {
+    const path = resolve(process.cwd(), name);
+    if (!existsSync(path)) continue;
+    for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+      const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+      if (match) keys.add(match[1]);
+    }
+  }
+  return [...keys];
+}
+
+function markPrivateChildEnv(...keys: string[]): void {
+  const current = (process.env.ORKESTRAI_PRIVATE_ENV_KEYS ?? '').split(',').filter(Boolean);
+  process.env.ORKESTRAI_PRIVATE_ENV_KEYS = [...new Set([...current, ...keys.filter(Boolean)])].join(',');
+}
+
 export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ''));
+  markPrivateChildEnv(
+    ...envFileKeys(mode),
+    'APP_KEY',
+    'INTERNAL_SECRET',
+    'HOST',
+    'PORT',
+    'ORIGIN',
+    'BODY_SIZE_LIMIT',
+    'DB_PATH',
+  );
 
   return {
   plugins: [

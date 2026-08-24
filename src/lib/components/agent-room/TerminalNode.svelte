@@ -15,13 +15,14 @@
   import { appSettingsStore, getAppSettings, updateAppSettings } from './app-settings.svelte.js';
   import { DEFAULT_AUDIO_DEVICE_ID, audioDeviceInventory, classifyAudioCaptureFailure, openPreferredAudioInput } from './audio-devices.js';
   import { audioCaptureFailureMessage } from './audio-device-messages.js';
-  import { blobToWav16k } from './audio-pcm.js';
+  import { PcmAudioRecorder } from './audio-pcm.js';
   import { cleanSpeechText, normalizeSpeechText } from './voice-cleanup.js';
   import { speakText } from './voice-speech.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
   import { terminalDictationInput } from './terminal-dictation.js';
   import { isTerminalCopyShortcut, terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
   import { workingDirectoryFromOsc } from './terminal-working-directory.js';
+  import { audioSignalIsEmpty } from '$lib/modules/agent-room/domain/voice-audio.js';
   import {
     LEADER_DICTATION_COMMAND,
     LEADER_DICTATION_STATE,
@@ -98,9 +99,8 @@
   /** Atalho REATIVO da store global (mudanca em Configuracoes aplica na hora). */
   const dictateHotkey = $derived(appSettingsStore.values.dictationHotkey || DEFAULT_DICTATION_HOTKEY);
   const dictationAutoSubmit = $derived(appSettingsStore.values.dictationAutoSubmit === 'true');
-  let mediaRecorder: MediaRecorder | null = null;
+  let audioRecorder: PcmAudioRecorder | null = null;
   let mediaStream: MediaStream | null = null;
-  let audioChunks: Blob[] = [];
   let sendInput: ((data: string) => void) | null = null;
   let recSeconds = $state(0);
   let recTimer: ReturnType<typeof setInterval> | null = null;
@@ -117,7 +117,7 @@
   }
 
   const dictationSupported = typeof window !== 'undefined' &&
-    typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
+    typeof AudioContext !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
 
   function stopTracks() {
     mediaStream?.getTracks().forEach((track) => track.stop());
@@ -192,7 +192,7 @@
   async function toggleDictation() {
     dictateError = '';
     if (dictating) {
-      mediaRecorder?.stop();
+      void finishDictation();
       return;
     }
     if (transcribing) return;
@@ -228,59 +228,67 @@
       reportDictationState('idle');
       return;
     }
-    audioChunks = [];
-    const recorder = new MediaRecorder(mediaStream);
-    mediaRecorder = recorder;
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) audioChunks.push(event.data);
-    };
-    recorder.onstop = async () => {
+    const recorder = new PcmAudioRecorder(mediaStream);
+    audioRecorder = recorder;
+    try {
+      await recorder.start();
+    } catch (error) {
+      audioRecorder = null;
       stopTracks();
-      stopRecTimer();
-      mediaRecorder = null;
-      dictating = false;
-      transcribing = true;
-      reportDictationState('transcribing');
-      dictateStatus = m['voice.transcribing']();
-      try {
-        const blob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' });
-        // Decodifica no renderer: o backend embarcado espera WAV PCM16 16 kHz.
-        const wav = await blobToWav16k(blob);
-        const form = new FormData();
-        form.append('file', wav, 'ditado.wav');
-        if (dictateLang !== 'auto') form.append('language', dictateLang);
-        const csrf = getCsrfToken();
-        const response = await fetch('/api/agent-room/voice/transcribe', {
-          method: 'POST',
-          headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
-          body: form,
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (response.status === 413) throw new Error(m['voice.recording_too_long']());
-        if (!response.ok || payload.error) throw new Error(payload.error || `Erro ${response.status}`);
-        const text = String(payload.data?.text ?? '').trim();
-        if (text) {
-          sendInput?.(terminalDictationInput(text, dictationAutoSubmit));
-          if (voiceOn && provider) {
-            // No envio automatico, o Enter ja foi junto com a transcricao.
-            // No modo manual, a captura aguarda o usuario pressionar Enter.
-            if (dictationAutoSubmit) armDictationReplyCapture();
-            else pendingDictation = true;
-          }
-        } else dictateError = m['voice.nothing_transcribed']();
-      } catch (error) {
-        dictateError = error instanceof Error ? error.message : m['voice.dictation_error']();
-      } finally {
-        transcribing = false;
-        dictateStatus = '';
-        reportDictationState('idle');
-      }
-    };
-    recorder.start();
+      dictateError = audioCaptureFailureMessage(classifyAudioCaptureFailure(error, 1));
+      reportDictationState('idle');
+      return;
+    }
     dictating = true;
     reportDictationState('recording');
     pendingDictation = false; // so o ditado mais recente conta
     startRecTimer();
+  }
+
+  async function finishDictation() {
+    const recorder = audioRecorder;
+    if (!recorder || !dictating) return;
+    audioRecorder = null;
+    stopRecTimer();
+    dictating = false;
+    transcribing = true;
+    reportDictationState('transcribing');
+    dictateStatus = m['voice.transcribing']();
+    try {
+      const recording = await recorder.stop();
+      stopTracks();
+      if (audioSignalIsEmpty(recording.stats)) {
+        dictateError = m['voice.mic_no_signal']();
+        return;
+      }
+      const form = new FormData();
+      form.append('file', recording.wav, 'ditado.wav');
+      if (dictateLang !== 'auto') form.append('language', dictateLang);
+      const csrf = getCsrfToken();
+      const response = await fetch('/api/agent-room/voice/transcribe', {
+        method: 'POST',
+        headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
+        body: form,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 413) throw new Error(m['voice.recording_too_long']());
+      if (!response.ok || payload.error) throw new Error(payload.error || `Erro ${response.status}`);
+      const text = String(payload.data?.text ?? '').trim();
+      if (text) {
+        sendInput?.(terminalDictationInput(text, dictationAutoSubmit));
+        if (voiceOn && provider) {
+          if (dictationAutoSubmit) armDictationReplyCapture();
+          else pendingDictation = true;
+        }
+      } else dictateError = m['voice.nothing_transcribed']();
+    } catch (error) {
+      stopTracks();
+      dictateError = error instanceof Error ? error.message : m['voice.dictation_error']();
+    } finally {
+      transcribing = false;
+      dictateStatus = '';
+      reportDictationState('idle');
+    }
   }
 
   let searchOpen = $state(false);
@@ -500,18 +508,40 @@
       });
     };
 
-    (async () => {
+    const replayScrollback = (scrollback: unknown) => {
+      const replay = typeof scrollback === 'string' ? scrollback : '';
+      if (!replay) {
+        scheduleFitAndReportSize();
+        return;
+      }
+      // xterm parses large ANSI histories asynchronously. Refit only after the
+      // parser reaches the final cursor position, otherwise a remounted Canvas
+      // can keep drawing the cursor with the previous renderer geometry.
+      terminal.write(replay, () => {
+        if (disposed) return;
+        terminal.clearTextureAtlas();
+        scheduleFitAndReportSize();
+      });
+    };
+
+    const initializeTerminal = async () => {
       try {
         const settings = await getAppSettings(true);
+        if (disposed) return;
         terminalPaddingPx = Number(settings.terminalPadding ?? 6);
         terminal.options.fontSize = Number(settings.terminalFontSize) || 13;
         terminal.options.fontFamily = settings.terminalFontFamily || fontFamily;
         terminal.clearTextureAtlas();
-        scheduleFitAndReportSize();
       } catch {
         // defaults
       }
-    })();
+      // Let Svelte apply padding and the browser resolve the chosen font before
+      // telling the existing PTY its rows/columns and asking for scrollback.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      if (disposed) return;
+      fitAddon.fit();
+      connect();
+    };
 
     const handleOpen = () => {
       if (sessionId) {
@@ -543,19 +573,17 @@
           void Promise.resolve(onSessionCreated?.(message.session.id))
             .then(() => onSessionReady?.(message.session.id, 'created'))
             .catch(() => undefined);
-          if (message.scrollback) terminal.write(message.scrollback);
+          replayScrollback(message.scrollback);
           statusMessage = '';
           reconnectAttempts = 0;
-          scheduleFitAndReportSize();
           flushPendingInput();
           break;
         case 'attached':
-          if (message.scrollback) terminal.write(message.scrollback);
+          replayScrollback(message.scrollback);
           statusMessage = '';
           reconnectAttempts = 0;
           waiting = Boolean(message.session?.waiting);
           if (message.session?.exited) exited = message.session.exitCode ?? 0;
-          scheduleFitAndReportSize();
           flushPendingInput();
           {
             const attachedSessionId = String(message.session?.id ?? sessionId ?? '');
@@ -645,13 +673,14 @@
     };
 
     function connect() {
+      if (disposed) return;
       socket = new WebSocket(`${protocol}://${location.host}/ws/agent-room/pty`);
       socket.onopen = handleOpen;
       socket.onmessage = handleMessage;
       socket.onerror = handleError;
       socket.onclose = handleClose;
     }
-    connect();
+    void initializeTerminal();
 
     terminal.onData((data) => {
       sendTerminalInput(data);
@@ -685,12 +714,8 @@
       window.visualViewport?.removeEventListener('resize', refitForDisplayChange);
       window.removeEventListener(LEADER_DICTATION_COMMAND, handleLeaderDictation);
       reportDictationState('idle');
-      const activeRecorder = mediaRecorder;
-      if (activeRecorder && activeRecorder.state !== 'inactive') {
-        activeRecorder.onstop = null;
-        activeRecorder.stop();
-      }
-      mediaRecorder = null;
+      audioRecorder?.cancel();
+      audioRecorder = null;
       dictating = false;
       transcribing = false;
       stopTracks();
@@ -701,7 +726,7 @@
       captureAfterDictation = false;
       pendingDictation = false;
       resizeObserver.disconnect();
-      socket.close();
+      socket?.close();
       terminal.dispose();
       xtermInstance = null;
     };

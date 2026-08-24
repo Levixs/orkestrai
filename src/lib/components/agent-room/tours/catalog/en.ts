@@ -128,7 +128,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'portal',
         title: 'The portal (the agents\' browser)',
-        body: 'The portal is an embedded browser the agents control. I\'ll create one pointing at your dev server — adjust the URL later if it isn\'t localhost:5173.',
+        body: 'The portal is an embedded browser the agents control. I\'ll create one pointing at your dev server — adjust the URL later if it isn\'t localhost:5173. Login pop-ups stay in a sandboxed Orkestrai window with the same persistent session, and the node restores its last navigated page after restart.',
         action: { kind: 'createPortal', url: 'http://localhost:5173', title: 'Portal App' },
         check: { kind: 'nodeExists', nodeType: 'portal' },
       },
@@ -654,7 +654,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'recover',
         title: 'Recover without guessing',
-        body: 'If a selected device is disconnected, Orkestrai returns to the system default. Capture errors distinguish permission, missing hardware, interruption, and likely contention for the only microphone.',
+        body: 'Dictation captures direct PCM through the same Web Audio route as the live meter and normalizes quiet speech locally. If a selected device is disconnected, Orkestrai returns to the system default. Capture errors distinguish permission, missing hardware, interruption, likely contention, and a microphone that opens without producing signal.',
       },
     ],
   },
@@ -952,7 +952,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'switch-view',
         title: 'Switch the view',
-        body: 'Use Canvas/Workbench in the upper-left corner or open Workbench from the Workspace menu. Agents remain in the same sessions while you switch modes.',
+        body: 'Use Canvas/Workbench in the upper-left corner or open Workbench from the Workspace menu. Agents remain in the same sessions while you switch modes; terminal font metrics settle before reattachment so the cursor remains aligned after visiting Settings or documentation.',
       },
       {
         id: 'choose-item',

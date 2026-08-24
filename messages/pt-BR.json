@@ -1106,6 +1106,7 @@
   "voice.mic_fallback": "O microfone selecionado desapareceu. O ditado está usando o padrão do sistema.",
   "voice.transcribing": "Transcrevendo...",
   "voice.nothing_transcribed": "Nada foi transcrito. Tente falar mais perto do microfone.",
+  "voice.mic_no_signal": "O microfone selecionado abriu, mas não produziu áudio. Verifique o medidor em Configurações → Voz, reconecte o dispositivo ou feche o app que pode estar usando a entrada.",
   "voice.dictation_error": "Erro no ditado.",
   "voice.recording_too_long": "A gravação é longa demais. Grave trechos de até 15 minutos.",
   "voice.model_status_error": "Não foi possível verificar o modelo de voz local.",

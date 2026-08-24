@@ -341,7 +341,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'portal',
       title: 'Portal (browser dos agentes)',
-      body: `O nó Portal é um navegador embutido. Conectado a um agente, ele vira os olhos do agente: orkestrai portal <nodeId> navigate (abrir URL), eval (rodar JS na página), dom (ler o HTML), screenshot. Use para testar a aplicação que o time está construindo (aponte o portal para o dev server) ou pesquisar na web. A automação completa roda no app desktop (Electron); no browser comum o portal é só visualizador.`,
+      body: `O nó Portal é um navegador embutido. Conectado a um agente, ele vira os olhos do agente: orkestrai portal <nodeId> navigate (abrir URL), eval (rodar JS na página), dom (ler o HTML), screenshot. Use para testar a aplicação que o time está construindo (aponte o portal para o dev server) ou pesquisar na web. No desktop, links e logins que pedem uma nova janela abrem num Portal sandboxed do Orkestrai, não no browser do sistema, preservando window.opener e a mesma sessão. Cookies persistentes e web storage são gravados em disco, e o nó restaura a última URL navegada após reiniciar; sites ainda podem usar cookies somente de sessão que expiram ao fechar. A automação completa roda no Electron; no browser comum o portal é só visualizador.`,
     },
     {
       id: 'mcp',
@@ -559,7 +559,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'audio-devices',
       title: 'Escolher microfone e saída de áudio',
-      body: 'Abra Configurações → Voz para escolher e testar o microfone usado em todo ditado local e a saída usada nas prévias e respostas faladas. Autorize o microfone para revelar os nomes dos dispositivos, observe o medidor de entrada ao vivo e reproduza um tom curto na saída antes de salvar. Se o dispositivo escolhido desaparecer, o Orkestrai volta ao padrão do sistema. Permissão negada, dispositivo ausente, captura interrompida e provável disputa pelo único microfone recebem orientações diferentes; plataformas que não permitem direcionar o áudio do app explicam a limitação em vez de ignorar a escolha silenciosamente.',
+      body: 'Abra Configurações → Voz para escolher e testar o microfone usado em todo ditado local e a saída usada nas prévias e respostas faladas. Autorize o microfone para revelar os nomes dos dispositivos, observe o medidor de entrada ao vivo e reproduza um tom curto na saída antes de salvar. O ditado grava PCM direto pela mesma rota Web Audio do medidor e normaliza fala baixa antes do STT local. Se o dispositivo escolhido desaparecer, o Orkestrai volta ao padrão do sistema. Permissão negada, dispositivo ausente, captura interrompida, provável disputa e um dispositivo que abre sem produzir sinal recebem orientações diferentes; plataformas que não permitem direcionar o áudio do app explicam a limitação em vez de ignorar a escolha silenciosamente.',
       tags: ['Dispositivos de áudio', 'teste de microfone', 'teste de saída'],
     },
     {
@@ -595,7 +595,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'focused-workspace-view',
       title: 'Trabalhar com vários artefatos no Workbench',
-      body: 'Use o seletor Canvas/Workbench no canto superior esquerdo para abrir o explorer agrupado de workspaces. Os itens abertos aparecem em abas verticais por padrão; em Configurações → Aparência, você pode preferir abas horizontais sobre cada painel. Divida o painel ativo para a direita ou para baixo e organize até oito terminais, quadros, notas, portais, arquivos, fluxos ou nós de uso redimensionáveis. Arraste uma aba para outro painel ou use seu menu Mover para. O layout é salvo por workspace, layouts antigos migram automaticamente e referências inválidas são descartadas com segurança. Artefatos do canvas preservam sua identidade persistida para manter sessões, conteúdo e alterações sincronizados; arquivos usam abas locais e não criam nós no canvas. O rodapé mostra todas as janelas de uso reportadas por Claude, Codex e Kimi e abre os detalhes com um clique, usando o mesmo snapshot de cinco minutos da aba e do nó Uso. Command/Ctrl+Page Up ou Page Down percorre os itens, Shift alterna o painel e Command/Ctrl+\\ divide o painel. A bolinha de voz usa o líder do workspace ativo também nesta visualização. Ao voltar ao Canvas, o Orkestrai preserva o workspace e centraliza o nó selecionado.',
+      body: 'Use o seletor Canvas/Workbench no canto superior esquerdo para abrir o explorer agrupado de workspaces. Os itens abertos aparecem em abas verticais por padrão; em Configurações → Aparência, você pode preferir abas horizontais sobre cada painel. Divida o painel ativo para a direita ou para baixo e organize até oito terminais, quadros, notas, portais, arquivos, fluxos ou nós de uso redimensionáveis. Arraste uma aba para outro painel ou use seu menu Mover para. O layout é salvo por workspace, layouts antigos migram automaticamente e referências inválidas são descartadas com segurança. Artefatos do canvas preservam sua identidade persistida para manter sessões, conteúdo e alterações sincronizados; arquivos usam abas locais e não criam nós no canvas. Métricas da fonte e geometria do painel estabilizam antes de anexar uma PTY existente, mantendo o cursor piscante alinhado depois de passar por Configurações, documentação, Canvas ou Workbench. O rodapé mostra todas as janelas de uso reportadas por Claude, Codex e Kimi e abre os detalhes com um clique, usando o mesmo snapshot de cinco minutos da aba e do nó Uso. Command/Ctrl+Page Up ou Page Down percorre os itens, Shift alterna o painel e Command/Ctrl+\\ divide o painel. A bolinha de voz usa o líder do workspace ativo também nesta visualização. Ao voltar ao Canvas, o Orkestrai preserva o workspace e centraliza o nó selecionado.',
       tags: ['Workbench', 'até 8 painéis', 'divisões recursivas'],
     },
     {
@@ -691,17 +691,28 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'saved-terminal-commands',
       title: 'Reabrir um shell já pronto para trabalhar',
-      body: 'Abra o menu de opções de um terminal e escolha Comandos salvos. Guarde atalhos exclusivos daquele terminal ou comandos globais disponíveis em todos eles, pesquise pelo nome ou conteúdo e execute qualquer item manualmente. Em shells puros, ative Executar ao retomar para disparar os comandos uma única vez quando a sessão for criada ou restaurada, inclusive no WSL. O Orkestrai nunca autoexecuta texto em Claude, Codex, Kimi ou outro agente para não contaminar conversas. Os comandos ficam em texto simples: use variáveis de ambiente ou o cofre da ferramenta para segredos, nunca senhas e tokens no comando salvo.',
+      body: 'Abra o menu de opções de um terminal e escolha Comandos salvos. Guarde atalhos exclusivos daquele terminal ou comandos globais disponíveis em todos eles, pesquise pelo nome ou conteúdo e execute qualquer item manualmente. Em shells puros, ative Executar ao retomar para disparar os comandos uma única vez quando a sessão for criada ou restaurada, inclusive no WSL. O Orkestrai nunca autoexecuta texto em Claude, Codex, Kimi ou outro agente para não contaminar conversas. Os comandos ficam em texto simples: use variáveis de ambiente ou o cofre da ferramenta para segredos, nunca senhas e tokens no comando salvo. Os terminais preservam o ambiente do sistema operacional e a ponte do Orkestrai, mas excluem valores privados do servidor desktop para que o .env de cada projeto, incluindo a APP_KEY do Laravel, tenha prioridade.',
       tags: ['Comandos salvos', 'autoexec seguro', 'shells e WSL'],
     },
   ],
   changelog: [
     {
-      date: '24 ago 2026 · 0.18.1',
-      title: 'Orkestrai 0.18.1: ícone de cada provider nos agentes do Canvas',
+      date: '24 ago 2026 · 0.18.2',
+      title: 'Orkestrai 0.18.2: ícone de cada provider nos agentes do Canvas',
       summary: 'Os nodes de agente no Canvas agora mostram a marca do provider em vez de um ícone genérico de terminal.',
       items: [
         'Os nodes de agente no Canvas agora exibem a marca própria de Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline e Devin no cabeçalho do terminal, em vez de um ícone genérico — a mesma marca já usada em Uso e na Central de Providers.',
+      ],
+    },
+    {
+      date: '24 ago 2026 · 0.18.1',
+      title: 'Orkestrai 0.18.1: estado confiável de projeto, Portal, voz e terminal',
+      summary: 'Ambientes de projeto ficam isolados enquanto navegação, ditado e terminais se recuperam de forma confiável no desktop.',
+      items: [
+        'Os processos de terminal mantêm o ambiente do sistema operacional e a ponte do Orkestrai, mas removem a APP_KEY do desktop e todas as variáveis privadas carregadas pelo runtime do app. Registros criptografados, cookies e sessões do Laravel passam a usar o .env do projeto e deixam de falhar com “The MAC is invalid”.',
+        'Pop-ups de login dos Portais agora abrem numa janela sandboxed do Orkestrai com a mesma sessão persistente, em vez de escapar para o browser do sistema. Cookies e storage são gravados em disco, e cada nó Portal restaura sua última URL navegada.',
+        'O ditado agora grava PCM direto pela mesma rota Web Audio do medidor, normaliza fala baixa e identifica claramente quando o microfone selecionado abriu sem produzir sinal.',
+        'A fonte e a geometria do terminal estabilizam antes de anexar novamente a PTY, e o histórico ANSI termina de ser processado antes do redraw final, mantendo o cursor do xterm alinhado ao voltar para o Canvas.',
       ],
     },
     {

@@ -27,6 +27,9 @@ Download the latest installers from
   offscreen graphs while active conversations retain their visual signal.
   Duplicate styled shapes with Cmd/Ctrl+D or copy and paste complete visual
   arrangements while preserving their relative layout.
+- **Persistent Portal sessions:** authentication cookies, web storage, and the
+  last navigated URL survive app restarts. Login flows opened with `window.open`
+  stay in a sandboxed Orkestrai Portal window that shares the same session.
 - **Configurable Workbench:** keep open terminals, boards, notes, portals,
   files, flows, and usage in vertical tabs by default or optional horizontal
   tabs, then arrange up to eight live artifacts in resizable right/down splits.
@@ -281,7 +284,9 @@ Download the latest installers from
   with Enter; regular text fields remain insert-only. Choose and test the input
   and output devices under Settings → Voice; every dictation surface, preview,
   and spoken reply follows that preference and falls back safely if the device
-  is removed. The voice orb's pin badge
+  is removed. Dictation records direct PCM through the same path as the live
+  input meter, normalizes quiet speech, and distinguishes an input with no
+  signal from speech that could not be recognized. The voice orb's pin badge
   opens its position controls directly, while the tooltip also reveals the
   platform shortcut. STT and TTS run locally.
 - **Quota-aware delegation:** pin Claude, Codex, and Kimi usage to the canvas,
@@ -300,10 +305,16 @@ Download the latest installers from
   one and edit semantic tokens with live preview and JSON import/export.
 - **Readable terminals:** choose 1 of 10 complete ANSI palettes from the compact
   terminal options menu, alongside provider, role, reload, and Maestro controls.
+  Font metrics settle before PTY reattachment so the cursor remains aligned
+  after switching between Canvas, Workbench, Settings, and documentation.
 - **Reusable terminal commands:** save searchable commands for one terminal or
   globally, execute them manually in any terminal, or opt pure shells into a
   once-per-session startup command. Agent conversations never auto-run saved
   text, and the UI warns against storing credentials in plain-text commands.
+- **Project-isolated environments:** shells retain the user's operating-system
+  environment and the Orkestrai bridge without inheriting the desktop server's
+  private configuration. Framework `.env` files stay authoritative, including
+  Laravel's `APP_KEY` for encrypted application data.
 - **Operational controls:** manage local portal ports, configure recurring
   routines, and install skills from the marketplace.
 - **Provider Center:** detect all eight supported CLIs locally, follow OS-aware

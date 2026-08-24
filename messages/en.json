@@ -1106,6 +1106,7 @@
   "voice.mic_fallback": "The selected microphone disappeared. Dictation is using the system default.",
   "voice.transcribing": "Transcribing...",
   "voice.nothing_transcribed": "Nothing was transcribed. Try speaking closer to the microphone.",
+  "voice.mic_no_signal": "The selected microphone opened but produced no audio. Check the input meter in Settings → Voice, reconnect the device, or close the app currently using it.",
   "voice.dictation_error": "Dictation error.",
   "voice.recording_too_long": "This recording is too long. Record clips of up to 15 minutes.",
   "voice.model_status_error": "Could not check the local voice model.",
