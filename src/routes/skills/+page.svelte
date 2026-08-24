@@ -115,7 +115,7 @@
 
   let workspaces = $state<Workspace[]>([]);
   let workspaceId = $state('');
-  let query = $state('agent');
+  let query = $state('');
   let results = $state<SkillResult[]>([]);
   let installed = $state<InstalledSkill[]>([]);
   let searching = $state(false);
@@ -140,7 +140,6 @@
   }
 
   async function search() {
-    if (!query.trim()) return;
     searching = true;
     feedback = '';
     try {

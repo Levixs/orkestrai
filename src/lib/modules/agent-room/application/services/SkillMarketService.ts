@@ -31,28 +31,64 @@ export type InstalledSkill = {
 type DownloadedSkillFile = { path: string; contents: string };
 
 /**
- * Marketplace de skills do skills.sh: busca no registry publico e instala
- * nos diretorios convencionais dos agentes (SKILL_DIRS) do workspace. Nada
- * vai no pacote do app — tudo sob demanda.
+ * Curadoria de skills populares (installs reais em skills.sh), usada quando
+ * a busca esta vazia — o endpoint publico de busca exige pelo menos 2
+ * caracteres e nao tem "listar tudo"/"em alta", entao sem isso a tela
+ * ficaria vazia no primeiro acesso.
+ */
+const CURATED: SkillSearchResult[] = [
+  { id: 'anthropics/skills/frontend-design', skillId: 'frontend-design', name: 'frontend-design', source: 'anthropics/skills', installs: 813657 },
+  { id: 'vercel-labs/agent-skills/web-design-guidelines', skillId: 'web-design-guidelines', name: 'web-design-guidelines', source: 'vercel-labs/agent-skills', installs: 571878 },
+  { id: 'mattpocock/skills/code-review', skillId: 'code-review', name: 'code-review', source: 'mattpocock/skills', installs: 405051 },
+  { id: 'mattpocock/skills/git-guardrails-claude-code', skillId: 'git-guardrails-claude-code', name: 'git-guardrails-claude-code', source: 'mattpocock/skills', installs: 264665 },
+  { id: 'obra/superpowers/systematic-debugging', skillId: 'systematic-debugging', name: 'systematic-debugging', source: 'obra/superpowers', installs: 235601 },
+  { id: 'obra/superpowers/requesting-code-review', skillId: 'requesting-code-review', name: 'requesting-code-review', source: 'obra/superpowers', installs: 208855 },
+  { id: 'obra/superpowers/test-driven-development', skillId: 'test-driven-development', name: 'test-driven-development', source: 'obra/superpowers', installs: 206694 },
+  { id: 'anthropics/skills/pdf', skillId: 'pdf', name: 'pdf', source: 'anthropics/skills', installs: 184123 },
+  { id: 'anthropics/skills/webapp-testing', skillId: 'webapp-testing', name: 'webapp-testing', source: 'anthropics/skills', installs: 140455 },
+];
+
+/**
+ * Marketplace de skills do skills.sh: curadoria local + busca no registry
+ * publico, instala nos diretorios convencionais dos agentes (SKILL_DIRS) do
+ * workspace. Nada vai no pacote do app — tudo sob demanda.
  */
 export class SkillMarketService {
   constructor(private readonly fetchFn: typeof fetch = fetch) {}
 
-  /** Busca skills no registry (endpoint legado, sem chave de API). */
+  /** Curadoria filtrada + registry (curadoria sempre primeiro). Sem termo: so a curadoria. */
   async search(query: string): Promise<SkillSearchResult[]> {
     const q = query.trim();
-    if (!q) return [];
-    const payload = await this.fetchJson(`${SKILLS_SH_BASE}/api/search?q=${encodeURIComponent(q)}`);
-    const skills = Array.isArray(payload?.skills) ? payload.skills : [];
-    return skills
-      .filter((skill: Record<string, unknown>) => skill?.id && skill?.skillId)
-      .map((skill: Record<string, unknown>) => ({
-        id: String(skill.id),
-        skillId: String(skill.skillId),
-        name: String(skill.name ?? skill.skillId),
-        source: String(skill.source ?? ''),
-        installs: Number(skill.installs ?? 0),
-      }));
+    const ql = q.toLowerCase();
+    const curated = CURATED.filter((skill) => !ql || `${skill.name} ${skill.skillId} ${skill.source}`.toLowerCase().includes(ql));
+    if (!q) return curated;
+    try {
+      const payload = await this.fetchJson(`${SKILLS_SH_BASE}/api/search?q=${encodeURIComponent(q)}`);
+      const remote = Array.isArray(payload?.skills) ? payload.skills : [];
+      const seen = new Set(curated.map((skill) => skill.id));
+      const deduped: SkillSearchResult[] = [];
+      for (const skill of remote as Record<string, unknown>[]) {
+        if (!skill?.id || !skill?.skillId) continue;
+        const id = String(skill.id);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        deduped.push({
+          id,
+          skillId: String(skill.skillId),
+          name: String(skill.name ?? skill.skillId),
+          source: String(skill.source ?? ''),
+          installs: Number(skill.installs ?? 0),
+        });
+      }
+      return [...curated, ...deduped];
+    } catch {
+      return curated; // skills.sh fora do ar: curadoria sempre funciona
+    }
+  }
+
+  /** Catalogo de curadoria completo (para testes e listagem sem busca). */
+  curated(): SkillSearchResult[] {
+    return CURATED;
   }
 
   /** Skills instaladas no workspace (varre .claude/skills/<id>/SKILL.md). */

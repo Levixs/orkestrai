@@ -699,6 +699,15 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: 'Aug 24, 2026 · 0.20.2',
+      title: 'Orkestrai 0.20.2: a real default skills list',
+      summary: 'The Skills tab no longer fakes a search for "agent" on load — it now shows a curated list of popular skills, like MCP already did.',
+      items: [
+        'The Skills marketplace shows a curated list of popular skills by default instead of pre-filling the search box with "agent" and auto-searching it.',
+        'Typing a search term now merges that curated list with live skills.sh results instead of replacing it outright.',
+      ],
+    },
+    {
       date: 'Aug 24, 2026 · 0.20.1',
       title: 'Orkestrai 0.20.1: consistent Canvas icons',
       summary: 'The Canvas "add agent" menu and bottom toolbar now show consistent, correct icons for every provider and tool.',

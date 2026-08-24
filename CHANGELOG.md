@@ -5,6 +5,15 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.2 - 2026-08-24
+
+### Fixed
+
+- The Skills marketplace no longer pre-fills the search box with the literal
+  word "agent" and auto-searches it on page load. It now shows a curated list
+  of popular skills by default (matching how the MCP tab already worked) and
+  only queries skills.sh once you actually type something.
+
 ## 0.20.1 - 2026-08-24
 
 ### Fixed
