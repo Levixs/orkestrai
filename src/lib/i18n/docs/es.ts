@@ -28,7 +28,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'provider-center',
       title: 'Central de Providers',
-      body: `La Central verifica localmente las nueve CLIs compatibles (Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot) y separa los agentes listos de los que todavía requieren configuración. Expande un provider para ver su guía oficial, un comando de instalación para tu sistema cuando esté disponible, instrucciones de inicio de sesión y capacidades detectadas como reanudación de conversaciones, modelos y esfuerzo ajustable. Los providers con un mecanismo oficial de multi-cuenta (directorio de config, par de directorios o token) obtienen una sección Perfiles: crea un perfil con nombre para usar otra cuenta sin salir de la CLI — el cambio también está disponible en el menú del terminal, junto al cambio de provider. Orkestrai nunca recibe credenciales ni autentica agentes en silencio; el inicio de sesión permanece en la CLI oficial, y el token de un perfil queda en el almacenamiento seguro del sistema. Después de instalar, usa Verificar de nuevo y regresa al canvas.`,
+      body: `La Central verifica localmente las nueve CLIs compatibles (Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot) y separa los agentes listos de los que todavía requieren configuración. Expande un provider para ver su guía oficial, un comando de instalación para tu sistema cuando esté disponible, instrucciones de inicio de sesión y capacidades detectadas como reanudación de conversaciones, modelos y esfuerzo ajustable. Los providers con un mecanismo oficial de multi-cuenta (directorio de config, par de directorios o token) obtienen una sección Perfiles: crea un perfil con nombre para usar otra cuenta sin salir de la CLI — el cambio también está disponible en el menú del terminal, junto al cambio de provider. Claude, Codex, Kimi, Cursor, Copilot y Devin también muestran su estado público en vivo (operativo, degradado, interrupción parcial o crítica) con enlace directo a la página oficial de estado. Orkestrai nunca recibe credenciales ni autentica agentes en silencio; el inicio de sesión permanece en la CLI oficial, y el token de un perfil queda en el almacenamiento seguro del sistema. Después de instalar, usa Verificar de nuevo y regresa al canvas.`,
     },
     {
       id: 'roles',
@@ -692,6 +692,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '24 ago 2026 · 0.18.4',
+      title: 'Orkestrai 0.18.4: estado en vivo de los providers',
+      summary: 'La Central de Providers ahora muestra el estado público de cada provider, con enlace directo a su página oficial.',
+      items: [
+        'La Central de Providers ahora muestra el estado público en vivo de cada provider (operativo, degradación parcial, interrupción parcial o crítica) con enlace a su página oficial, para los seis providers con feed de Statuspage.io (Claude, Codex, Kimi, Cursor, Copilot, Devin). Las verificaciones se guardan en caché en el servidor por tres minutos y expiran en ocho segundos, así que una página de estado lenta o inaccesible nunca bloquea la carga de la página; una verificación fallida cae silenciosamente a un estado neutro en lugar de alarmar al usuario.',
+      ],
+    },
     {
       date: '24 ago 2026 · 0.18.3',
       title: 'Orkestrai 0.18.3: Perfiles de multi-cuenta por provider',

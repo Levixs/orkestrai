@@ -5,6 +5,18 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.18.4 - 2026-08-24
+
+### Added
+
+- Provider Center now shows each provider's live public status (operational,
+  partial degradation, partial outage, critical outage) with a link to its
+  official status page, for the six providers that publish a Statuspage.io
+  feed (Claude, Codex, Kimi, Cursor, Copilot, Devin). Checks are cached on
+  the server for three minutes and time out after eight seconds so a slow
+  or unreachable status page never blocks the page from loading; a failed
+  check quietly falls back to a neutral state instead of alarming the user.
+
 ## 0.18.3 - 2026-08-24
 
 ### Added

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import {
+    Activity,
     ArrowLeft,
     BrainCircuit,
     CheckCircle2,
@@ -23,6 +24,8 @@
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import type { AgentProviderInfo, ProviderProfile } from '$lib/modules/agent-room/domain/types.js';
+  import { PROVIDER_STATUS_SOURCES } from '$lib/modules/agent-room/application/services/ProviderStatusService.js';
+  import { getProviderStatus, providerStatusStore } from '$lib/components/agent-room/provider-status.svelte.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type Filter = 'all' | 'ready' | 'setup';
@@ -58,8 +61,18 @@
       : userAgent.includes('win')
         ? 'windows'
         : 'linux';
-    await loadProviders();
+    await Promise.all([
+      loadProviders(),
+      ...Object.keys(PROVIDER_STATUS_SOURCES).map((providerId) => getProviderStatus(providerId)),
+    ]);
   });
+
+  function statusLabel(indicator: string): string {
+    if (indicator === 'critical') return m['providers.status_critical']();
+    if (indicator === 'major') return m['providers.status_major']();
+    if (indicator === 'minor') return m['providers.status_minor']();
+    return m['providers.status_operational']();
+  }
 
   async function loadProviders(refresh = false) {
     if (refresh) refreshing = true;
@@ -220,6 +233,20 @@
                 </span>
               </div>
               <p>{provider.installed ? m['providers.ready_description']() : m['providers.setup_description']()}</p>
+              {#if PROVIDER_STATUS_SOURCES[provider.id]}
+                {@const status = providerStatusStore.value(provider.id)}
+                <a
+                  class="provider-status-line status-{status.indicator}"
+                  href={PROVIDER_STATUS_SOURCES[provider.id].pageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={status.description || m['providers.status_operational']()}
+                >
+                  <Activity size={12} aria-hidden="true" />
+                  <span>{statusLabel(status.indicator)}</span>
+                  <ExternalLink size={11} aria-hidden="true" />
+                </a>
+              {/if}
               <div class="capabilities">
                 {#if provider.supportsResume}
                   <span><MessageSquareText size={12} />{m['providers.cap_resume']()}</span>
@@ -416,6 +443,10 @@
   .provider-copy > p { max-width: 680px; margin: 7px 0 0; color: var(--copy-soft); font-size: 12.5px; line-height: 1.55; }
   .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, var(--app-warning) 12%, transparent); color: var(--app-warning); font-size: 10.5px; font-weight: 600; }
   .status-badge.ready { background: color-mix(in srgb, var(--app-success) 12%, transparent); color: var(--app-success); }
+  .provider-status-line { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; color: var(--app-success); font-size: 11px; font-weight: 600; text-decoration: none; }
+  .provider-status-line:hover { text-decoration: underline; }
+  .provider-status-line.status-minor { color: var(--app-warning); }
+  .provider-status-line.status-major, .provider-status-line.status-critical { color: var(--app-danger); }
   .capabilities { min-height: 24px; margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .capabilities span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 5px; background: var(--app-surface-raised); color: var(--copy-muted); font-size: 10.5px; }
   .capabilities .version { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

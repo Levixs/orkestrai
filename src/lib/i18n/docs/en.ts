@@ -28,7 +28,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'provider-center',
       title: 'Provider Center',
-      body: `Provider Center checks all nine supported CLIs locally (Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot) and separates agents that are ready from those that still need setup. Expand a provider to see its official guide, an installation command for your operating system when available, sign-in instructions, and detected capabilities such as conversation resume, models, and adjustable effort. Providers with an official multi-account mechanism (a config directory, a directory pair, or a token) get a Profiles section: create a named profile to switch accounts without leaving the CLI — the switch is also available from the terminal menu, next to the provider switch. Orkestrai never receives provider credentials or authenticates an agent silently; sign-in remains inside the official CLI, and a profile's token stays in the system's secure storage. Use Check again after installing, then return to the canvas.`,
+      body: `Provider Center checks all nine supported CLIs locally (Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot) and separates agents that are ready from those that still need setup. Expand a provider to see its official guide, an installation command for your operating system when available, sign-in instructions, and detected capabilities such as conversation resume, models, and adjustable effort. Providers with an official multi-account mechanism (a config directory, a directory pair, or a token) get a Profiles section: create a named profile to switch accounts without leaving the CLI — the switch is also available from the terminal menu, next to the provider switch. Claude, Codex, Kimi, Cursor, Copilot, and Devin also show their live public status (operational, degraded, partial outage, or critical outage) with a direct link to the official status page. Orkestrai never receives provider credentials or authenticates an agent silently; sign-in remains inside the official CLI, and a profile's token stays in the system's secure storage. Use Check again after installing, then return to the canvas.`,
     },
     {
       id: 'roles',
@@ -692,6 +692,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 24, 2026 · 0.18.4',
+      title: 'Orkestrai 0.18.4: live provider status',
+      summary: 'Provider Center now shows each provider\'s public status, with a direct link to its official page.',
+      items: [
+        'Provider Center now shows each provider\'s live public status (operational, partial degradation, partial outage, or critical outage) with a link to its official page, for the six providers that publish a Statuspage.io feed (Claude, Codex, Kimi, Cursor, Copilot, Devin). Checks are cached on the server for three minutes and time out after eight seconds, so a slow or unreachable status page never blocks the page from loading; a failed check quietly falls back to a neutral state instead of alarming the user.',
+      ],
+    },
     {
       date: 'Aug 24, 2026 · 0.18.3',
       title: 'Orkestrai 0.18.3: per-provider multi-account Profiles',
