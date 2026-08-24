@@ -67,13 +67,20 @@ function nvmBins() {
   process.env.PATH = [...merged].join(delimiter);
 }
 
+function markPrivateChildEnv(...keys) {
+  const current = (process.env.ORKESTRAI_PRIVATE_ENV_KEYS ?? '').split(',').filter(Boolean);
+  process.env.ORKESTRAI_PRIVATE_ENV_KEYS = [...new Set([...current, ...keys.filter(Boolean)])].join(',');
+}
+
 // Carrega .env do projeto sem sobrescrever variaveis ja definidas
 // (o handler do adapter-node nao carrega .env sozinho).
 const dotEnvPath = resolve('.env');
+const dotEnvKeys = [];
 if (existsSync(dotEnvPath)) {
   for (const line of readFileSync(dotEnvPath, 'utf8').split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
     if (!match) continue;
+    dotEnvKeys.push(match[1]);
     let value = match[2];
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
@@ -132,6 +139,19 @@ process.env.ORIGIN ??= `http://${host}:${port}`;
 // gravacoes com cerca de 16 segundos. 32 MB comporta aproximadamente 17 min
 // e ainda mantem um limite explicito para proteger a memoria do processo.
 process.env.BODY_SIZE_LIMIT ??= '32M';
+markPrivateChildEnv(
+  ...dotEnvKeys,
+  'APP_KEY',
+  'INTERNAL_SECRET',
+  'ELECTRON_RUN_AS_NODE',
+  'HOST',
+  'PORT',
+  'ORIGIN',
+  'BODY_SIZE_LIMIT',
+  'DB_PATH',
+  'ORKESTRAI_DATA_DIR',
+  'ORKESTRAI_PTY_MODULE',
+);
 
 const { handler } = await import('../build/handler.js');
 

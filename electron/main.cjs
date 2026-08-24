@@ -14,6 +14,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
 const { canInstallUpdatesAutomatically, isNewerVersion } = require('./update-policy.cjs');
+const { PORTAL_PARTITION, isAllowedPortalUrl, portalWindowOpenResponse } = require('./portal-policy.cjs');
 
 const isDev = !app.isPackaged;
 const appRoot = path.resolve(__dirname, '..');
@@ -29,6 +30,41 @@ let tray = null;
 let pendingNotifications = 0;
 let menuLocale = 'en';
 let pendingCollaborationInvite = null;
+let portalStorageFlushTimer = null;
+const configuredPortalContents = new WeakSet();
+
+function flushPortalStorage() {
+  const portalSession = session.fromPartition(PORTAL_PARTITION);
+  portalSession.flushStorageData();
+  void Promise.resolve(portalSession.cookies.flushStore()).catch(() => undefined);
+}
+
+function schedulePortalStorageFlush() {
+  if (portalStorageFlushTimer) clearTimeout(portalStorageFlushTimer);
+  portalStorageFlushTimer = setTimeout(() => {
+    portalStorageFlushTimer = null;
+    flushPortalStorage();
+  }, 500);
+}
+
+function configurePortalSession() {
+  const portalSession = session.fromPartition(PORTAL_PARTITION);
+  portalSession.cookies.on('changed', schedulePortalStorageFlush);
+}
+
+function configurePortalContents(contents) {
+  if (configuredPortalContents.has(contents)) return;
+  configuredPortalContents.add(contents);
+  contents.setWindowOpenHandler(({ url }) => portalWindowOpenResponse(url, MENU_COPY[menuLocale].portalWindow));
+  contents.on('will-navigate', (event, url) => {
+    if (!isAllowedPortalUrl(url)) event.preventDefault();
+  });
+  contents.on('did-finish-load', schedulePortalStorageFlush);
+  contents.on('did-create-window', (childWindow) => {
+    childWindow.setTitle(MENU_COPY[menuLocale].portalWindow);
+    configurePortalContents(childWindow.webContents);
+  });
+}
 
 function parseCollaborationInvite(candidate) {
   if (typeof candidate !== 'string' || candidate.length > 1000) return null;
@@ -139,15 +175,15 @@ function deleteAutomationSecret(key) {
 const MENU_COPY = {
   'pt-BR': {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Central de Providers', remote: 'Entrar em workspace remoto', newWorkspace: 'Novo workspace', presets: 'Biblioteca de presets', floors: 'Andares', roles: 'Responsabilidades', huddles: 'Huddles', usage: 'Uso', ports: 'Portas',
-    settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', exportApiCollection: 'Escolher destino da coleção Bruno', notifications: (count) => `${count} notificações`,
+    settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', exportApiCollection: 'Escolher destino da coleção Bruno', portalWindow: 'Portal do Orkestrai', notifications: (count) => `${count} notificações`,
   },
   en: {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Provider Center', remote: 'Join remote workspace', newWorkspace: 'New workspace', presets: 'Preset library', floors: 'Floors', roles: 'Roles', huddles: 'Huddles', usage: 'Usage', ports: 'Ports',
-    settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', exportApiCollection: 'Choose Bruno collection destination', notifications: (count) => `${count} notifications`,
+    settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', exportApiCollection: 'Choose Bruno collection destination', portalWindow: 'Orkestrai Portal', notifications: (count) => `${count} notifications`,
   },
   es: {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Central de Providers', remote: 'Entrar a workspace remoto', newWorkspace: 'Nuevo workspace', presets: 'Biblioteca de presets', floors: 'Pisos', roles: 'Roles', huddles: 'Huddles', usage: 'Uso', ports: 'Puertos',
-    settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', exportApiCollection: 'Elegir destino de la colección Bruno', notifications: (count) => `${count} notificaciones`,
+    settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', exportApiCollection: 'Elegir destino de la colección Bruno', portalWindow: 'Portal de Orkestrai', notifications: (count) => `${count} notificaciones`,
   },
 };
 
@@ -284,6 +320,23 @@ function loadDotEnv(filePath) {
   return env;
 }
 
+function privateChildEnvKeys(dotEnv) {
+  return [...new Set([
+    ...(process.env.ORKESTRAI_PRIVATE_ENV_KEYS ?? '').split(',').filter(Boolean),
+    ...Object.keys(dotEnv),
+    'APP_KEY',
+    'INTERNAL_SECRET',
+    'ELECTRON_RUN_AS_NODE',
+    'HOST',
+    'PORT',
+    'ORIGIN',
+    'BODY_SIZE_LIMIT',
+    'DB_PATH',
+    'ORKESTRAI_DATA_DIR',
+    'ORKESTRAI_PTY_MODULE',
+  ])].join(',');
+}
+
 /** Em producao, garante um APP_KEY persistente na pasta do usuário. */
 function ensureAppKey() {
   if (process.env.APP_KEY) return process.env.APP_KEY;
@@ -355,6 +408,7 @@ async function startServer(port) {
   const serverEntry = path.join(runtimeRoot, 'scripts', 'orkestrai-server.mjs');
   const dotEnv = app.isPackaged ? {} : loadDotEnv(path.join(appRoot, '.env'));
   const ptyModuleDir = ensureNativePty(app.getPath('userData'));
+  const privateEnvKeys = privateChildEnvKeys(dotEnv);
   serverProcess = spawn(process.execPath, [serverEntry], {
     cwd: runtimeRoot,
     env: {
@@ -367,6 +421,7 @@ async function startServer(port) {
       // A porta e livre (muda a cada execução): configs da ponte gravados em
       // workspaces precisam da URL atual (ver também ~/.orkestrai/runtime.json).
       ORKESTRAI_API_URL: `http://127.0.0.1:${port}`,
+      ORKESTRAI_PRIVATE_ENV_KEYS: privateEnvKeys,
       ...(ptyModuleDir ? { ORKESTRAI_PTY_MODULE: ptyModuleDir } : {}),
       // Em Electron, o banco e os dados ficam na pasta do usuário em producao;
       // em dev, usa a pasta do projeto como sempre.
@@ -496,13 +551,7 @@ async function createWindow() {
   });
 
   mainWindow.webContents.on('did-attach-webview', (_event, guestContents) => {
-    guestContents.setWindowOpenHandler(({ url }) => {
-      if (/^https?:\/\//.test(url)) void shell.openExternal(url);
-      return { action: 'deny' };
-    });
-    guestContents.on('will-navigate', (navigationEvent, url) => {
-      if (!/^https?:\/\//.test(url) && url !== 'about:blank') navigationEvent.preventDefault();
-    });
+    configurePortalContents(guestContents);
   });
 
   mainWindow.once('ready-to-show', () => {
@@ -890,6 +939,7 @@ if (!gotLock) {
       const own = url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1') || url.startsWith('file://');
       callback(own && permission === 'media');
     });
+    configurePortalSession();
     createSplash();
     buildApplicationMenu();
     createTray();
@@ -913,7 +963,10 @@ if (!gotLock) {
     if (process.platform !== 'darwin') app.quit();
   });
 
-  app.on('before-quit', stopServer);
+  app.on('before-quit', () => {
+    flushPortalStorage();
+    stopServer();
+  });
   app.on('quit', () => {
     closeSplash();
     stopServer();

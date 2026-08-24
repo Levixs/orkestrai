@@ -6,7 +6,7 @@
   import * as Kbd from '$lib/components/ui/kbd';
   import * as Tooltip from '$lib/components/ui/tooltip';
   import VoiceConfirmDialog from './VoiceConfirmDialog.svelte';
-  import { blobToWav16k } from './audio-pcm.js';
+  import { PcmAudioRecorder } from './audio-pcm.js';
   import { appSettingsStore, getAppSettings, updateAppSettings } from './app-settings.svelte.js';
   import {
     DEFAULT_AUDIO_DEVICE_ID,
@@ -24,6 +24,7 @@
   } from './leader-dictation.js';
   import { TEXT_DICTATION_COMMAND, TEXT_DICTATION_FALLBACK, type TextDictationFallbackDetail } from './text-dictation.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
+  import { audioSignalIsEmpty } from '$lib/modules/agent-room/domain/voice-audio.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type Editable = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
@@ -34,9 +35,9 @@
   let source = $state<'text' | 'leader' | null>(null);
   let voiceConfirmOpen = $state(false);
   let checkingVoiceModels = false;
-  let mediaRecorder: MediaRecorder | null = null;
+  let audioRecorder: PcmAudioRecorder | null = null;
   let mediaStream: MediaStream | null = null;
-  let audioChunks: Blob[] = [];
+  let recordingTarget: Editable | null = null;
   const PLACEMENT_KEY = 'orkestrai.dictation-placement';
   const BUTTON_SIZE = 48;
   const EDGE_GAP = 14;
@@ -55,7 +56,7 @@
   );
 
   const supported = typeof window !== 'undefined'
-    && typeof MediaRecorder !== 'undefined'
+    && typeof AudioContext !== 'undefined'
     && Boolean(navigator.mediaDevices?.getUserMedia);
 
   function availableRect() {
@@ -225,7 +226,7 @@
 
   async function toggleTextDictation() {
     if (status === 'recording' && source === 'text') {
-      mediaRecorder?.stop();
+      void finishTextDictation();
       return;
     }
     if (status !== 'idle' || !editableUsable(target) || checkingVoiceModels) return;
@@ -258,47 +259,60 @@
       return;
     }
 
-    const insertionTarget = target;
-    audioChunks = [];
-    const recorder = new MediaRecorder(mediaStream);
-    mediaRecorder = recorder;
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) audioChunks.push(event.data);
-    };
-    recorder.onstop = async () => {
+    const recorder = new PcmAudioRecorder(mediaStream);
+    audioRecorder = recorder;
+    recordingTarget = target;
+    try {
+      await recorder.start();
+    } catch (error) {
+      audioRecorder = null;
+      recordingTarget = null;
       stopTracks();
-      mediaRecorder = null;
-      status = 'transcribing';
-      try {
-        const blob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' });
-        const wav = await blobToWav16k(blob);
-        const form = new FormData();
-        form.append('file', wav, 'dictation.wav');
-        const locale = appSettingsStore.values.uiLanguage;
-        if (locale === 'pt-BR') form.append('language', 'pt');
-        if (locale === 'en') form.append('language', 'en');
-        const csrf = getCsrfToken();
-        const response = await fetch('/api/agent-room/voice/transcribe', {
-          method: 'POST',
-          headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
-          body: form,
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (response.status === 413) throw new Error(m['voice.recording_too_long']());
-        if (!response.ok || payload.error) throw new Error(payload.error || m['voice.dictation_error']());
-        const text = String(payload.data?.text ?? '').trim();
-        if (!text) toast.error(m['voice.nothing_transcribed']());
-        else insertText(insertionTarget, text);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : m['voice.dictation_error']());
-      } finally {
-        status = 'idle';
-        source = null;
-      }
-    };
-    recorder.start();
+      toast.error(audioCaptureFailureMessage(classifyAudioCaptureFailure(error, 1)));
+      return;
+    }
     source = 'text';
     status = 'recording';
+  }
+
+  async function finishTextDictation() {
+    const recorder = audioRecorder;
+    const insertionTarget = recordingTarget;
+    if (!recorder || !insertionTarget || status !== 'recording' || source !== 'text') return;
+    audioRecorder = null;
+    recordingTarget = null;
+    status = 'transcribing';
+    try {
+      const recording = await recorder.stop();
+      stopTracks();
+      if (audioSignalIsEmpty(recording.stats)) {
+        toast.error(m['voice.mic_no_signal']());
+        return;
+      }
+      const form = new FormData();
+      form.append('file', recording.wav, 'dictation.wav');
+      const locale = appSettingsStore.values.uiLanguage;
+      if (locale === 'pt-BR') form.append('language', 'pt');
+      if (locale === 'en') form.append('language', 'en');
+      const csrf = getCsrfToken();
+      const response = await fetch('/api/agent-room/voice/transcribe', {
+        method: 'POST',
+        headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
+        body: form,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 413) throw new Error(m['voice.recording_too_long']());
+      if (!response.ok || payload.error) throw new Error(payload.error || m['voice.dictation_error']());
+      const text = String(payload.data?.text ?? '').trim();
+      if (!text) toast.error(m['voice.nothing_transcribed']());
+      else insertText(insertionTarget, text);
+    } catch (error) {
+      stopTracks();
+      toast.error(error instanceof Error ? error.message : m['voice.dictation_error']());
+    } finally {
+      status = 'idle';
+      source = null;
+    }
   }
 
   function requestFallback() {
@@ -414,7 +428,9 @@
       window.removeEventListener('resize', clampOnResize);
       placementObserver.disconnect();
       surfaceObserver.disconnect();
-      if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
+      audioRecorder?.cancel();
+      audioRecorder = null;
+      recordingTarget = null;
       stopTracks();
     };
   });

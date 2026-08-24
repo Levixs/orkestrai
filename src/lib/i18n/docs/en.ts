@@ -337,7 +337,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'portal',
       title: "Portal (the agents' browser)",
-      body: `The Portal node is an embedded browser. Connected to an agent, it becomes the agent's eyes: orkestrai portal <nodeId> navigate (open URL), eval (run JS on the page), dom (read the HTML), screenshot. Use it to test the app the team is building (point the portal at the dev server) or to research the web. Full automation runs in the desktop app (Electron); in a regular browser the portal is viewer-only.`,
+      body: `The Portal node is an embedded browser. Connected to an agent, it becomes the agent's eyes: orkestrai portal <nodeId> navigate (open URL), eval (run JS on the page), dom (read the HTML), screenshot. Use it to test the app the team is building (point the portal at the dev server) or to research the web. In the desktop app, links and login flows that request a new window open in a sandboxed Orkestrai Portal window instead of the system browser, preserving window.opener and the shared Portal session. Persistent cookies and web storage are flushed to disk, and the node restores its last navigated URL after restart; sites may still intentionally use session-only cookies that expire on close. Full automation runs in Electron; in a regular browser the portal is viewer-only.`,
     },
     {
       id: 'mcp',
@@ -555,7 +555,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'audio-devices',
       title: 'Choose the microphone and speaker',
-      body: 'Open Settings → Voice to choose and test the microphone used by every local dictation surface and the speaker used by previews and spoken replies. Grant microphone access to reveal device names, watch the live input meter, and play a short output tone before saving. If a selected device disappears, Orkestrai returns to the system default. Permission denial, a missing device, interrupted capture, and likely contention for the only microphone receive distinct guidance; platforms that cannot route app audio to a specific output explain that limitation instead of silently ignoring the choice.',
+      body: 'Open Settings → Voice to choose and test the microphone used by every local dictation surface and the speaker used by previews and spoken replies. Grant microphone access to reveal device names, watch the live input meter, and play a short output tone before saving. Dictation records direct PCM through the same Web Audio route as that meter and normalizes quiet speech before local STT. If a selected device disappears, Orkestrai returns to the system default. Permission denial, a missing device, interrupted capture, likely contention, and a device that opens but produces no signal receive distinct guidance; platforms that cannot route app audio to a specific output explain that limitation instead of silently ignoring the choice.',
       tags: ['Audio devices', 'microphone test', 'speaker test'],
     },
     {
@@ -591,7 +591,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'focused-workspace-view',
       title: 'Work with multiple artifacts in the Workbench',
-      body: 'Use the Canvas/Workbench switch in the upper-left corner to open the grouped workspace explorer. Open items use vertical tabs by default; under Settings → Appearance, you can choose horizontal tabs above each pane. Split the active pane right or down and arrange up to eight resizable terminals, boards, notes, portals, files, flows, or usage nodes. Drag a tab to another pane or use its Move to menu. Layout is saved per workspace, old layouts migrate automatically, and invalid references are discarded safely. Canvas artifacts keep their persisted identity so sessions, content, and edits stay synchronized; workspace files use local tabs and do not create canvas nodes. The footer shows every Claude, Codex, and Kimi usage window and opens details with one click, using the same five-minute snapshot as the Usage panel and node. Command/Ctrl+Page Up or Page Down cycles items, Shift switches panes, and Command/Ctrl+\\ splits the pane. The voice orb also uses the active workspace leader in this view. When you return to Canvas, Orkestrai preserves the workspace and centers the selected node.',
+      body: 'Use the Canvas/Workbench switch in the upper-left corner to open the grouped workspace explorer. Open items use vertical tabs by default; under Settings → Appearance, you can choose horizontal tabs above each pane. Split the active pane right or down and arrange up to eight resizable terminals, boards, notes, portals, files, flows, or usage nodes. Drag a tab to another pane or use its Move to menu. Layout is saved per workspace, old layouts migrate automatically, and invalid references are discarded safely. Canvas artifacts keep their persisted identity so sessions, content, and edits stay synchronized; workspace files use local tabs and do not create canvas nodes. Terminal font metrics and pane geometry settle before an existing PTY is attached, so the blinking cursor remains aligned after switching through Settings, documentation, Canvas, or Workbench. The footer shows every Claude, Codex, and Kimi usage window and opens details with one click, using the same five-minute snapshot as the Usage panel and node. Command/Ctrl+Page Up or Page Down cycles items, Shift switches panes, and Command/Ctrl+\\ splits the pane. The voice orb also uses the active workspace leader in this view. When you return to Canvas, Orkestrai preserves the workspace and centers the selected node.',
       tags: ['Workbench', 'up to 8 panes', 'recursive splits'],
     },
     {
@@ -687,11 +687,22 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'saved-terminal-commands',
       title: 'Reopen a shell ready to work',
-      body: 'Open a terminal options menu and choose Saved commands. Store shortcuts for that terminal or global commands available everywhere, search by name or content, and run any item manually. In pure shells, enable Run on resume to submit commands once when the session is created or restored, including WSL. Orkestrai never auto-runs text in Claude, Codex, Kimi, or another agent, preventing conversation contamination. Commands are plain text: use environment variables or the tool vault for secrets, never passwords or tokens inside a saved command.',
+      body: 'Open a terminal options menu and choose Saved commands. Store shortcuts for that terminal or global commands available everywhere, search by name or content, and run any item manually. In pure shells, enable Run on resume to submit commands once when the session is created or restored, including WSL. Orkestrai never auto-runs text in Claude, Codex, Kimi, or another agent, preventing conversation contamination. Commands are plain text: use environment variables or the tool vault for secrets, never passwords or tokens inside a saved command. Shells preserve your operating-system environment and the Orkestrai bridge, but exclude private desktop-server values so each project .env remains authoritative, including Laravel APP_KEY.',
       tags: ['Saved commands', 'safe auto-run', 'shells and WSL'],
     },
   ],
   changelog: [
+    {
+      date: 'Aug 24, 2026 · 0.18.1',
+      title: 'Reliable project, Portal, voice, and terminal state',
+      summary: 'Project environments remain isolated while desktop browsing, dictation, and terminal rendering recover reliably.',
+      items: [
+        'Terminal processes keep the user operating-system environment and Orkestrai bridge, but remove the desktop APP_KEY and every private variable loaded from the app runtime. Laravel encrypted records, cookies, and sessions therefore use the project .env and no longer fail with “The MAC is invalid”.',
+        'Portal login pop-ups now open in a sandboxed Orkestrai window with the same persistent session instead of escaping to the system browser. Cookies and storage are flushed to disk, and each Portal node restores its last navigated URL.',
+        'Dictation now records direct PCM through the same Web Audio path as the input meter, normalizes quiet speech, and clearly identifies a selected microphone that opened without producing signal.',
+        'Terminal font and pane geometry now settle before PTY reattachment, and ANSI history finishes replaying before the final redraw, keeping the xterm cursor aligned after navigating away from and back to Canvas.',
+      ],
+    },
     {
       date: 'Aug 23, 2026 · 0.18.0',
       title: 'Orkestrai 0.18.0: durable coordination, sourced knowledge, and reusable teams',

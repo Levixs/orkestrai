@@ -53,6 +53,11 @@
     isMainFrame?: boolean;
   };
 
+  type WebviewNavigation = Event & {
+    url?: string;
+    isMainFrame?: boolean;
+  };
+
   type AgentTarget = { id: string; title: string; role: string | null; maestro: boolean };
   type TaskTarget = { id: string; title: string; status: string; assigneeTitle: string | null };
   const NEW_TASK_DESTINATION = 'new-task';
@@ -63,6 +68,7 @@
   let frame: (PortalWebviewElement | HTMLIFrameElement) | null = $state(null);
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let retryTimer: ReturnType<typeof setInterval> | null = null;
+  let urlPersistTimer: ReturnType<typeof setTimeout> | null = null;
   let portalReady = $state(false);
   let portalError = $state('');
   let inspecting = $state(false);
@@ -141,6 +147,19 @@
     portalError = detail;
     if (inspecting) void cancelInspection();
     if (!retryTimer && targetUrl()) retryTimer = setInterval(retryLoad, 3_000);
+  }
+
+  function persistNavigatedUrl(event: Event) {
+    const navigation = event as WebviewNavigation;
+    if (navigation.isMainFrame === false) return;
+    const url = String(navigation.url ?? '').trim();
+    if (!/^https?:\/\//.test(url) || url === address) return;
+    address = url;
+    if (urlPersistTimer) clearTimeout(urlPersistTimer);
+    urlPersistTimer = setTimeout(() => {
+      urlPersistTimer = null;
+      data.onUrlChange?.(id, url);
+    }, 250);
   }
 
   function waitUntilReady(timeoutMs = 25_000): Promise<void> {
@@ -428,10 +447,14 @@
     };
     webview.addEventListener('did-finish-load', handleFinish);
     webview.addEventListener('did-fail-load', handleFailure);
+    webview.addEventListener('did-navigate', persistNavigatedUrl);
+    webview.addEventListener('did-navigate-in-page', persistNavigatedUrl);
     void verifyLoadedPage(webview);
     return () => {
       webview.removeEventListener('did-finish-load', handleFinish);
       webview.removeEventListener('did-fail-load', handleFailure);
+      webview.removeEventListener('did-navigate', persistNavigatedUrl);
+      webview.removeEventListener('did-navigate-in-page', persistNavigatedUrl);
     };
   });
 
@@ -440,6 +463,8 @@
     return () => {
       stopPolling();
       clearRetry();
+      if (urlPersistTimer) clearTimeout(urlPersistTimer);
+      urlPersistTimer = null;
       if (inspecting) void cancelInspection();
       for (const waiter of readyWaiters) {
         clearTimeout(waiter.timer);

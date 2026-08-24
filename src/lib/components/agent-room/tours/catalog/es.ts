@@ -128,7 +128,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'portal',
         title: 'El portal (navegador de los agentes)',
-        body: 'El portal es un navegador integrado que los agentes controlan. Creo uno apuntando a tu dev server — ajusta la URL después si no es localhost:5173.',
+        body: 'El portal es un navegador integrado que los agentes controlan. Creo uno apuntando a tu dev server — ajusta la URL después si no es localhost:5173. Los pop-ups de login permanecen en una ventana aislada de Orkestrai con la misma sesión persistente, y el nodo restaura la última página navegada después de reiniciar.',
         action: { kind: 'createPortal', url: 'http://localhost:5173', title: 'Portal App' },
         check: { kind: 'nodeExists', nodeType: 'portal' },
       },
@@ -654,7 +654,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'recover',
         title: 'Recupérate sin adivinar',
-        body: 'Si se desconecta el dispositivo elegido, Orkestrai vuelve al predeterminado del sistema. Los errores distinguen permiso, hardware ausente, interrupción y probable contención por el único micrófono.',
+        body: 'El dictado captura PCM directo por la misma ruta Web Audio del medidor y normaliza localmente la voz baja. Si se desconecta el dispositivo elegido, Orkestrai vuelve al predeterminado del sistema. Los errores distinguen permiso, hardware ausente, interrupción, probable contención y un micrófono que se abre sin producir señal.',
       },
     ],
   },
@@ -952,7 +952,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'switch-view',
         title: 'Cambia la vista',
-        body: 'Usa Canvas/Workbench en la esquina superior izquierda o abre Workbench desde el menú Workspace. Los agentes permanecen en las mismas sesiones mientras cambias de modo.',
+        body: 'Usa Canvas/Workbench en la esquina superior izquierda o abre Workbench desde el menú Workspace. Los agentes permanecen en las mismas sesiones mientras cambias de modo; las métricas de fuente se estabilizan antes de volver a adjuntar la PTY para mantener el cursor alineado después de visitar Configuración o documentación.',
       },
       {
         id: 'choose-item',
