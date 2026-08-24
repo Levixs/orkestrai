@@ -703,8 +703,8 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Próxima versão',
-      title: 'Contas, status, identidade dos providers e roteamento mais claro',
+      date: '24 ago 2026 · 0.19.0',
+      title: 'Orkestrai 0.19.0: contas, status, identidade dos providers e roteamento mais claro',
       summary: 'Ficou mais fácil identificar, monitorar e rotear providers entre várias contas, com novo tema de terminal e um nó de Uso realmente utilizável.',
       items: [
         'Uso e roteamento agora abre num tamanho inicial útil, mostra o Roteamento do líder antes dos providers, reorganiza controles em larguras estreitas e contém a rolagem por mouse, trackpad, toque e teclado sem ampliar o canvas.',

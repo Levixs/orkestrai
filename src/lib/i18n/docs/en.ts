@@ -699,8 +699,8 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Next release',
-      title: 'Provider accounts, status, identity, and clearer routing',
+      date: 'Aug 24, 2026 · 0.19.0',
+      title: 'Orkestrai 0.19.0: provider accounts, status, identity, and clearer routing',
       summary: 'Providers are easier to identify, monitor, and route across multiple accounts, with a new terminal theme and a usable Usage node.',
       items: [
         'Usage and routing now opens at a useful default size, shows Leader routing before provider details, wraps controls at narrow widths, and contains mouse, trackpad, touch, and keyboard scrolling without zooming the canvas.',
