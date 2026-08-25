@@ -5,6 +5,17 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.22.0 - 2026-08-25
+
+### Added
+
+- Portal now has a responsiveness toolbar, similar to a browser's device
+  mode: pick a device preset (iPhone, Pixel, iPad, laptop, desktop) or type
+  an exact width/height, rotate orientation, or turn it off to fill the node
+  again. The page's real viewport changes to that size, so its own
+  responsive CSS reacts normally; when the emulated size is larger than the
+  node, Portal scrolls to it rather than scaling or distorting the page.
+
 ## 0.21.0 - 2026-08-25
 
 ### Added
