@@ -5,6 +5,17 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.0 - 2026-08-24
+
+### Added
+
+- Manually added MCP servers and installed skills now propagate to every
+  provider's native config format (Cursor, Cline, Devin, Antigravity, and
+  OpenCode), not just the Claude/Kimi `.mcp.json` file, so a server or skill
+  added to a workspace actually reaches whichever provider that workspace is
+  configured to run. The MCP sections in Provider Center and the Skills page
+  now use the official Model Context Protocol mark instead of a generic icon.
+
 ## 0.19.0 - 2026-08-24
 
 ### Added

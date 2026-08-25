@@ -699,6 +699,15 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: 'Aug 24, 2026 · 0.20.0',
+      title: 'Orkestrai 0.20.0: MCP servers and skills reach every provider',
+      summary: 'A manually added MCP server or installed skill now reaches whichever provider the workspace actually runs, not just Claude and Kimi.',
+      items: [
+        'MCP servers and skills added or installed on a workspace now propagate to Cursor, Cline, Devin, Antigravity, and OpenCode’s native config formats, matching the same providers the built-in Orkestrai bridge already covers.',
+        'The MCP sections in Provider Center and the Skills page now show the official Model Context Protocol mark instead of a generic plug icon.',
+      ],
+    },
+    {
       date: 'Aug 24, 2026 · 0.19.0',
       title: 'Orkestrai 0.19.0: provider accounts, status, identity, and clearer routing',
       summary: 'Providers are easier to identify, monitor, and route across multiple accounts, with a new terminal theme and a usable Usage node.',

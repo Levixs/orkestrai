@@ -703,6 +703,15 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: '24 ago 2026 · 0.20.0',
+      title: 'Orkestrai 0.20.0: servidores MCP e skills chegam em todo provider',
+      summary: 'Um servidor MCP adicionado à mão ou uma skill instalada agora chega no provider que o workspace realmente roda, não só Claude e Kimi.',
+      items: [
+        'Servidores MCP e skills adicionados a um workspace agora se propagam para os formatos nativos de Cursor, Cline, Devin, Antigravity e OpenCode, os mesmos providers que a ponte embutida do Orkestrai já cobre.',
+        'As seções de MCP no Central de Providers e na página de Skills agora usam a marca oficial do Model Context Protocol em vez de um ícone genérico de plugue.',
+      ],
+    },
+    {
       date: '24 ago 2026 · 0.19.0',
       title: 'Orkestrai 0.19.0: contas, status, identidade dos providers e roteamento mais claro',
       summary: 'Ficou mais fácil identificar, monitorar e rotear providers entre várias contas, com novo tema de terminal e um nó de Uso realmente utilizável.',

@@ -6,6 +6,13 @@ import { workspaceRepository } from '../../infrastructure/repositories/Workspace
 const SKILLS_SH_BASE = 'https://skills.sh';
 const FETCH_TIMEOUT_MS = 15_000;
 
+/**
+ * Diretorios de skills convencionais dos agentes — o mesmo conjunto que a
+ * ponte usa para a skill "orkestrai" (menos ".orkestrai/", que é o fallback
+ * portavel sem convencao de skill por diretorio).
+ */
+const SKILL_DIRS = ['.claude/skills', '.cline/skills', '.devin/skills', '.agents/skills'] as const;
+
 export type SkillSearchResult = {
   /** "<owner>/<repo>/<skillId>" */
   id: string;
@@ -25,8 +32,8 @@ type DownloadedSkillFile = { path: string; contents: string };
 
 /**
  * Marketplace de skills do skills.sh: busca no registry publico e instala
- * nos diretorios convencionais dos agentes (.claude/skills e .agents/skills)
- * do workspace. Nada vai no pacote do app — tudo sob demanda.
+ * nos diretorios convencionais dos agentes (SKILL_DIRS) do workspace. Nada
+ * vai no pacote do app — tudo sob demanda.
  */
 export class SkillMarketService {
   constructor(private readonly fetchFn: typeof fetch = fetch) {}
@@ -79,7 +86,7 @@ export class SkillMarketService {
       throw new Error('Skill sem SKILL.md no registry.');
     }
 
-    for (const base of ['.claude/skills', '.agents/skills']) {
+    for (const base of SKILL_DIRS) {
       const target = resolve(workspace.workingDir, base, skillId);
       rmSync(target, { recursive: true, force: true });
       for (const file of files) {
@@ -100,7 +107,7 @@ export class SkillMarketService {
   async uninstall(workspaceId: string, skillId: string): Promise<{ removed: boolean }> {
     const workspace = await this.requireWorkspace(workspaceId);
     if (!/^[\w.-]+$/.test(skillId)) throw new Error('skillId invalido.');
-    for (const base of ['.claude/skills', '.agents/skills']) {
+    for (const base of SKILL_DIRS) {
       rmSync(resolve(workspace.workingDir, base, skillId), { recursive: true, force: true });
     }
     return { removed: true };
@@ -119,7 +126,7 @@ export class SkillMarketService {
       if (!existsSync(gitDir)) return;
       const excludePath = resolve(gitDir, 'info', 'exclude');
       const current = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
-      const additions = [`.claude/skills/${skillId}/`, `.agents/skills/${skillId}/`].filter((entry) => !current.includes(entry));
+      const additions = SKILL_DIRS.map((base) => `${base}/${skillId}/`).filter((entry) => !current.includes(entry));
       if (!additions.length) return;
       mkdirSync(resolve(gitDir, 'info'), { recursive: true });
       writeFileSync(excludePath, `${current.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
