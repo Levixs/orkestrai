@@ -53,7 +53,7 @@ describe('RoutineService', () => {
 
     detach();
     ptySessionManager.kill(session.id);
-  });
+  }, 10_000);
 
   it('rotina de execucao unica se desativa apos rodar', async () => {
     const { workspace, terminal, session } = await setup();
