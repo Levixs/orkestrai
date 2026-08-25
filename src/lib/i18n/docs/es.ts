@@ -23,7 +23,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: crear, nombrar, modelo y esfuerzo',
-      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después, el menú compacto del encabezado reúne cambio de provider y perfil, rol, una selección visual de 11 temas ANSI, recarga con contexto, Modo Maestro y eliminación; el título sigue siendo editable con doble clic. Cambiar el provider conserva conexiones, rol, piso y posición, cierra la conversación anterior e inicia una sesión limpia.`,
+      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después, el menú compacto del encabezado reúne cambio de provider y perfil, rol, una selección visual de 15 temas ANSI, recarga con contexto, Modo Maestro y eliminación; el título sigue siendo editable con doble clic. Cambiar el provider conserva conexiones, rol, piso y posición, cierra la conversación anterior e inicia una sesión limpia.`,
     },
     {
       id: 'provider-center',
@@ -698,6 +698,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '24 ago 2026 · 0.20.4',
+      title: 'Orkestrai 0.20.4: 4 temas de terminal nuevos',
+      summary: 'Monokai, Ayu Dark, Rosé Pine y Solarized Light se suman al selector de tema de la terminal, llegando a 15 en total.',
+      items: [
+        'Se agregaron Monokai, Ayu Dark, Rosé Pine y Solarized Light como temas ANSI de terminal.',
+      ],
+    },
     {
       date: '24 ago 2026 · 0.20.3',
       title: 'Orkestrai 0.20.3: míralo antes de elegirlo',

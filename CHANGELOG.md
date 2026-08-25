@@ -5,6 +5,13 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.4 - 2026-08-24
+
+### Added
+
+- Added 4 new terminal ANSI themes — Monokai, Ayu Dark, Rosé Pine, and
+  Solarized Light — bringing the total to 15.
+
 ## 0.20.3 - 2026-08-24
 
 ### Added

@@ -986,7 +986,7 @@ export const TOURS_PT: Tour[] = [
       {
         id: 'terminal-options',
         title: 'Organize as opções do terminal',
-        body: 'Abra o menu de reticências no cabeçalho para trocar provider, role ou escolher visualmente um dos 11 temas ANSI, além de recarregar, alternar Modo Maestro ou remover o terminal.',
+        body: 'Abra o menu de reticências no cabeçalho para trocar provider, role ou escolher visualmente um dos 15 temas ANSI, além de recarregar, alternar Modo Maestro ou remover o terminal.',
       },
       {
         id: 'dictate-to-leader',
