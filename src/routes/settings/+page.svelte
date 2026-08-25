@@ -444,7 +444,11 @@
 
     <div
       class="terminal-preview"
-      style={`background:${previewTheme.background};color:${previewTheme.foreground};font-family:${settings.terminalFontFamily || 'ui-monospace, Menlo, monospace'};font-size:${settings.terminalFontSize || 13}px;padding:${settings.terminalPadding ?? 8}px`}
+      style:background={previewTheme.background}
+      style:color={previewTheme.foreground}
+      style:font-family={settings.terminalFontFamily || 'ui-monospace, Menlo, monospace'}
+      style:font-size={`${settings.terminalFontSize || 13}px`}
+      style:padding={`${settings.terminalPadding ?? 8}px`}
     >
       <div><span style={`color:${previewTheme.green}`}>➜</span> <span style={`color:${previewTheme.blue}`}>~/orkestrai</span> npm run dev</div>
       <div><span style={`color:${previewTheme.yellow}`}>warn</span> {m['settings.preview_sample_warn']()}</div>
@@ -731,7 +735,7 @@
           <kbd>
             {#each shortcutSegments(keys) as segment, i (i)}
               {#if i > 0}<span aria-hidden="true">+</span>{/if}
-              {#if segment === '⌘'}<Command size={10} class="inline-block align-[-1px]" aria-label="Command" />{:else}{segment}{/if}
+              {#if segment === '⌘'}<Command size={10} class="inline-block align-[-1px]" aria-label={m['settings.shortcut_command_key']()} />{:else}{segment}{/if}
             {/each}
           </kbd>
           <span class="shortcut-desc">{description}</span>

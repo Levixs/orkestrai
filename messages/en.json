@@ -17,6 +17,7 @@
   "settings.padding": "Padding",
   "settings.preview_sample_warn": "3 packages have available updates",
   "settings.preview_sample_error": "Build failed: missing dependency",
+  "settings.shortcut_command_key": "Command",
   "settings.terminal_width": "Terminal width (px)",
   "settings.terminal_height": "Terminal height (px)",
   "settings.note_width": "Note width (px)",
