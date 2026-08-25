@@ -21,11 +21,14 @@ test.describe('Portal Design Mode', () => {
 
     try {
       await request.put('/api/agent-room/settings', {
-        data: { ...originalSettings, uiLanguage: 'en' },
+        data: { ...originalSettings, uiLanguage: 'en', appTheme: 'orkestrai-light' },
       });
       await page.goto(`/canvas?workspace=${workspace.id}&node=${portal.id}`);
       const portalNode = page.locator('.canvas-portal');
       await expect(portalNode).toBeVisible();
+      await expect(portalNode.locator('.portal-navigation')).toHaveCSS('background-color', 'rgb(242, 244, 245)');
+      await expect(portalNode.locator('.portal-address')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await expect(portalNode.locator('.portal-body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
       await expect(portalNode.locator('.portal-name')).toHaveText('Design preview');
       await expect(portalNode.locator('.portal-address')).toHaveValue('http://127.0.0.1:5199/docs');
       await portalNode.getByRole('button', { name: 'Rename portal' }).click();
