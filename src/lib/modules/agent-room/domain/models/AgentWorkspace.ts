@@ -17,10 +17,13 @@ export class AgentWorkspace extends Model {
     'sync_agent_instruction_files',
     'bridge_token',
     'hooks_json',
+    'group_id',
+    'position',
   ];
 
   static casts = {
     sync_agent_instruction_files: 'boolean' as const,
+    position: 'number' as const,
     created_at: 'date' as const,
     updated_at: 'date' as const,
   };
@@ -35,6 +38,8 @@ export class AgentWorkspace extends Model {
   declare instructions: string | null;
   declare sync_agent_instruction_files: boolean;
   declare hooks_json: string | null;
+  declare group_id: string | null;
+  declare position: number;
   declare created_at: Date;
   declare updated_at: Date;
 }

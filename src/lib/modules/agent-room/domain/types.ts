@@ -603,6 +603,20 @@ export type Workspace = {
   syncAgentInstructionFiles: boolean;
   /** Hooks de ciclo de vida de andares (setup/run/teardown). */
   hooks: WorkspaceHooks;
+  /** Pasta na barra lateral (null = raiz). */
+  groupId: string | null;
+  /** Posicao dentro da pasta (ou da raiz), para ordenacao estavel. */
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Pasta para organizar workspaces na barra lateral — pode aninhar dentro de outra pasta (parentId), formando uma arvore. */
+export type WorkspaceGroup = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  position: number;
   createdAt: string;
   updatedAt: string;
 };

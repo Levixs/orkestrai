@@ -16,6 +16,11 @@ export const DOCS_EN: DocsCatalog = {
       body: `A workspace = a team on a project: working directory, icon and canvas layout saved. Create it with the + button in the sidebar. Several workspaces run at the same time — agents stay alive in the background when you switch. Instructions in AGENTS.md/CLAUDE.md are injected into the agents (edit with the pencil next to the name). The ⏻ button (Unload) shuts down the live terminals of the active workspace — frees memory/CPU without deleting anything: the layout stays saved and each agent resumes the conversation when the terminal reopens. On macOS, projects in Downloads, Documents, or Desktop require system consent; if access expires, Canvas and Workbench show Authorize folder so you can select the same directory again and continue without restarting the app.`,
     },
     {
+      id: 'workspace-folders',
+      title: 'Organize workspaces into folders',
+      body: `Group workspaces into folders in the sidebar once you have several projects (per client, per team, per environment). Type a name in "New folder" at the bottom of the list to create one at the root; drag a workspace onto a folder's header to file it there, or drag it onto empty space in the list to send it back to the root. Folders nest inside other folders the same way — drag one folder onto another to make it a subfolder; a folder can never be dropped into itself or into one of its own subfolders. Double-click a folder's name or use its pencil icon to rename it, and each folder remembers whether it's collapsed across restarts. Deleting a folder (trash icon, with confirmation) is never destructive: every workspace and subfolder inside it moves up to the root instead of being removed.`,
+    },
+    {
       id: 'wsl-runtime',
       title: 'Windows workspaces with WSL',
       body: `On Windows, the environment selected when creating or editing a workspace is the team default. Each terminal can inherit it or use Execution environment in the creation dialog and compact terminal menu to force native Windows or one specific WSL distribution. Select the exact Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian, or other installation and provide the Linux path for the same project folder. A single workspace can therefore combine Windows and WSL agents, including different distributions. A WIN or WSL badge identifies an override. Provider detection and models, PTY, exact conversation resume, Council, recruited agents, and the orkestrai bridge follow each terminal's effective runtime. Maestro recruits inherit the leader's active Floor and are confirmed only after the PTY starts in the correct environment; a failed launch removes the incomplete node. When a task is assigned, Orkestrai starts or resumes an offline agent and moves the card to In progress only after the complete briefing is delivered. Orkestrai validates the CLI in that distribution and confirms the provider transcript inside its own Linux home before persisting or restoring an id; an empty agent starts clean instead of guessing the latest conversation. Changing runtime restarts only that terminal. Missing distributions, directories, or commands produce distinct actionable errors without a silent native-Windows fallback.`,
@@ -698,6 +703,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 25, 2026 · 0.21.0',
+      title: 'Orkestrai 0.21.0: organize workspaces into folders',
+      summary: 'Group workspaces into nested folders in the Canvas sidebar — drag to file, nest, or send back to the root.',
+      items: [
+        'Added nested folders in the Canvas sidebar to organize workspaces. Create one from the sidebar, drag a workspace onto its header to file it, drag a folder onto another to nest it, and rename or delete folders without ever losing what is inside them.',
+      ],
+    },
     {
       date: 'Aug 25, 2026 · 0.20.6',
       title: 'Orkestrai 0.20.6: accurate text selection at any Canvas zoom',

@@ -53,6 +53,8 @@ function mapWorkspace(model: AgentWorkspace): Workspace {
     instructions: model.getAttribute('instructions'),
     syncAgentInstructionFiles: Boolean(model.getAttribute('sync_agent_instruction_files')),
     hooks: parseJsonObject(model.getAttribute('hooks_json') as string | null),
+    groupId: model.getAttribute('group_id') ?? null,
+    position: Number(model.getAttribute('position') ?? 0),
     createdAt: toIso(model.getAttribute('created_at')),
     updatedAt: toIso(model.getAttribute('updated_at')),
   };
@@ -140,8 +142,37 @@ export class WorkspaceRepository {
       instructions: input.instructions ?? null,
       sync_agent_instruction_files: input.syncAgentInstructionFiles ?? false,
       hooks_json: JSON.stringify(input.hooks ?? {}),
+      group_id: null,
+      position: await this.nextWorkspacePosition(null),
     });
     return mapWorkspace(model);
+  }
+
+  /** Proxima posicao livre no fim da pasta (ou da raiz, se groupId for null). */
+  private async nextWorkspacePosition(groupId: string | null): Promise<number> {
+    const siblings = groupId === null
+      ? await AgentWorkspace.query().whereNull('group_id').get()
+      : await AgentWorkspace.query().where('group_id', groupId).get();
+    return siblings.length;
+  }
+
+  /** Move um workspace para outra pasta (ou a raiz) e/ou reordena dentro dela. */
+  async moveWorkspace(id: string, input: { groupId: string | null; position: number }): Promise<Workspace | null> {
+    const model = await AgentWorkspace.find(id);
+    if (!model) return null;
+    await model.update({ group_id: input.groupId, position: input.position });
+    return this.getWorkspace(id);
+  }
+
+  /**
+   * Manda os workspaces de uma pasta apagada para a raiz. Feito explicitamente
+   * (nao via ON DELETE do banco): o schema builder do Svelar so grava a
+   * clausula FOREIGN KEY em CREATE TABLE, nao em ALTER TABLE ADD COLUMN — o
+   * onDelete('set null') da migracao que adiciona group_id nunca chega a
+   * virar SQL de verdade.
+   */
+  async clearWorkspaceGroup(groupId: string): Promise<void> {
+    await AgentWorkspace.query().where('group_id', groupId).update({ group_id: null });
   }
 
   async updateWorkspace(

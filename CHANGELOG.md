@@ -5,6 +5,18 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.21.0 - 2026-08-25
+
+### Added
+
+- Workspaces can now be organized into nested folders in the Canvas sidebar.
+  Create a folder from the sidebar, drag a workspace onto its header to file
+  it there (or onto empty space to send it back to the root), and drag one
+  folder onto another to nest it — a folder can never be moved inside itself
+  or one of its own subfolders. Deleting a folder is never destructive:
+  workspaces and subfolders inside it move up to the root instead of being
+  removed.
+
 ## 0.20.6 - 2026-08-25
 
 ### Fixed

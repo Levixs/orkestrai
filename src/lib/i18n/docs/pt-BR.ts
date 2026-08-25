@@ -20,6 +20,11 @@ export const DOCS_PT: DocsCatalog = {
       body: `Um workspace = uma equipe num projeto: diretório de trabalho, ícone e layout do canvas salvos. Crie com o botão + na barra lateral. Vários workspaces rodam ao mesmo tempo — os agentes continuam vivos em background ao trocar. Instruções em AGENTS.md/CLAUDE.md são injetadas nos agentes (edite no lápis ao lado do nome). O botão ⏻ (Descarregar) encerra os terminais vivos do workspace ativo — libera memória/CPU sem apagar nada: o layout fica salvo e cada agente retoma a conversa ao reabrir o terminal. No macOS, projetos em Downloads, Documentos ou Mesa exigem consentimento do sistema; se o acesso expirar, o Canvas e o Workbench mostram Autorizar pasta para selecionar novamente o mesmo diretório e continuar sem reiniciar o app.`,
     },
     {
+      id: 'workspace-folders',
+      title: 'Organize workspaces em pastas',
+      body: `Agrupe workspaces em pastas na barra lateral quando tiver vários projetos (por cliente, por time, por ambiente). Digite um nome em "Nova pasta" no fim da lista pra criar uma na raiz; arraste um workspace pro cabeçalho de uma pasta pra guardá-lo lá, ou arraste pro espaço vazio da lista pra mandar de volta pra raiz. Pastas aninham dentro de outras pastas do mesmo jeito — arraste uma pasta sobre outra pra transformá-la em subpasta; uma pasta nunca pode ser solta dentro dela mesma ou de uma subpasta sua. Dê duplo-clique no nome da pasta ou use o ícone de lápis pra renomear, e cada pasta lembra se está recolhida entre reinícios. Apagar uma pasta (ícone de lixeira, com confirmação) nunca é destrutivo: todo workspace e subpasta dentro dela sobe pra raiz em vez de ser removido.`,
+    },
+    {
       id: 'wsl-runtime',
       title: 'Workspaces Windows com WSL',
       body: `No Windows, o ambiente escolhido ao criar ou editar o workspace é o padrão do time. Cada terminal pode herdá-lo ou, no diálogo de criação e no menu compacto do terminal, escolher Ambiente de execução para forçar Windows nativo ou uma distribuição WSL específica. Selecione exatamente Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian ou outra instalação e informe o caminho Linux da mesma pasta do projeto. Assim, um único workspace pode combinar agentes Windows e WSL, inclusive distribuições diferentes. O badge WIN ou WSL identifica uma sobrescrita. Detecção e modelos do provider, PTY, retomada exata da conversa, Council, agentes recrutados e a ponte orkestrai seguem o runtime efetivo de cada terminal. Recrutas do Maestro herdam o andar ativo do líder e só são confirmados depois que a PTY inicia no ambiente correto; uma falha remove o nó incompleto. Ao atribuir uma tarefa, o Orkestrai inicia ou retoma um agente offline e só move o cartão para Fazendo depois de entregar o briefing completo. O Orkestrai valida a CLI naquela distribuição e confirma o transcript do provider dentro da home Linux correspondente antes de persistir ou restaurar um id; um agente vazio começa limpo em vez de adivinhar a conversa mais recente. Trocar o runtime reinicia somente aquele terminal. Distribuição, diretório ou comando ausente gera erros distintos e acionáveis, sem fallback silencioso para Windows nativo.`,
@@ -702,6 +707,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '25 ago 2026 · 0.21.0',
+      title: 'Orkestrai 0.21.0: organize workspaces em pastas',
+      summary: 'Agrupe workspaces em pastas aninhadas na barra lateral do Canvas — arraste pra guardar, aninhar ou mandar de volta pra raiz.',
+      items: [
+        'Adicionadas pastas aninhadas na barra lateral do Canvas pra organizar workspaces. Crie uma pela barra lateral, arraste um workspace pro cabeçalho dela pra guardá-lo, arraste uma pasta sobre outra pra aninhar, e renomeie ou apague pastas sem nunca perder o que tem dentro.',
+      ],
+    },
     {
       date: '25 ago 2026 · 0.20.6',
       title: 'Orkestrai 0.20.6: seleção de texto precisa em qualquer zoom do Canvas',

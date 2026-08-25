@@ -1557,4 +1557,16 @@ export const TOURS_EN: Tour[] = [
       },
     ],
   },
+  {
+    id: 'workspace-folders',
+    icon: 'FolderTree',
+    title: 'Organize workspaces into folders',
+    tagline: 'Group projects by client, team, or environment in the sidebar.',
+    steps: [
+      { id: 'open-canvas-sidebar', title: 'Open the sidebar', body: 'Expand the Canvas sidebar (the panel toggle in its header) to see the full workspace list.', action: { kind: 'openPage', path: '/canvas?workspace={workspace}' } },
+      { id: 'create-workspace-folder', title: 'Create a folder', body: 'Type a name in New folder at the bottom of the list and confirm. It appears at the root, ready to receive workspaces.' },
+      { id: 'file-workspace-into-folder', title: 'File a workspace into it', body: 'Drag any workspace onto the folder header to move it there; drag it onto empty space in the list to send it back to the root.' },
+      { id: 'nest-workspace-folders', title: 'Nest and manage folders', body: 'Drag one folder onto another to make it a subfolder. Rename with the pencil icon or a double-click, and delete with the trash icon: workspaces and subfolders inside always move up to the root instead of being removed.' },
+    ],
+  },
 ];

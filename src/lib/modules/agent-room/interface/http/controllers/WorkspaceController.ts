@@ -3,6 +3,9 @@ import { workspaceService } from '$lib/modules/agent-room/application/services/W
 import { workspaceRepository } from '$lib/modules/agent-room/infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/PtySessionManager.ts';
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
+import { MoveWorkspaceDto } from '$lib/modules/agent-room/application/dto/WorkspaceGroupDto.js';
+import { WorkspaceGroupError, workspaceGroupService } from '$lib/modules/agent-room/application/services/WorkspaceGroupService.js';
+import { MoveWorkspaceRequest } from '$lib/modules/agent-room/interface/http/requests/WorkspaceGroupRequests.js';
 import {
   CreateCanvasEdgeDto,
   ChangeTerminalProviderDto,
@@ -61,6 +64,20 @@ export class WorkspaceController extends Controller {
       return this.json({ data: await workspaceService.remove(event.params.id) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao apagar workspace.');
+    }
+  }
+
+  /** Move o workspace para outra pasta da barra lateral (ou a raiz). */
+  async moveWorkspace(event: any) {
+    try {
+      const input = await MoveWorkspaceRequest.validate(event);
+      await workspaceGroupService.moveWorkspace(event.params.id, MoveWorkspaceDto.from(input).groupId);
+      return this.json({ data: await workspaceService.get(event.params.id) });
+    } catch (error) {
+      return this.json(
+        { error: error instanceof WorkspaceGroupError ? error.code : 'workspace_move_failed' },
+        400,
+      );
     }
   }
 
