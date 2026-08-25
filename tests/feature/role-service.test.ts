@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useSvelarTest } from '@beeblock/svelar/testing';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { roleService } from '$lib/modules/agent-room/application/services/RoleService.js';
@@ -10,6 +10,67 @@ import { ptySessionManager } from '$lib/modules/agent-room/infrastructure/pty/Pt
 
 describe('RoleService', () => {
   useSvelarTest({ refreshDatabase: true });
+
+  it('discovers validated roles from a selected folder without overwriting existing slugs', async () => {
+    const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-role-target-'));
+    const sourceDir = mkdtempSync(join(tmpdir(), 'orkestrai-role-source-'));
+    const rolesDir = join(sourceDir, '.orkestrai', 'roles');
+    const workspace = await workspaceRepository.createWorkspace({ name: 'role import', workingDir });
+    await roleService.save(workspace.id, {
+      name: 'Architecture reviewer',
+      color: '#123456',
+      prompt: 'Keep this local role.',
+    });
+
+    mkdirSync(join(rolesDir, 'shared-name'), { recursive: true });
+    writeFileSync(join(rolesDir, 'shared-name', 'role.json'), JSON.stringify({
+      name: 'Architecture reviewer',
+      color: '#ffffff',
+      prompt: 'This must not overwrite the existing role.',
+    }));
+    mkdirSync(join(rolesDir, 'qa'), { recursive: true });
+    writeFileSync(join(rolesDir, 'qa', 'role.json'), JSON.stringify({
+      name: 'QA lead',
+      color: '#abcdef',
+      prompt: 'Test every user-visible flow.',
+    }));
+
+    const result = await roleService.discover(workspace.id, sourceDir);
+
+    expect(result.imported).toBe(1);
+    expect(await roleService.get(workspace.id, 'QA lead')).toMatchObject({
+      color: '#abcdef',
+      prompt: 'Test every user-visible flow.',
+    });
+    expect(await roleService.get(workspace.id, 'Architecture reviewer')).toMatchObject({
+      color: '#123456',
+      prompt: 'Keep this local role.',
+    });
+  });
+
+  it('rejects relative discovery paths and ignores unsafe role files', async () => {
+    const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-role-safe-target-'));
+    const sourceDir = mkdtempSync(join(tmpdir(), 'orkestrai-role-safe-source-'));
+    const rolesDir = join(sourceDir, '.orkestrai', 'roles');
+    const workspace = await workspaceRepository.createWorkspace({ name: 'safe role import', workingDir });
+
+    mkdirSync(join(rolesDir, 'invalid-color'), { recursive: true });
+    writeFileSync(join(rolesDir, 'invalid-color', 'role.json'), JSON.stringify({
+      name: 'Injected role',
+      color: 'url(javascript:alert(1))',
+      prompt: 'Unsafe display data.',
+    }));
+    mkdirSync(join(rolesDir, 'oversized'), { recursive: true });
+    writeFileSync(join(rolesDir, 'oversized', 'role.json'), JSON.stringify({
+      name: 'Oversized role',
+      color: '#123456',
+      prompt: 'x'.repeat(260 * 1024),
+    }));
+
+    await expect(roleService.discover(workspace.id, 'relative/path')).rejects.toThrow('absoluto');
+    expect(await roleService.discover(workspace.id, sourceDir)).toMatchObject({ imported: 0, roles: [] });
+    expect(await roleService.list(workspace.id)).toEqual([]);
+  });
 
   it('gera frontmatter valido para Kimi e repara arquivos antigos no launch', async () => {
     const workingDir = mkdtempSync(join(tmpdir(), 'orkestrai-role-'));

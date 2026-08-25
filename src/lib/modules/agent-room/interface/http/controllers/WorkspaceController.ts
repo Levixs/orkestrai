@@ -22,6 +22,7 @@ import {
   ChangeTerminalRuntimeRequest,
   CreateCanvasNodeRequest,
   CreateWorkspaceRequest,
+  DiscoverRolesRequest,
   UpdateCanvasEdgeRequest,
   UpdateCanvasNodeRequest,
   UpdateWorkspaceRequest,
@@ -293,7 +294,8 @@ export class WorkspaceController extends Controller {
 
   async discoverRoles(event: any) {
     try {
-      return this.json({ data: await roleService.discover(event.params.id) });
+      const input = await DiscoverRolesRequest.validate(event);
+      return this.json({ data: await roleService.discover(event.params.id, input.fromDir) });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao descobrir responsabilidades.');
     }

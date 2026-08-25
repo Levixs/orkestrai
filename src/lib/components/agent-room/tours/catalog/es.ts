@@ -317,6 +317,29 @@ export const TOURS_ES: Tour[] = [
     ],
   },
   {
+    id: 'portable-role-library',
+    icon: 'Layers',
+    title: 'Reutiliza un rol de otro proyecto',
+    tagline: 'Trae instrucciones especialistas ya comprobadas a este workspace de forma segura.',
+    steps: [
+      {
+        id: 'open-roles',
+        title: 'Abre Roles',
+        body: 'Abre Roles en la barra del Canvas y entra en la pestaña Workspace para ver los roles ya instalados aquí.',
+      },
+      {
+        id: 'choose-folder',
+        title: 'Elige el proyecto de origen',
+        body: 'Selecciona "Descubrir en otra carpeta..." y elige el proyecto cuyo directorio .orkestrai/roles contiene las instrucciones especialistas.',
+      },
+      {
+        id: 'review-import',
+        title: 'Revisa los roles importados',
+        body: 'Solo se añaden roles nuevos y válidos. Los nombres existentes permanecen intactos; abre un rol importado antes de asignarlo a un agente.',
+      },
+    ],
+  },
+  {
     id: 'pipeline-aprovacao',
     icon: 'Workflow',
     title: 'Pipeline escribe → revisa → aprueba',

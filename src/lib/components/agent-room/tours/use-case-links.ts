@@ -18,6 +18,7 @@ export const USE_CASE_TOUR_IDS: Record<string, string> = {
   'deploy-sentinel': 'sentinela-deploy',
   'automate-workspace': 'workspace-automations',
   'framework-preset': 'preset-bootstrap',
+  'portable-role-library': 'portable-role-library',
   'custom-workflow': 'custom-board-stages',
   'campaign-launch': 'campaign-ready-team',
   'orkestrai-contributing': 'orkestrai-consensus-team',

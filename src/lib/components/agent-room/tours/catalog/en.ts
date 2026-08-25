@@ -317,6 +317,29 @@ export const TOURS_EN: Tour[] = [
     ],
   },
   {
+    id: 'portable-role-library',
+    icon: 'Layers',
+    title: 'Reuse a role from another project',
+    tagline: 'Bring proven specialist instructions into this workspace safely.',
+    steps: [
+      {
+        id: 'open-roles',
+        title: 'Open Roles',
+        body: 'Open Roles from the Canvas toolbar and switch to the Workspace tab to see the roles already installed here.',
+      },
+      {
+        id: 'choose-folder',
+        title: 'Choose the source project',
+        body: 'Select "Discover from another folder..." and choose the project whose .orkestrai/roles directory contains the specialist instructions.',
+      },
+      {
+        id: 'review-import',
+        title: 'Review the imported roles',
+        body: 'Only valid new roles are added. Existing names stay untouched; open an imported role before assigning it to an agent.',
+      },
+    ],
+  },
+  {
     id: 'pipeline-aprovacao',
     icon: 'Workflow',
     title: 'Write → review → approve pipeline',

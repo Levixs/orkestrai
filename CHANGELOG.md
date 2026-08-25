@@ -5,6 +5,19 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.21.0 - 2026-08-25
+
+### Added
+
+- Roles can now be discovered from any folder, not only the workspace's own
+  working directory: a new "Discover from another folder..." button next to
+  the existing repository discovery opens a native folder picker and imports
+  any `role.json` found under `.orkestrai/roles/` there, so a role built in
+  one project can be reused from an unrelated one without copying files by
+  hand.
+- Imported role files are bounded and validated before persistence, stay inside
+  the selected project, and never overwrite an existing workspace role.
+
 ## 0.20.1 - 2026-08-25
 
 ### Fixed
