@@ -699,6 +699,15 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: '24 ago 2026 · 0.20.3',
+      title: 'Orkestrai 0.20.3: míralo antes de elegirlo',
+      summary: 'Configuración ahora muestra una vista previa en vivo del tema y la fuente de la terminal, y los atajos muestran la tecla modificadora correcta para tu SO.',
+      items: [
+        'El selector de tema de la terminal muestra una muestra de colores por opción y un panel de vista previa en vivo con el tema, fuente y padding elegidos.',
+        'Los atajos de teclado en Configuración ahora muestran ⌘ en macOS o "Ctrl" en el resto, en lugar de siempre "Cmd/Ctrl".',
+      ],
+    },
+    {
       date: '24 ago 2026 · 0.20.2',
       title: 'Orkestrai 0.20.2: una lista predeterminada real de skills',
       summary: 'La pestaña de Skills ya no simula una búsqueda de "agent" al cargar — ahora muestra una lista curada de skills populares, como ya hacía MCP.',

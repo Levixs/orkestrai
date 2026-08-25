@@ -5,6 +5,15 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.3 - 2026-08-24
+
+### Added
+
+- Settings now shows a live preview of the selected terminal theme, font, and
+  padding (with color swatches on each theme option), and keyboard shortcuts
+  display the correct modifier for your OS — the ⌘ symbol on macOS, "Ctrl"
+  everywhere else — instead of always showing "Cmd/Ctrl".
+
 ## 0.20.2 - 2026-08-24
 
 ### Fixed

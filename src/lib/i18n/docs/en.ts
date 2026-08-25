@@ -699,6 +699,15 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: 'Aug 24, 2026 · 0.20.3',
+      title: 'Orkestrai 0.20.3: see it before you pick it',
+      summary: 'Settings now previews your terminal theme and font live, and shortcuts show the right modifier key for your OS.',
+      items: [
+        'The terminal theme picker shows a color swatch per option and a live preview panel with your chosen theme, font, and padding.',
+        'Keyboard shortcuts in Settings now show ⌘ on macOS or "Ctrl" elsewhere, instead of always showing "Cmd/Ctrl".',
+      ],
+    },
+    {
       date: 'Aug 24, 2026 · 0.20.2',
       title: 'Orkestrai 0.20.2: a real default skills list',
       summary: 'The Skills tab no longer fakes a search for "agent" on load — it now shows a curated list of popular skills, like MCP already did.',
