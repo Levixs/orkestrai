@@ -106,6 +106,12 @@
 - Before shipping meaningful changes, run focused tests and `npm run build` when feasible.
 - For queue or scheduler behavior, run `npm run dev:worker` and `npm run dev:scheduler` locally with Redis available.
 - Do not revert unrelated user changes in the working tree.
+- Before opening a PR, run a self-review pass distinct from "does it work": a maintainer review on this repo previously caught a credential-persistence leak, an overly permissive PTY WebSocket origin check, unvalidated external API payloads reaching the UI, and provider-specific assumptions that didn't hold, all of which passed the full test suite. Specifically:
+  - **Secrets/credentials**: trace any resolved secret value all the way through, not just to where it's computed. Confirm it never lands in a persisted payload, a DB row, an API response, or a log, not only that resolution itself works.
+  - **External input**: any payload from an external API (registries, status endpoints, marketplaces) must be allowlisted/bounded (known indicator values, string length limits, URL scheme checks) before it reaches the UI or storage, even for "read-only" display data.
+  - **Cross-cutting dimensions**: check a new feature against the dimensions this codebase already has (WSL runtime alongside native, all agent providers, all 3 UI languages), not only the one dimension the task happened to touch.
+  - **Per-provider claims**: verify a provider-specific mechanism (env var, CLI flag, account model) against that provider's actual docs before implementing; do not assume symmetry with another provider's pattern.
+  - **Backend/UI state parity**: if a service exposes a distinct state (e.g., a `checked`/`verified` flag for a failed vs. unknown vs. confirmed result), confirm the UI actually branches on it instead of defaulting to the "healthy" appearance.
 
 <!-- orkestrai:begin -->
 ## Ponte Orkestrai (agentes)
