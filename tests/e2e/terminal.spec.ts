@@ -167,13 +167,13 @@ test.describe('terminais PTY', () => {
       const output = terminal.locator('.xterm-rows span').filter({ hasText: marker }).last();
       await expect(output).toBeVisible({ timeout: 10_000 });
 
-      await output.dblclick();
+      await output.dblclick({ force: true });
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+C' : 'Control+C');
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(marker);
 
       await page.evaluate(() => navigator.clipboard.writeText(''));
-      await output.dblclick();
-      await output.click({ button: 'right' });
+      await output.dblclick({ force: true });
+      await output.click({ button: 'right', force: true });
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(marker);
     } finally {
       await request.delete(`/api/agent-room/workspaces/${workspace.id}`);
@@ -230,7 +230,7 @@ test.describe('terminais PTY', () => {
 
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
-    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Nome', { exact: true }).fill(workspaceName);
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await expect(page.locator('.workspace-list')).toContainText(workspaceName);
@@ -370,7 +370,7 @@ test.describe('terminais PTY', () => {
 
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
-    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Nome', { exact: true }).fill(workspaceName);
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();

@@ -17,7 +17,7 @@ test.describe('arquivos e editor do workspace', () => {
     try {
       await page.goto('/canvas');
       await page.getByRole('button', { name: 'Novo workspace' }).click();
-      await page.getByPlaceholder('Nome').fill(workspaceName);
+      await page.getByPlaceholder('Nome', { exact: true }).fill(workspaceName);
       await page.getByPlaceholder('Diretório de trabalho').fill(dir);
       await page.getByRole('button', { name: 'Criar' }).click();
       await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
@@ -73,7 +73,7 @@ test.describe('arquivos e editor do workspace', () => {
     const workspaceName = `E2E git ${Date.now()}`;
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
-    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Nome', { exact: true }).fill(workspaceName);
     await page.getByPlaceholder('Diretório de trabalho').fill(dir);
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
@@ -104,7 +104,7 @@ test.describe('arquivos e editor do workspace', () => {
     const workspaceName = `E2E diff ${Date.now()}`;
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
-    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Nome', { exact: true }).fill(workspaceName);
     await page.getByPlaceholder('Diretório de trabalho').fill(dir);
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();

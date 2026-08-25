@@ -108,7 +108,7 @@ test.describe('ponte CLI (bridge)', () => {
 
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
-    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Nome', { exact: true }).fill(workspaceName);
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
@@ -162,7 +162,7 @@ test.describe('ponte CLI (bridge)', () => {
 
     await page.goto('/canvas');
     await page.getByRole('button', { name: 'Novo workspace' }).click();
-    await page.getByPlaceholder('Nome').fill(workspaceName);
+    await page.getByPlaceholder('Nome', { exact: true }).fill(workspaceName);
     await page.getByPlaceholder('Diretório de trabalho').fill('/tmp');
     await page.getByRole('button', { name: 'Criar' }).click();
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
