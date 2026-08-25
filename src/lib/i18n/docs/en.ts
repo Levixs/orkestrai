@@ -721,6 +721,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Settings previews terminal colors, font, and padding, shows the correct OS shortcut modifier, and adds Monokai, Ayu Dark, Rosé Pine, and Solarized Light.',
         'Terminal selection is accurate at any Canvas zoom, Claude Profile Usage reads config-specific macOS Keychain credentials, Canvas provider/tool icons stay consistent across themes, Workbench loading states expose valid assistive semantics, and deleting an active workspace safely switches away from its terminated PTYs.',
         'Installed desktop builds expose Developer tools again and can open a bounded, rotating diagnostics folder that captures renderer and internal-server failures while redacting common credentials.',
+        'Workspace provisioning remains compatible with creation flows that omit the optional additional-repository list, treating it as empty instead of failing.',
       ],
     },
     {

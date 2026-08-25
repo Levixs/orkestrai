@@ -63,6 +63,7 @@ describe('WorkspaceService — provisionamento da ponte', () => {
     const workspace = await workspaceService.create({ name: 'novo', workingDir: dir, icon: null, instructions: null });
 
     expect(workspace.id).toBeTruthy();
+    expect(workspace.repositoryRoots).toEqual([]);
     expect(existsSync(join(dir, '.orkestrai', 'workspace.json'))).toBe(true);
     expect(existsSync(join(dir, '.claude', 'skills', 'orkestrai', 'SKILL.md'))).toBe(true);
     expect(existsSync(join(dir, '.cline', 'skills', 'orkestrai', 'SKILL.md'))).toBe(true);

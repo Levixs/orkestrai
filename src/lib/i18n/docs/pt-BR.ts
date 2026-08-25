@@ -725,6 +725,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Configurações mostra uma prévia de cores, fonte e padding do terminal, usa o modificador correto do sistema e adiciona Monokai, Ayu Dark, Rosé Pine e Solarized Light.',
         'A seleção no terminal ficou precisa em qualquer zoom do Canvas, o Uso de Perfis do Claude lê credenciais específicas do Keychain no macOS, os ícones de providers e ferramentas permanecem consistentes entre temas, os estados de carregamento do Workbench têm semântica assistiva válida e excluir o workspace ativo troca com segurança para longe dos PTYs encerrados.',
         'Os builds desktop instalados voltam a expor as Ferramentas do desenvolvedor e permitem abrir uma pasta de diagnóstico rotativa e limitada que registra falhas do renderer e servidor interno ocultando credenciais comuns.',
+        'O provisionamento de workspaces permanece compatível com fluxos de criação que omitem a lista opcional de repositórios adicionais, tratando-a como vazia em vez de falhar.',
       ],
     },
     {

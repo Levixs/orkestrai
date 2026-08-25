@@ -34,6 +34,9 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Workspace creation remains compatible with callers that omit the new optional
+  additional-repository list, treating it as empty instead of interrupting
+  provisioning.
 - `orkestrai list` now applies the terminal's automatic agent identity and
   inventories every workspace Portal with an explicit connection state. Portal
   names are visible and editable in the Canvas, automation accepts a unique

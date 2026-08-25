@@ -713,10 +713,10 @@ export class WorkspaceService {
     return resolved;
   }
 
-  private assertRepositoryRoots(roots: WorkspaceRepositoryRoot[]): WorkspaceRepositoryRoot[] {
+  private assertRepositoryRoots(roots: WorkspaceRepositoryRoot[] | undefined): WorkspaceRepositoryRoot[] {
     const paths = new Set<string>();
     const aliases = new Set<string>();
-    return roots.map((root) => {
+    return (roots ?? []).map((root) => {
       const alias = root.alias.trim().toLowerCase();
       if (!/^[a-z0-9][a-z0-9_-]{0,47}$/.test(alias)) throw new Error(`Invalid repository alias: ${root.alias}`);
       if (aliases.has(alias)) throw new Error(`Repository alias is registered more than once: @${alias}`);
