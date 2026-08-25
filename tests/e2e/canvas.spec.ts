@@ -423,14 +423,13 @@ test.describe('canvas de workspaces', () => {
     await page.locator('.workspace-list .workspace-item', { hasText: workspaceName }).click();
     await expect(page.locator('.workspace-list li.active')).toContainText(workspaceName);
 
-    await page.getByRole('button', { name: 'Editar workspace' }).first().click();
+    await page.locator('.workspace-list li.active').getByRole('button', { name: 'Editar workspace' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await dialog.getByLabel('Nome', { exact: true }).fill(`${workspaceName} renomeado`);
     await dialog.locator('textarea').fill('Sempre responda em pt-BR.');
-    // dispatchEvent: o click normal aguarda estabilidade e a arvore re-renderiza
-    // com a atividade do canvas (flaky); aqui queremos apenas submeter o form.
-    await dialog.getByRole('button', { name: 'Salvar', exact: true }).dispatchEvent('click');
+    await dialog.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
 
     await expect(page.locator('.workspace-list li.active')).toContainText('renomeado');
 

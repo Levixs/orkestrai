@@ -19,6 +19,7 @@ test.describe('usage dos providers', () => {
       'claude',
       'cline',
       'codex',
+      'copilot',
       'cursor',
       'devin',
       'kimi',
@@ -49,7 +50,7 @@ test.describe('usage dos providers', () => {
       await page.getByRole('button', { name: /Usage/ }).click();
 
       await expect(page.locator('.usage-panel h3')).toHaveText('Uso dos providers');
-      await expect(page.locator('.usage-card')).toHaveCount(8, { timeout: 15_000 });
+      await expect(page.locator('.usage-card')).toHaveCount(9, { timeout: 15_000 });
       // Cada card mostra janelas, erro ou orientação oficial do provider.
       const cards = page.locator('.usage-card');
       for (const card of await cards.all()) {

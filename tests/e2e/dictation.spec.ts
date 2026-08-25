@@ -66,7 +66,8 @@ test.describe('ditado por voz', () => {
     }).toBe('ctrl+shift+keyd');
 
     // A lista de atalhos reflete a nova combinacao.
-    await expect(page.locator('.shortcuts-grid')).toContainText('Ctrl+Shift+D');
+    const shortcut = page.locator('.shortcut-row', { hasText: /Ditado por voz|Voice dictation|Dictado por voz/ }).locator('kbd');
+    await expect(shortcut).toContainText(/Ctrl\s*\+\s*Shift\s*\+\s*D/);
 
     // Restaura o padrao para nao quebrar outros testes/uso.
     await page.getByRole('button', { name: /Restaurar padrão|Restaurar padrao/ }).click();

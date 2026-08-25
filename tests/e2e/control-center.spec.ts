@@ -62,7 +62,7 @@ test.describe('Control Center', () => {
       const center = page.getByTestId('control-center-view');
       await expect(center).toBeVisible();
       await expect(center).toContainText(message);
-      await expect(center).toContainText(/Replied|Respondida|Respondido/);
+      await expect(center).toContainText(/Replied|Respondida|Respondido|Respondeu|Respondió/);
       // The page opens its event socket after the initial workspace projection.
       await page.waitForTimeout(750);
 

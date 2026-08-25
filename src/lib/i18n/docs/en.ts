@@ -713,7 +713,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Workspaces can be organized into persistent nested folders in the Canvas sidebar, with drag and drop, subfolders, renaming, collapse state, cycle prevention, and non-destructive deletion.',
         'Portal has a real responsive-device viewport with presets, custom dimensions, orientation rotation, and contained scrolling without distorting the embedded page.',
         'Settings previews terminal colors, font, and padding, shows the correct OS shortcut modifier, and adds Monokai, Ayu Dark, Rosé Pine, and Solarized Light.',
-        'Terminal selection is accurate at any Canvas zoom, Claude Profile Usage reads config-specific macOS Keychain credentials, and Canvas provider/tool icons now stay consistent across themes.',
+        'Terminal selection is accurate at any Canvas zoom, Claude Profile Usage reads config-specific macOS Keychain credentials, Canvas provider/tool icons stay consistent across themes, and Workbench loading states expose valid assistive semantics.',
       ],
     },
     {

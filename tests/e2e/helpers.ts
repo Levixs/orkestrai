@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 /** Seleciona um provider no menu compacto de agentes da toolbar. */
 export async function selectAgentTool(page: Page, providerName: string) {
@@ -8,7 +8,16 @@ export async function selectAgentTool(page: Page, providerName: string) {
 
 /** Seleciona uma ferramenta icon-only pelo texto interno, independente do tooltip traduzido. */
 export async function selectCanvasTool(page: Page, buttonName: string) {
-  await page.locator('.toolbar button').filter({ hasText: buttonName }).click();
+  const pane = page.locator('.svelte-flow__pane');
+  await expect(pane).toBeVisible();
+
+  // A paleta global pode terminar uma animacao de abertura enquanto o canvas
+  // carrega. Feche qualquer overlay residual antes de armar a ferramenta.
+  if (await page.locator('[role="dialog"]:visible').count()) await page.keyboard.press('Escape');
+
+  const button = page.locator('.toolbar button').filter({ hasText: buttonName });
+  await button.click();
+  await expect(button).toHaveClass(/bg-\[var\(--app-accent-soft\)\]/);
 }
 
 /**

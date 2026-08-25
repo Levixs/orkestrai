@@ -38,6 +38,8 @@ pt-BR, English, and Spanish translations.
 - MCP fan-out preserves malformed provider files and aborts without partial
   writes, while skill registry results and downloads are bounded and validated
   before reaching the UI or filesystem.
+- Workbench file-loading placeholders now expose valid status semantics to
+  assistive technologies.
 
 ## 0.19.0 - 2026-08-24
 

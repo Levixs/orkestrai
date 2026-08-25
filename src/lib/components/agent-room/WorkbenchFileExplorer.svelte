@@ -141,7 +141,7 @@
     {#if errorMessage}
       <p class="px-3 py-2 text-[10px] leading-4 text-[var(--app-danger)]">{errorMessage}</p>
     {:else if loadingPaths.includes(rootPath) && !childrenByPath[rootPath]}
-      <div class="space-y-1 px-2 py-1" aria-label={m['workbench_files.loading']()}>
+      <div class="space-y-1 px-2 py-1" role="status" aria-label={m['workbench_files.loading']()}>
         {#each [0, 1, 2, 3] as row (row)}
           <div class="h-6 animate-pulse rounded-[4px] bg-[var(--app-surface-raised)]" style:width={`${88 - row * 7}%`}></div>
         {/each}
