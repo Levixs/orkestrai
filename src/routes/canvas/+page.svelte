@@ -99,7 +99,7 @@
     setAgentProviderPinned,
   } from '$lib/components/agent-room/provider-toolbar.js';
   import { BackgroundVariant, SvelteFlowProvider } from '@xyflow/svelte';
-  import { BadgeCheck, Blocks, BookMarked, Braces, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MessageCircleMore, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Upload, Workflow, X } from '@lucide/svelte';
+  import { BadgeCheck, Blocks, BookMarked, Braces, Cable, CalendarClock, ChevronLeft, ChevronRight, CircleHelp, Download, FileDiff, Folder, FolderPlus, FolderTree, Gauge, Image as ImageIcon, Layers, LayoutGrid, LayoutTemplate, MessageCircleMore, MonitorUp, MoreHorizontal, Palette, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Power, RadioTower, Scale, Search, Settings, Shapes, Smartphone, SquareKanban, StickyNote, Trash2, Upload, Workflow, X } from '@lucide/svelte';
   import ZoomBridge from '$lib/components/agent-room/canvas/ZoomBridge.svelte';
   import type {
     AgentProviderInfo,
@@ -109,6 +109,7 @@
     NoteNodePayload,
     TerminalNodePayload,
     Workspace,
+    WorkspaceGroup,
   } from '$lib/modules/agent-room/domain/types.js';
   import type { DesignExplorationData } from '$lib/modules/agent-room/interface/http/resources/DesignExplorationResource.js';
   import { terminalExecutionRuntime, workspaceExecutionRuntime } from '$lib/modules/agent-room/domain/runtime.js';
@@ -134,6 +135,275 @@
 
   let workspaces = $state<Workspace[]>([]);
   let workspaceQuery = $state('');
+
+  // -- Pastas da barra lateral (organizam workspaces em arvore) ---------------
+  let workspaceGroups = $state<WorkspaceGroup[]>([]);
+  let newFolderName = $state('');
+  let renamingGroupId = $state<string | null>(null);
+  let renameGroupValue = $state('');
+  let deletingGroup = $state<WorkspaceGroup | null>(null);
+  let draggingItem = $state<{ kind: 'workspace' | 'group'; id: string } | null>(null);
+  let dragOverGroupId = $state<string | null>(null);
+  let dragOverRoot = $state(false);
+
+  type WorkspaceGroupNode = { group: WorkspaceGroup; children: WorkspaceGroupNode[]; workspaces: Workspace[] };
+  /** Arvore de pastas construida a partir das listas planas (groups + workspaces). */
+  const workspaceTree = $derived.by(() => {
+    const childGroupsByParent = new Map<string | null, WorkspaceGroup[]>();
+    for (const group of workspaceGroups) {
+      const key = group.parentId;
+      const list = childGroupsByParent.get(key) ?? [];
+      list.push(group);
+      childGroupsByParent.set(key, list);
+    }
+    for (const list of childGroupsByParent.values()) list.sort((a, b) => a.position - b.position);
+
+    const workspacesByGroup = new Map<string | null, Workspace[]>();
+    for (const workspace of workspaces) {
+      const key = workspace.groupId;
+      const list = workspacesByGroup.get(key) ?? [];
+      list.push(workspace);
+      workspacesByGroup.set(key, list);
+    }
+    for (const list of workspacesByGroup.values()) list.sort((a, b) => a.position - b.position);
+
+    function buildNode(group: WorkspaceGroup): WorkspaceGroupNode {
+      return {
+        group,
+        children: (childGroupsByParent.get(group.id) ?? []).map(buildNode),
+        workspaces: workspacesByGroup.get(group.id) ?? [],
+      };
+    }
+
+    return {
+      roots: (childGroupsByParent.get(null) ?? []).map(buildNode),
+      rootWorkspaces: workspacesByGroup.get(null) ?? [],
+    };
+  });
+
+  function isGroupCollapsed(groupId: string): boolean {
+    return workspaceGroups.find((group) => group.id === groupId)?.collapsed ?? false;
+  }
+
+  /** Persistido no proprio registro da pasta (nao localStorage): sobrevive a
+      limpeza de dados do navegador e e a mesma fonte de verdade da arvore. */
+  async function toggleGroupCollapsed(groupId: string) {
+    const collapsed = !isGroupCollapsed(groupId);
+    workspaceGroups = workspaceGroups.map((group) => (group.id === groupId ? { ...group, collapsed } : group));
+    try {
+      await api<WorkspaceGroup>(`/api/agent-room/workspace-groups/${groupId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ collapsed }),
+      });
+    } catch (error) {
+      // Reverte o otimista se o servidor rejeitar (ex.: pasta apagada em outra aba).
+      workspaceGroups = workspaceGroups.map((group) => (group.id === groupId ? { ...group, collapsed: !collapsed } : group));
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  function workspaceGroupErrorText(error: unknown): string {
+    const code = error instanceof Error ? error.message : '';
+    switch (code) {
+      case 'group_name_required':
+        return m['canvas.group_error_name_required']();
+      case 'group_not_found':
+        return m['canvas.group_error_not_found']();
+      case 'group_cycle':
+        return m['canvas.group_error_cycle']();
+      case 'workspace_not_found':
+        return m['canvas.group_error_not_found']();
+      default:
+        return m['canvas.error_api']();
+    }
+  }
+
+  async function loadWorkspaceGroups() {
+    workspaceGroups = await api<WorkspaceGroup[]>('/api/agent-room/workspace-groups').catch(() => []);
+  }
+
+  async function createWorkspaceGroup() {
+    const name = newFolderName.trim();
+    if (!name) return;
+    try {
+      const created = await api<WorkspaceGroup>('/api/agent-room/workspace-groups', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      workspaceGroups = [...workspaceGroups, created];
+      newFolderName = '';
+    } catch (error) {
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  let creatingSubfolderParentId = $state<string | null>(null);
+  let newSubfolderName = $state('');
+  let newSubfolderCancelled = false;
+
+  function startCreateSubfolder(parentId: string) {
+    creatingSubfolderParentId = parentId;
+    newSubfolderName = '';
+    newSubfolderCancelled = false;
+    // O input fica dentro da lista de filhos — se a pasta estava colapsada,
+    // expande primeiro pra ele ficar visivel.
+    if (isGroupCollapsed(parentId)) void toggleGroupCollapsed(parentId);
+  }
+
+  /** Mesma protecao contra o blur-apos-Esc do rename (ver cancelRenameGroup). */
+  function cancelCreateSubfolder() {
+    newSubfolderCancelled = true;
+    creatingSubfolderParentId = null;
+  }
+
+  async function commitCreateSubfolder() {
+    if (newSubfolderCancelled) {
+      newSubfolderCancelled = false;
+      return;
+    }
+    const parentId = creatingSubfolderParentId;
+    const name = newSubfolderName.trim();
+    creatingSubfolderParentId = null;
+    if (!parentId || !name) return;
+    try {
+      const created = await api<WorkspaceGroup>('/api/agent-room/workspace-groups', {
+        method: 'POST',
+        body: JSON.stringify({ name, parentId }),
+      });
+      workspaceGroups = [...workspaceGroups, created];
+      // Garante que a pasta recem-criada fique visivel: expande o pai se
+      // estava colapsado, em vez do usuario ter que abrir na mao.
+      if (isGroupCollapsed(parentId)) void toggleGroupCollapsed(parentId);
+    } catch (error) {
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  let renameGroupCancelled = false;
+
+  function startRenameGroup(group: WorkspaceGroup) {
+    renamingGroupId = group.id;
+    renameGroupValue = group.name;
+    renameGroupCancelled = false;
+  }
+
+  /** Esc cancela sem salvar. O input some ao ficar false, o que dispara blur
+      em seguida — sem essa flag, o blur chamaria commitRenameGroup de novo e
+      salvaria mesmo apos o cancelamento (bug que existia no my agents). */
+  function cancelRenameGroup() {
+    renameGroupCancelled = true;
+    renamingGroupId = null;
+  }
+
+  async function commitRenameGroup(groupId: string) {
+    if (renameGroupCancelled) {
+      renameGroupCancelled = false;
+      return;
+    }
+    const name = renameGroupValue.trim();
+    renamingGroupId = null;
+    const existing = workspaceGroups.find((group) => group.id === groupId);
+    if (!name || !existing || name === existing.name) return;
+    try {
+      const updated = await api<WorkspaceGroup>(`/api/agent-room/workspace-groups/${groupId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+      });
+      workspaceGroups = workspaceGroups.map((group) => (group.id === updated.id ? updated : group));
+    } catch (error) {
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  async function reparentWorkspaceGroup(groupId: string, parentId: string | null) {
+    try {
+      const updated = await api<WorkspaceGroup>(`/api/agent-room/workspace-groups/${groupId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parentId }),
+      });
+      workspaceGroups = workspaceGroups.map((group) => (group.id === updated.id ? updated : group));
+    } catch (error) {
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  async function confirmDeleteWorkspaceGroup() {
+    const group = deletingGroup;
+    deletingGroup = null;
+    if (!group) return;
+    try {
+      await api(`/api/agent-room/workspace-groups/${group.id}`, { method: 'DELETE' });
+      workspaceGroups = workspaceGroups.filter((item) => item.id !== group.id).map((item) => (item.parentId === group.id ? { ...item, parentId: null } : item));
+      workspaces = workspaces.map((item) => (item.groupId === group.id ? { ...item, groupId: null } : item));
+      writeWorkspaceListCache(workspaces);
+    } catch (error) {
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  async function moveWorkspaceToGroup(workspaceId: string, groupId: string | null) {
+    try {
+      const updated = await api<Workspace>(`/api/agent-room/workspaces/${workspaceId}/group`, {
+        method: 'PATCH',
+        body: JSON.stringify({ groupId }),
+      });
+      workspaces = workspaces.map((item) => (item.id === updated.id ? updated : item));
+      writeWorkspaceListCache(workspaces);
+    } catch (error) {
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  function handleDragStartWorkspace(event: DragEvent, workspace: Workspace) {
+    draggingItem = { kind: 'workspace', id: workspace.id };
+    event.dataTransfer?.setData('text/plain', workspace.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragStartGroup(event: DragEvent, group: WorkspaceGroup) {
+    draggingItem = { kind: 'group', id: group.id };
+    event.dataTransfer?.setData('text/plain', group.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragEnd() {
+    draggingItem = null;
+    dragOverGroupId = null;
+    dragOverRoot = false;
+  }
+
+  function handleDragOverGroup(event: DragEvent, groupId: string) {
+    if (!draggingItem || draggingItem.id === groupId) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    dragOverGroupId = groupId;
+  }
+
+  function handleDragOverRoot(event: DragEvent) {
+    if (!draggingItem) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    dragOverRoot = true;
+  }
+
+  async function handleDropOnGroup(event: DragEvent, groupId: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    const payload = draggingItem;
+    handleDragEnd();
+    if (!payload || payload.id === groupId) return;
+    if (payload.kind === 'workspace') await moveWorkspaceToGroup(payload.id, groupId);
+    else await reparentWorkspaceGroup(payload.id, groupId);
+  }
+
+  async function handleDropOnRoot(event: DragEvent) {
+    event.preventDefault();
+    const payload = draggingItem;
+    handleDragEnd();
+    if (!payload) return;
+    if (payload.kind === 'workspace') await moveWorkspaceToGroup(payload.id, null);
+    else await reparentWorkspaceGroup(payload.id, null);
+  }
 
   /** Resolve quando os providers (com resumeArgs) terminam de carregar — o
       respawn de sessao nao pode disparar antes disso ou perde os args de resume. */
@@ -678,6 +948,7 @@
         workspacesLoaded = true;
       }
       if (cachedProviders) providers = cachedProviders;
+      void loadWorkspaceGroups();
       const [workspaceList, settingsResponse] = await Promise.all([
         api<Workspace[]>('/api/agent-room/workspaces'),
         api<Record<string, string>>('/api/agent-room/settings'),
@@ -2019,40 +2290,164 @@
         {/if}
       </ul>
     {:else}
-      <ul class="workspace-list">
+      <ul
+        class="workspace-list"
+        class:drag-over-root={dragOverRoot}
+        ondragover={handleDragOverRoot}
+        ondragleave={() => (dragOverRoot = false)}
+        ondrop={handleDropOnRoot}
+      >
         {#if !workspacesLoaded}
           {#each [0, 1, 2] as index (index)}
             <li class="ws-skeleton"><Skeleton class="h-7 w-full bg-[var(--app-surface-raised)]" /></li>
           {/each}
+        {:else if workspaceQuery.trim()}
+          {#each visibleWorkspaces as workspace (workspace.id)}
+            {@render workspaceListItem(workspace)}
+          {/each}
+          {#if workspaces.length > 0 && visibleWorkspaces.length === 0}
+            <li class="empty-filter">{m['canvas.no_ws_match']({ query: workspaceQuery.trim() })}</li>
+          {/if}
         {:else}
-        {#each visibleWorkspaces as workspace (workspace.id)}
-          <li class:active={activeWorkspace?.id === workspace.id}>
-            <button class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
-              <span class="workspace-icon">
-                <WorkspaceIcon name={workspace.icon} size={14} />
-              </span>
-              <span class="workspace-name">{workspace.name}</span>
-              {#if activity[workspace.id]}
-                <span class="live-dot" role="status" aria-label={m['canvas.active_sessions_aria']({ count: activity[workspace.id] })}></span>
-              {/if}
-            </button>
-            <HeaderIconButton label={m['canvas.edit_ws']()} side="right" onclick={() => (editingWorkspace = workspace)}>
-              <Pencil size={13} />
-            </HeaderIconButton>
-            <HeaderIconButton label={m['canvas.delete_ws']()} side="right" danger onclick={() => (deletingWorkspace = workspace)}>
-              <X size={13} />
-            </HeaderIconButton>
-          </li>
-        {/each}
-        {#if workspaces.length > 0 && visibleWorkspaces.length === 0}
-          <li class="empty-filter">{m['canvas.no_ws_match']({ query: workspaceQuery.trim() })}</li>
-        {/if}
-        {#if workspaces.length === 0}
-          <li class="empty">{m['canvas.no_ws']()}</li>
-        {/if}
+          {#each workspaceTree.roots as node (node.group.id)}
+            {@render workspaceGroupNode(node)}
+          {/each}
+          {#each workspaceTree.rootWorkspaces as workspace (workspace.id)}
+            {@render workspaceListItem(workspace)}
+          {/each}
+          {#if workspaces.length === 0 && workspaceGroups.length === 0}
+            <li class="empty">{m['canvas.no_ws']()}</li>
+          {/if}
         {/if}
       </ul>
+
+      <div class="new-folder-row">
+        <FolderPlus size={13} aria-hidden="true" />
+        <input
+          bind:value={newFolderName}
+          placeholder={m['canvas.folder_name_placeholder']()}
+          aria-label={m['canvas.new_folder']()}
+          autocomplete="off"
+          spellcheck="false"
+          onkeydown={(event) => event.key === 'Enter' && createWorkspaceGroup()}
+        />
+        <HeaderIconButton label={m['canvas.new_folder']()} onclick={createWorkspaceGroup}>
+          <Plus size={13} />
+        </HeaderIconButton>
+      </div>
     {/if}
+
+    {#snippet workspaceListItem(workspace: Workspace)}
+    <li
+      class:active={activeWorkspace?.id === workspace.id}
+      draggable="true"
+      ondragstart={(event) => handleDragStartWorkspace(event, workspace)}
+      ondragend={handleDragEnd}
+    >
+      <button class="workspace-item" onclick={() => selectWorkspace(workspace.id)}>
+        <span class="workspace-icon">
+          <WorkspaceIcon name={workspace.icon} size={14} />
+        </span>
+        <span class="workspace-name">{workspace.name}</span>
+        {#if activity[workspace.id]}
+          <span class="live-dot" role="status" aria-label={m['canvas.active_sessions_aria']({ count: activity[workspace.id] })}></span>
+        {/if}
+      </button>
+      <HeaderIconButton label={m['canvas.edit_ws']()} side="right" onclick={() => (editingWorkspace = workspace)}>
+        <Pencil size={13} />
+      </HeaderIconButton>
+      <HeaderIconButton label={m['canvas.delete_ws']()} side="right" danger onclick={() => (deletingWorkspace = workspace)}>
+        <X size={13} />
+      </HeaderIconButton>
+    </li>
+  {/snippet}
+
+  {#snippet workspaceGroupNode(node: WorkspaceGroupNode)}
+    <li class="ws-group" class:drag-over={dragOverGroupId === node.group.id}>
+      <div
+        class="ws-group-header"
+        role="group"
+        aria-label={node.group.name}
+        draggable="true"
+        ondragstart={(event) => handleDragStartGroup(event, node.group)}
+        ondragend={handleDragEnd}
+        ondragover={(event) => handleDragOverGroup(event, node.group.id)}
+        ondragleave={() => (dragOverGroupId = null)}
+        ondrop={(event) => handleDropOnGroup(event, node.group.id)}
+      >
+        <button
+          class="ws-group-toggle"
+          onclick={() => void toggleGroupCollapsed(node.group.id)}
+          aria-label={node.group.collapsed ? m['canvas.expand_folder']() : m['canvas.collapse_folder']()}
+        >
+          <ChevronRight size={12} class={node.group.collapsed ? '' : 'expanded'} />
+        </button>
+        <Folder size={13} class="ws-group-icon" aria-hidden="true" />
+        {#if renamingGroupId === node.group.id}
+          <input
+            class="ws-group-rename"
+            bind:value={renameGroupValue}
+            onblur={() => commitRenameGroup(node.group.id)}
+            onkeydown={(event) => {
+              if (event.key === 'Enter') commitRenameGroup(node.group.id);
+              if (event.key === 'Escape') cancelRenameGroup();
+            }}
+            autofocus
+          />
+        {:else}
+          <span
+            class="ws-group-name"
+            role="button"
+            tabindex="0"
+            ondblclick={() => startRenameGroup(node.group)}
+            onkeydown={(event) => event.key === 'Enter' && startRenameGroup(node.group)}
+          >{node.group.name}</span>
+        {/if}
+        <span class="ws-group-actions">
+          <HeaderIconButton label={m['canvas.new_subfolder']()} side="right" onclick={() => startCreateSubfolder(node.group.id)}>
+            <FolderPlus size={12} />
+          </HeaderIconButton>
+          <HeaderIconButton label={m['canvas.rename_folder']()} side="right" onclick={() => startRenameGroup(node.group)}>
+            <Pencil size={12} />
+          </HeaderIconButton>
+          <HeaderIconButton label={m['canvas.delete_folder']()} side="right" danger onclick={() => (deletingGroup = node.group)}>
+            <Trash2 size={12} />
+          </HeaderIconButton>
+        </span>
+      </div>
+      {#if !node.group.collapsed}
+        <ul class="ws-group-children">
+          {#if creatingSubfolderParentId === node.group.id}
+            <li class="ws-subfolder-create">
+              <FolderPlus size={12} aria-hidden="true" />
+              <input
+                bind:value={newSubfolderName}
+                placeholder={m['canvas.folder_name_placeholder']()}
+                aria-label={m['canvas.new_subfolder']()}
+                autocomplete="off"
+                spellcheck="false"
+                onblur={commitCreateSubfolder}
+                onkeydown={(event) => {
+                  if (event.key === 'Enter') commitCreateSubfolder();
+                  if (event.key === 'Escape') cancelCreateSubfolder();
+                }}
+                autofocus
+              />
+            </li>
+          {/if}
+          {#each node.children as child (child.group.id)}
+            {@render workspaceGroupNode(child)}
+          {/each}
+          {#each node.workspaces as workspace (workspace.id)}
+            {@render workspaceListItem(workspace)}
+          {/each}
+          {#if node.children.length === 0 && node.workspaces.length === 0 && creatingSubfolderParentId !== node.group.id}
+            <li class="ws-group-empty">{m['canvas.folder_empty']()}</li>
+          {/if}
+        </ul>
+      {/if}
+    </li>
+  {/snippet}
   </aside>
 
   <section class="canvas-area" class:drawing={drawTool !== null}>
@@ -2323,6 +2718,21 @@
       </AlertDialog.Content>
     </AlertDialog.Root>
 
+    <AlertDialog.Root open={deletingGroup !== null} onOpenChange={(isOpen) => !isOpen && (deletingGroup = null)}>
+      <AlertDialog.Content>
+        <AlertDialog.Header>
+          <AlertDialog.Title>{m['canvas.delete_folder']()}</AlertDialog.Title>
+          <AlertDialog.Description>
+            {m['canvas.delete_folder_desc']({ name: deletingGroup?.name ?? '' })}
+          </AlertDialog.Description>
+        </AlertDialog.Header>
+        <AlertDialog.Footer>
+          <AlertDialog.Cancel>{m['settings.cancel']()}</AlertDialog.Cancel>
+          <AlertDialog.Action onclick={confirmDeleteWorkspaceGroup}>{m['settings.delete']()}</AlertDialog.Action>
+        </AlertDialog.Footer>
+      </AlertDialog.Content>
+    </AlertDialog.Root>
+
     <AlertDialog.Root open={pendingNodeDeletion !== null} onOpenChange={(isOpen) => !isOpen && (pendingNodeDeletion = null)}>
       <AlertDialog.Content>
         <AlertDialog.Header>
@@ -2519,6 +2929,158 @@
     display: flex;
     justify-content: center;
     padding: 3px 0;
+  }
+
+  .workspace-list.drag-over-root {
+    outline: 1px dashed var(--app-accent);
+    outline-offset: -2px;
+    border-radius: 6px;
+  }
+
+  .workspace-list li.ws-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
+    padding-right: 0;
+    border-radius: 6px;
+  }
+
+  .ws-group-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 32px;
+    padding: 0 4px 0 2px;
+    border-radius: 6px;
+    cursor: grab;
+  }
+
+  .ws-group-header:hover {
+    background: color-mix(in srgb, var(--app-border) 55%, transparent);
+  }
+
+  .ws-group.drag-over > .ws-group-header {
+    background: var(--app-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--app-accent);
+  }
+
+  .ws-group-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: var(--app-text-muted);
+    cursor: pointer;
+  }
+
+  .ws-group-toggle :global(svg) {
+    transition: transform 120ms ease;
+  }
+
+  .ws-group-toggle :global(svg.expanded) {
+    transform: rotate(90deg);
+  }
+
+  :global(.ws-group-icon) {
+    color: var(--app-text-muted);
+    flex-shrink: 0;
+  }
+
+  .ws-group-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--app-text);
+  }
+
+  .ws-group-rename {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--app-accent);
+    border-radius: 4px;
+    background: var(--app-canvas);
+    color: var(--app-text);
+    font-size: 12px;
+    padding: 2px 5px;
+  }
+
+  .ws-group-actions {
+    display: none;
+    align-items: center;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .ws-group-header:hover .ws-group-actions {
+    display: flex;
+  }
+
+  .ws-group-children {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 17px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ws-group-empty {
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--app-text-muted);
+    font-style: italic;
+  }
+
+  .new-folder-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    min-height: 30px;
+    border-radius: 6px;
+    border: 1px dashed var(--app-border);
+    color: var(--app-text-muted);
+    flex-shrink: 0;
+  }
+
+  .ws-subfolder-create {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    min-height: 28px;
+    border-radius: 6px;
+    border: 1px dashed var(--app-border);
+    color: var(--app-text-muted);
+  }
+
+  .ws-subfolder-create input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--app-text);
+    font-size: 12px;
+  }
+
+  .new-folder-row input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--app-text);
+    font-size: 12px;
   }
 
   .sidebar-header-actions {

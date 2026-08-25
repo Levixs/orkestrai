@@ -16,6 +16,11 @@ export const DOCS_ES: DocsCatalog = {
       body: `Un workspace = un equipo en un proyecto: directorio de trabajo, ícono y layout del canvas guardados. Créalo con el botón + en la barra lateral. Varios workspaces corren al mismo tiempo — los agentes siguen vivos en background al cambiar. Las instrucciones en AGENTS.md/CLAUDE.md se inyectan en los agentes (edita con el lápiz junto al nombre). El botón ⏻ (Descargar) cierra las terminales vivas del workspace activo — libera memoria/CPU sin borrar nada: el layout queda guardado y cada agente retoma la conversación al reabrir la terminal. En macOS, los proyectos dentro de Descargas, Documentos o Escritorio requieren consentimiento del sistema; si el acceso expira, Canvas y Workbench muestran Autorizar carpeta para elegir nuevamente el mismo directorio y continuar sin reiniciar la app.`,
     },
     {
+      id: 'workspace-folders',
+      title: 'Organiza workspaces en carpetas',
+      body: `Agrupa workspaces en carpetas en la barra lateral cuando tengas varios proyectos (por cliente, por equipo, por entorno). Escribe un nombre en "Nueva carpeta" al final de la lista para crear una en la raíz; arrastra un workspace sobre el encabezado de una carpeta para guardarlo ahí, o arrástralo al espacio vacío de la lista para devolverlo a la raíz. Las carpetas se anidan dentro de otras carpetas de la misma forma, sin límite de profundidad — arrastra una carpeta sobre otra para convertirla en subcarpeta, o usa el ícono de "nueva subcarpeta" en el encabezado de cualquier carpeta para crear una ya dentro de ella; una carpeta nunca puede soltarse dentro de sí misma o de una subcarpeta suya. Haz doble clic en el nombre de la carpeta o usa su ícono de lápiz para renombrarla, y cada carpeta recuerda si está colapsada entre reinicios. Eliminar una carpeta (ícono de papelera, con confirmación) nunca es destructivo: cada workspace y subcarpeta dentro de ella sube a la raíz en lugar de eliminarse.`,
+    },
+    {
       id: 'wsl-runtime',
       title: 'Workspaces de Windows con WSL',
       body: `En Windows, el entorno seleccionado al crear o editar un workspace es el predeterminado del equipo. Cada terminal puede heredarlo o usar Entorno de ejecución en el diálogo de creación y en su menú compacto para forzar Windows nativo o una distribución WSL específica. Selecciona exactamente Ubuntu, Ubuntu-22.04, Ubuntu-24.04, Debian u otra instalación e indica la ruta Linux de la misma carpeta del proyecto. Un único workspace puede combinar agentes Windows y WSL, incluso distribuciones diferentes. Un indicador WIN o WSL identifica la excepción. Detección y modelos del provider, PTY, reanudación exacta de la conversación, Council, agentes reclutados y el puente orkestrai siguen el runtime efectivo de cada terminal. Los reclutas del Maestro heredan el Piso activo del líder y solo se confirman después de que la PTY inicia en el entorno correcto; un fallo elimina el nodo incompleto. Al asignar una tarea, Orkestrai inicia o reanuda un agente desconectado y solo mueve la tarjeta a En progreso después de entregar el briefing completo. Orkestrai valida la CLI dentro de esa distribución y confirma el transcript del provider en su propia home Linux antes de persistir o restaurar un id; un agente vacío comienza limpio en vez de adivinar la conversación más reciente. Cambiar el runtime reinicia solo esa terminal. Una distribución, directorio o comando ausente produce errores distintos y accionables, sin fallback silencioso a Windows nativo.`,
@@ -698,6 +703,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '25 ago 2026 · 0.21.0',
+      title: 'Orkestrai 0.21.0: organiza workspaces en carpetas',
+      summary: 'Agrupa workspaces en carpetas anidadas en la barra lateral del Canvas — arrastra para archivar, anidar o devolver a la raíz.',
+      items: [
+        'Se agregaron carpetas anidadas (sin límite de profundidad) en la barra lateral del Canvas para organizar workspaces. Crea una desde la barra lateral o una subcarpeta directo dentro de otra, arrastra un workspace sobre su encabezado para archivarlo, arrastra una carpeta sobre otra para anidarla, y renombra o elimina carpetas sin perder nunca lo que hay dentro. Cada carpeta recuerda si está colapsada entre reinicios.',
+      ],
+    },
     {
       date: '25 ago 2026 · 0.20.6',
       title: 'Orkestrai 0.20.6: selección de texto precisa en cualquier zoom del Canvas',
