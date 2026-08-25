@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowRight, Globe, MousePointer2, Navigation, RotateCcw, Send, Smartphone, X } from '@lucide/svelte';
+  import { ArrowRight, Globe, MousePointer2, Navigation, Pencil, RotateCcw, Send, Smartphone, X } from '@lucide/svelte';
   import type { PortalViewport } from './portal-device-presets.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
@@ -68,6 +68,8 @@
   let { id, data, selected } = $props<NodeProps & { data: PortalNodeData }>();
 
   let address = $state(data.payload.url ?? '');
+  let editingName = $state(false);
+  let nameDraft = $state('');
   let viewport = $state<PortalViewport | null>(data.payload.viewport ?? null);
   let deviceToolbarOpen = $state(false);
   let frame: (PortalWebviewElement | HTMLIFrameElement) | null = $state(null);
@@ -282,6 +284,18 @@
     if (event.key === 'Enter') void navigate();
   }
 
+  function startNameEdit() {
+    nameDraft = data.title || m['portal.default_title']();
+    editingName = true;
+  }
+
+  function commitNameEdit() {
+    if (!editingName) return;
+    editingName = false;
+    const next = nameDraft.trim();
+    if (next && next !== data.title) data.onRename?.(id, next);
+  }
+
   function setViewport(next: PortalViewport | null) {
     viewport = next;
     data.onPayloadChange?.(id, { viewport: next });
@@ -494,24 +508,31 @@
   minHeight={260}
   onResize={data.onResize}
   connections={data.connections ?? []}
-  titleText={data.title}
-  onRename={data.onRename}
   onJumpToNode={data.onJumpToNode}
   onRemoveConnection={data.onRemoveConnection}
 >
   {#snippet icon()}<Globe size={13} />{/snippet}
   {#snippet title()}
-    <input
-      class="portal-address nodrag"
-      bind:value={address}
-      onkeydown={handleKeydown}
-      placeholder="https://..."
-      spellcheck="false"
-      aria-label={m['portal.address']()}
-    />
+    {#if editingName}
+      <!-- svelte-ignore a11y_autofocus -->
+      <input
+        class="portal-name-input nodrag"
+        bind:value={nameDraft}
+        autofocus
+        spellcheck="false"
+        aria-label={m['portal.name']()}
+        onkeydown={(event) => {
+          if (event.key === 'Enter') commitNameEdit();
+          if (event.key === 'Escape') editingName = false;
+        }}
+        onblur={commitNameEdit}
+      />
+    {:else}
+      <span class="portal-name">{data.title || m['portal.default_title']()}</span>
+    {/if}
   {/snippet}
   {#snippet actions()}
-    <IconAction label={m['portal.navigate']()} disabled={inspecting} onclick={() => void navigate()}><ArrowRight size={13} /></IconAction>
+    <IconAction label={m['portal.rename']()} disabled={editingName} onclick={startNameEdit}><Pencil size={13} /></IconAction>
     <IconAction
       label={deviceToolbarOpen ? m['portal.device_toolbar_hide']() : m['portal.device_toolbar_show']()}
       active={deviceToolbarOpen || viewport !== null}
@@ -526,6 +547,17 @@
   {/snippet}
 
   <div class="portal-body nodrag nowheel" class:inspecting>
+    <div class="portal-navigation">
+      <input
+        class="portal-address nodrag"
+        bind:value={address}
+        onkeydown={handleKeydown}
+        placeholder="https://..."
+        spellcheck="false"
+        aria-label={m['portal.address']()}
+      />
+      <IconAction label={m['portal.navigate']()} disabled={inspecting} onclick={() => void navigate()}><ArrowRight size={14} /></IconAction>
+    </div>
     {#if deviceToolbarOpen}
       <PortalViewportToolbar {viewport} onchange={setViewport} />
     {/if}
@@ -678,6 +710,36 @@
 </Dialog.Root>
 
 <style>
+  .portal-name {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .portal-name-input {
+    width: min(220px, 100%);
+    min-width: 0;
+    border: 1px solid var(--app-accent);
+    border-radius: 4px;
+    background: var(--app-surface);
+    color: var(--app-text);
+    padding: 2px 6px;
+    font: inherit;
+  }
+
+  .portal-navigation {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--app-panel);
+  }
+
   .portal-address {
     flex: 1;
     width: 100%;

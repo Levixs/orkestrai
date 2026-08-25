@@ -35,6 +35,10 @@ common credentials redacted; normal agent output is not persisted.
 - **Persistent Portal sessions:** authentication cookies, web storage, and the
   last navigated URL survive app restarts. Login flows opened with `window.open`
   stay in a sandboxed Orkestrai Portal window that shares the same session.
+  Every Portal has a persistent, editable name separate from its address, so
+  people and agents can target the correct browser by name or node id. The
+  bridge inventories all workspace Portals with explicit connection state,
+  reuses matching URLs, and requires explicit intent before adding another.
 - **Configurable Workbench:** keep open terminals, boards, notes, portals,
   files, flows, and usage in vertical tabs by default or optional horizontal
   tabs, then arrange up to eight live artifacts in resizable right/down splits.

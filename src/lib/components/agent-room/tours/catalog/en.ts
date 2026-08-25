@@ -128,7 +128,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'portal',
         title: 'The portal (the agents\' browser)',
-        body: 'The portal is an embedded browser the agents control. I\'ll create one pointing at your dev server — adjust the URL later if it isn\'t localhost:5173. Login pop-ups stay in a sandboxed Orkestrai window with the same persistent session, and the node restores its last navigated page after restart.',
+        body: 'The portal is an embedded browser the agents control. Its persistent name appears in the header and can be edited with the pencil; the URL stays in the separate navigation bar, so both you and agents can target the right Portal by name. I\'ll create one pointing at your dev server — adjust the URL later if it isn\'t localhost:5173. Login pop-ups stay in a sandboxed Orkestrai window with the same persistent session, and the node restores its last navigated page after restart.',
         action: { kind: 'createPortal', url: 'http://localhost:5173', title: 'Portal App' },
         check: { kind: 'nodeExists', nodeType: 'portal' },
       },

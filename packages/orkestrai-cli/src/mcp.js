@@ -42,7 +42,7 @@ const DESIGN_BATCH_BASE = {
 
 /** Tools expostas (inputSchema JSON Schema). args -> bridge no callTool(). */
 const TOOLS = [
-  { name: 'list', description: 'Lista agentes do workspace (titulo, provider, sessao viva) e suas notas/portais conectados.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'list', description: 'Lista agentes e todos os portais do workspace. Cada portal informa explicitamente se esta conectado a este agente.', inputSchema: { type: 'object', properties: {} } },
   { name: 'usage', description: 'Consulta cotas dos providers e a recomendacao de roteamento configurada no no Usage do canvas.', inputSchema: { type: 'object', properties: {} } },
   { name: 'huddle_list', description: 'Lista huddles e retorna a sessao selecionada com participantes e transcricao.', inputSchema: { type: 'object', properties: { huddleId: { type: 'string', format: 'uuid' } } } },
   { name: 'huddle_say', description: 'Registra uma fala deste agente em um huddle ativo, sem disparar respostas recursivas.', inputSchema: { type: 'object', properties: { huddleId: { type: 'string', format: 'uuid' }, text: { type: 'string', minLength: 1, maxLength: 10000 } }, required: ['huddleId', 'text'] } },
@@ -114,11 +114,11 @@ const TOOLS = [
   { name: 'task_move', description: 'Move uma tarefa para qualquer coluna do quadro.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' }, column: { type: 'string' } }, required: ['taskId', 'column'] } },
   { name: 'task_done', description: 'Marca tarefa como concluida e faz handoff automatico ao lider.', inputSchema: { type: 'object', properties: { taskId: { type: 'string' } }, required: ['taskId'] } },
   { name: 'task_history', description: 'Historico do quadro (concluidas + arquivadas).', inputSchema: { type: 'object', properties: {} } },
-  { name: 'portal_create', description: 'Cria um portal (browser) no canvas.', inputSchema: { type: 'object', properties: { url: { type: 'string' }, title: { type: 'string' }, connect: { type: 'string' } }, required: ['url'] } },
-  { name: 'portal_navigate', description: 'Abre URL no portal.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, url: { type: 'string' } }, required: ['nodeId', 'url'] } },
-  { name: 'portal_eval', description: 'Executa JS na pagina do portal e retorna o resultado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' }, js: { type: 'string' } }, required: ['nodeId', 'js'] } },
-  { name: 'portal_dom', description: 'Devolve o HTML atual do portal.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
-  { name: 'portal_screenshot', description: 'Captura a tela do portal (base64).', inputSchema: { type: 'object', properties: { nodeId: { type: 'string' } }, required: ['nodeId'] } },
+  { name: 'portal_create', description: 'Cria um portal somente quando nenhum existente pode ser reutilizado. A mesma URL e idempotente; forceNew exige pedido explicito do usuario.', inputSchema: { type: 'object', properties: { url: { type: 'string' }, title: { type: 'string' }, connect: { type: 'string' }, forceNew: { type: 'boolean', default: false } }, required: ['url'] } },
+  { name: 'portal_navigate', description: 'Abre URL no portal identificado por nome unico ou ID.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string', description: 'Nome unico ou ID do portal.' }, url: { type: 'string' } }, required: ['nodeId', 'url'] } },
+  { name: 'portal_eval', description: 'Executa JS no portal identificado por nome unico ou ID e retorna o resultado.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string', description: 'Nome unico ou ID do portal.' }, js: { type: 'string' } }, required: ['nodeId', 'js'] } },
+  { name: 'portal_dom', description: 'Devolve o HTML atual do portal identificado por nome unico ou ID.', inputSchema: { type: 'object', properties: { nodeId: { type: 'string', description: 'Nome unico ou ID do portal.' } }, required: ['nodeId'] } },
+  { name: 'portal_screenshot', description: 'Captura a tela do portal identificado por nome unico ou ID (base64).', inputSchema: { type: 'object', properties: { nodeId: { type: 'string', description: 'Nome unico ou ID do portal.' } }, required: ['nodeId'] } },
   { name: 'floor_list', description: 'Lista andares (worktrees git) do workspace.', inputSchema: { type: 'object', properties: {} } },
   { name: 'floor_create', description: 'Cria um andar (worktree isolada com branch propria).', inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] } },
   { name: 'floor_preview', description: 'Previa da aterrissagem (merge) com conflitos.', inputSchema: { type: 'object', properties: { floorId: { type: 'string' } }, required: ['floorId'] } },
@@ -396,7 +396,7 @@ async function callTool(bridge, findFreePort, selfAgent, name, args = {}) {
       return bridge('GET', '/api/agent-room/bridge/tasks/history');
     case 'portal_create': {
       if (!selfAgent) throw new Error('identidade do agente desconhecida (ORKESTRAI_NODE_ID ausente) — crie o portal pelo canvas ou pela CLI dentro do terminal de um agente.');
-      return bridge('POST', '/api/agent-room/bridge/portal/create', { url: args.url, title: args.title, connect: args.connect, from: selfAgent });
+      return bridge('POST', '/api/agent-room/bridge/portal/create', { url: args.url, title: args.title, connect: args.connect, forceNew: args.forceNew === true, from: selfAgent });
     }
     case 'portal_navigate':
       return bridge('POST', '/api/agent-room/bridge/portal', { nodeId: args.nodeId, action: 'navigate', args: { url: args.url } });

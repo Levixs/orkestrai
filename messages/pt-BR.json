@@ -480,6 +480,8 @@
   "portal.default_title": "Portal",
   "portal.empty": "Digite uma URL para abrir o portal.",
   "portal.address": "Endereço do portal",
+  "portal.name": "Nome do portal",
+  "portal.rename": "Renomear portal",
   "portal.design_inspect": "Inspecionar design",
   "portal.design_cancel": "Parar inspeção",
   "portal.design_pick_hint": "Passe pela página e clique no elemento que deseja discutir. Pressione Esc para cancelar.",

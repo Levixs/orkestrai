@@ -402,6 +402,86 @@ describe('Modo Maestro', () => {
     expect([edges[0].sourceNodeId, edges[0].targetNodeId].sort()).toEqual([leader.id, portal.nodeId].sort());
   });
 
+  it('lista todos os portais e explicita a conexao relativa ao agente', async () => {
+    const { workspace, leader } = await setupMaestro(true);
+    const connected = await bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      title: 'Aplicacao',
+      url: 'localhost:5173',
+    });
+    const available = await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'portal',
+      title: 'Documentacao',
+      payload: { url: 'https://docs.example.test' },
+    });
+
+    expect(await bridgeService.listPortals(workspace.id, leader.id)).toEqual([
+      expect.objectContaining({ id: connected.nodeId, title: 'Aplicacao', connected: true }),
+      expect.objectContaining({ id: available.id, title: 'Documentacao', connected: false }),
+    ]);
+  });
+
+  it('reutiliza a mesma URL e exige intencao explicita para criar outro portal', async () => {
+    const { workspace } = await setupMaestro(true);
+    const original = await bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      title: 'Aplicacao',
+      url: 'http://localhost:5173',
+    });
+    const reused = await bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      title: 'Duplicado',
+      url: 'http://localhost:5173/',
+    });
+
+    expect(reused).toMatchObject({ nodeId: original.nodeId, title: 'Aplicacao', reused: true });
+    await expect(bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      url: 'http://localhost:4173',
+    })).rejects.toThrow('já possui portal');
+
+    const additional = await bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      title: 'Documentacao',
+      url: 'http://localhost:4173',
+      forceNew: true,
+    });
+    expect(additional.reused).toBe(false);
+    expect((await workspaceRepository.listNodes(workspace.id)).filter((node) => node.type === 'portal')).toHaveLength(2);
+  });
+
+  it('rejeita esquemas e credenciais que nao podem ser persistidos em portal', async () => {
+    const { workspace } = await setupMaestro(true);
+    await expect(bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      url: 'file:///tmp/secret',
+    })).rejects.toThrow('HTTP ou HTTPS');
+    await expect(bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      url: 'https://user:password@example.test',
+    })).rejects.toThrow('não pode conter credenciais');
+  });
+
+  it('resolve portal por nome unico e rejeita nomes ambiguos', async () => {
+    const { workspace } = await setupMaestro(true);
+    const first = await bridgeService.createPortal(workspace.id, {
+      from: 'Lider',
+      title: 'Checkout',
+      url: 'http://localhost:5173',
+    });
+    expect((await bridgeService.resolvePortal(workspace.id, 'Checkout')).id).toBe(first.nodeId);
+    expect((await bridgeService.resolvePortal(workspace.id, 'Check')).id).toBe(first.nodeId);
+
+    await workspaceRepository.createNode({
+      workspaceId: workspace.id,
+      type: 'portal',
+      title: 'Checkout',
+      payload: { url: 'http://localhost:4173' },
+    });
+    await expect(bridgeService.resolvePortal(workspace.id, 'Checkout')).rejects.toThrow('mais de um portal');
+  });
+
   it('ask cria aresta entre os agentes que conversam', async () => {
     const { workspace, leader } = await setupMaestro(true);
     const session = ptySessionManager.create({ command: '/bin/cat', cwd: '/tmp' });

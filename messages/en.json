@@ -480,6 +480,8 @@
   "portal.default_title": "Portal",
   "portal.empty": "Enter a URL to open the portal.",
   "portal.address": "Portal address",
+  "portal.name": "Portal name",
+  "portal.rename": "Rename portal",
   "portal.design_inspect": "Inspect design",
   "portal.design_cancel": "Stop inspecting",
   "portal.design_pick_hint": "Move over the page and click the element you want to discuss. Press Escape to cancel.",

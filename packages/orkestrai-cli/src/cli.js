@@ -58,8 +58,8 @@ Uso:
   orkestrai design import-code <nodeId> <arquivo> --format html|svelte|react|vue --name <nome> --revision <n> [--css <arquivo>]
   orkestrai design generate <nodeId> <elementIds-json> --framework svelar|svelte|react|next|vue|html --output <path> --name <nome> [--write --revision <n>]
   orkestrai role show [nome] | role write <nome> <prompt> | role edit <nome> <antigo> <novo>
-  orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]
-  orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>
+  orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>] [--force-new]
+  orkestrai portal <nodeId|nome> <navigate <url> | eval <js> | dom | screenshot>
   orkestrai notify <mensagem> [--kind info|attention|project|task] [--title <titulo>]
   orkestrai status <starting|working|waiting_input|waiting_permission|blocked|idle|done|error|disconnected> [acao] [--task <id>]
   orkestrai recruit <titulo> --from <maestro> [--provider <id>] [--profile <nome>] [--model <id>] [--effort low|medium|high|xhigh|max|ultra] [--role <papel>] [--replace <agente>] [--floor <id>] [--json]
@@ -262,7 +262,8 @@ export async function run(argv, options = {}) {
 
   switch (command) {
     case 'list': {
-      const query = flags.agent ? `?agentNodeId=${encodeURIComponent(flags.agent)}` : '';
+      const agentIdentity = flags.agent ?? selfAgent;
+      const query = agentIdentity ? `?agentNodeId=${encodeURIComponent(agentIdentity)}` : '';
       const data = await bridge(config, 'GET', `/api/agent-room/bridge/agents${query}`);
       if (flags.json) {
         out(JSON.stringify(data, null, 2));
@@ -283,10 +284,15 @@ export async function run(argv, options = {}) {
           out(`Notas conectadas: ${data.notes.join(', ')}`);
         }
         for (const portal of data.portals ?? []) {
-          out(`Portal conectado: ${portal.title} ${portal.url} (${portal.id})`);
+          const connection = portal.connected === true
+            ? 'conectado a este agente'
+            : portal.connected === false
+              ? 'existe no workspace; nao conectado a este agente'
+              : 'existe no workspace';
+          out(`Portal [${connection}]: ${portal.title} ${portal.url} (${portal.id})`);
         }
         if (data.portals?.length) {
-          out(`Controle o portal com: orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>`);
+          out(`Controle o portal com: orkestrai portal <nodeId|nome> <navigate <url> | eval <js> | dom | screenshot>`);
         }
         for (const design of data.designs ?? []) {
           out(`Design conectado: ${design.title} (${design.id})`);
@@ -713,17 +719,18 @@ export async function run(argv, options = {}) {
       const [nodeId, action, ...values] = rest;
       if (nodeId === 'create') {
         const url = action;
-        if (!url) throw new Error('Uso: orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>]');
+        if (!url) throw new Error('Uso: orkestrai portal create <url> [--title <titulo>] [--connect <agente|all>] [--force-new]');
         const data = await bridge(config, 'POST', '/api/agent-room/bridge/portal/create', {
           url,
           title: flags.title,
           connect: flags.connect,
           from: flags.from,
+          forceNew: flags['force-new'] === true,
         });
-        out(`Portal criado: "${data.title}" (${data.nodeId}) — conectado a ${data.connectedTo}`);
+        out(`Portal ${data.reused ? 'reutilizado' : 'criado'}: "${data.title}" (${data.nodeId}) — conectado a ${data.connectedTo}`);
         return 0;
       }
-      if (!nodeId || !action) throw new Error('Uso: orkestrai portal <nodeId> <navigate <url> | eval <js> | dom | screenshot>');
+      if (!nodeId || !action) throw new Error('Uso: orkestrai portal <nodeId|nome> <navigate <url> | eval <js> | dom | screenshot>');
       const args = action === 'navigate' ? { url: values.join(' ') } : action === 'eval' ? { js: values.join(' ') } : {};
       const data = await bridge(config, 'POST', '/api/agent-room/bridge/portal', { nodeId, action, args });
       if (flags.json) out(JSON.stringify(data, null, 2));
@@ -1019,7 +1026,12 @@ export async function run(argv, options = {}) {
       const items = command === 'notes'
         ? (Array.isArray(data) ? data : (data.notes ?? []))
         : (data.portals ?? []);
-      for (const item of items) out(`- ${item.title} (${item.id ?? item.nodeId})${item.url ? ` ${item.url}` : ''}`);
+      for (const item of items) {
+        const connection = command === 'portals' && item.connected !== null && item.connected !== undefined
+          ? (item.connected ? ' [conectado]' : ' [disponivel no workspace]')
+          : '';
+        out(`- ${item.title} (${item.id ?? item.nodeId})${item.url ? ` ${item.url}` : ''}${connection}`);
+      }
       if (!items.length) out(command === 'notes' ? '(sem notas)' : '(sem portais)');
       return 0;
     }

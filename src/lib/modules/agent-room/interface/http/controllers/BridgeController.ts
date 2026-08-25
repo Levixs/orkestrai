@@ -61,9 +61,7 @@ export class BridgeController extends Controller {
       const agents = await bridgeService.listAgents(workspace.id);
       const agentNodeId = String(event.url.searchParams.get('agentNodeId') ?? '');
       const notes = await bridgeService.notesForAgent(workspace.id, agentNodeId).catch(() => [] as string[]);
-      const portals = agentNodeId
-        ? await bridgeService.portalsForAgent(workspace.id, agentNodeId).catch(() => [] as Array<{ id: string; title: string; url: string }>)
-        : [];
+      const portals = await bridgeService.listPortals(workspace.id, agentNodeId || null);
       const designs = agentNodeId
         ? await bridgeService.designsForAgent(workspace.id, agentNodeId).catch(() => [] as Array<{ id: string; title: string }>)
         : [];
@@ -752,8 +750,9 @@ export class BridgeController extends Controller {
           timeoutMs: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
         })
         .parse(await event.request.json());
-      await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
-      const command = portalService.enqueue(input.nodeId, input.action, input.args);
+      const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
+      const portal = await bridgeService.resolvePortal(workspace.id, input.nodeId);
+      const command = portalService.enqueue(portal.id, input.action, input.args);
       const result = await portalService.waitResult(command.id, input.timeoutMs);
       return this.json({ data: result }, result.ok ? 200 : 400);
     } catch (error) {
@@ -771,6 +770,7 @@ export class BridgeController extends Controller {
           url: z.string().trim().min(1, 'Informe a URL do portal.'),
           title: z.string().trim().nullish(),
           connect: z.string().trim().nullish(),
+          forceNew: z.boolean().default(false),
         })
         .parse(await event.request.json());
       const workspace = await bridgeService.resolveWorkspaceByToken(this.tokenFrom(event, input.token));
@@ -779,8 +779,9 @@ export class BridgeController extends Controller {
         url: input.url,
         title: input.title,
         connect: input.connect,
+        forceNew: input.forceNew,
       });
-      return this.json({ data: result }, 201);
+      return this.json({ data: result }, result.reused ? 200 : 201);
     } catch (error) {
       return this.errorResponse(error, 'Falha ao criar portal.');
     }

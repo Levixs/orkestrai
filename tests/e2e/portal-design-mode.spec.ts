@@ -26,6 +26,17 @@ test.describe('Portal Design Mode', () => {
       await page.goto(`/canvas?workspace=${workspace.id}&node=${portal.id}`);
       const portalNode = page.locator('.canvas-portal');
       await expect(portalNode).toBeVisible();
+      await expect(portalNode.locator('.portal-name')).toHaveText('Design preview');
+      await expect(portalNode.locator('.portal-address')).toHaveValue('http://127.0.0.1:5199/docs');
+      await portalNode.getByRole('button', { name: 'Rename portal' }).click();
+      const nameInput = portalNode.getByRole('textbox', { name: 'Portal name' });
+      await nameInput.fill('Checkout QA');
+      const renamed = page.waitForResponse((response) =>
+        response.request().method() === 'PATCH' && response.url().endsWith(`/nodes/${portal.id}`)
+      );
+      await nameInput.press('Enter');
+      await renamed;
+      await expect(portalNode.locator('.portal-name')).toHaveText('Checkout QA');
       await portalNode.getByRole('button', { name: 'Design inspection is available in the installed desktop app.' }).click();
       await expect(page.getByLabel('Notifications').getByText('Design inspection is available in the installed desktop app.')).toBeVisible();
 

@@ -48,6 +48,14 @@ export type BridgeAgent = {
   maestro: boolean;
 };
 
+export type BridgePortal = {
+  id: string;
+  title: string;
+  url: string;
+  /** null quando a chamada não tem a identidade de um agente para comparar. */
+  connected: boolean | null;
+};
+
 type BridgeAskInput = {
   to: string;
   message: string;
@@ -85,6 +93,28 @@ function shortTitle(title: string, max = 48): string {
 function defaultPortalUrl(url: string): string {
   const local = /^(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/.test(url);
   return `${local ? 'http' : 'https'}://${url}`;
+}
+
+function normalizePortalUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (trimmed.length > 2_048) throw new Error('A URL do portal excede o limite de 2048 caracteres.');
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : defaultPortalUrl(trimmed);
+  const parsed = new URL(candidate);
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('O portal aceita apenas URLs HTTP ou HTTPS.');
+  if (parsed.username || parsed.password) throw new Error('A URL do portal não pode conter credenciais.');
+  const normalized = parsed.toString();
+  return parsed.pathname === '/' && !parsed.search && !parsed.hash ? normalized.slice(0, -1) : normalized;
+}
+
+function comparablePortalUrl(rawUrl: string): string | null {
+  try {
+    const parsed = new URL(normalizePortalUrl(rawUrl));
+    parsed.hash = '';
+    const normalized = parsed.toString();
+    return parsed.pathname === '/' && !parsed.search ? normalized.slice(0, -1) : normalized;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -696,22 +726,53 @@ export class BridgeService {
       }));
   }
 
-  /** Portais conectados ao agente (para o `list` da CLI): id, título e URL. */
-  async portalsForAgent(workspaceId: string, agentNodeId: string): Promise<Array<{ id: string; title: string; url: string }>> {
-    const edges = await workspaceRepository.listEdges(workspaceId);
-    const portalIds = new Set<string>();
-    for (const edge of edges) {
-      if (edge.sourceNodeId === agentNodeId) portalIds.add(edge.targetNodeId);
-      if (edge.targetNodeId === agentNodeId) portalIds.add(edge.sourceNodeId);
+  /** Todos os portais do workspace, com conexão relativa ao agente explicitada. */
+  async listPortals(workspaceId: string, agentNodeId?: string | null): Promise<BridgePortal[]> {
+    const connectedIds = new Set<string>();
+    if (agentNodeId) {
+      const edges = await workspaceRepository.listEdges(workspaceId);
+      for (const edge of edges) {
+        if (edge.sourceNodeId === agentNodeId) connectedIds.add(edge.targetNodeId);
+        if (edge.targetNodeId === agentNodeId) connectedIds.add(edge.sourceNodeId);
+      }
     }
     const nodes = await workspaceRepository.listNodes(workspaceId);
     return nodes
-      .filter((node) => portalIds.has(node.id) && node.type === 'portal')
+      .filter((node) => node.type === 'portal')
       .map((node) => ({
         id: node.id,
         title: node.title ?? 'portal',
         url: String((node.payload as { url?: string }).url ?? ''),
+        connected: agentNodeId ? connectedIds.has(node.id) : null,
       }));
+  }
+
+  /** Resolve portal por id, nome exato ou trecho único, sempre confinado ao workspace. */
+  async resolvePortal(workspaceId: string, query: string): Promise<BridgePortal> {
+    const portals = await this.listPortals(workspaceId);
+    const normalized = query.trim().toLocaleLowerCase();
+    const byId = portals.find((portal) => portal.id === query);
+    if (byId) return byId;
+    const exact = portals.filter((portal) => portal.title.toLocaleLowerCase() === normalized);
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) {
+      throw new Error(`Há mais de um portal chamado "${query}". Use o ID: ${exact.map((portal) => portal.id).join(', ')}.`);
+    }
+    const partial = portals.filter((portal) => portal.title.toLocaleLowerCase().includes(normalized));
+    if (partial.length === 1) return partial[0];
+    if (partial.length > 1) {
+      throw new Error(
+        `O nome "${query}" corresponde a vários portais: ${partial.map((portal) => `"${portal.title}" (${portal.id})`).join(', ')}.`
+      );
+    }
+    throw new Error(`Portal "${query}" não encontrado neste workspace.`);
+  }
+
+  /** Compatibilidade interna para consumidores que precisam apenas dos conectados. */
+  async portalsForAgent(workspaceId: string, agentNodeId: string): Promise<Array<{ id: string; title: string; url: string }>> {
+    return (await this.listPortals(workspaceId, agentNodeId))
+      .filter((portal) => portal.connected)
+      .map(({ id, title, url }) => ({ id, title, url }));
   }
 
   /** Designs conectados ao agente, usados pelo briefing automatico da ponte. */
@@ -948,11 +1009,34 @@ export class BridgeService {
   /** Cria um portal (browser embutido) no canvas e conecta a um agente (default: o maestro). */
   async createPortal(
     workspaceId: string,
-    input: { from: string; url: string; title?: string | null; connect?: string | null }
-  ): Promise<{ nodeId: string; title: string; url: string; connectedTo: string | null }> {
+    input: { from: string; url: string; title?: string | null; connect?: string | null; forceNew?: boolean }
+  ): Promise<{ nodeId: string; title: string; url: string; connectedTo: string | null; reused: boolean }> {
     const maestro = await this.requireMaestro(workspaceId, input.from);
     const maestroNode = await workspaceRepository.getNode(maestro.nodeId);
-    const url = input.url.startsWith('http') ? input.url : defaultPortalUrl(input.url);
+    const url = normalizePortalUrl(input.url);
+    const portals = (await workspaceRepository.listNodes(workspaceId)).filter((candidate) => candidate.type === 'portal');
+    const matchingPortal = portals.find((candidate) => {
+      const existingUrl = String((candidate.payload as { url?: string }).url ?? '');
+      return comparablePortalUrl(existingUrl) === comparablePortalUrl(url);
+    });
+    if (matchingPortal) {
+      const connectedTo = await this.connectPortal(workspaceId, matchingPortal.id, maestro, input.connect);
+      this.notifyWorkspaceChanged(workspaceId);
+      return {
+        nodeId: matchingPortal.id,
+        title: matchingPortal.title ?? url,
+        url: String((matchingPortal.payload as { url?: string }).url ?? url),
+        connectedTo,
+        reused: true,
+      };
+    }
+    if (portals.length > 0 && !input.forceNew) {
+      const available = portals.map((portal) => `"${portal.title ?? 'portal'}" (${portal.id})`).join(', ');
+      throw new Error(
+        `O workspace já possui portal: ${available}. Reutilize-o com portal_navigate/orkestrai portal <nodeId> navigate <url>. ` +
+        'Crie outro apenas quando o usuário pedir explicitamente, usando forceNew/--force-new.'
+      );
+    }
     const node = await workspaceRepository.createNode({
       workspaceId,
       type: 'portal',
@@ -963,22 +1047,30 @@ export class BridgeService {
       height: 400,
       payload: { url },
     });
-    let connectedTo = maestro.title;
-    if (input.connect && input.connect !== 'all') {
-      const agents = await this.listAgents(workspaceId);
-      const agent = this.findAgent(agents, input.connect);
-      await this.ensureEdge(workspaceId, agent.nodeId, node.id);
-      connectedTo = agent.title;
-    } else {
-      if (input.connect === 'all') {
-        const agents = await this.listAgents(workspaceId);
-        for (const agent of agents) await this.ensureEdge(workspaceId, agent.nodeId, node.id);
-        connectedTo = 'todos os agentes';
-      }
-      await this.ensureEdge(workspaceId, maestro.nodeId, node.id);
-    }
+    const connectedTo = await this.connectPortal(workspaceId, node.id, maestro, input.connect);
     this.notifyWorkspaceChanged(workspaceId);
-    return { nodeId: node.id, title: node.title ?? url, url, connectedTo };
+    return { nodeId: node.id, title: node.title ?? url, url, connectedTo, reused: false };
+  }
+
+  private async connectPortal(
+    workspaceId: string,
+    portalNodeId: string,
+    maestro: BridgeAgent,
+    connect?: string | null,
+  ): Promise<string> {
+    if (connect && connect !== 'all') {
+      const agents = await this.listAgents(workspaceId);
+      const agent = this.findAgent(agents, connect);
+      await this.ensureEdge(workspaceId, agent.nodeId, portalNodeId);
+      return agent.title;
+    }
+    if (connect === 'all') {
+      const agents = await this.listAgents(workspaceId);
+      for (const agent of agents) await this.ensureEdge(workspaceId, agent.nodeId, portalNodeId);
+      return 'todos os agentes';
+    }
+    await this.ensureEdge(workspaceId, maestro.nodeId, portalNodeId);
+    return maestro.title;
   }
 
   /**
@@ -1065,7 +1157,7 @@ Sua identidade já está no ambiente (ORKESTRAI_NODE_ID) — a CLI sabe quem voc
 Se \`orkestrai\` não resolver no seu shell (acontece em alguns executores, ex.: Codex no Windows), execute o launcher da variável ORKESTRAI_CLI DIRETO (SEM prefixar \`node\`): \`"$ORKESTRAI_CLI" ...\` (Linux/macOS), \`%ORKESTRAI_CLI% ...\` (cmd.exe) ou \`& $env:ORKESTRAI_CLI ...\` (PowerShell). ORKESTRAI_CLI aponta para um launcher autocontido que já chama o runtime certo — funciona sempre, sem depender de PATH. NUNCA rode o caminho \`...orkestrai.js\` cru no Windows: o shell o abre pelo Windows Script Host e falha ("Caractere inválido").
 Se as tools \`orkestrai\` (list/usage/ask/huddle_*/memory_*/note_*/api_client_*/design_*/task_*/portal_*/floor_*/device_*/notify/port/recruit/dismiss) estiverem disponíveis como MCP neste ambiente, PREFIRA elas (chamadas tipadas, sem parse de shell) — a CLI continua valendo como fallback.
 
-- \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva) e SUAS notas, portais e designs conectados. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
+- \`orkestrai list\` — lista os agentes do workspace (título, provider, sessão viva), suas notas/designs conectados e TODOS os portais do workspace. Cada portal informa nome, URL, id e se está conectado a você; "não conectado" significa que ele JÁ EXISTE, não que deve ser criado. O agente marcado com [LIDER] e o maestro do time: "Maestro" e o PAPEL, não um título — fale com o líder pelo TITULO dele (ex.: \`orkestrai ask "Líder" ...\`), nunca por \`orkestrai ask "Maestro"\` (esse agente não existe).
 - \`orkestrai usage\` — consulta as cotas reais e a política do nó Usage; perfis de multi-conta aparecem como linhas próprias (\`profileId\`/\`profileName\`). Quando \`shouldFallback\` for verdadeiro, direcione NOVAS tarefas e tarefas ainda pendentes ao \`recommendedProvider\` (se ele tiver \`:profile:\`, use \`--provider\` + \`--profile\` juntos no recruit). Não troque silenciosamente o provider ou perfil de um terminal que já executa trabalho.
 - \`orkestrai ask "<TituloDoAgente>" "<mensagem>"\` — envia uma mensagem a outro agente e aguarda uma resposta confirmada. Só diga que falou/consultou o agente quando o comando terminar com sucesso e imprimir \`Resposta confirmada de ...\`. Timeout, erro ou \`Resposta nao confirmada\` significam que a conversa NÃO foi concluída — informe isso sem inventar resposta.
 - Tools MCP \`huddle_list\` e \`huddle_say\` (ou \`orkestrai huddle list/say\`) — acompanhe a transcrição de um huddle e registre sua contribuição quando você for participante. \`huddle_say\` apenas registra sua fala; não use para simular outra pessoa nem para disparar fan-out recursivo.
@@ -1099,8 +1191,8 @@ Se as tools \`orkestrai\` (list/usage/ask/huddle_*/memory_*/note_*/api_client_*/
 - \`orkestrai task archive <taskId>\` / \`task archive-done\` — arquiva concluídas: saem do quadro, ficam no histórico. Lidere a limpeza do quadro ao fechar uma frente.
 - \`orkestrai task history\` — histórico do workspace (concluídas + arquivadas, da mais recente): o "o que já foi feito" do projeto.
 - \`orkestrai task add "<título>" --note "<título-da-nota>"\` / \`task link <taskId> <nota>\` / \`task unlink <taskId>\` — vincula a tarefa à sua nota de spec. SEMPRE vincule: tarefa com spec vinculada é autossuficiente. Regras: UMA nota por tarefa (a mesma nota pode servir várias tarefas); ao arquivar a tarefa, a nota sai do canvas JUNTO (fica acessível pelo histórico); nota vinculada não é apagada pelo X do canvas — só sai de verdade junto com a tarefa (ou se desvinculada).
-- \`orkestrai portal create "<url>" [--title "<t>"] [--connect "<Agente>"|all]\` — cria um portal (browser) no canvas.
-- \`orkestrai portal <nodeId> navigate "<url>"\` — abre uma URL no portal conectado.
+- \`orkestrai portal create "<url>" [--title "<t>"] [--connect "<Agente>"|all] [--force-new]\` — antes de criar, rode \`orkestrai list\`. A mesma URL reutiliza o portal existente; se já houver outro portal, navegue-o para a URL desejada. Use \`--force-new\` SOMENTE quando o usuário pedir explicitamente mais um portal.
+- \`orkestrai portal <nome-ou-nodeId> navigate "<url>"\` — abre uma URL no portal escolhido por nome único ou id. \`eval\`, \`dom\` e \`screenshot\` aceitam o mesmo identificador.
 - \`orkestrai portal <nodeId> eval "<js>"\` — executa JS na página e retorna o resultado.
 - \`orkestrai portal <nodeId> dom\` — devolve o HTML atual (ler telas, pesquisar, testar o que você está construindo).
 - \`orkestrai portal <nodeId> screenshot\` — captura a tela do portal.
@@ -1141,7 +1233,7 @@ Antes de propor o time e antes de cada nova rodada de delegação, consulte \`or
 3. Escreva o spec/briefing do projeto numa nota: \`orkestrai note create "Spec — <projeto>" --content "..." --connect all\` (sem --connect, a nota já conecta ao time inteiro por padrão).
 4. Trabalho em código? Cada agente trabalha no PRÓPRIO ANDAR (worktree isolada): \`orkestrai floor create "<frente>"\` antes do agente começar — NUNCA deixe vários agentes codando na mesma branch. Integre depois com \`orkestrai floor preview\` (vê conflitos) e \`orkestrai floor land\`.
 5. Distribua TODO trabalho com \`orkestrai task add --assign\` ANTES de usar \`orkestrai ask\` para o handoff (o quadro kanban aparece no canvas sozinho na primeira tarefa). É PROIBIDO delegar trabalho apenas por mensagem direta. Use notas com \`orkestrai note create\`; cada task tem que ser AUTOSSUFICIENTE (a descrição diz o que fazer e onde está o spec) OU citar o id de uma nota que JÁ EXISTE e já está conectada ao agente — NUNCA atribua uma task que depende de uma nota/artefato que você ainda não criou. E cada agente PRODUZ os próprios artefatos: o designer CRIA a nota de design com \`orkestrai note create\`; não fica esperando o líder mandar uma — deixe isso explícito na descrição da task.
-6. Projeto web? CRIE UM PORTAL para acompanhar/verificar o resultado ao vivo: \`orkestrai portal create "http://localhost:<porta-do-dev-server>" --connect all\` e use \`orkestrai portal <nodeId> dom|screenshot|eval\` para testar o que o time está construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrão 5173/3000 — outro workspace pode estar usando).
+6. Projeto web? Rode \`orkestrai list\` e REUTILIZE um Portal existente pelo nome/id, navegando-o para \`http://localhost:<porta-do-dev-server>\`. Só crie um se a listagem confirmar que não existe nenhum; nunca deduza ausência a partir do estado de conexão. Use \`orkestrai portal <nome-ou-nodeId> dom|screenshot|eval\` para testar o que o time está construindo. A porta do dev server vem de \`orkestrai port\` (NUNCA a padrão 5173/3000 — outro workspace pode estar usando).
    Projeto mobile? Use \`orkestrai device list\`, anexe um iOS Simulator ou Android AVD e valide pelo ciclo tree/screenshot → ação → tree/screenshot. Aparelhos Android físicos exigem que o usuário inicie e confirme a sessão na UI. Instalações ficam confinadas ao workspace e o usuário acompanha a sessão ao vivo no Workbench.
 7. Acompanhe o quadro com \`orkestrai task list\`, \`orkestrai design list\`, cobre os agentes com \`orkestrai ask\` e integre os andares com \`floor preview/land\`. \`design list\` marca uma direção como \`stalled\` quando há trabalho ativo sem revisão nova por 5 minutos; interrompa e reoriente para um conceito menor em vez de aguardar dezenas de minutos. Em exploração visual, \`audit\` sem erros NÃO é aprovação: abra o resultado e espere \`reviewStatus: approved\` na revisão atual. DESBLOQUEIO (regra dura): se um agente travar, ficar em silêncio ou pedir algo, resolva na hora; implementar você mesmo é o último recurso e reatribuir continua preferível.
 8. NUNCA afirme que consultou/falou com outro agente sem uma execução bem-sucedida de \`orkestrai ask\` e a confirmação explícita retornada pela ponte. \`orkestrai task done\` avisa o líder automaticamente, além da notificação nativa de TAREFA CONCLUÍDA. Não duplique esse aviso. Quando precisar de atenção/aprovação, use \`orkestrai notify "<pedido>" --kind attention\`. Somente ao concluir o PROJETO inteiro, após conferir o quadro, use \`orkestrai notify "<resumo>" --kind project --title "<projeto>"\`.

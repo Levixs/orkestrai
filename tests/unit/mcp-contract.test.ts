@@ -40,6 +40,7 @@ const portalCreateSchema = z.object({
   url: z.string().trim().min(1),
   title: z.string().trim().nullish(),
   connect: z.string().trim().nullish(),
+  forceNew: z.boolean().default(false),
 });
 const apiClientExecuteSchema = z.object({
   requestId: z.string().trim().min(1).max(200),

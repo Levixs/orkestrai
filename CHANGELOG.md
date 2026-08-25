@@ -34,6 +34,11 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- `orkestrai list` now applies the terminal's automatic agent identity and
+  inventories every workspace Portal with an explicit connection state. Portal
+  names are visible and editable in the Canvas, automation accepts a unique
+  name or node id, repeated URLs reuse the existing node, and creating an
+  additional Portal requires explicit intent.
 - Installed desktop builds expose Developer Tools again and add a direct Help
   action for the rotating local diagnostics folder. Renderer errors, internal
   server failures, and unexpected exits are captured with bounded retention and
