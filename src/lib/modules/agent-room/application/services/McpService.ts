@@ -32,9 +32,20 @@ export class McpService {
     return resolve(workspace.workingDir, '.mcp.json');
   }
 
-  private async readConfig(workspaceId: string): Promise<{
-    mcpServers: Record<string, { command?: string; args?: string[]; env?: Record<string, string>; url?: string; type?: string }>;
-  } & Record<string, unknown>> {
+  private async readConfig(workspaceId: string): Promise<
+    {
+      mcpServers: Record<
+        string,
+        {
+          command?: string;
+          args?: string[];
+          env?: Record<string, string>;
+          url?: string;
+          type?: string;
+        }
+      >;
+    } & Record<string, unknown>
+  > {
     const path = await this.mcpPath(workspaceId);
     if (!existsSync(path)) return { mcpServers: {} };
     try {
@@ -59,12 +70,19 @@ export class McpService {
 
   async add(
     workspaceId: string,
-    input: { name: string; command?: string; args?: string | string[]; env?: Record<string, string>; url?: string }
+    input: {
+      name: string;
+      command?: string;
+      args?: string | string[];
+      env?: Record<string, string>;
+      url?: string;
+    }
   ): Promise<McpServerDef[]> {
     const name = input.name.trim();
     if (!name) throw new Error('Informe o nome do servidor.');
     if (!/^[a-z0-9-_]+$/i.test(name)) throw new Error('Nome so com letras, numeros, - e _.');
-    if (name === 'orkestrai' || name === 'figma') throw new Error(`O nome "${name}" e reservado para o servidor do Orkestrai.`);
+    if (name === 'orkestrai' || name === 'figma')
+      throw new Error(`O nome "${name}" e reservado para o servidor do Orkestrai.`);
     const workspace = await this.getWorkspace(workspaceId);
     const config = await this.readConfig(workspaceId);
     const url = input.url?.trim();
@@ -86,11 +104,17 @@ export class McpService {
       env = Object.fromEntries(Object.entries(input.env ?? {}).filter(([, value]) => String(value).trim() !== ''));
       config.mcpServers[name] = Object.keys(env).length ? { command, args, env } : { command, args };
     }
-    writeFileSync(resolve(workspace.workingDir, '.mcp.json'), `${JSON.stringify(config, null, 2)}\n`);
     // .mcp.json so e lido por Claude/Kimi — propaga para os outros formatos
     // nativos (Cursor, Cline, Devin, Antigravity, OpenCode) igual a ponte faz
-    // para o servidor "orkestrai". Falha de escrita aqui nao bloqueia o add.
-    await fanOutMcpServer(workspace.workingDir, name, { command, args, env, url }).catch(() => undefined);
+    // para o servidor "orkestrai". Valida todos os arquivos antes de gravar a
+    // fonte primaria para nao mascarar configuracoes invalidas dos providers.
+    await fanOutMcpServer(workspace.workingDir, name, {
+      command,
+      args,
+      env,
+      url,
+    });
+    writeFileSync(resolve(workspace.workingDir, '.mcp.json'), `${JSON.stringify(config, null, 2)}\n`);
     return this.list(workspaceId);
   }
 
@@ -100,8 +124,8 @@ export class McpService {
     const config = await this.readConfig(workspaceId);
     if (!(name in config.mcpServers)) throw new Error(`Servidor "${name}" nao encontrado.`);
     delete config.mcpServers[name];
+    await removeFannedOutMcpServer(workspace.workingDir, name);
     writeFileSync(resolve(workspace.workingDir, '.mcp.json'), `${JSON.stringify(config, null, 2)}\n`);
-    await removeFannedOutMcpServer(workspace.workingDir, name).catch(() => undefined);
     return this.list(workspaceId);
   }
 }

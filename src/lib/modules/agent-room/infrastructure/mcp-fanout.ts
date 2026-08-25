@@ -15,42 +15,56 @@ export type McpFanoutDef = {
  * ".mcp.json" (Claude/Kimi) fica de fora daqui: quem chama esta função já
  * escreveu esse arquivo antes, como fonte primária.
  */
-const STANDARD_FANOUT_PATHS = ['.cursor/mcp.json', '.cline/mcp.json', '.devin/mcp_config.json', '.agents/mcp_config.json'] as const;
+const STANDARD_FANOUT_PATHS = [
+  '.cursor/mcp.json',
+  '.cline/mcp.json',
+  '.devin/mcp_config.json',
+  '.agents/mcp_config.json',
+] as const;
 
 function serverEntry(def: McpFanoutDef): Record<string, unknown> {
   if (def.url) return { url: def.url };
-  const entry: Record<string, unknown> = { command: def.command, args: def.args ?? [] };
+  const entry: Record<string, unknown> = {
+    command: def.command,
+    args: def.args ?? [],
+  };
   if (def.env && Object.keys(def.env).length) entry.env = def.env;
   return entry;
 }
 
 async function readJson(path: string): Promise<Record<string, unknown>> {
+  let contents: string;
   try {
-    return JSON.parse(await readFile(path, 'utf8'));
-  } catch {
-    return {};
+    contents = await readFile(path, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(contents);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('expected a JSON object');
+    return parsed as Record<string, unknown>;
+  } catch (error) {
+    throw new Error(`Invalid MCP configuration at ${path}. Fix the JSON before managing workspace MCP servers.`, {
+      cause: error,
+    });
   }
 }
 
-async function upsertJsonMcpServer(path: string, name: string, def: McpFanoutDef): Promise<void> {
-  const config = await readJson(path);
+function upsertJsonMcpServer(config: Record<string, unknown>, name: string, def: McpFanoutDef): void {
   const mcpServers = (config.mcpServers as Record<string, unknown> | undefined) ?? {};
   config.mcpServers = { ...mcpServers, [name]: serverEntry(def) };
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
 }
 
-async function removeJsonMcpServer(path: string, name: string): Promise<void> {
-  const config = await readJson(path);
+function removeJsonMcpServer(config: Record<string, unknown>, name: string): boolean {
   const mcpServers = config.mcpServers as Record<string, unknown> | undefined;
-  if (!mcpServers || !(name in mcpServers)) return;
+  if (!mcpServers || !(name in mcpServers)) return false;
   delete mcpServers[name];
-  await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
+  return true;
 }
 
-async function upsertOpenCodeMcpServer(workingDir: string, name: string, def: McpFanoutDef): Promise<void> {
-  const path = resolve(workingDir, 'opencode.json');
-  const config = await readJson(path);
+function upsertOpenCodeMcpServer(config: Record<string, unknown>, name: string, def: McpFanoutDef): void {
   const mcp = (config.mcp as Record<string, unknown> | undefined) ?? {};
   const entry = def.url
     ? { type: 'remote', url: def.url, enabled: true }
@@ -61,16 +75,27 @@ async function upsertOpenCodeMcpServer(workingDir: string, name: string, def: Mc
         enabled: true,
       };
   config.mcp = { ...mcp, [name]: entry };
+}
+
+function removeOpenCodeMcpServer(config: Record<string, unknown>, name: string): boolean {
+  const mcp = config.mcp as Record<string, unknown> | undefined;
+  if (!mcp || !(name in mcp)) return false;
+  delete mcp[name];
+  return true;
+}
+
+async function writeJson(path: string, config: Record<string, unknown>): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
 }
 
-async function removeOpenCodeMcpServer(workingDir: string, name: string): Promise<void> {
-  const path = resolve(workingDir, 'opencode.json');
-  const config = await readJson(path);
-  const mcp = config.mcp as Record<string, unknown> | undefined;
-  if (!mcp || !(name in mcp)) return;
-  delete mcp[name];
-  await writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
+async function loadFanoutConfigs(workingDir: string) {
+  const paths = [
+    ...STANDARD_FANOUT_PATHS.map((relativePath) => resolve(workingDir, relativePath)),
+    resolve(workingDir, 'opencode.json'),
+  ];
+  const configs = await Promise.all(paths.map(async (path) => ({ path, config: await readJson(path) })));
+  return { standard: configs.slice(0, -1), openCode: configs.at(-1)! };
 }
 
 /**
@@ -81,15 +106,17 @@ async function removeOpenCodeMcpServer(workingDir: string, name: string): Promis
  * vazaria o servidor para todas as outras sessões da máquina.
  */
 export async function fanOutMcpServer(workingDir: string, name: string, def: McpFanoutDef): Promise<void> {
-  for (const relativePath of STANDARD_FANOUT_PATHS) {
-    await upsertJsonMcpServer(resolve(workingDir, relativePath), name, def);
-  }
-  await upsertOpenCodeMcpServer(workingDir, name, def);
+  // Parse every target before writing any of them. A malformed provider file
+  // must never be replaced with a fresh config or leave a partial fan-out.
+  const { standard, openCode } = await loadFanoutConfigs(workingDir);
+  for (const target of standard) upsertJsonMcpServer(target.config, name, def);
+  upsertOpenCodeMcpServer(openCode.config, name, def);
+  await Promise.all([...standard, openCode].map((target) => writeJson(target.path, target.config)));
 }
 
 export async function removeFannedOutMcpServer(workingDir: string, name: string): Promise<void> {
-  for (const relativePath of STANDARD_FANOUT_PATHS) {
-    await removeJsonMcpServer(resolve(workingDir, relativePath), name);
-  }
-  await removeOpenCodeMcpServer(workingDir, name);
+  const { standard, openCode } = await loadFanoutConfigs(workingDir);
+  const changed = standard.filter((target) => removeJsonMcpServer(target.config, name));
+  if (removeOpenCodeMcpServer(openCode.config, name)) changed.push(openCode);
+  await Promise.all(changed.map((target) => writeJson(target.path, target.config)));
 }
