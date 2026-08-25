@@ -239,12 +239,27 @@
     }
   }
 
+  let renameGroupCancelled = false;
+
   function startRenameGroup(group: WorkspaceGroup) {
     renamingGroupId = group.id;
     renameGroupValue = group.name;
+    renameGroupCancelled = false;
+  }
+
+  /** Esc cancela sem salvar. O input some ao ficar false, o que dispara blur
+      em seguida — sem essa flag, o blur chamaria commitRenameGroup de novo e
+      salvaria mesmo apos o cancelamento (bug que existia no my agents). */
+  function cancelRenameGroup() {
+    renameGroupCancelled = true;
+    renamingGroupId = null;
   }
 
   async function commitRenameGroup(groupId: string) {
+    if (renameGroupCancelled) {
+      renameGroupCancelled = false;
+      return;
+    }
     const name = renameGroupValue.trim();
     renamingGroupId = null;
     const existing = workspaceGroups.find((group) => group.id === groupId);
@@ -2336,7 +2351,7 @@
             onblur={() => commitRenameGroup(node.group.id)}
             onkeydown={(event) => {
               if (event.key === 'Enter') commitRenameGroup(node.group.id);
-              if (event.key === 'Escape') renamingGroupId = null;
+              if (event.key === 'Escape') cancelRenameGroup();
             }}
             autofocus
           />
