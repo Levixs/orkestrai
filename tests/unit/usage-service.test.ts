@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { UsageService } from '$lib/modules/agent-room/application/services/UsageService.js';
 import { USAGE_REFRESH_INTERVAL_MS } from '$lib/modules/agent-room/domain/usage.js';
+import type { ProviderProfile } from '$lib/modules/agent-room/domain/types.js';
 
 function fakeFetch(routes: Record<string, unknown>) {
   return (async (url: string) => {
@@ -65,6 +67,25 @@ describe('UsageService', () => {
       'darwin',
     );
     const usage = await service.getUsage('claude');
+    expect(usage.error).toBeNull();
+    expect(usage.windows[0].usedPercent).toBe(42);
+  });
+
+  it('claude: perfil com CLAUDE_CONFIG_DIR proprio le do Keychain namespaced por configDir', async () => {
+    const home = homeWith({});
+    const configDir = join(home, '.claude-trabalho');
+    const expectedService = `Claude Code-credentials-${createHash('sha256').update(configDir).digest('hex').slice(0, 8)}`;
+    const profile: ProviderProfile = {
+      id: 'profile-1', providerId: 'claude', name: 'Trabalho', configDir, dataDir: null, hasToken: false,
+      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+    };
+    const service = new UsageService(
+      fakeFetch({ 'https://api.anthropic.com/api/oauth/usage': CLAUDE_USAGE }),
+      home,
+      async (service) => (service === expectedService ? JSON.stringify({ claudeAiOauth: { accessToken: 'tok-profile' } }) : null),
+      'darwin',
+    );
+    const usage = await service.getUsage('claude', false, profile);
     expect(usage.error).toBeNull();
     expect(usage.windows[0].usedPercent).toBe(42);
   });

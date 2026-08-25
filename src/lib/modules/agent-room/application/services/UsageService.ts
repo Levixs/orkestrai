@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -15,6 +16,11 @@ const KIMI_OAUTH_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098';
 
 function expandProfileHome(path: string, home: string): string {
   return path === '~' || path.startsWith('~/') ? path.replace(/^~/, home) : path;
+}
+
+/** Sufixo do service name do Keychain do Claude Code para um CLAUDE_CONFIG_DIR nao padrao. */
+function claudeKeychainSuffix(configDir: string): string {
+  return createHash('sha256').update(configDir).digest('hex').slice(0, 8);
 }
 
 export type UsageWindowKind = '5h' | 'weekly' | 'monthly';
@@ -161,11 +167,14 @@ export class UsageService {
       const token = parsed?.claudeAiOauth?.accessToken;
       if (token) return token as string;
     }
-    // O Keychain do macOS nao e namespaced por CLAUDE_CONFIG_DIR — so serve
-    // de fallback para a conta padrao, nunca para um perfil (leria a conta
-    // errada silenciosamente).
-    if (!configDir && this.platform === 'darwin') {
-      const raw = await this.keychainReader('Claude Code-credentials');
+    // O Keychain do macOS E namespaced por CLAUDE_CONFIG_DIR: o Claude Code
+    // grava a conta padrao em "Claude Code-credentials" e qualquer outro
+    // CLAUDE_CONFIG_DIR em "Claude Code-credentials-<sha256(configDir).slice(0,8)>"
+    // (confirmado via `security dump-keychain` — o sufixo bate exatamente
+    // com os 8 primeiros hex do sha256 do caminho absoluto do configDir).
+    if (this.platform === 'darwin') {
+      const service = configDir ? `Claude Code-credentials-${claudeKeychainSuffix(configDir)}` : 'Claude Code-credentials';
+      const raw = await this.keychainReader(service);
       if (raw) {
         const token = JSON.parse(raw)?.claudeAiOauth?.accessToken;
         if (token) return token as string;

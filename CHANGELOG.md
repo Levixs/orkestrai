@@ -5,6 +5,17 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.5 - 2026-08-25
+
+### Fixed
+
+- Provider Profile Usage now finds the Claude credential for a profile with
+  its own `CLAUDE_CONFIG_DIR` on macOS. Claude Code stores non-default
+  accounts in a Keychain entry namespaced by the config directory, not in
+  `.credentials.json` on disk; Usage previously only checked the file for a
+  profile and reported "no local Claude credential found" even right after
+  logging in with that profile.
+
 ## 0.20.4 - 2026-08-24
 
 ### Added

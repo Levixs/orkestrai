@@ -699,6 +699,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: 'Aug 25, 2026 · 0.20.5',
+      title: 'Orkestrai 0.20.5: Usage finds Claude Profile credentials on macOS',
+      summary: 'Usage no longer reports a missing Claude credential for a Provider Profile right after logging in with it.',
+      items: [
+        'Provider Profile Usage now checks the macOS Keychain entry Claude Code namespaces by CLAUDE_CONFIG_DIR, not just .credentials.json on disk, so a profile with its own config directory reports usage correctly.',
+      ],
+    },
+    {
       date: 'Aug 24, 2026 · 0.20.4',
       title: 'Orkestrai 0.20.4: 4 new terminal themes',
       summary: 'Monokai, Ayu Dark, Rosé Pine, and Solarized Light join the terminal theme picker, bringing the total to 15.',
