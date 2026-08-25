@@ -703,6 +703,15 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: '24 ago 2026 · 0.20.1',
+      title: 'Orkestrai 0.20.1: ícones consistentes no Canvas',
+      summary: 'O menu "adicionar agente" e o toolbar de baixo do Canvas agora mostram ícones consistentes e corretos pra todo provider e ferramenta.',
+      items: [
+        'O menu "adicionar agente" agora mostra o logo real de cada provider em vez de um ícone genérico pra OpenCode, Cursor, Antigravity, Cline, Devin e Copilot.',
+        'Os ícones do toolbar de baixo agora têm o mesmo brilho entre si, e o ícone do Portal ficou visível no tema claro.',
+      ],
+    },
+    {
       date: '24 ago 2026 · 0.20.0',
       title: 'Orkestrai 0.20.0: servidores MCP e skills chegam em todo provider',
       summary: 'Um servidor MCP adicionado à mão ou uma skill instalada agora chega no provider que o workspace realmente roda, não só Claude e Kimi.',
