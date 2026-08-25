@@ -5,6 +5,18 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.6 - 2026-08-25
+
+### Fixed
+
+- Click-and-drag text selection inside any terminal now lands on the correct
+  characters when the Canvas is zoomed in or out. xterm's own built-in
+  selection measured characters using unscaled font metrics and visually
+  overrode the app's already zoom-aware selection; the built-in single-click
+  drag selection is now suppressed in favor of the correct one, for every
+  provider. Word/line selection via double/triple-click still goes through
+  xterm's native handling and may be slightly off at extreme zoom levels.
+
 ## 0.20.5 - 2026-08-25
 
 ### Fixed

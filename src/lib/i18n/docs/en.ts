@@ -699,6 +699,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: 'Aug 25, 2026 · 0.20.6',
+      title: 'Orkestrai 0.20.6: accurate text selection at any Canvas zoom',
+      summary: 'Click-and-drag text selection inside a terminal now lands on the right characters, no matter how zoomed in or out the Canvas is.',
+      items: [
+        'Fixed click-and-drag text selection landing on the wrong characters when the Canvas was zoomed in or out, for every agent provider.',
+      ],
+    },
+    {
       date: 'Aug 25, 2026 · 0.20.5',
       title: 'Orkestrai 0.20.5: Usage finds Claude Profile credentials on macOS',
       summary: 'Usage no longer reports a missing Claude credential for a Provider Profile right after logging in with it.',

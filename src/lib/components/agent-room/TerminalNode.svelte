@@ -20,7 +20,7 @@
   import { speakText } from './voice-speech.js';
   import { voiceModelsReadyForUse } from './voice-model-status.js';
   import { terminalDictationInput } from './terminal-dictation.js';
-  import { isTerminalCopyShortcut, terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
+  import { isTerminalCopyShortcut, shouldSuppressNativeSingleClickSelection, terminalCellAtPoint, terminalSelectionRange, type TerminalCell } from './terminal-selection.js';
   import { workingDirectoryFromOsc } from './terminal-working-directory.js';
   import { audioSignalIsEmpty } from '$lib/modules/agent-room/domain/voice-audio.js';
   import {
@@ -422,8 +422,17 @@
       event.stopPropagation();
       void copyTerminalSelection(terminal);
     };
+    // terminal.element tambem recebe o mousedown nativo que o proprio xterm
+    // usa para selecionar (fase de bubble); ele roda depois do pointerdown
+    // acima e, sem isso, sobrescreve visualmente a selecao correta do overlay
+    // com as metricas nao escaladas do xterm quando o canvas esta com zoom.
+    const blockNativeSingleClickSelection = (event: MouseEvent) => {
+      if (!screen || !shouldSuppressNativeSingleClickSelection(event, terminal.modes.mouseTrackingMode)) return;
+      event.stopPropagation();
+    };
     screen?.addEventListener('pointerdown', selectionPointerDown);
     screen?.addEventListener('contextmenu', copySelectionFromContextMenu);
+    terminal.element?.addEventListener('mousedown', blockNativeSingleClickSelection, { capture: true });
     window.addEventListener('pointermove', selectionPointerMove);
     window.addEventListener('pointerup', selectionPointerUp);
 
@@ -709,6 +718,7 @@
       disposed = true;
       screen?.removeEventListener('pointerdown', selectionPointerDown);
       screen?.removeEventListener('contextmenu', copySelectionFromContextMenu);
+      terminal.element?.removeEventListener('mousedown', blockNativeSingleClickSelection, { capture: true });
       window.removeEventListener('pointermove', selectionPointerMove);
       window.removeEventListener('pointerup', selectionPointerUp);
       window.removeEventListener('resize', refitForDisplayChange);

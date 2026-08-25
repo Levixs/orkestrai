@@ -699,6 +699,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
+      date: '25 ago 2026 · 0.20.6',
+      title: 'Orkestrai 0.20.6: selección de texto precisa en cualquier zoom del Canvas',
+      summary: 'Seleccionar texto arrastrando el mouse dentro de una terminal ahora cae en los caracteres correctos, sin importar el zoom del Canvas.',
+      items: [
+        'Se corrigió la selección de texto por arrastre que caía en los caracteres incorrectos cuando el Canvas tenía zoom, para cualquier provider de agente.',
+      ],
+    },
+    {
       date: '25 ago 2026 · 0.20.5',
       title: 'Orkestrai 0.20.5: Uso encuentra la credencial de Perfil de Claude en macOS',
       summary: 'Uso ya no muestra credencial de Claude no encontrada para un Perfil justo después de iniciar sesión con él.',
