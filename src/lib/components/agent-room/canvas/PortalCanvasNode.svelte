@@ -20,6 +20,7 @@
   import * as Dialog from '$lib/components/ui/dialog';
   import * as NativeSelect from '$lib/components/ui/native-select';
   import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
   import { Textarea } from '$lib/components/ui/textarea';
   import { Badge } from '$lib/components/ui/badge';
   import {
@@ -562,37 +563,38 @@
   <div class="portal-body nodrag nowheel" class:inspecting>
     {#if deviceToolbarOpen}
       <div class="device-toolbar nodrag" role="toolbar" aria-label={m['portal.device_toolbar_show']()}>
-        <select
-          class="device-preset-select"
+        <NativeSelect.Root
+          class="min-w-0 max-w-[220px] flex-1"
+          size="sm"
           value={selectedPresetId}
-          onchange={(event) => applyDevicePreset(event.currentTarget.value)}
+          onchange={(event: Event) => applyDevicePreset((event.currentTarget as HTMLSelectElement).value)}
           aria-label={m['portal.device_preset']()}
         >
-          <option value="off">{m['portal.device_off']()}</option>
+          <NativeSelect.Option value="off">{m['portal.device_off']()}</NativeSelect.Option>
           {#each PORTAL_DEVICE_PRESETS as preset (preset.id)}
-            <option value={preset.id}>{preset.label} ({preset.width}×{preset.height})</option>
+            <NativeSelect.Option value={preset.id}>{preset.label} ({preset.width}×{preset.height})</NativeSelect.Option>
           {/each}
-          <option value="custom" disabled>{m['portal.device_custom']()}</option>
-        </select>
+          <NativeSelect.Option value="custom" disabled>{m['portal.device_custom']()}</NativeSelect.Option>
+        </NativeSelect.Root>
         {#if viewport}
-          <input
-            class="device-dimension"
+          <Input
+            class="h-7 w-16 px-1 text-center text-[11px]"
             type="number"
             min={PORTAL_VIEWPORT_MIN}
             max={PORTAL_VIEWPORT_MAX}
             value={viewport.width}
             aria-label={m['portal.device_width']()}
-            onchange={(event) => updateViewportWidth(event.currentTarget.valueAsNumber)}
+            onchange={(event: Event) => updateViewportWidth((event.currentTarget as HTMLInputElement).valueAsNumber)}
           />
           <span class="device-dimension-sep" aria-hidden="true">×</span>
-          <input
-            class="device-dimension"
+          <Input
+            class="h-7 w-16 px-1 text-center text-[11px]"
             type="number"
             min={PORTAL_VIEWPORT_MIN}
             max={PORTAL_VIEWPORT_MAX}
             value={viewport.height}
             aria-label={m['portal.device_height']()}
-            onchange={(event) => updateViewportHeight(event.currentTarget.valueAsNumber)}
+            onchange={(event: Event) => updateViewportHeight((event.currentTarget as HTMLInputElement).valueAsNumber)}
           />
           <IconAction label={m['portal.device_rotate']()} onclick={rotateViewport}><RotateCw size={13} /></IconAction>
         {/if}
@@ -848,29 +850,6 @@
     background: var(--app-surface);
     border-bottom: 1px solid var(--app-border);
     font-size: 11px;
-  }
-
-  .device-preset-select {
-    flex: 1;
-    min-width: 0;
-    max-width: 220px;
-    padding: 3px 6px;
-    border-radius: 5px;
-    border: 1px solid var(--app-border);
-    background: var(--app-canvas);
-    color: var(--app-text);
-    font-size: 11px;
-  }
-
-  .device-dimension {
-    width: 56px;
-    padding: 3px 5px;
-    border-radius: 5px;
-    border: 1px solid var(--app-border);
-    background: var(--app-canvas);
-    color: var(--app-text);
-    font-size: 11px;
-    text-align: center;
   }
 
   .device-dimension-sep {
