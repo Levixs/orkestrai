@@ -5,94 +5,7 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
-## 0.22.0 - 2026-08-25
-
-### Added
-
-- Portal now has a responsiveness toolbar, similar to a browser's device
-  mode: pick a device preset (iPhone, Pixel, iPad, laptop, desktop) or type
-  an exact width/height, rotate orientation, or turn it off to fill the node
-  again. The page's real viewport changes to that size, so its own
-  responsive CSS reacts normally; when the emulated size is larger than the
-  node, Portal scrolls to it rather than scaling or distorting the page.
-
-## 0.21.0 - 2026-08-25
-
-### Added
-
-- Workspaces can now be organized into nested folders in the Canvas sidebar,
-  with no depth limit. Create a folder from the sidebar (or a subfolder
-  already inside another one, via the "new subfolder" icon in its header),
-  drag a workspace onto a folder's header to file it there (or onto empty
-  space to send it back to the root), and drag one folder onto another to
-  nest it — a folder can never be moved inside itself or one of its own
-  subfolders. Each folder's collapsed/expanded state is saved on the folder
-  itself, so it's remembered across restarts. Deleting a folder is never
-  destructive: workspaces and subfolders inside it move up to the root
-  instead of being removed.
-
-## 0.20.6 - 2026-08-25
-
-### Fixed
-
-- Click-and-drag text selection inside any terminal now lands on the correct
-  characters when the Canvas is zoomed in or out. xterm's own built-in
-  selection measured characters using unscaled font metrics and visually
-  overrode the app's already zoom-aware selection; the built-in single-click
-  drag selection is now suppressed in favor of the correct one, for every
-  provider. Word/line selection via double/triple-click still goes through
-  xterm's native handling and may be slightly off at extreme zoom levels.
-
-## 0.20.5 - 2026-08-25
-
-### Fixed
-
-- Provider Profile Usage now finds the Claude credential for a profile with
-  its own `CLAUDE_CONFIG_DIR` on macOS. Claude Code stores non-default
-  accounts in a Keychain entry namespaced by the config directory, not in
-  `.credentials.json` on disk; Usage previously only checked the file for a
-  profile and reported "no local Claude credential found" even right after
-  logging in with that profile.
-
-## 0.20.4 - 2026-08-24
-
-### Added
-
-- Added 4 new terminal ANSI themes — Monokai, Ayu Dark, Rosé Pine, and
-  Solarized Light — bringing the total to 15.
-
-## 0.20.3 - 2026-08-24
-
-### Added
-
-- Settings now shows a live preview of the selected terminal theme, font, and
-  padding (with color swatches on each theme option), and keyboard shortcuts
-  display the correct modifier for your OS — the ⌘ symbol on macOS, "Ctrl"
-  everywhere else — instead of always showing "Cmd/Ctrl".
-
-## 0.20.2 - 2026-08-24
-
-### Fixed
-
-- The Skills marketplace no longer pre-fills the search box with the literal
-  word "agent" and auto-searches it on page load. It now shows a curated list
-  of popular skills by default (matching how the MCP tab already worked) and
-  only queries skills.sh once you actually type something.
-
-## 0.20.1 - 2026-08-24
-
-### Fixed
-
-- The Canvas "add agent" menu now shows each provider's real logo (OpenCode,
-  Cursor, Antigravity, Cline, Devin, and Copilot were falling back to a
-  generic icon; only Claude, Codex, and Kimi had one).
-- Canvas bottom toolbar icons now share one consistent brightness: raster
-  icons (Shell, Portal, Loop) no longer look brighter than their neighboring
-  Lucide icons, the Agents and Design menu triggers match the same muted
-  color as the rest of the toolbar, and Portal's icon is now visible in light
-  theme.
-
-## 0.20.0 - 2026-08-24
+## 0.20.0 - 2026-08-25
 
 ### Added
 
@@ -102,6 +15,29 @@ pt-BR, English, and Spanish translations.
   added to a workspace actually reaches whichever provider that workspace is
   configured to run. The MCP sections in Provider Center and the Skills page
   now use the official Model Context Protocol mark instead of a generic icon.
+- The Skills marketplace now opens with a curated catalog and merges it with
+  live search results instead of issuing a fake default search.
+- Settings now previews terminal colors, font, and padding, shows OS-specific
+  shortcut modifiers, and includes Monokai, Ayu Dark, Rosé Pine, and Solarized
+  Light, bringing the terminal theme total to 15.
+- Workspaces can now be organized into persistent nested folders in the Canvas
+  sidebar. Drag workspaces or folders to reorganize them, create subfolders,
+  rename or collapse them, and delete folders without deleting their contents.
+- Portal now has a real responsive-device viewport with presets, custom
+  dimensions, orientation rotation, and contained scrolling without scaling
+  or distorting the embedded page.
+
+### Fixed
+
+- Canvas agent/provider and toolbar icons now use the shared provider registry,
+  consistent interaction states, and correct light-theme contrast.
+- Terminal click-and-drag selection now maps to the correct characters at any
+  Canvas zoom while retaining native word/line selection and mouse tracking.
+- Provider Profile Usage now resolves non-default Claude credentials from the
+  config-specific macOS Keychain entry.
+- MCP fan-out preserves malformed provider files and aborts without partial
+  writes, while skill registry results and downloads are bounded and validated
+  before reaching the UI or filesystem.
 
 ## 0.19.0 - 2026-08-24
 

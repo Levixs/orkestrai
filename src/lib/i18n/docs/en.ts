@@ -704,79 +704,16 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Aug 25, 2026 · 0.22.0',
-      title: 'Orkestrai 0.22.0: test responsiveness inside Portal',
-      summary: 'Portal now has a device toolbar, like a browser\'s — pick a device or type an exact size to see how a page really responds.',
-      items: [
-        'Added a responsiveness toolbar to Portal: device presets (iPhone, Pixel, iPad, laptop, desktop), a custom width/height, and an orientation toggle, driving the page\'s real viewport size instead of just scaling the view.',
-      ],
-    },
-    {
-      date: 'Aug 25, 2026 · 0.21.0',
-      title: 'Orkestrai 0.21.0: organize workspaces into folders',
-      summary: 'Group workspaces into nested folders in the Canvas sidebar — drag to file, nest, or send back to the root.',
-      items: [
-        'Added nested folders (no depth limit) in the Canvas sidebar to organize workspaces. Create one from the sidebar or a subfolder directly inside another one, drag a workspace onto its header to file it, drag a folder onto another to nest it, and rename or delete folders without ever losing what is inside them. Each folder remembers whether it is collapsed across restarts.',
-      ],
-    },
-    {
-      date: 'Aug 25, 2026 · 0.20.6',
-      title: 'Orkestrai 0.20.6: accurate text selection at any Canvas zoom',
-      summary: 'Click-and-drag text selection inside a terminal now lands on the right characters, no matter how zoomed in or out the Canvas is.',
-      items: [
-        'Fixed click-and-drag text selection landing on the wrong characters when the Canvas was zoomed in or out, for every agent provider.',
-      ],
-    },
-    {
-      date: 'Aug 25, 2026 · 0.20.5',
-      title: 'Orkestrai 0.20.5: Usage finds Claude Profile credentials on macOS',
-      summary: 'Usage no longer reports a missing Claude credential for a Provider Profile right after logging in with it.',
-      items: [
-        'Provider Profile Usage now checks the macOS Keychain entry Claude Code namespaces by CLAUDE_CONFIG_DIR, not just .credentials.json on disk, so a profile with its own config directory reports usage correctly.',
-      ],
-    },
-    {
-      date: 'Aug 24, 2026 · 0.20.4',
-      title: 'Orkestrai 0.20.4: 4 new terminal themes',
-      summary: 'Monokai, Ayu Dark, Rosé Pine, and Solarized Light join the terminal theme picker, bringing the total to 15.',
-      items: [
-        'Added Monokai, Ayu Dark, Rosé Pine, and Solarized Light as terminal ANSI themes.',
-      ],
-    },
-    {
-      date: 'Aug 24, 2026 · 0.20.3',
-      title: 'Orkestrai 0.20.3: see it before you pick it',
-      summary: 'Settings now previews your terminal theme and font live, and shortcuts show the right modifier key for your OS.',
-      items: [
-        'The terminal theme picker shows a color swatch per option and a live preview panel with your chosen theme, font, and padding.',
-        'Keyboard shortcuts in Settings now show ⌘ on macOS or "Ctrl" elsewhere, instead of always showing "Cmd/Ctrl".',
-      ],
-    },
-    {
-      date: 'Aug 24, 2026 · 0.20.2',
-      title: 'Orkestrai 0.20.2: a real default skills list',
-      summary: 'The Skills tab no longer fakes a search for "agent" on load — it now shows a curated list of popular skills, like MCP already did.',
-      items: [
-        'The Skills marketplace shows a curated list of popular skills by default instead of pre-filling the search box with "agent" and auto-searching it.',
-        'Typing a search term now merges that curated list with live skills.sh results instead of replacing it outright.',
-      ],
-    },
-    {
-      date: 'Aug 24, 2026 · 0.20.1',
-      title: 'Orkestrai 0.20.1: consistent Canvas icons',
-      summary: 'The Canvas "add agent" menu and bottom toolbar now show consistent, correct icons for every provider and tool.',
-      items: [
-        'The "add agent" menu now shows each provider’s real logo instead of a generic icon for OpenCode, Cursor, Antigravity, Cline, Devin, and Copilot.',
-        'Bottom toolbar icons now share one consistent brightness, and the Portal icon is visible in light theme.',
-      ],
-    },
-    {
-      date: 'Aug 24, 2026 · 0.20.0',
-      title: 'Orkestrai 0.20.0: MCP servers and skills reach every provider',
-      summary: 'A manually added MCP server or installed skill now reaches whichever provider the workspace actually runs, not just Claude and Kimi.',
+      date: 'Aug 25, 2026 · 0.20.0',
+      title: 'Orkestrai 0.20.0: organized workspaces and sharper provider tools',
+      summary: 'Nested workspace folders, responsive Portal testing, richer terminal personalization, and safer provider-wide MCP and skill management arrive together.',
       items: [
         'MCP servers and skills added or installed on a workspace now propagate to Cursor, Cline, Devin, Antigravity, and OpenCode’s native config formats, matching the same providers the built-in Orkestrai bridge already covers.',
-        'The MCP sections in Provider Center and the Skills page now show the official Model Context Protocol mark instead of a generic plug icon.',
+        'The Skills marketplace opens with a curated catalog, safely merges live results, and validates registry downloads before they reach the workspace.',
+        'Workspaces can be organized into persistent nested folders in the Canvas sidebar, with drag and drop, subfolders, renaming, collapse state, cycle prevention, and non-destructive deletion.',
+        'Portal has a real responsive-device viewport with presets, custom dimensions, orientation rotation, and contained scrolling without distorting the embedded page.',
+        'Settings previews terminal colors, font, and padding, shows the correct OS shortcut modifier, and adds Monokai, Ayu Dark, Rosé Pine, and Solarized Light.',
+        'Terminal selection is accurate at any Canvas zoom, Claude Profile Usage reads config-specific macOS Keychain credentials, and Canvas provider/tool icons now stay consistent across themes.',
       ],
     },
     {

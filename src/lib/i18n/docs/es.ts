@@ -704,79 +704,16 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: '25 ago 2026 · 0.22.0',
-      title: 'Orkestrai 0.22.0: prueba la responsividad dentro del Portal',
-      summary: 'El Portal ahora tiene una barra de dispositivos, como la de un navegador — elige un dispositivo o escribe un tamaño exacto para ver cómo responde la página de verdad.',
+      date: '25 ago 2026 · 0.20.0',
+      title: 'Orkestrai 0.20.0: workspaces organizados y providers más completos',
+      summary: 'Carpetas anidadas, pruebas responsivas en Portal, más personalización de terminales y gestión segura de MCPs y skills para todos los providers llegan juntas.',
       items: [
-        'Se agregó una barra de responsividad al Portal: presets de dispositivo (iPhone, Pixel, iPad, laptop, desktop), ancho/alto personalizados y un botón para rotar la orientación, cambiando el viewport real de la página en lugar de solo escalar la vista.',
-      ],
-    },
-    {
-      date: '25 ago 2026 · 0.21.0',
-      title: 'Orkestrai 0.21.0: organiza workspaces en carpetas',
-      summary: 'Agrupa workspaces en carpetas anidadas en la barra lateral del Canvas — arrastra para archivar, anidar o devolver a la raíz.',
-      items: [
-        'Se agregaron carpetas anidadas (sin límite de profundidad) en la barra lateral del Canvas para organizar workspaces. Crea una desde la barra lateral o una subcarpeta directo dentro de otra, arrastra un workspace sobre su encabezado para archivarlo, arrastra una carpeta sobre otra para anidarla, y renombra o elimina carpetas sin perder nunca lo que hay dentro. Cada carpeta recuerda si está colapsada entre reinicios.',
-      ],
-    },
-    {
-      date: '25 ago 2026 · 0.20.6',
-      title: 'Orkestrai 0.20.6: selección de texto precisa en cualquier zoom del Canvas',
-      summary: 'Seleccionar texto arrastrando el mouse dentro de una terminal ahora cae en los caracteres correctos, sin importar el zoom del Canvas.',
-      items: [
-        'Se corrigió la selección de texto por arrastre que caía en los caracteres incorrectos cuando el Canvas tenía zoom, para cualquier provider de agente.',
-      ],
-    },
-    {
-      date: '25 ago 2026 · 0.20.5',
-      title: 'Orkestrai 0.20.5: Uso encuentra la credencial de Perfil de Claude en macOS',
-      summary: 'Uso ya no muestra credencial de Claude no encontrada para un Perfil justo después de iniciar sesión con él.',
-      items: [
-        'El Uso de Perfiles de provider ahora consulta la entrada del Keychain de macOS que Claude Code separa por CLAUDE_CONFIG_DIR, no solo el .credentials.json en disco, así que un perfil con su propio directorio de configuración muestra el uso correctamente.',
-      ],
-    },
-    {
-      date: '24 ago 2026 · 0.20.4',
-      title: 'Orkestrai 0.20.4: 4 temas de terminal nuevos',
-      summary: 'Monokai, Ayu Dark, Rosé Pine y Solarized Light se suman al selector de tema de la terminal, llegando a 15 en total.',
-      items: [
-        'Se agregaron Monokai, Ayu Dark, Rosé Pine y Solarized Light como temas ANSI de terminal.',
-      ],
-    },
-    {
-      date: '24 ago 2026 · 0.20.3',
-      title: 'Orkestrai 0.20.3: míralo antes de elegirlo',
-      summary: 'Configuración ahora muestra una vista previa en vivo del tema y la fuente de la terminal, y los atajos muestran la tecla modificadora correcta para tu SO.',
-      items: [
-        'El selector de tema de la terminal muestra una muestra de colores por opción y un panel de vista previa en vivo con el tema, fuente y padding elegidos.',
-        'Los atajos de teclado en Configuración ahora muestran ⌘ en macOS o "Ctrl" en el resto, en lugar de siempre "Cmd/Ctrl".',
-      ],
-    },
-    {
-      date: '24 ago 2026 · 0.20.2',
-      title: 'Orkestrai 0.20.2: una lista predeterminada real de skills',
-      summary: 'La pestaña de Skills ya no simula una búsqueda de "agent" al cargar — ahora muestra una lista curada de skills populares, como ya hacía MCP.',
-      items: [
-        'El marketplace de Skills muestra una lista curada de skills populares por defecto, en lugar de precargar la búsqueda con "agent" y buscarlo automáticamente.',
-        'Escribir un término ahora combina esa lista curada con resultados en vivo de skills.sh, en lugar de reemplazarla por completo.',
-      ],
-    },
-    {
-      date: '24 ago 2026 · 0.20.1',
-      title: 'Orkestrai 0.20.1: íconos consistentes en el Canvas',
-      summary: 'El menú "agregar agente" y la barra inferior del Canvas ahora muestran íconos consistentes y correctos para cada provider y herramienta.',
-      items: [
-        'El menú "agregar agente" ahora muestra el logo real de cada provider en lugar de un ícono genérico para OpenCode, Cursor, Antigravity, Cline, Devin y Copilot.',
-        'Los íconos de la barra inferior ahora comparten el mismo brillo, y el ícono de Portal es visible en el tema claro.',
-      ],
-    },
-    {
-      date: '24 ago 2026 · 0.20.0',
-      title: 'Orkestrai 0.20.0: servidores MCP y skills llegan a todos los providers',
-      summary: 'Un servidor MCP agregado a mano o una skill instalada ahora llega al provider que el workspace realmente ejecuta, no solo Claude y Kimi.',
-      items: [
-        'Los servidores MCP y las skills agregados a un workspace ahora se propagan a los formatos nativos de Cursor, Cline, Devin, Antigravity y OpenCode, los mismos providers que ya cubre el puente integrado de Orkestrai.',
-        'Las secciones de MCP en el Centro de Providers y en la página de Skills ahora usan la marca oficial del Model Context Protocol en lugar de un ícono genérico de enchufe.',
+        'Los servidores MCP y las skills agregados al workspace ahora se propagan a los formatos nativos de Cursor, Cline, Devin, Antigravity y OpenCode, junto con los providers ya cubiertos por el puente de Orkestrai.',
+        'El marketplace de Skills abre con un catálogo curado, combina resultados en vivo de forma segura y valida las descargas del registro antes de que lleguen al workspace.',
+        'Los workspaces pueden organizarse en carpetas anidadas persistentes en la barra lateral del Canvas, con arrastrar y soltar, subcarpetas, renombrado, estado colapsado, prevención de ciclos y eliminación no destructiva.',
+        'Portal incorpora un viewport responsivo real con presets, dimensiones personalizadas, rotación de orientación y desplazamiento contenido sin distorsionar la página embebida.',
+        'Configuración muestra una vista previa de colores, fuente y padding de la terminal, usa el modificador correcto del sistema y agrega Monokai, Ayu Dark, Rosé Pine y Solarized Light.',
+        'La selección de terminal es precisa con cualquier zoom del Canvas, el Uso de Perfiles de Claude lee credenciales específicas del Keychain en macOS y los íconos de providers y herramientas se mantienen consistentes entre temas.',
       ],
     },
     {
