@@ -14,7 +14,7 @@ function fakeFetch(routes: Record<string, unknown>) {
   }) as typeof fetch;
 }
 
-const SEARCH_URL = 'https://skills.sh/api/search?q=design';
+const SEARCH_URL = 'https://skills.sh/api/search?q=typescript';
 const DOWNLOAD_URL = 'https://skills.sh/api/download/vercel-labs/agent-skills/web-design-guidelines';
 
 const SKILL_MD = `---
@@ -28,18 +28,38 @@ description: Review UI code for Web Interface Guidelines compliance.
 describe('SkillMarketService', () => {
   useSvelarTest({ refreshDatabase: true });
 
-  it('search normaliza os resultados do registry', async () => {
+  it('sem busca devolve a curadoria completa, sem chamar a rede', async () => {
+    let called = false;
+    const service = new SkillMarketService((async () => {
+      called = true;
+      return { ok: false, status: 500, json: async () => ({}) } as Response;
+    }) as typeof fetch);
+    const results = await service.search('');
+    expect(results.length).toBeGreaterThan(0);
+    expect(results).toEqual(service.curated());
+    expect(called).toBe(false);
+  });
+
+  it('com busca: curadoria filtrada primeiro + registry normalizado sem duplicar', async () => {
     const service = new SkillMarketService(fakeFetch({
       [SEARCH_URL]: {
         skills: [
-          { id: 'vercel-labs/agent-skills/web-design-guidelines', skillId: 'web-design-guidelines', name: 'web-design-guidelines', installs: 509094, source: 'vercel-labs/agent-skills' },
+          { id: 'someone/repo/typescript-strict-mode', skillId: 'typescript-strict-mode', name: 'typescript-strict-mode', installs: 509094, source: 'someone/repo' },
           { id: 'incompleto' },
         ],
       },
     }));
-    const results = await service.search('design');
+    const results = await service.search('typescript');
+    // nenhuma skill curada bate com "typescript" — so o resultado do registry
     expect(results).toHaveLength(1);
-    expect(results[0]).toMatchObject({ skillId: 'web-design-guidelines', source: 'vercel-labs/agent-skills', installs: 509094 });
+    expect(results[0]).toMatchObject({ skillId: 'typescript-strict-mode', source: 'someone/repo', installs: 509094 });
+  });
+
+  it('registry fora do ar: curadoria continua funcionando', async () => {
+    const service = new SkillMarketService(fakeFetch({}));
+    const results = await service.search('design');
+    expect(results.length).toBeGreaterThan(0);
+    expect(results).toEqual(service.curated().filter((skill) => `${skill.name} ${skill.skillId} ${skill.source}`.toLowerCase().includes('design')));
   });
 
   it('install grava em .claude/skills e .agents/skills, exclui do git e lista', async () => {
@@ -74,11 +94,6 @@ describe('SkillMarketService', () => {
     const workspace = await workspaceRepository.createWorkspace({ name: 'skills', workingDir: dir });
     const service = new SkillMarketService(fakeFetch({}));
     await expect(service.install(workspace.id, { source: 'sem-barra-dupla', skillId: 'x' })).rejects.toThrow('Source invalido');
-  });
-
-  it('search propaga erro HTTP do registry', async () => {
-    const service = new SkillMarketService(fakeFetch({}));
-    await expect(service.search('design')).rejects.toThrow('HTTP 404');
   });
 });
 
