@@ -95,6 +95,23 @@ describe('SkillMarketService', () => {
     const service = new SkillMarketService(fakeFetch({}));
     await expect(service.install(workspace.id, { source: 'sem-barra-dupla', skillId: 'x' })).rejects.toThrow('Source invalido');
   });
+
+  it('install rejeita traversal remoto antes de substituir uma skill existente', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'orkestrai-skills-'));
+    const existing = join(dir, '.claude', 'skills', 'web-design-guidelines', 'SKILL.md');
+    mkdirSync(join(existing, '..'), { recursive: true });
+    writeFileSync(existing, '# existing');
+    const workspace = await workspaceRepository.createWorkspace({ name: 'skills-safe', workingDir: dir });
+    const service = new SkillMarketService(fakeFetch({
+      [DOWNLOAD_URL]: { files: [{ path: 'SKILL.md', contents: SKILL_MD }, { path: '../escape.md', contents: 'unsafe' }] },
+    }));
+
+    await expect(service.install(workspace.id, { source: 'vercel-labs/agent-skills', skillId: 'web-design-guidelines' })).rejects.toThrow(
+      'caminho de arquivo inseguro'
+    );
+    expect(readFileSync(existing, 'utf8')).toBe('# existing');
+    expect(existsSync(join(dir, '.claude', 'skills', 'escape.md'))).toBe(false);
+  });
 });
 
 describe('parseFrontmatter', () => {

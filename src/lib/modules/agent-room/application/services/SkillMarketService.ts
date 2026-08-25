@@ -1,10 +1,14 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import type { Workspace } from '../../domain/types.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 
 const SKILLS_SH_BASE = 'https://skills.sh';
 const FETCH_TIMEOUT_MS = 15_000;
+const MAX_SEARCH_RESULTS = 50;
+const MAX_SKILL_FILES = 200;
+const MAX_SKILL_FILE_BYTES = 1_000_000;
+const MAX_SKILL_TOTAL_BYTES = 5_000_000;
 
 /**
  * Diretorios de skills convencionais dos agentes — o mesmo conjunto que a
@@ -29,6 +33,45 @@ export type InstalledSkill = {
 };
 
 type DownloadedSkillFile = { path: string; contents: string };
+
+function boundedString(value: unknown, maxLength: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function normalizeSearchResult(value: unknown): SkillSearchResult | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const skill = value as Record<string, unknown>;
+  const source = boundedString(skill.source, 160);
+  const skillId = boundedString(skill.skillId, 120);
+  if (!/^[\w.-]+\/[\w.-]+$/.test(source) || !/^[\w.-]+$/.test(skillId)) return null;
+  const installs = Number(skill.installs ?? 0);
+  return {
+    id: `${source}/${skillId}`,
+    skillId,
+    name: boundedString(skill.name, 120) || skillId,
+    source,
+    installs: Number.isFinite(installs) ? Math.max(0, Math.min(1_000_000_000, Math.trunc(installs))) : 0,
+  };
+}
+
+function validateDownloadedFiles(value: unknown): DownloadedSkillFile[] {
+  if (!Array.isArray(value) || value.length > MAX_SKILL_FILES) throw new Error('Skill com quantidade de arquivos invalida.');
+  let totalBytes = 0;
+  return value.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('Skill com arquivo invalido.');
+    const path = boundedString((entry as Record<string, unknown>).path, 500);
+    const contents = (entry as Record<string, unknown>).contents;
+    if (!path || isAbsolute(path) || path.split(/[\\/]+/).includes('..') || typeof contents !== 'string') {
+      throw new Error('Skill com caminho de arquivo inseguro.');
+    }
+    const fileBytes = Buffer.byteLength(contents);
+    totalBytes += fileBytes;
+    if (fileBytes > MAX_SKILL_FILE_BYTES || totalBytes > MAX_SKILL_TOTAL_BYTES) {
+      throw new Error('Skill excede o limite de tamanho permitido.');
+    }
+    return { path, contents };
+  });
+}
 
 /**
  * Curadoria de skills populares (installs reais em skills.sh), usada quando
@@ -67,18 +110,11 @@ export class SkillMarketService {
       const remote = Array.isArray(payload?.skills) ? payload.skills : [];
       const seen = new Set(curated.map((skill) => skill.id));
       const deduped: SkillSearchResult[] = [];
-      for (const skill of remote as Record<string, unknown>[]) {
-        if (!skill?.id || !skill?.skillId) continue;
-        const id = String(skill.id);
-        if (seen.has(id)) continue;
-        seen.add(id);
-        deduped.push({
-          id,
-          skillId: String(skill.skillId),
-          name: String(skill.name ?? skill.skillId),
-          source: String(skill.source ?? ''),
-          installs: Number(skill.installs ?? 0),
-        });
+      for (const value of remote.slice(0, MAX_SEARCH_RESULTS)) {
+        const skill = normalizeSearchResult(value);
+        if (!skill || seen.has(skill.id)) continue;
+        seen.add(skill.id);
+        deduped.push(skill);
       }
       return [...curated, ...deduped];
     } catch {
@@ -88,7 +124,7 @@ export class SkillMarketService {
 
   /** Catalogo de curadoria completo (para testes e listagem sem busca). */
   curated(): SkillSearchResult[] {
-    return CURATED;
+    return CURATED.map((skill) => ({ ...skill }));
   }
 
   /** Skills instaladas no workspace (varre .claude/skills/<id>/SKILL.md). */
@@ -117,7 +153,7 @@ export class SkillMarketService {
     if (!/^[\w.-]+$/.test(skillId)) throw new Error('skillId invalido.');
 
     const payload = await this.fetchJson(`${SKILLS_SH_BASE}/api/download/${source}/${skillId}`);
-    const files = (Array.isArray(payload?.files) ? payload.files : []) as DownloadedSkillFile[];
+    const files = validateDownloadedFiles(payload?.files);
     if (!files.some((file) => file.path === 'SKILL.md')) {
       throw new Error('Skill sem SKILL.md no registry.');
     }
@@ -126,9 +162,10 @@ export class SkillMarketService {
       const target = resolve(workspace.workingDir, base, skillId);
       rmSync(target, { recursive: true, force: true });
       for (const file of files) {
-        const safePath = file.path.replace(/(\.\.[/\\])+/g, '');
-        const destination = resolve(target, safePath);
-        if (!destination.startsWith(target)) continue;
+        const destination = resolve(target, file.path);
+        if (destination !== target && !destination.startsWith(`${target}${sep}`)) {
+          throw new Error('Skill com caminho de arquivo inseguro.');
+        }
         mkdirSync(dirname(destination), { recursive: true });
         writeFileSync(destination, file.contents);
       }

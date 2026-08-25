@@ -56,4 +56,19 @@ describe('SkillMarketService', () => {
     expect(results).toEqual(expected);
     expect(results.length).toBeGreaterThan(0);
   });
+
+  it('bounds and validates untrusted registry results before returning them to the UI', async () => {
+    const service = new SkillMarketService(
+      fakeFetch([
+        { id: 'ignored', skillId: '../unsafe', name: '<script>alert(1)</script>', source: 'someone/repo', installs: 42 },
+        { id: 'ignored', skillId: 'safe', name: 'x'.repeat(500), source: 'someone/repo', installs: Number.POSITIVE_INFINITY },
+      ])
+    );
+
+    const results = await service.search('safe');
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: 'someone/repo/safe', skillId: 'safe', source: 'someone/repo', installs: 0 });
+    expect(results[0].name).toHaveLength(120);
+  });
 });
