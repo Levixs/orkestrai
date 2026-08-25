@@ -590,6 +590,13 @@ export function isRasterWorkspaceAttachment(attachment: WorkspaceAttachment): bo
   return attachment.kind === 'file' && RASTER_IMAGE_MIMES.has(attachment.mimeType ?? '');
 }
 
+export type WorkspaceRepositoryRoot = {
+  /** Stable, shell-safe name used in bridge paths such as @api-tests/bruno. */
+  alias: string;
+  /** Absolute host path selected explicitly by the workspace owner. */
+  path: string;
+};
+
 export type Workspace = {
   id: string;
   name: string;
@@ -601,6 +608,8 @@ export type Workspace = {
   instructions: string | null;
   /** Mantem CLAUDE.md e AGENTS.md sincronizados no working_dir. */
   syncAgentInstructionFiles: boolean;
+  /** Repositorios adicionais aprovados para fluxos multi-repo. */
+  repositoryRoots: WorkspaceRepositoryRoot[];
   /** Hooks de ciclo de vida de andares (setup/run/teardown). */
   hooks: WorkspaceHooks;
   /** Pasta na barra lateral (null = raiz). */

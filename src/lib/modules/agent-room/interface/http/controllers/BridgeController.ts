@@ -67,7 +67,8 @@ export class BridgeController extends Controller {
       const designs = agentNodeId
         ? await bridgeService.designsForAgent(workspace.id, agentNodeId).catch(() => [] as Array<{ id: string; title: string }>)
         : [];
-      return this.json({ data: { workspace: { id: workspace.id, name: workspace.name }, agents, notes, portals, designs } });
+      const repositories = workspace.repositoryRoots.map(({ alias }) => ({ alias, reference: `@${alias}` }));
+      return this.json({ data: { workspace: { id: workspace.id, name: workspace.name }, repositories, agents, notes, portals, designs } });
     } catch (error) {
       return this.errorResponse(error, 'Falha ao listar agentes.', 401);
     }

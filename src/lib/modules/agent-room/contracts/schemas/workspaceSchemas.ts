@@ -1,5 +1,20 @@
 import { z } from 'zod';
 
+export const workspaceRepositoryRootSchema = z.object({
+  alias: z.string().trim().min(1).max(48).regex(/^[a-z0-9][a-z0-9_-]*$/),
+  path: z.string().trim().min(1).max(4_000),
+});
+
+export const workspaceRepositoryRootsSchema = z.array(workspaceRepositoryRootSchema).max(16).superRefine((roots, context) => {
+  const aliases = new Set<string>();
+  for (const [index, root] of roots.entries()) {
+    if (aliases.has(root.alias)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [index, 'alias'], message: 'Repository aliases must be unique.' });
+    }
+    aliases.add(root.alias);
+  }
+});
+
 export const createWorkspaceSchema = z.object({
   name: z.string().trim().min(1, 'Informe o nome do workspace.'),
   workingDir: z.string().trim().min(1, 'Informe o diretorio de trabalho.'),
@@ -8,6 +23,7 @@ export const createWorkspaceSchema = z.object({
   runtimeKind: z.enum(['native', 'wsl']).default('native'),
   wslDistribution: z.string().trim().nullish(),
   wslWorkingDir: z.string().trim().nullish(),
+  repositoryRoots: workspaceRepositoryRootsSchema.default([]),
 });
 
 export const updateWorkspaceSchema = z.object({
@@ -19,6 +35,7 @@ export const updateWorkspaceSchema = z.object({
   runtimeKind: z.enum(['native', 'wsl']).optional(),
   wslDistribution: z.string().trim().nullish(),
   wslWorkingDir: z.string().trim().nullish(),
+  repositoryRoots: workspaceRepositoryRootsSchema.optional(),
 });
 
 export const canvasNodeTypeSchema = z.enum(['terminal', 'note', 'fileTree', 'editor', 'diff', 'portal', 'apiClient', 'loop', 'group', 'shape', 'tasks', 'flow', 'image', 'usage', 'device', 'design']);

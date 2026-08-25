@@ -1419,6 +1419,7 @@
     runtimeKind: 'native' | 'wsl';
     wslDistribution: string | null;
     wslWorkingDir: string | null;
+    repositoryRoots: Array<{ alias: string; path: string }>;
   }) {
     if (!editingWorkspace) return;
     const updated = await api<Workspace>(`/api/agent-room/workspaces/${editingWorkspace.id}`, {

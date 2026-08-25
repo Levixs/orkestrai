@@ -268,6 +268,9 @@ export async function run(argv, options = {}) {
         out(JSON.stringify(data, null, 2));
       } else {
         out(`Workspace: ${data.workspace.name}`);
+        for (const repository of data.repositories ?? []) {
+          out(`Repositorio adicional: ${repository.reference}`);
+        }
         for (const agent of data.agents) {
           const status = agent.sessionAlive ? 'vivo' : 'sem sessao';
           const badge = agent.maestro ? ' [LIDER]' : '';

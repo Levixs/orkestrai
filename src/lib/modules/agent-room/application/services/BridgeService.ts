@@ -1079,7 +1079,7 @@ Se as tools \`orkestrai\` (list/usage/ask/huddle_*/memory_*/note_*/api_client_*/
 - \`orkestrai notes\` — lista \`nodeId\`, título e prévia das notas acessíveis. Rode antes de criar; se a nota já existe, use \`note read\` e \`note write/edit\` em vez de duplicar.
 - \`orkestrai api list\` — lista requests dos Clientes de API conectados, sem revelar credenciais.
 - Tool MCP \`api_client_reference\` (ou \`orkestrai api reference\`) — consulte antes de autorar uma coleção: retorna o contrato completo e exemplos de testes/variáveis nos runtimes Bruno, Postman e Orkestrai.
-- Tools MCP \`api_client_import/create/read/replace/sync_status/pull/push/export\` — importam coleções Bruno/Postman do repositório e editam requests, pastas, ambientes, runners, scripts e testes no mesmo node que o usuário vê. Para um projeto existente, use \`api_client_import\` com caminho relativo; o vínculo acompanha a origem e \`replace\` grava nela por padrão. Sempre faça \`read\` antes de \`replace\` e envie o \`fingerprint\`; conflito exige \`sync_status\` e resolução explícita, nunca sobrescreva silenciosamente. O marcador \`__ORKESTRAI_REDACTED__\` preserva segredos locais.
+- Tools MCP \`api_client_import/create/read/replace/sync_status/pull/push/export\` — importam coleções Bruno/Postman do repositório e editam requests, pastas, ambientes, runners, scripts e testes no mesmo node que o usuário vê. Para um projeto existente, use \`api_client_import\` com caminho relativo ou um alias de repositório listado por \`orkestrai list\` (ex.: \`@api-tests/bruno\`); o vínculo acompanha a origem e \`replace\` grava nela por padrão. Sempre faça \`read\` antes de \`replace\` e envie o \`fingerprint\`; conflito exige \`sync_status\` e resolução explícita, nunca sobrescreva silenciosamente. O marcador \`__ORKESTRAI_REDACTED__\` preserva segredos locais.
 - Tool MCP \`api_client_run_runner\` — executa o runner salvo com ordem, ambiente, iterações, dados por linha, variáveis encadeadas, testes e parada em falha; revise o resumo antes de exportar.
 - Ao escrever testes, escolha o runtime da coleção: Bruno usa \`test(...)/expect(...)\` e \`bru.*\`; Postman usa \`pm.test/pm.expect\`; Orkestrai aceita \`pm.test/pm.expect\` e os aliases \`test/expect\`. O export preserva JavaScript, não traduz dialetos silenciosamente.
 - \`orkestrai api import <path>\` / \`api read <nodeId>\` / \`api create <titulo> --file <json>\` / \`api replace <nodeId> --file <json> --fingerprint <sha256>\` / \`api sync-status|pull|push <nodeId>\` / \`api run-runner <nodeId> <runnerId>\` / \`api export <nodeId> <bruno|postman>\` — fallbacks CLI para a mesma autoria completa e persistência no repositório.
@@ -1245,6 +1245,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
       '',
       'Este projeto roda dentro de um workspace do Orkestrai. Você tem a CLI `orkestrai` e/ou tools MCP `orkestrai` disponíveis para colaborar com o time no canvas:',
       '- `orkestrai list` — agentes do workspace, notas e portais conectados. O [LIDER] marcado e o maestro do time: fale com ele pelo TITULO ("Maestro" e o papel, não um nome de agente).',
+      '- Repositórios adicionais aprovados aparecem em `orkestrai list` como aliases `@nome`; use esses aliases em caminhos de tools como `api_client_import`, nunca tente escapar com `../`.',
       '- `orkestrai usage` — cotas reais e recomendação do nó Usage; líderes consultam antes de delegar e roteiam novas tarefas ao recommendedProvider quando shouldFallback=true.',
       '- `orkestrai ask "<Agente>" "<mensagem>"` — fala com outro agente e aguarda a resposta.',
       '- `huddle_list` / `huddle_say` — acompanha huddles ativos e registra somente a contribuição deste agente no transcript.',
@@ -1597,6 +1598,7 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
             workspaceName: workspace.name,
             token,
             apiUrl: apiUrl ?? process.env.ORKESTRAI_API_URL ?? 'http://127.0.0.1:4173',
+            repositories: workspace.repositoryRoots.map(({ alias }) => ({ alias, reference: `@${alias}` })),
           },
           null,
           2

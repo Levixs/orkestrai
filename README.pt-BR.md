@@ -19,6 +19,12 @@ designers, marketers e creators podem dirigir um time de IA em tempo real.
 Baixe os instaladores mais recentes em
 [beeblock/orkestrai](https://github.com/beeblock/orkestrai/releases/latest).
 
+Para diagnosticar o app desktop, abra **Visualizar → Ferramentas do
+desenvolvedor** e reproduza o problema com o Console visível. **Ajuda → Abrir
+pasta de logs** abre o `orkestrai.log` rotativo, que registra falhas do renderer
+e do servidor interno com credenciais comuns ocultadas; a saída normal dos
+agentes não é persistida.
+
 ## Destaques
 
 - **Canvas de agentes ao vivo:** organize terminais PTY reais, notas, quadros de

@@ -7,6 +7,7 @@ import type {
   CanvasNodePayload,
   CanvasNodeType,
   Workspace,
+  WorkspaceRepositoryRoot,
 } from '../../domain/types.js';
 import { AgentWorkspace } from '../../domain/models/AgentWorkspace.js';
 import { AgentCanvasNode } from '../../domain/models/AgentCanvasNode.js';
@@ -41,6 +42,22 @@ function parseJsonObject(value: string | null): WorkspaceHooks {
   }
 }
 
+function parseRepositoryRoots(value: string | null): WorkspaceRepositoryRoot[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry): entry is WorkspaceRepositoryRoot => Boolean(
+        entry && typeof entry === 'object' && typeof entry.alias === 'string' && typeof entry.path === 'string'
+      ))
+      .slice(0, 16)
+      .map(({ alias, path }) => ({ alias, path }));
+  } catch {
+    return [];
+  }
+}
+
 function mapWorkspace(model: AgentWorkspace): Workspace {
   return {
     id: model.getAttribute('id'),
@@ -52,6 +69,7 @@ function mapWorkspace(model: AgentWorkspace): Workspace {
     icon: model.getAttribute('icon'),
     instructions: model.getAttribute('instructions'),
     syncAgentInstructionFiles: Boolean(model.getAttribute('sync_agent_instruction_files')),
+    repositoryRoots: parseRepositoryRoots(model.getAttribute('repository_roots_json') as string | null),
     hooks: parseJsonObject(model.getAttribute('hooks_json') as string | null),
     groupId: model.getAttribute('group_id') ?? null,
     position: Number(model.getAttribute('position') ?? 0),
@@ -124,6 +142,7 @@ export class WorkspaceRepository {
     icon?: string | null;
     instructions?: string | null;
     syncAgentInstructionFiles?: boolean;
+    repositoryRoots?: WorkspaceRepositoryRoot[];
     hooks?: WorkspaceHooks;
   }): Promise<Workspace> {
     const name = input.name.trim();
@@ -141,6 +160,7 @@ export class WorkspaceRepository {
       icon: input.icon ?? null,
       instructions: input.instructions ?? null,
       sync_agent_instruction_files: input.syncAgentInstructionFiles ?? false,
+      repository_roots_json: JSON.stringify(input.repositoryRoots ?? []),
       hooks_json: JSON.stringify(input.hooks ?? {}),
       group_id: null,
       position: await this.nextWorkspacePosition(null),
@@ -177,7 +197,7 @@ export class WorkspaceRepository {
 
   async updateWorkspace(
     id: string,
-    input: Partial<Pick<Workspace, 'name' | 'workingDir' | 'runtimeKind' | 'wslDistribution' | 'wslWorkingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles' | 'hooks'>>
+    input: Partial<Pick<Workspace, 'name' | 'workingDir' | 'runtimeKind' | 'wslDistribution' | 'wslWorkingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles' | 'repositoryRoots' | 'hooks'>>
   ): Promise<Workspace | null> {
     const existing = await this.getWorkspace(id);
     if (!existing) return null;
@@ -193,6 +213,9 @@ export class WorkspaceRepository {
       icon: input.icon === undefined ? existing.icon : input.icon,
       instructions: input.instructions === undefined ? existing.instructions : input.instructions,
       sync_agent_instruction_files: input.syncAgentInstructionFiles ?? existing.syncAgentInstructionFiles,
+      repository_roots_json: input.repositoryRoots === undefined
+        ? JSON.stringify(existing.repositoryRoots)
+        : JSON.stringify(input.repositoryRoots),
       hooks_json: input.hooks === undefined ? JSON.stringify(existing.hooks) : JSON.stringify(input.hooks),
     });
     return this.getWorkspace(id);

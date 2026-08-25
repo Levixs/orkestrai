@@ -28,6 +28,28 @@ test.describe('Portal Design Mode', () => {
       await expect(portalNode).toBeVisible();
       await portalNode.getByRole('button', { name: 'Design inspection is available in the installed desktop app.' }).click();
       await expect(page.getByLabel('Notifications').getByText('Design inspection is available in the installed desktop app.')).toBeVisible();
+
+      await portalNode.getByRole('button', { name: 'Test responsiveness' }).click();
+      const toolbar = portalNode.getByTestId('portal-viewport-toolbar');
+      const stage = portalNode.locator('.portal-stage');
+      await expect(toolbar).toBeVisible();
+      const [toolbarBox, stageBox] = await Promise.all([toolbar.boundingBox(), stage.boundingBox()]);
+      expect(toolbarBox).not.toBeNull();
+      expect(stageBox).not.toBeNull();
+      expect(toolbarBox!.y + toolbarBox!.height).toBeLessThanOrEqual(stageBox!.y + 1);
+
+      await toolbar.getByRole('button', { name: 'Device' }).click();
+      await page.getByRole('option', { name: /Laptop/ }).click();
+      await expect(toolbar.getByRole('button', { name: 'Viewport dimensions: 1366 by 768 pixels' })).toBeVisible();
+      const scrollState = await portalNode.locator('.portal-scroll').evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(scrollState.scrollWidth).toBeGreaterThan(scrollState.clientWidth);
+
+      await toolbar.getByRole('button', { name: 'Viewport dimensions: 1366 by 768 pixels' }).click();
+      await expect(page.getByText('Viewport width', { exact: true })).toBeVisible();
+      await expect(page.getByText('Viewport height', { exact: true })).toBeVisible();
     } finally {
       await page.goto('about:blank');
       await request.put('/api/agent-room/settings', { data: originalSettings });

@@ -1,26 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowRight, Globe, MousePointer2, Navigation, RotateCcw, RotateCw, Send, Smartphone, X } from '@lucide/svelte';
-  import {
-    clampPortalViewportDimension,
-    findPortalDevicePreset,
-    PORTAL_DEVICE_PRESETS,
-    PORTAL_VIEWPORT_MAX,
-    PORTAL_VIEWPORT_MIN,
-    swapPortalViewportOrientation,
-    type PortalViewport,
-  } from './portal-device-presets.js';
+  import { ArrowRight, Globe, MousePointer2, Navigation, RotateCcw, Send, Smartphone, X } from '@lucide/svelte';
+  import type { PortalViewport } from './portal-device-presets.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
   import DOMPurify from 'dompurify';
   import NodeShell from './NodeShell.svelte';
   import type { NodeConnection } from './NodeShell.svelte';
   import IconAction from './IconAction.svelte';
+  import PortalViewportToolbar from './PortalViewportToolbar.svelte';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as NativeSelect from '$lib/components/ui/native-select';
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
   import { Textarea } from '$lib/components/ui/textarea';
   import { Badge } from '$lib/components/ui/badge';
   import {
@@ -290,36 +282,9 @@
     if (event.key === 'Enter') void navigate();
   }
 
-  const selectedPresetId = $derived.by(() => {
-    if (!viewport) return 'off';
-    const match = PORTAL_DEVICE_PRESETS.find((preset) => preset.width === viewport!.width && preset.height === viewport!.height);
-    return match?.id ?? 'custom';
-  });
-
   function setViewport(next: PortalViewport | null) {
     viewport = next;
     data.onPayloadChange?.(id, { viewport: next });
-  }
-
-  function applyDevicePreset(presetId: string) {
-    if (presetId === 'off') {
-      setViewport(null);
-      return;
-    }
-    const preset = findPortalDevicePreset(presetId);
-    if (preset) setViewport({ width: preset.width, height: preset.height });
-  }
-
-  function updateViewportWidth(value: number) {
-    setViewport({ width: clampPortalViewportDimension(value), height: viewport?.height ?? 800 });
-  }
-
-  function updateViewportHeight(value: number) {
-    setViewport({ width: viewport?.width ?? 400, height: clampPortalViewportDimension(value) });
-  }
-
-  function rotateViewport() {
-    if (viewport) setViewport(swapPortalViewportOrientation(viewport));
   }
 
   async function loadTargets() {
@@ -562,43 +527,7 @@
 
   <div class="portal-body nodrag nowheel" class:inspecting>
     {#if deviceToolbarOpen}
-      <div class="device-toolbar nodrag" role="toolbar" aria-label={m['portal.device_toolbar_show']()}>
-        <NativeSelect.Root
-          class="min-w-0 max-w-[220px] flex-1"
-          size="sm"
-          value={selectedPresetId}
-          onchange={(event: Event) => applyDevicePreset((event.currentTarget as HTMLSelectElement).value)}
-          aria-label={m['portal.device_preset']()}
-        >
-          <NativeSelect.Option value="off">{m['portal.device_off']()}</NativeSelect.Option>
-          {#each PORTAL_DEVICE_PRESETS as preset (preset.id)}
-            <NativeSelect.Option value={preset.id}>{preset.label} ({preset.width}×{preset.height})</NativeSelect.Option>
-          {/each}
-          <NativeSelect.Option value="custom" disabled>{m['portal.device_custom']()}</NativeSelect.Option>
-        </NativeSelect.Root>
-        {#if viewport}
-          <Input
-            class="h-7 w-16 px-1 text-center text-[11px]"
-            type="number"
-            min={PORTAL_VIEWPORT_MIN}
-            max={PORTAL_VIEWPORT_MAX}
-            value={viewport.width}
-            aria-label={m['portal.device_width']()}
-            onchange={(event: Event) => updateViewportWidth((event.currentTarget as HTMLInputElement).valueAsNumber)}
-          />
-          <span class="device-dimension-sep" aria-hidden="true">×</span>
-          <Input
-            class="h-7 w-16 px-1 text-center text-[11px]"
-            type="number"
-            min={PORTAL_VIEWPORT_MIN}
-            max={PORTAL_VIEWPORT_MAX}
-            value={viewport.height}
-            aria-label={m['portal.device_height']()}
-            onchange={(event: Event) => updateViewportHeight((event.currentTarget as HTMLInputElement).valueAsNumber)}
-          />
-          <IconAction label={m['portal.device_rotate']()} onclick={rotateViewport}><RotateCw size={13} /></IconAction>
-        {/if}
-      </div>
+      <PortalViewportToolbar {viewport} onchange={setViewport} />
     {/if}
     {#if inspecting}
       <div class="inspection-bar" role="status">
@@ -609,31 +538,33 @@
     {/if}
     <div class="portal-stage" class:portal-stage-device={viewport !== null}>
       <div class="portal-scroll">
-        {#if data.payload.url}
-          {#if isDesktop}
-            <webview
-              bind:this={frame}
-              src={data.payload.url}
-              class="portal-frame"
-              class:portal-frame-hidden={reviewOpen}
-              class:portal-frame-device={viewport !== null}
-              style={viewport ? `width:${viewport.width}px;height:${viewport.height}px;` : ''}
-              partition="persist:orkestrai-portals"
-              webpreferences="contextIsolation=yes, sandbox=yes, nodeIntegration=no"
-            ></webview>
+        <div class:portal-device-surface={viewport !== null} class:portal-fluid-surface={viewport === null}>
+          {#if data.payload.url}
+            {#if isDesktop}
+              <webview
+                bind:this={frame}
+                src={data.payload.url}
+                class="portal-frame"
+                class:portal-frame-hidden={reviewOpen}
+                class:portal-frame-device={viewport !== null}
+                style={viewport ? `width:${viewport.width}px;height:${viewport.height}px;` : ''}
+                partition="persist:orkestrai-portals"
+                webpreferences="contextIsolation=yes, sandbox=yes, nodeIntegration=no"
+              ></webview>
+            {:else}
+              <iframe
+                bind:this={frame}
+                src={data.payload.url}
+                title={data.title || m['portal.default_title']()}
+                class="portal-frame"
+                class:portal-frame-device={viewport !== null}
+                style={viewport ? `width:${viewport.width}px;height:${viewport.height}px;` : ''}
+              ></iframe>
+            {/if}
           {:else}
-            <iframe
-              bind:this={frame}
-              src={data.payload.url}
-              title={data.title || m['portal.default_title']()}
-              class="portal-frame"
-              class:portal-frame-device={viewport !== null}
-              style={viewport ? `width:${viewport.width}px;height:${viewport.height}px;` : ''}
-            ></iframe>
+            <p class="portal-empty">{m['portal.empty']()}</p>
           {/if}
-        {:else}
-          <p class="portal-empty">{m['portal.empty']()}</p>
-        {/if}
+        </div>
       </div>
       {#if !portalReady && data.payload.url && isDesktop && portalError}
         <div class="portal-status" role="status">
@@ -760,17 +691,17 @@
   }
 
   .portal-body {
-    display: grid;
-    grid-template-rows: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     flex: 1;
     min-height: 0;
     background: #fff;
   }
 
-  .portal-body.inspecting { grid-template-rows: 32px minmax(0, 1fr); }
-
   .inspection-bar {
     display: flex;
+    height: 32px;
+    flex: none;
     align-items: center;
     gap: 7px;
     min-width: 0;
@@ -806,6 +737,7 @@
 
   .portal-stage {
     position: relative;
+    flex: 1;
     min-height: 0;
     overflow: hidden;
   }
@@ -813,6 +745,7 @@
   .portal-scroll {
     width: 100%;
     height: 100%;
+    overflow: hidden;
   }
 
   /* Modo dispositivo: o frame vira tamanho fixo (nao 100%), entao o palco
@@ -822,8 +755,22 @@
      canvas em outro lugar do app). */
   .portal-stage-device .portal-scroll {
     overflow: auto;
-    display: flex;
     background: repeating-conic-gradient(var(--app-surface) 0% 25%, var(--app-canvas) 0% 50%) 0 0 / 16px 16px;
+  }
+
+  .portal-fluid-surface {
+    width: 100%;
+    height: 100%;
+  }
+
+  .portal-device-surface {
+    box-sizing: border-box;
+    display: grid;
+    width: max-content;
+    min-width: 100%;
+    min-height: 100%;
+    place-items: center;
+    padding: 12px;
   }
 
   .portal-frame {
@@ -835,26 +782,10 @@
 
   .portal-frame-device {
     flex: none;
-    margin: auto;
-    box-shadow: 0 0 0 1px var(--app-border);
+    box-shadow: 0 0 0 1px var(--app-border), 0 10px 28px rgb(0 0 0 / 18%);
   }
 
   .portal-frame-hidden { visibility: hidden; }
-
-  .device-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 30px;
-    padding: 4px 8px;
-    background: var(--app-surface);
-    border-bottom: 1px solid var(--app-border);
-    font-size: 11px;
-  }
-
-  .device-dimension-sep {
-    color: var(--app-text-muted);
-  }
 
   .portal-empty {
     color: var(--app-text-muted);

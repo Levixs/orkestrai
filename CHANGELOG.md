@@ -9,6 +9,11 @@ pt-BR, English, and Spanish translations.
 
 ### Added
 
+- Workspaces can explicitly authorize sibling repositories with safe aliases.
+  Agents can now import, edit, synchronize, and export Bruno, OpenCollection,
+  and Postman collections through paths such as `@api-tests/bruno`, while
+  absolute paths, unregistered parent directories, and symlink escapes remain
+  blocked.
 - Manually added MCP servers and installed skills now propagate to every
   provider's native config format (Cursor, Cline, Devin, Antigravity, and
   OpenCode), not just the Claude/Kimi `.mcp.json` file, so a server or skill
@@ -29,6 +34,14 @@ pt-BR, English, and Spanish translations.
 
 ### Fixed
 
+- Installed desktop builds expose Developer Tools again and add a direct Help
+  action for the rotating local diagnostics folder. Renderer errors, internal
+  server failures, and unexpected exits are captured with bounded retention and
+  common credentials redacted, while normal agent output is not persisted.
+- Portal responsive mode now keeps its controls in a dedicated toolbar instead
+  of placing them beneath the embedded page, uses a searchable portaled device
+  selector plus exact-size controls, and scrolls oversized viewports without
+  clipping their top or left edges.
 - Canvas agent/provider and toolbar icons now use the shared provider registry,
   consistent interaction states, and correct light-theme contrast.
 - Terminal click-and-drag selection now maps to the correct characters at any

@@ -19,6 +19,11 @@ coders, designers, marketers, and creators can direct an AI team in real time.
 Download the latest installers from
 [beeblock/orkestrai](https://github.com/beeblock/orkestrai/releases/latest).
 
+For desktop troubleshooting, open **View → Developer tools** and reproduce the
+problem with Console visible. **Help → Open logs folder** opens the rotating
+`orkestrai.log`, which captures renderer and internal-server failures with
+common credentials redacted; normal agent output is not persisted.
+
 ## Highlights
 
 - **Live agent canvas:** arrange real PTY terminals, notes, task boards, browser
@@ -60,8 +65,11 @@ Download the latest installers from
   OpenAPI 3.1 JSON/YAML while preserving unsupported REST metadata and showing
   explicit fidelity notes. Linked Bruno, OpenCollection, and Postman sources
   support guarded pull, atomic push, watch mode, and explicit conflict
-  resolution. Agents can import project collections by relative path and their
-  typed edits persist in the original repository files. Postman environments
+  resolution. Agents can import project collections by relative path. For a
+  coordinating workspace beside several repositories, explicitly authorize
+  those roots in Edit workspace and address them through aliases such as
+  `@api-tests/bruno`; typed edits persist in the actual repository files while
+  arbitrary parent paths stay blocked. Postman environments
   import and export independently.
   A versioned `.orkestrai-api.json` format backs up the complete
   native collection, including folders, runners, environments, scripts, and

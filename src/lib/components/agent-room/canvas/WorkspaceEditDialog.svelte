@@ -7,15 +7,16 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import * as Form from '$lib/components/ui/form';
   import { Input } from '$lib/components/ui/input';
+  import * as InputGroup from '$lib/components/ui/input-group';
   import { Textarea } from '$lib/components/ui/textarea';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
-  import { FolderOpen, Trash2 } from '@lucide/svelte';
+  import { FolderGit2, FolderOpen, Plus, Trash2 } from '@lucide/svelte';
   import { onMount } from 'svelte';
   import McpIcon from '../McpIcon.svelte';
   import { isLegacyEmojiIcon, WORKSPACE_ICONS } from '../workspace-icons.js';
-  import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
+  import type { Workspace, WorkspaceRepositoryRoot } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
 
   type Props = {
@@ -29,6 +30,7 @@
       runtimeKind: 'native' | 'wsl';
       wslDistribution: string | null;
       wslWorkingDir: string | null;
+      repositoryRoots: WorkspaceRepositoryRoot[];
     }) => Promise<void>;
     onClose: () => void;
   };
@@ -49,6 +51,9 @@
   let runtimeKind = $state<'native' | 'wsl'>(workspace.runtimeKind);
   let wslDistribution = $state(workspace.wslDistribution ?? '');
   let wslWorkingDir = $state(workspace.wslWorkingDir ?? '');
+  let repositoryRoots = $state<WorkspaceRepositoryRoot[]>(
+    (workspace.repositoryRoots ?? []).map((repository) => ({ ...repository })),
+  );
   let wsl = $state<{ supported: boolean; distributions: Array<{ name: string }>; inferred: { distribution: string; linuxWorkingDir: string } | null; error: string | null }>({
     supported: false,
     distributions: [],
@@ -162,6 +167,18 @@
         if (!f.valid) return;
         submitError = '';
         try {
+          const normalizedRepositories = repositoryRoots.map((repository) => ({
+            alias: repository.alias.trim().toLowerCase(),
+            path: repository.path.trim(),
+          }));
+          const aliases = new Set(normalizedRepositories.map((repository) => repository.alias));
+          if (
+            normalizedRepositories.some((repository) => !/^[a-z0-9][a-z0-9_-]{0,47}$/.test(repository.alias) || !repository.path)
+            || aliases.size !== normalizedRepositories.length
+          ) {
+            submitError = m['dlg.repository_roots_invalid']();
+            return;
+          }
           const data = f.data as unknown as EditWorkspaceFormData;
           await onSave({
             name: data.name,
@@ -172,6 +189,7 @@
             runtimeKind,
             wslDistribution: wslDistribution.trim() || null,
             wslWorkingDir: wslWorkingDir.trim() || null,
+            repositoryRoots: normalizedRepositories,
           });
           onClose();
         } catch (error) {
@@ -229,6 +247,43 @@
         wslWorkingDir = wsl.inferred.linuxWorkingDir;
       }
     }
+  }
+
+  function repositoryAlias(path: string): string {
+    const name = path.split(/[\\/]/).filter(Boolean).at(-1) ?? 'repository';
+    const base = name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'repository';
+    let alias = base.slice(0, 48);
+    let suffix = 2;
+    while (repositoryRoots.some((repository) => repository.alias === alias)) {
+      const marker = `-${suffix++}`;
+      alias = `${base.slice(0, 48 - marker.length)}${marker}`;
+    }
+    return alias;
+  }
+
+  function appendRepository(path = '') {
+    repositoryRoots = [...repositoryRoots, { alias: repositoryAlias(path), path }];
+  }
+
+  async function addRepository() {
+    if (!desktop) {
+      appendRepository();
+      return;
+    }
+    const path = await desktop.pickDirectory();
+    if (path) appendRepository(path);
+  }
+
+  async function pickRepository(index: number) {
+    if (!desktop) return;
+    const path = await desktop.pickDirectory();
+    if (!path) return;
+    repositoryRoots[index].path = path;
+    if (!repositoryRoots[index].alias.trim()) repositoryRoots[index].alias = repositoryAlias(path);
+  }
+
+  function removeRepository(index: number) {
+    repositoryRoots = repositoryRoots.filter((_, candidate) => candidate !== index);
   }
 </script>
 
@@ -319,6 +374,72 @@
             {/if}
           </section>
         {/if}
+
+        <section class="space-y-3 border-t border-border/60 pt-4" data-testid="workspace-repository-roots">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0 space-y-1">
+              <div class="flex items-center gap-2">
+                <FolderGit2 size={14} class="shrink-0 text-muted-foreground" aria-hidden="true" />
+                <h3 class="text-sm font-medium">{m['dlg.repository_roots_title']()}</h3>
+              </div>
+              <p class="max-w-xl text-pretty text-xs text-muted-foreground">{m['dlg.repository_roots_desc']()}</p>
+            </div>
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                {#snippet child({ props })}
+                  <Button {...props} type="button" variant="outline" size="icon-sm" class="shrink-0" aria-label={m['dlg.repository_roots_add']()} onclick={addRepository}>
+                    <Plus size={14} aria-hidden="true" />
+                  </Button>
+                {/snippet}
+              </Tooltip.Trigger>
+              <Tooltip.Content side="top">{m['dlg.repository_roots_add']()}</Tooltip.Content>
+            </Tooltip.Root>
+          </div>
+
+          {#if repositoryRoots.length}
+            <div class="space-y-2">
+              {#each repositoryRoots as repository, index (index)}
+                <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-[minmax(8rem,0.65fr)_minmax(0,1.35fr)_auto]">
+                  <div class="min-w-0 space-y-1">
+                    <label class="sr-only" for={`repository-alias-${index}`}>{m['dlg.repository_roots_alias']()}</label>
+                    <InputGroup.Root>
+                      <InputGroup.Addon>@</InputGroup.Addon>
+                      <InputGroup.Input id={`repository-alias-${index}`} bind:value={repository.alias} autocomplete="off" spellcheck={false} placeholder="api-tests" />
+                    </InputGroup.Root>
+                  </div>
+                  <div class="col-span-2 row-start-2 min-w-0 space-y-1 sm:col-span-1 sm:row-auto">
+                    <label class="sr-only" for={`repository-path-${index}`}>{m['dlg.repository_roots_path']()}</label>
+                    <Input id={`repository-path-${index}`} bind:value={repository.path} autocomplete="off" spellcheck={false} placeholder={m['dlg.repository_roots_path']()} class="min-w-0 font-mono text-xs" />
+                  </div>
+                  <div class="col-start-2 row-start-1 flex shrink-0 items-center gap-1 sm:col-auto sm:row-auto">
+                    {#if desktop}
+                      <Tooltip.Root>
+                        <Tooltip.Trigger>
+                          {#snippet child({ props })}
+                            <Button {...props} type="button" variant="ghost" size="icon" aria-label={m['dlg.pick_folder']()} onclick={() => pickRepository(index)}>
+                              <FolderOpen size={14} aria-hidden="true" />
+                            </Button>
+                          {/snippet}
+                        </Tooltip.Trigger>
+                        <Tooltip.Content side="top">{m['dlg.pick_folder']()}</Tooltip.Content>
+                      </Tooltip.Root>
+                    {/if}
+                    <Tooltip.Root>
+                      <Tooltip.Trigger>
+                        {#snippet child({ props })}
+                          <Button {...props} type="button" variant="ghost" size="icon" class="text-muted-foreground hover:text-destructive" aria-label={m['dlg.repository_roots_remove']({ alias: repository.alias || String(index + 1) })} onclick={() => removeRepository(index)}>
+                            <Trash2 size={14} aria-hidden="true" />
+                          </Button>
+                        {/snippet}
+                      </Tooltip.Trigger>
+                      <Tooltip.Content side="top">{m['dlg.repository_roots_remove']({ alias: repository.alias || String(index + 1) })}</Tooltip.Content>
+                    </Tooltip.Root>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </section>
 
         <div class="space-y-2">
           <span class="text-sm font-medium leading-none">{m['dlg.ws_icon']()}</span>

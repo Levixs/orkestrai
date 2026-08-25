@@ -30,6 +30,6 @@ describe('portal-device-presets', () => {
   });
 
   it('swaps width and height for orientation toggle', () => {
-    expect(swapPortalViewportOrientation({ width: 390, height: 844 })).toEqual({ width: 844, height: 390 });
+    expect(swapPortalViewportOrientation({ width: 390, height: 844, presetId: 'iphone-14' })).toEqual({ width: 844, height: 390, presetId: 'iphone-14' });
   });
 });

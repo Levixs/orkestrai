@@ -19,7 +19,7 @@ function bridgeEvent(method: string, path: string, body: unknown, params: Record
     request: new Request(url, {
       method,
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
+      ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(body) }),
     }),
     params,
     url,
@@ -188,6 +188,47 @@ describe('API Client OAuth, cookies, and sync', () => {
     const source = await readFile(join(collection, generated!), 'utf8');
     expect(source).toContain('returns 200');
     expect(source).toContain('Maintained by the workspace API agent.');
+  });
+
+  it('links a Bruno collection in an explicitly registered sibling repository', async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'orkestrai-multi-repo-'));
+    const coordinator = join(tempDir, 'workspace-coordinator');
+    const testRepository = join(tempDir, 'api-tests');
+    const collection = join(testRepository, 'bruno');
+    await mkdir(coordinator);
+    await mkdir(collection, { recursive: true });
+    await writeFile(join(collection, 'health.bru'), `meta {\n  name: Health\n  type: http\n  seq: 1\n}\n\nget {\n  url: https://example.test/health\n  body: none\n  auth: none\n}\n`);
+    const workspace = await workspaceRepository.createWorkspace({
+      name: 'Multi repository project',
+      workingDir: coordinator,
+      repositoryRoots: [{ alias: 'api-tests', path: testRepository }],
+    });
+    const agent = await workspaceRepository.createNode({ workspaceId: workspace.id, type: 'terminal', title: 'API Agent' });
+
+    const imported = await apiClientService.importForAgent(workspace.id, ImportAgentApiClientDto.from({
+      path: '@api-tests/bruno', kind: 'auto', syncMode: 'watch', from: agent.id,
+    }));
+    expect(imported.repository).toMatchObject({ linked: true, kind: 'bruno', path: '@api-tests/bruno' });
+
+    const edited = structuredClone(imported.collection);
+    edited.requests[0].name = 'Sibling health check';
+    await apiClientService.replaceForAgent(workspace.id, imported.nodeId, ReplaceAgentApiClientDto.from({
+      baseFingerprint: imported.fingerprint, collection: edited, from: agent.id,
+    }));
+    await apiClientSyncService.executeForAgent(workspace.id, imported.nodeId, SyncAgentApiClientDto.from({ action: 'push', from: agent.id }));
+
+    const generated = (await readdir(collection)).find((file) => /^Sibling health check\.bru$/i.test(file));
+    expect(generated).toBeTruthy();
+    expect(await readFile(join(collection, generated!), 'utf8')).toContain('https://example.test/health');
+    await expect(apiClientService.importForAgent(workspace.id, ImportAgentApiClientDto.from({
+      path: '../api-tests/bruno', kind: 'bruno', syncMode: 'watch', from: agent.id,
+    }))).rejects.toThrow('escapes');
+
+    const token = await bridgeService.getOrCreateToken(workspace.id);
+    const response = await new BridgeController().listAgents(bridgeEvent('GET', '/api/agent-room/bridge/agents', {}, {}, token) as any) as Response;
+    const body = await response.json();
+    expect(body.data.repositories).toEqual([{ alias: 'api-tests', reference: '@api-tests' }]);
+    expect(JSON.stringify(body.data.repositories)).not.toContain(testRepository);
   });
 
   it('writes linked Postman changes atomically and refuses silent conflict overwrites', async () => {

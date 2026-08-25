@@ -19,6 +19,7 @@ import { desktopSecretService } from '../../infrastructure/secrets/DesktopSecret
 import type { ApiClientFolder, ApiClientNodePayload } from '../../domain/types.js';
 import { importOpenApiDocument } from '../../domain/api-client-openapi.js';
 import { postmanCollectionFilename, serializePostmanCollection } from '../../domain/api-client-postman.js';
+import { workspacePathService } from './WorkspacePathService.js';
 
 const IMPORT_LIMIT = 500;
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
@@ -894,7 +895,7 @@ export class ApiClientService {
     const agent = await this.requireAgentNode(workspaceId, dto.input.from);
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     if (!workspace) throw new Error('Workspace not found.');
-    const sourcePath = await this.resolveAgentImportPath(workspace.workingDir, dto.input.path);
+    const sourcePath = await workspacePathService.resolveExisting(workspace, dto.input.path);
     const kind = dto.input.kind === 'auto' ? await this.inferAgentImportKind(sourcePath) : dto.input.kind;
     let node = dto.input.nodeId ? await this.requireNode(workspaceId, dto.input.nodeId) : null;
     const created = !node;
@@ -940,9 +941,7 @@ export class ApiClientService {
     let sourcePath: string | null = null;
     if (payload.sourcePath && workspace) {
       try {
-        const root = await realpath(resolve(workspace.workingDir));
-        const source = await realpath(resolve(payload.sourcePath));
-        sourcePath = relative(root, source).split(sep).join('/');
+        sourcePath = await workspacePathService.reference(workspace, payload.sourcePath);
       } catch {
         sourcePath = null;
       }
@@ -950,8 +949,6 @@ export class ApiClientService {
     const repositoryLinked = Boolean(
       payload.sourceKind
       && sourcePath !== null
-      && !isAbsolute(sourcePath)
-      && !sourcePath.split('/').includes('..')
     );
     return {
       nodeId: node.id,
@@ -985,10 +982,7 @@ export class ApiClientService {
     await this.requireAgentConnection(workspaceId, nodeId, agent.id);
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     if (!workspace) throw new Error('Workspace not found.');
-    if (isAbsolute(dto.input.path)) throw new Error('The export path must be relative to the workspace.');
-    const root = resolve(workspace.workingDir);
-    const destination = resolve(root, dto.input.path);
-    if (destination !== root && !destination.startsWith(`${root}${sep}`)) throw new Error('The export path must stay inside the workspace.');
+    const destination = await workspacePathService.resolveWritable(workspace, dto.input.path);
     await mkdir(destination, { recursive: true });
     const node = await this.requireNode(workspaceId, nodeId);
     const payload = payloadForAgentExport(apiClientNativePayloadSchema.parse(node.payload ?? {}) as ApiClientNodePayload);
@@ -1810,14 +1804,6 @@ export class ApiClientService {
       || (edge.targetNodeId === agentNodeId && edge.sourceNodeId === nodeId)
     );
     if (!connected) throw new Error('API Client node is not connected to this agent.');
-  }
-
-  private async resolveAgentImportPath(workingDir: string, requestedPath: string): Promise<string> {
-    if (isAbsolute(requestedPath)) throw new Error('The import path must be relative to the workspace.');
-    const root = await realpath(resolve(workingDir));
-    const candidate = await realpath(resolve(root, requestedPath));
-    if (candidate !== root && !candidate.startsWith(`${root}${sep}`)) throw new Error('The import path must stay inside the workspace.');
-    return candidate;
   }
 
   private async inferAgentImportKind(path: string): Promise<'bruno' | 'postman' | 'openCollection'> {

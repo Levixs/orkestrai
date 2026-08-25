@@ -15,6 +15,7 @@ export class AgentWorkspace extends Model {
     'icon',
     'instructions',
     'sync_agent_instruction_files',
+    'repository_roots_json',
     'bridge_token',
     'hooks_json',
     'group_id',
@@ -37,6 +38,7 @@ export class AgentWorkspace extends Model {
   declare icon: string | null;
   declare instructions: string | null;
   declare sync_agent_instruction_files: boolean;
+  declare repository_roots_json: string | null;
   declare hooks_json: string | null;
   declare group_id: string | null;
   declare position: number;

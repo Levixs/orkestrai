@@ -1,5 +1,4 @@
-import { realpath } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { dirname } from 'node:path';
 import { apiClientNativePayloadSchema } from '../../contracts/schemas/apiClient.schema.js';
 import type { ApiClientNodePayload } from '../../domain/types.js';
 import { serializePostmanCollection } from '../../domain/api-client-postman.js';
@@ -7,6 +6,7 @@ import { workspaceRepository } from '../../infrastructure/repositories/Workspace
 import { apiClientPayloadFingerprint, apiClientSourceFingerprint, apiClientSourceRoot, mirrorGeneratedCollection, writeApiClientFileAtomic } from '../../infrastructure/api-client/ApiClientSyncFiles.js';
 import { ApiClientSyncDto, ExportApiClientCollectionDto, ImportApiClientCollectionDto, type SyncAgentApiClientDto } from '../dto/ApiClientDtos.js';
 import { apiClientService } from './ApiClientService.js';
+import { workspacePathService } from './WorkspacePathService.js';
 
 type LinkedKind = Exclude<ApiClientNodePayload['sourceKind'], null | undefined>;
 
@@ -158,10 +158,7 @@ export class ApiClientSyncService {
     const node = await this.requireNode(workspaceId, nodeId);
     const payload = apiClientNativePayloadSchema.parse(node.payload ?? {}) as ApiClientNodePayload;
     if (!workspace || !payload.sourcePath) throw new Error('This collection is not linked to a repository source.');
-    const root = await realpath(resolve(workspace.workingDir));
-    const source = await realpath(resolve(payload.sourcePath));
-    const path = relative(root, source);
-    if (isAbsolute(path) || path.startsWith('..') || path.split(sep).includes('..')) throw new Error('The linked collection is outside the workspace repository.');
+    await workspacePathService.assertRegistered(workspace, payload.sourcePath);
   }
 }
 

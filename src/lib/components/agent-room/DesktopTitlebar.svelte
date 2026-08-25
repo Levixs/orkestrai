@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AppWindow, CheckCircle2, FileText, LayoutGrid, LifeBuoy, Maximize2, Minus, MonitorUp, PanelTop, RefreshCw, Search, Settings, SquareTerminal, X } from '@lucide/svelte';
+  import { AppWindow, Bug, CheckCircle2, FileText, FolderOpen, LayoutGrid, LifeBuoy, Maximize2, Minus, MonitorUp, PanelTop, RefreshCw, Search, Settings, SquareTerminal, X } from '@lucide/svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import * as m from '$lib/paraglide/messages.js';
 
@@ -55,6 +55,7 @@
         <DropdownMenu.Item onclick={() => run('command-palette')}><Search size={14} />{m['desktop.command_palette']()}<DropdownMenu.Shortcut>Ctrl+P</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Separator />
         <DropdownMenu.Item onclick={() => run('reload')}>{m['desktop.reload']()}</DropdownMenu.Item>
+        <DropdownMenu.Item onclick={() => run('toggle-devtools')}><Bug size={14} />{m['desktop.developer_tools']()}<DropdownMenu.Shortcut>Ctrl+Shift+I</DropdownMenu.Shortcut></DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('fullscreen')}>{m['desktop.fullscreen']()}</DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
@@ -74,6 +75,7 @@
       <DropdownMenu.Content align="start" class="titlebar-menu">
         <DropdownMenu.Item onclick={() => run('docs')}><FileText size={14} />{m['desktop.docs']()}</DropdownMenu.Item>
         <DropdownMenu.Item onclick={() => run('changelog')}><CheckCircle2 size={14} />{m['desktop.changelog']()}</DropdownMenu.Item>
+        <DropdownMenu.Item onclick={() => run('open-logs')}><FolderOpen size={14} />{m['desktop.open_logs']()}</DropdownMenu.Item>
         <DropdownMenu.Separator />
         <DropdownMenu.Item onclick={() => run('report-issue')}><LifeBuoy size={14} />{m['desktop.report_issue']()}</DropdownMenu.Item>
       </DropdownMenu.Content>

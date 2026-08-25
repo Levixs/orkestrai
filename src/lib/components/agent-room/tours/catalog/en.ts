@@ -1510,6 +1510,7 @@ export const TOURS_EN: Tour[] = [
         check: { kind: 'nodeExists', nodeType: 'apiClient', titleIncludes: 'Project API' },
       },
       { id: 'import-collection', title: 'Link the project collection', body: 'Import Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, OpenAPI 3.x, or a complete Orkestrai backup. Existing repository collections stay linked in watch mode, so Canvas/Workbench and project files remain one source of truth.' },
+      { id: 'multi-repository', title: 'Authorize sibling repositories', body: 'When this workspace coordinates repositories beside its working directory, open Edit workspace > Additional repositories. Choose each repository once and give it an alias such as api-tests; agents then use @api-tests/bruno without gaining access to arbitrary parent paths.' },
       { id: 'prepare-request', title: 'Prepare a protocol and credentials', body: 'Choose HTTP, GraphQL, WebSocket, or gRPC. Configure environments, headers, API-key/Bearer/Basic auth, or obtain an OAuth 2.0 token through the assisted browser and PKCE flow. Network settings hold cookies, proxy, CA, client certificate, and TLS verification.' },
       { id: 'automate-and-test', title: 'Automate and test with completion', body: 'Choose Postman, Bruno, or Native. Editors suggest pm.*, bru.*, req/res, and test/expect. Use Scripts for Pre/Post-response and switch Assertions/JavaScript in Tests; the source runtime executes scopes, callbacks, Chai, cookies, flow, visualizers, and iteration data.' },
       { id: 'agent-authoring', title: 'Delegate repository-backed tests', body: 'Connect the API Client to an agent or lead. It can import a project-relative Bruno/Postman collection, edit format-native folders, requests, scripts, tests, and variables, execute the suite, and persist linked changes to the original files without exposing local secrets. Orkestrai-only runner settings remain in the node and native backup.' },
@@ -1572,6 +1573,17 @@ export const TOURS_EN: Tour[] = [
       { id: 'create-workspace-folder', title: 'Create a folder', body: 'Type a name in New folder at the bottom of the list and confirm. It appears at the root, ready to receive workspaces.' },
       { id: 'file-workspace-into-folder', title: 'File a workspace into it', body: 'Drag any workspace onto the folder header to move it there; drag it onto empty space in the list to send it back to the root.' },
       { id: 'nest-workspace-folders', title: 'Nest and manage folders', body: 'Drag one folder onto another to make it a subfolder, or use the "new subfolder" icon in a folder\'s header to create one already inside it — there\'s no depth limit. Rename with the pencil icon or a double-click, and delete with the trash icon: workspaces and subfolders inside always move up to the root instead of being removed.' },
+    ],
+  },
+  {
+    id: 'desktop-diagnostics',
+    icon: 'Activity',
+    title: 'Diagnose the desktop app',
+    tagline: 'Inspect a failed action and collect a bounded local log for support.',
+    steps: [
+      { id: 'open-developer-tools', title: 'Open Developer tools', body: 'Open View > Developer tools, or press Ctrl+Shift+I on Windows and Linux. Keep Console visible and reproduce the action that did not respond.' },
+      { id: 'read-console-error', title: 'Capture the first relevant error', body: 'Copy the first red error and its stack after reproducing the issue. Console remains the fastest view for Usage, Workbench, and other renderer actions that fail without a visible message.' },
+      { id: 'open-desktop-logs', title: 'Open the persistent logs', body: 'Choose Help > Open logs folder and send orkestrai.log with the report. Files rotate automatically, common credentials are redacted, and normal agent output is not persisted.' },
     ],
   },
 ];

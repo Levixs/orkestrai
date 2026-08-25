@@ -4,6 +4,7 @@ import type {
   CanvasNodeType,
   Workspace,
   WorkspaceHooks,
+  WorkspaceRepositoryRoot,
 } from '../../domain/types.js';
 import type {
   CreateCanvasEdgeInput,
@@ -59,7 +60,8 @@ export class CreateWorkspaceDto {
     public readonly wslDistribution: string | null = null,
     public readonly wslWorkingDir: string | null = null,
     public readonly syncAgentInstructionFiles = false,
-    public readonly hooks: WorkspaceHooks = {}
+    public readonly hooks: WorkspaceHooks = {},
+    public readonly repositoryRoots: WorkspaceRepositoryRoot[] = []
   ) {}
 
   static from(input: CreateWorkspaceInput): CreateWorkspaceDto {
@@ -70,13 +72,16 @@ export class CreateWorkspaceDto {
       input.instructions ?? null,
       input.runtimeKind,
       input.wslDistribution ?? null,
-      input.wslWorkingDir ?? null
+      input.wslWorkingDir ?? null,
+      false,
+      {},
+      input.repositoryRoots
     );
   }
 }
 
 export class UpdateWorkspaceDto {
-  constructor(public readonly changes: Partial<Pick<Workspace, 'name' | 'workingDir' | 'runtimeKind' | 'wslDistribution' | 'wslWorkingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles'>>) {}
+  constructor(public readonly changes: Partial<Pick<Workspace, 'name' | 'workingDir' | 'runtimeKind' | 'wslDistribution' | 'wslWorkingDir' | 'icon' | 'instructions' | 'syncAgentInstructionFiles' | 'repositoryRoots'>>) {}
 
   static from(input: UpdateWorkspaceInput): UpdateWorkspaceDto {
     return new UpdateWorkspaceDto({
@@ -88,6 +93,7 @@ export class UpdateWorkspaceDto {
       icon: input.icon,
       instructions: input.instructions,
       syncAgentInstructionFiles: input.syncAgentInstructionFiles,
+      repositoryRoots: input.repositoryRoots,
     });
   }
 }

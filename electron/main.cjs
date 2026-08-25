@@ -14,6 +14,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
 const { canInstallUpdatesAutomatically, isNewerVersion } = require('./update-policy.cjs');
+const { createDiagnosticsLogger } = require('./diagnostics.cjs');
 const { PORTAL_PARTITION, isAllowedPortalUrl, portalWindowOpenResponse } = require('./portal-policy.cjs');
 
 const isDev = !app.isPackaged;
@@ -31,7 +32,35 @@ let pendingNotifications = 0;
 let menuLocale = 'en';
 let pendingCollaborationInvite = null;
 let portalStorageFlushTimer = null;
+let diagnostics = null;
 const configuredPortalContents = new WeakSet();
+
+function initializeDiagnostics() {
+  app.setAppLogsPath();
+  diagnostics = createDiagnosticsLogger(app.getPath('logs'));
+  diagnostics.write('info', 'app', `Starting Orkestrai ${app.getVersion()} on ${process.platform} ${process.arch}`);
+
+  for (const level of ['warn', 'error']) {
+    const original = console[level].bind(console);
+    console[level] = (...values) => {
+      diagnostics?.write(level, 'main', ...values);
+      original(...values);
+    };
+  }
+  process.on('uncaughtExceptionMonitor', (error, origin) => diagnostics?.write('error', 'main', origin, error));
+}
+
+function toggleDeveloperTools() {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  mainWindow.webContents.toggleDevTools();
+  return true;
+}
+
+async function openLogsDirectory() {
+  const directory = diagnostics?.directory ?? app.getPath('logs');
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  return shell.openPath(directory);
+}
 
 function flushPortalStorage() {
   const portalSession = session.fromPartition(PORTAL_PARTITION);
@@ -175,15 +204,15 @@ function deleteAutomationSecret(key) {
 const MENU_COPY = {
   'pt-BR': {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Central de Providers', remote: 'Entrar em workspace remoto', newWorkspace: 'Novo workspace', presets: 'Biblioteca de presets', floors: 'Andares', roles: 'Responsabilidades', huddles: 'Huddles', usage: 'Uso', ports: 'Portas',
-    settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', exportApiCollection: 'Escolher destino da coleção Bruno', portalWindow: 'Portal do Orkestrai', notifications: (count) => `${count} notificações`,
+    settings: 'Configurações', checkUpdates: 'Verificar atualizações', edit: 'Editar', view: 'Visualizar', commandPalette: 'Paleta de comandos', reload: 'Recarregar', forceReload: 'Forçar recarga', developerTools: 'Ferramentas do desenvolvedor', fullscreen: 'Tela cheia', window: 'Janela', minimize: 'Minimizar', close: 'Fechar', help: 'Ajuda', docs: 'Documentação', changelog: 'Changelog', openLogs: 'Abrir pasta de logs', reportIssue: 'Reportar problema', open: 'Abrir Orkestrai', quit: 'Sair', pickDirectory: 'Escolher pasta do workspace', exportApiCollection: 'Escolher destino da coleção Bruno', portalWindow: 'Portal do Orkestrai', notifications: (count) => `${count} notificações`,
   },
   en: {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Provider Center', remote: 'Join remote workspace', newWorkspace: 'New workspace', presets: 'Preset library', floors: 'Floors', roles: 'Roles', huddles: 'Huddles', usage: 'Usage', ports: 'Ports',
-    settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', exportApiCollection: 'Choose Bruno collection destination', portalWindow: 'Orkestrai Portal', notifications: (count) => `${count} notifications`,
+    settings: 'Settings', checkUpdates: 'Check for updates', edit: 'Edit', view: 'View', commandPalette: 'Command palette', reload: 'Reload', forceReload: 'Force reload', developerTools: 'Developer tools', fullscreen: 'Full screen', window: 'Window', minimize: 'Minimize', close: 'Close', help: 'Help', docs: 'Documentation', changelog: 'Changelog', openLogs: 'Open logs folder', reportIssue: 'Report an issue', open: 'Open Orkestrai', quit: 'Quit', pickDirectory: 'Choose workspace folder', exportApiCollection: 'Choose Bruno collection destination', portalWindow: 'Orkestrai Portal', notifications: (count) => `${count} notifications`,
   },
   es: {
     workspace: 'Workspace', canvas: 'Canvas', terminals: 'Workbench', providers: 'Central de Providers', remote: 'Entrar a workspace remoto', newWorkspace: 'Nuevo workspace', presets: 'Biblioteca de presets', floors: 'Pisos', roles: 'Roles', huddles: 'Huddles', usage: 'Uso', ports: 'Puertos',
-    settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', exportApiCollection: 'Elegir destino de la colección Bruno', portalWindow: 'Portal de Orkestrai', notifications: (count) => `${count} notificaciones`,
+    settings: 'Configuración', checkUpdates: 'Buscar actualizaciones', edit: 'Editar', view: 'Ver', commandPalette: 'Paleta de comandos', reload: 'Recargar', forceReload: 'Forzar recarga', developerTools: 'Herramientas de desarrollo', fullscreen: 'Pantalla completa', window: 'Ventana', minimize: 'Minimizar', close: 'Cerrar', help: 'Ayuda', docs: 'Documentación', changelog: 'Changelog', openLogs: 'Abrir carpeta de logs', reportIssue: 'Reportar un problema', open: 'Abrir Orkestrai', quit: 'Salir', pickDirectory: 'Elegir carpeta del workspace', exportApiCollection: 'Elegir destino de la colección Bruno', portalWindow: 'Portal de Orkestrai', notifications: (count) => `${count} notificaciones`,
   },
 };
 
@@ -254,7 +283,7 @@ function buildApplicationMenu() {
         { type: 'separator' },
         { label: copy.reload, role: 'reload' },
         { label: copy.forceReload, role: 'forceReload' },
-        ...(isDev ? [{ role: 'toggleDevTools' }] : []),
+        { label: copy.developerTools, accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'Control+Shift+I', click: toggleDeveloperTools },
         { type: 'separator' },
         { label: copy.fullscreen, role: 'togglefullscreen' },
       ],
@@ -266,6 +295,7 @@ function buildApplicationMenu() {
       submenu: [
         { label: copy.docs, click: () => sendMenuAction('docs') },
         { label: copy.changelog, click: () => sendMenuAction('changelog') },
+        { label: copy.openLogs, click: () => void openLogsDirectory() },
         { type: 'separator' },
         { label: copy.reportIssue, click: () => shell.openExternal('https://github.com/beeblock/orkestrai/issues/new') },
       ],
@@ -469,8 +499,12 @@ async function startServer(port) {
       }
     }
   });
-  serverProcess.stderr.on('data', (chunk) => process.stderr.write(`[server] ${chunk}`));
+  serverProcess.stderr.on('data', (chunk) => {
+    diagnostics?.write('error', 'server', String(chunk));
+    process.stderr.write(`[server] ${chunk}`);
+  });
   serverProcess.on('exit', (code) => {
+    diagnostics?.write(code === 0 ? 'info' : 'error', 'server', `Internal server exited with code ${code}`);
     console.log(`[server] finalizado com código ${code}`);
     serverProcess = null;
   });
@@ -553,6 +587,25 @@ async function createWindow() {
   mainWindow.webContents.on('did-attach-webview', (_event, guestContents) => {
     configurePortalContents(guestContents);
   });
+
+  mainWindow.webContents.on('console-message', (details, legacyLevel, legacyMessage, legacyLine, legacySource) => {
+    const level = typeof details?.level === 'string'
+      ? details.level
+      : (legacyLevel >= 3 ? 'error' : legacyLevel >= 2 ? 'warning' : 'info');
+    if (level !== 'warning' && level !== 'error') return;
+    const message = details?.message ?? legacyMessage ?? '';
+    const line = details?.lineNumber ?? legacyLine ?? 0;
+    const source = details?.sourceId ?? legacySource ?? 'renderer';
+    diagnostics?.write(level === 'warning' ? 'warn' : 'error', 'renderer', `${source}:${line}`, message);
+  });
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (errorCode === -3) return;
+    diagnostics?.write('error', 'renderer', 'Load failed', { errorCode, errorDescription, validatedURL, isMainFrame });
+  });
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    diagnostics?.write('error', 'renderer', 'Renderer process exited', details);
+  });
+  mainWindow.on('unresponsive', () => diagnostics?.write('error', 'renderer', 'Main window became unresponsive'));
 
   mainWindow.once('ready-to-show', () => {
     closeSplash();
@@ -825,6 +878,8 @@ ipcMain.handle('orkestrai:menu-command', (_event, action) => {
   else if (action === 'paste') contents.paste();
   else if (action === 'select-all') contents.selectAll();
   else if (action === 'reload') contents.reload();
+  else if (action === 'toggle-devtools') toggleDeveloperTools();
+  else if (action === 'open-logs') void openLogsDirectory();
   else if (action === 'fullscreen') mainWindow.setFullScreen(!mainWindow.isFullScreen());
   else if (action === 'minimize') mainWindow.minimize();
   else if (action === 'toggle-maximize') mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
@@ -927,6 +982,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    initializeDiagnostics();
     registerCollaborationProtocol();
     menuLocale = normalizeMenuLocale(app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : app.getLocale().toLowerCase().startsWith('es') ? 'es' : 'en');
     // Ícone do dock em dev (empacotado vem do electron-builder).

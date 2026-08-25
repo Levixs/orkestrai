@@ -1,7 +1,7 @@
-import { constants as fsConstants, existsSync, statSync, writeFileSync } from 'node:fs';
+import { constants as fsConstants, existsSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { access, readFile } from 'node:fs/promises';
 import { posix, resolve } from 'node:path';
-import type { CanvasNodePayload, Workspace } from '../../domain/types.js';
+import type { CanvasNodePayload, Workspace, WorkspaceRepositoryRoot } from '../../domain/types.js';
 import { executionRuntimeKey } from '../../domain/runtime.js';
 import { AgentBoardTask } from '../../domain/models/AgentBoardTask.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
@@ -167,6 +167,7 @@ export class WorkspaceService {
       wslWorkingDir: resolvedRuntime.runtime.kind === 'wsl' ? resolvedRuntime.runtime.linuxWorkingDir : null,
       syncAgentInstructionFiles: dto.syncAgentInstructionFiles,
       hooks: dto.hooks,
+      repositoryRoots: this.assertRepositoryRoots(dto.repositoryRoots),
     });
     this.writeInstructionFiles(workspace);
     // Provisiona a ponte (token + skill) ja no nascimento do workspace:
@@ -189,6 +190,9 @@ export class WorkspaceService {
       wslWorkingDir: dto.changes.wslWorkingDir === undefined ? existing.wslWorkingDir : dto.changes.wslWorkingDir,
     });
     const workingDir = this.assertWorkingDir(resolvedRuntime.workingDir);
+    const repositoryRoots = dto.changes.repositoryRoots === undefined
+      ? existing.repositoryRoots
+      : this.assertRepositoryRoots(dto.changes.repositoryRoots);
     const runtimeChanged =
       existing.runtimeKind !== resolvedRuntime.runtime.kind ||
       existing.workingDir !== workingDir ||
@@ -196,6 +200,7 @@ export class WorkspaceService {
         existing.wslDistribution !== resolvedRuntime.runtime.distribution ||
         existing.wslWorkingDir !== resolvedRuntime.runtime.linuxWorkingDir
       ));
+    const repositoryRootsChanged = JSON.stringify(existing.repositoryRoots) !== JSON.stringify(repositoryRoots);
     if (runtimeChanged) await this.unloadWorkspaceSessions(id);
     const workspace = await workspaceRepository.updateWorkspace(id, {
       ...dto.changes,
@@ -203,11 +208,12 @@ export class WorkspaceService {
       runtimeKind: resolvedRuntime.runtime.kind,
       wslDistribution: resolvedRuntime.runtime.kind === 'wsl' ? resolvedRuntime.runtime.distribution : null,
       wslWorkingDir: resolvedRuntime.runtime.kind === 'wsl' ? resolvedRuntime.runtime.linuxWorkingDir : null,
+      repositoryRoots,
     });
     if (!workspace) throw new Error('Workspace nao encontrado.');
-    if (runtimeChanged) this.provisionChecked.delete(id);
+    if (runtimeChanged || repositoryRootsChanged) this.provisionChecked.delete(id);
     this.writeInstructionFiles(workspace);
-    if (runtimeChanged) await this.reprovisionBridge(workspace);
+    if (runtimeChanged || repositoryRootsChanged) await this.reprovisionBridge(workspace);
     else await this.ensureProvisioned(workspace);
     return workspace;
   }
@@ -705,6 +711,22 @@ export class WorkspaceService {
       throw new Error(`Diretorio de trabalho nao existe: ${resolved}`);
     }
     return resolved;
+  }
+
+  private assertRepositoryRoots(roots: WorkspaceRepositoryRoot[]): WorkspaceRepositoryRoot[] {
+    const paths = new Set<string>();
+    const aliases = new Set<string>();
+    return roots.map((root) => {
+      const alias = root.alias.trim().toLowerCase();
+      if (!/^[a-z0-9][a-z0-9_-]{0,47}$/.test(alias)) throw new Error(`Invalid repository alias: ${root.alias}`);
+      if (aliases.has(alias)) throw new Error(`Repository alias is registered more than once: @${alias}`);
+      aliases.add(alias);
+      const path = realpathSync(resolve(root.path.trim()));
+      if (!statSync(path).isDirectory()) throw new Error(`Additional repository is not a directory: ${path}`);
+      if (paths.has(path)) throw new Error(`Additional repository is registered more than once: ${path}`);
+      paths.add(path);
+      return { alias, path };
+    });
   }
 
   /**

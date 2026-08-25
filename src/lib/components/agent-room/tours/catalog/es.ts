@@ -1510,6 +1510,7 @@ export const TOURS_ES: Tour[] = [
         check: { kind: 'nodeExists', nodeType: 'apiClient', titleIncludes: 'API del proyecto' },
       },
       { id: 'import-collection', title: 'Vincula la colección del proyecto', body: 'Importa Bruno, OpenCollection YAML, Postman v2.1, Swagger 2.0, OpenAPI 3.x o una copia completa de Orkestrai. Las colecciones existentes del repositorio siguen vinculadas en modo de seguimiento, de modo que Canvas/Workbench y los archivos del proyecto sean una sola fuente de verdad.' },
+      { id: 'multi-repository', title: 'Autoriza repositorios hermanos', body: 'Cuando este workspace coordina repositorios junto a su directorio de trabajo, abre Editar workspace > Repositorios adicionales. Elige cada repositorio una vez y asigna un alias como api-tests; los agentes usan @api-tests/bruno sin obtener acceso a carpetas principales arbitrarias.' },
       { id: 'prepare-request', title: 'Prepara protocolo y credenciales', body: 'Elige HTTP, GraphQL, WebSocket o gRPC. Configura entornos, encabezados, clave API/Bearer/Basic u obtén un token OAuth 2.0 mediante el flujo asistido en el navegador con PKCE. La pestaña Red guarda cookies, proxy, CA, certificado del cliente y verificación TLS.' },
       { id: 'automate-and-test', title: 'Automatiza y prueba con autocompletado', body: 'Elige Postman, Bruno o Nativo. Los editores sugieren pm.*, bru.*, req/res y test/expect. Usa Scripts para Pre/Post-response y alterna Assertions/JavaScript en Pruebas; el runtime de origen ejecuta ámbitos, callbacks, Chai, cookies, flujo, visualizaciones y datos de iteración.' },
       { id: 'agent-authoring', title: 'Delega pruebas versionadas en el proyecto', body: 'Conecta el Cliente de API a un agente o líder. Puede importar una colección Bruno/Postman por ruta relativa, editar carpetas, solicitudes, scripts, pruebas y variables nativas del formato, ejecutar la suite y persistir cambios vinculados en los archivos originales sin exponer secretos locales. La configuración de runners exclusiva de Orkestrai permanece en el nodo y en la copia nativa.' },
@@ -1572,6 +1573,17 @@ export const TOURS_ES: Tour[] = [
       { id: 'create-workspace-folder', title: 'Crea una carpeta', body: 'Escribe un nombre en Nueva carpeta al final de la lista y confirma. Aparece en la raíz, lista para recibir workspaces.' },
       { id: 'file-workspace-into-folder', title: 'Archiva un workspace en ella', body: 'Arrastra cualquier workspace sobre el encabezado de la carpeta para moverlo ahí; arrástralo al espacio vacío de la lista para devolverlo a la raíz.' },
       { id: 'nest-workspace-folders', title: 'Anida y administra carpetas', body: 'Arrastra una carpeta sobre otra para convertirla en subcarpeta, o usa el ícono de "nueva subcarpeta" en el encabezado de una carpeta para crear una ya dentro de ella — sin límite de profundidad. Renombra con el ícono de lápiz o doble clic, y elimina con el ícono de papelera: los workspaces y subcarpetas dentro siempre suben a la raíz en lugar de eliminarse.' },
+    ],
+  },
+  {
+    id: 'desktop-diagnostics',
+    icon: 'Activity',
+    title: 'Diagnosticar la aplicación de escritorio',
+    tagline: 'Inspecciona una acción fallida y reúne un log local limitado para soporte.',
+    steps: [
+      { id: 'open-developer-tools', title: 'Abre las Herramientas de desarrollo', body: 'Abre Ver > Herramientas de desarrollo o presiona Ctrl+Shift+I en Windows y Linux. Mantén Console visible y reproduce la acción que no respondió.' },
+      { id: 'read-console-error', title: 'Captura el primer error relevante', body: 'Copia el primer error rojo y su stack después de reproducir el problema. Console es la vista más rápida para Uso, Workbench y otras acciones del renderer que fallan sin mensaje visible.' },
+      { id: 'open-desktop-logs', title: 'Abre los logs persistentes', body: 'Elige Ayuda > Abrir carpeta de logs y envía orkestrai.log con el reporte. Los archivos rotan automáticamente, las credenciales comunes se ocultan y la salida normal de los agentes no se guarda.' },
     ],
   },
 ];

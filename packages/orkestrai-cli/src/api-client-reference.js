@@ -2,7 +2,7 @@ export function apiClientReference() {
   return {
     workflow: [
       'Call api_client_list, then api_client_read before changing an existing collection.',
-      'When the project already contains Bruno or Postman files, call api_client_import with a workspace-relative path. It creates or updates the connected canvas node and watches that repository source by default.',
+      'When the project already contains Bruno or Postman files, call api_client_import with a workspace-relative path or a registered repository alias such as @api-tests/bruno. It creates or updates the connected canvas node and watches that repository source by default.',
       'Edit the returned collection and pass its fingerprint to api_client_replace. A stale fingerprint is rejected instead of overwriting concurrent UI changes; linked Bruno/Postman sources are written back atomically by default.',
       'Use api_client_sync_status before resolving concurrent repository edits. api_client_pull and api_client_push refuse destructive conflicts unless resolution is explicitly filesystem or orkestrai.',
       'Use stable unique ids for requests, folders, runners, params, headers, form fields, assertions, and messages.',
@@ -55,10 +55,10 @@ export function apiClientReference() {
     export: {
       bruno: 'Creates an official Bruno directory with bruno.json, collection.bru, nested folders, request .bru files, environments, scripts, tests, auth, variables, and ordering. Stored secret values remain redacted.',
       postman: 'Creates a Postman Collection v2.1 JSON with nested folders, events, auth, variables, bodies, tests, and original compatible metadata. Stored secret values remain redacted.',
-      path: 'Must be relative to the workspace, for example .orkestrai/exports.',
+      path: 'Must be relative to the workspace or use a registered repository alias, for example .orkestrai/exports or @api-tests/bruno.',
     },
     repository: {
-      import: 'api_client_import accepts only paths inside the workspace and supports Bruno directories/files, Postman v2.1 JSON, and OpenCollection YAML.',
+      import: 'api_client_import accepts paths inside the workspace or an explicitly registered @alias root and supports Bruno directories/files, Postman v2.1 JSON, and OpenCollection YAML. Arbitrary absolute and parent paths stay blocked.',
       update: 'api_client_replace writes a linked Bruno/Postman/OpenCollection source by default. Pass syncToSource=false only when intentionally staging a canvas-only edit.',
       conflicts: 'api_client_sync_status reports sourceChanged/localChanged/conflict. Pull with resolution=filesystem or push with resolution=orkestrai only after reviewing the competing side.',
       persistence: 'The linked collection remains ordinary project files, so git status, commits, CI, Bruno, and Postman see the same format-native requests, scripts, tests, folders, and variables. Orkestrai-only runner configuration remains in the node and lossless native backup.',

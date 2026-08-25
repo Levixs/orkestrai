@@ -1,4 +1,8 @@
-export type PortalViewport = { width: number; height: number };
+export type PortalViewport = {
+  width: number;
+  height: number;
+  presetId?: string;
+};
 
 export type PortalDevicePreset = {
   id: string;
@@ -33,5 +37,5 @@ export function clampPortalViewportDimension(value: number): number {
 }
 
 export function swapPortalViewportOrientation(viewport: PortalViewport): PortalViewport {
-  return { width: viewport.height, height: viewport.width };
+  return { ...viewport, width: viewport.height, height: viewport.width };
 }
