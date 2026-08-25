@@ -18,7 +18,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'workspace-folders',
       title: 'Organize workspaces into folders',
-      body: `Group workspaces into folders in the sidebar once you have several projects (per client, per team, per environment). Type a name in "New folder" at the bottom of the list to create one at the root; drag a workspace onto a folder's header to file it there, or drag it onto empty space in the list to send it back to the root. Folders nest inside other folders the same way — drag one folder onto another to make it a subfolder; a folder can never be dropped into itself or into one of its own subfolders. Double-click a folder's name or use its pencil icon to rename it, and each folder remembers whether it's collapsed across restarts. Deleting a folder (trash icon, with confirmation) is never destructive: every workspace and subfolder inside it moves up to the root instead of being removed.`,
+      body: `Group workspaces into folders in the sidebar once you have several projects (per client, per team, per environment). Type a name in "New folder" at the bottom of the list to create one at the root; drag a workspace onto a folder's header to file it there, or drag it onto empty space in the list to send it back to the root. Folders nest inside other folders the same way, with no depth limit — drag one folder onto another to make it a subfolder, or use the "new subfolder" icon in any folder's header to create one already inside it; a folder can never be dropped into itself or into one of its own subfolders. Double-click a folder's name or use its pencil icon to rename it, and each folder remembers whether it's collapsed across restarts. Deleting a folder (trash icon, with confirmation) is never destructive: every workspace and subfolder inside it moves up to the root instead of being removed.`,
     },
     {
       id: 'wsl-runtime',
@@ -708,7 +708,7 @@ Header: Authorization = Bearer {{accessToken}}`,
       title: 'Orkestrai 0.21.0: organize workspaces into folders',
       summary: 'Group workspaces into nested folders in the Canvas sidebar — drag to file, nest, or send back to the root.',
       items: [
-        'Added nested folders in the Canvas sidebar to organize workspaces. Create one from the sidebar, drag a workspace onto its header to file it, drag a folder onto another to nest it, and rename or delete folders without ever losing what is inside them.',
+        'Added nested folders (no depth limit) in the Canvas sidebar to organize workspaces. Create one from the sidebar or a subfolder directly inside another one, drag a workspace onto its header to file it, drag a folder onto another to nest it, and rename or delete folders without ever losing what is inside them. Each folder remembers whether it is collapsed across restarts.',
       ],
     },
     {

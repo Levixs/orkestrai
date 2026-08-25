@@ -145,8 +145,6 @@
   let draggingItem = $state<{ kind: 'workspace' | 'group'; id: string } | null>(null);
   let dragOverGroupId = $state<string | null>(null);
   let dragOverRoot = $state(false);
-  const WORKSPACE_GROUP_COLLAPSE_KEY = 'orkestrai.collapsedWorkspaceGroupIds';
-  let collapsedGroupIds = $state<Set<string>>(new Set());
 
   type WorkspaceGroupNode = { group: WorkspaceGroup; children: WorkspaceGroupNode[]; workspaces: Workspace[] };
   /** Arvore de pastas construida a partir das listas planas (groups + workspaces). */
@@ -183,24 +181,24 @@
     };
   });
 
-  function loadCollapsedGroupIds(): Set<string> {
-    try {
-      const raw = localStorage.getItem(WORKSPACE_GROUP_COLLAPSE_KEY);
-      return raw ? new Set(JSON.parse(raw)) : new Set();
-    } catch {
-      return new Set();
-    }
+  function isGroupCollapsed(groupId: string): boolean {
+    return workspaceGroups.find((group) => group.id === groupId)?.collapsed ?? false;
   }
 
-  function toggleGroupCollapsed(groupId: string) {
-    const next = new Set(collapsedGroupIds);
-    if (next.has(groupId)) next.delete(groupId);
-    else next.add(groupId);
-    collapsedGroupIds = next;
+  /** Persistido no proprio registro da pasta (nao localStorage): sobrevive a
+      limpeza de dados do navegador e e a mesma fonte de verdade da arvore. */
+  async function toggleGroupCollapsed(groupId: string) {
+    const collapsed = !isGroupCollapsed(groupId);
+    workspaceGroups = workspaceGroups.map((group) => (group.id === groupId ? { ...group, collapsed } : group));
     try {
-      localStorage.setItem(WORKSPACE_GROUP_COLLAPSE_KEY, JSON.stringify([...next]));
-    } catch {
-      // localStorage indisponivel (modo privado, etc.) — colapso so nao persiste
+      await api<WorkspaceGroup>(`/api/agent-room/workspace-groups/${groupId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ collapsed }),
+      });
+    } catch (error) {
+      // Reverte o otimista se o servidor rejeitar (ex.: pasta apagada em outra aba).
+      workspaceGroups = workspaceGroups.map((group) => (group.id === groupId ? { ...group, collapsed: !collapsed } : group));
+      toast.error(workspaceGroupErrorText(error));
     }
   }
 
@@ -234,6 +232,48 @@
       });
       workspaceGroups = [...workspaceGroups, created];
       newFolderName = '';
+    } catch (error) {
+      toast.error(workspaceGroupErrorText(error));
+    }
+  }
+
+  let creatingSubfolderParentId = $state<string | null>(null);
+  let newSubfolderName = $state('');
+  let newSubfolderCancelled = false;
+
+  function startCreateSubfolder(parentId: string) {
+    creatingSubfolderParentId = parentId;
+    newSubfolderName = '';
+    newSubfolderCancelled = false;
+    // O input fica dentro da lista de filhos — se a pasta estava colapsada,
+    // expande primeiro pra ele ficar visivel.
+    if (isGroupCollapsed(parentId)) void toggleGroupCollapsed(parentId);
+  }
+
+  /** Mesma protecao contra o blur-apos-Esc do rename (ver cancelRenameGroup). */
+  function cancelCreateSubfolder() {
+    newSubfolderCancelled = true;
+    creatingSubfolderParentId = null;
+  }
+
+  async function commitCreateSubfolder() {
+    if (newSubfolderCancelled) {
+      newSubfolderCancelled = false;
+      return;
+    }
+    const parentId = creatingSubfolderParentId;
+    const name = newSubfolderName.trim();
+    creatingSubfolderParentId = null;
+    if (!parentId || !name) return;
+    try {
+      const created = await api<WorkspaceGroup>('/api/agent-room/workspace-groups', {
+        method: 'POST',
+        body: JSON.stringify({ name, parentId }),
+      });
+      workspaceGroups = [...workspaceGroups, created];
+      // Garante que a pasta recem-criada fique visivel: expande o pai se
+      // estava colapsado, em vez do usuario ter que abrir na mao.
+      if (isGroupCollapsed(parentId)) void toggleGroupCollapsed(parentId);
     } catch (error) {
       toast.error(workspaceGroupErrorText(error));
     }
@@ -908,7 +948,6 @@
         workspacesLoaded = true;
       }
       if (cachedProviders) providers = cachedProviders;
-      collapsedGroupIds = loadCollapsedGroupIds();
       void loadWorkspaceGroups();
       const [workspaceList, settingsResponse] = await Promise.all([
         api<Workspace[]>('/api/agent-room/workspaces'),
@@ -2338,10 +2377,10 @@
       >
         <button
           class="ws-group-toggle"
-          onclick={() => toggleGroupCollapsed(node.group.id)}
-          aria-label={collapsedGroupIds.has(node.group.id) ? m['canvas.expand_folder']() : m['canvas.collapse_folder']()}
+          onclick={() => void toggleGroupCollapsed(node.group.id)}
+          aria-label={node.group.collapsed ? m['canvas.expand_folder']() : m['canvas.collapse_folder']()}
         >
-          <ChevronRight size={12} class={collapsedGroupIds.has(node.group.id) ? '' : 'expanded'} />
+          <ChevronRight size={12} class={node.group.collapsed ? '' : 'expanded'} />
         </button>
         <Folder size={13} class="ws-group-icon" aria-hidden="true" />
         {#if renamingGroupId === node.group.id}
@@ -2365,6 +2404,9 @@
           >{node.group.name}</span>
         {/if}
         <span class="ws-group-actions">
+          <HeaderIconButton label={m['canvas.new_subfolder']()} side="right" onclick={() => startCreateSubfolder(node.group.id)}>
+            <FolderPlus size={12} />
+          </HeaderIconButton>
           <HeaderIconButton label={m['canvas.rename_folder']()} side="right" onclick={() => startRenameGroup(node.group)}>
             <Pencil size={12} />
           </HeaderIconButton>
@@ -2373,15 +2415,33 @@
           </HeaderIconButton>
         </span>
       </div>
-      {#if !collapsedGroupIds.has(node.group.id)}
+      {#if !node.group.collapsed}
         <ul class="ws-group-children">
+          {#if creatingSubfolderParentId === node.group.id}
+            <li class="ws-subfolder-create">
+              <FolderPlus size={12} aria-hidden="true" />
+              <input
+                bind:value={newSubfolderName}
+                placeholder={m['canvas.folder_name_placeholder']()}
+                aria-label={m['canvas.new_subfolder']()}
+                autocomplete="off"
+                spellcheck="false"
+                onblur={commitCreateSubfolder}
+                onkeydown={(event) => {
+                  if (event.key === 'Enter') commitCreateSubfolder();
+                  if (event.key === 'Escape') cancelCreateSubfolder();
+                }}
+                autofocus
+              />
+            </li>
+          {/if}
           {#each node.children as child (child.group.id)}
             {@render workspaceGroupNode(child)}
           {/each}
           {#each node.workspaces as workspace (workspace.id)}
             {@render workspaceListItem(workspace)}
           {/each}
-          {#if node.children.length === 0 && node.workspaces.length === 0}
+          {#if node.children.length === 0 && node.workspaces.length === 0 && creatingSubfolderParentId !== node.group.id}
             <li class="ws-group-empty">{m['canvas.folder_empty']()}</li>
           {/if}
         </ul>
@@ -2990,6 +3050,27 @@
     border: 1px dashed var(--app-border);
     color: var(--app-text-muted);
     flex-shrink: 0;
+  }
+
+  .ws-subfolder-create {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    min-height: 28px;
+    border-radius: 6px;
+    border: 1px dashed var(--app-border);
+    color: var(--app-text-muted);
+  }
+
+  .ws-subfolder-create input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--app-text);
+    font-size: 12px;
   }
 
   .new-folder-row input {

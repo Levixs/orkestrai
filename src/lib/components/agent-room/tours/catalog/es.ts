@@ -1566,7 +1566,7 @@ export const TOURS_ES: Tour[] = [
       { id: 'open-canvas-sidebar', title: 'Abre la barra lateral', body: 'Expande la barra lateral del Canvas (el botón de colapsar en su encabezado) para ver la lista completa de workspaces.', action: { kind: 'openPage', path: '/canvas?workspace={workspace}' } },
       { id: 'create-workspace-folder', title: 'Crea una carpeta', body: 'Escribe un nombre en Nueva carpeta al final de la lista y confirma. Aparece en la raíz, lista para recibir workspaces.' },
       { id: 'file-workspace-into-folder', title: 'Archiva un workspace en ella', body: 'Arrastra cualquier workspace sobre el encabezado de la carpeta para moverlo ahí; arrástralo al espacio vacío de la lista para devolverlo a la raíz.' },
-      { id: 'nest-workspace-folders', title: 'Anida y administra carpetas', body: 'Arrastra una carpeta sobre otra para convertirla en subcarpeta. Renombra con el ícono de lápiz o doble clic, y elimina con el ícono de papelera: los workspaces y subcarpetas dentro siempre suben a la raíz en lugar de eliminarse.' },
+      { id: 'nest-workspace-folders', title: 'Anida y administra carpetas', body: 'Arrastra una carpeta sobre otra para convertirla en subcarpeta, o usa el ícono de "nueva subcarpeta" en el encabezado de una carpeta para crear una ya dentro de ella — sin límite de profundidad. Renombra con el ícono de lápiz o doble clic, y elimina con el ícono de papelera: los workspaces y subcarpetas dentro siempre suben a la raíz en lugar de eliminarse.' },
     ],
   },
 ];

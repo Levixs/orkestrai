@@ -238,6 +238,7 @@
   "canvas.no_ws_match": "Nenhum workspace para \"{query}\".",
   "canvas.no_ws": "Nenhum workspace. Crie o primeiro com +.",
   "canvas.new_folder": "Nova pasta",
+  "canvas.new_subfolder": "Nova subpasta",
   "canvas.folder_name_placeholder": "Nome da pasta",
   "canvas.rename_folder": "Renomear pasta",
   "canvas.delete_folder": "Apagar pasta",

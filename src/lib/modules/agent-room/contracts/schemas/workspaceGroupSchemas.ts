@@ -8,6 +8,7 @@ export const createWorkspaceGroupSchema = z.object({
 export const updateWorkspaceGroupSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   parentId: z.string().trim().uuid().nullish(),
+  collapsed: z.boolean().optional(),
 });
 
 export const moveWorkspaceSchema = z.object({

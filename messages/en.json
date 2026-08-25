@@ -238,6 +238,7 @@
   "canvas.no_ws_match": "No workspace matches \"{query}\".",
   "canvas.no_ws": "No workspaces. Create the first one with +.",
   "canvas.new_folder": "New folder",
+  "canvas.new_subfolder": "New subfolder",
   "canvas.folder_name_placeholder": "Folder name",
   "canvas.rename_folder": "Rename folder",
   "canvas.delete_folder": "Delete folder",
