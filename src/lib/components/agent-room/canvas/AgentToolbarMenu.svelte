@@ -5,6 +5,7 @@
   import ToolbarButton from './ToolbarButton.svelte';
   import { cn } from '$lib/utils.js';
   import { MAX_PINNED_AGENT_PROVIDERS } from '$lib/components/agent-room/provider-toolbar.js';
+  import { providerIcons } from '$lib/modules/agent-room/domain/provider-icons.js';
   import type { AgentProviderInfo } from '$lib/modules/agent-room/domain/types.js';
   import * as m from '$lib/paraglide/messages.js';
 
@@ -37,12 +38,6 @@
       .map((id) => providers.find((provider) => provider.id === id))
       .filter((provider): provider is AgentProviderInfo => Boolean(provider && (provider.installed || allowUnavailableSelection)))
   );
-
-  const PROVIDER_ICONS: Record<string, string> = {
-    claude: '/images/claude.svg',
-    codex: '/images/codex.svg',
-    kimi: '/images/kimi.svg',
-  };
 </script>
 
 <DropdownMenu.Root>
@@ -53,7 +48,7 @@
           {...props}
           data-testid="agent-toolbar-menu"
           class={cn(
-            'group relative inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-[var(--app-text-soft)] outline-none transition-[color,background-color,box-shadow] duration-150 hover:bg-[var(--app-border)] hover:text-[var(--app-text)] focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]/45 data-[state=open]:bg-[var(--app-accent-soft)] data-[state=open]:text-[var(--app-accent)]',
+            'group relative inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 text-[var(--app-text-muted)] outline-none transition-[color,background-color,box-shadow] duration-150 hover:bg-[var(--app-border)] hover:text-[var(--app-text)] focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]/45 data-[state=open]:bg-[var(--app-accent-soft)] data-[state=open]:text-[var(--app-accent)]',
             unpinnedProviderActive && 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]',
           )}
           aria-label={m['canvas.agents_menu_aria']()}
@@ -78,8 +73,8 @@
         onclick={() => provider.installed || allowUnavailableSelection ? onSelect(provider) : onOpenProviderCenter()}
       >
         <span class="provider-menu-icon" aria-hidden="true">
-          {#if PROVIDER_ICONS[provider.id]}
-            <img src={PROVIDER_ICONS[provider.id]} width="16" height="16" alt="" />
+          {#if providerIcons[provider.id]}
+            <img src={providerIcons[provider.id]} width="16" height="16" alt="" />
           {:else}
             <CodeXml size={16} />
           {/if}
@@ -127,8 +122,8 @@
     active={activeProviderId === provider.id}
     onclick={() => onSelect(provider)}
   >
-    {#if PROVIDER_ICONS[provider.id]}
-      <img src={PROVIDER_ICONS[provider.id]} width="15" height="15" alt="" class="tool-icon" />
+    {#if providerIcons[provider.id]}
+      <img src={providerIcons[provider.id]} width="15" height="15" alt="" class="tool-icon" />
     {:else}
       <CodeXml size={15} class="tool-icon-svg" />
     {/if}

@@ -23,7 +23,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agentes: crear, nombrar, modelo y esfuerzo',
-      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después, el menú compacto del encabezado reúne cambio de provider y perfil, rol, una selección visual de 11 temas ANSI, recarga con contexto, Modo Maestro y eliminación; el título sigue siendo editable con doble clic. Cambiar el provider conserva conexiones, rol, piso y posición, cierra la conversación anterior e inicia una sesión limpia.`,
+      body: `El menú Agentes de la barra inferior reúne Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin y GitHub Copilot sin saturar el canvas. Fija hasta cuatro favoritos para mantenerlos junto al menú; el orden elegido persiste entre workspaces y reinicios, y un agente fijado no disponible sigue guardado sin ocupar la barra. No necesitas conocer la terminal ni usar todos los providers: empieza con el servicio que ya usas y agrega otro cuando quieras una perspectiva independiente. Los agentes que requieren configuración llevan a la Central de Providers, también disponible desde el icono de cable en la barra lateral, Cmd/Ctrl+2 o el menú nativo Workspace. Al dibujar un agente, el diálogo pide nombre, modelo y esfuerzo solo cuando el provider los ofrece, además de Líder. Después, el menú compacto del encabezado reúne cambio de provider y perfil, rol, una selección visual de 15 temas ANSI, recarga con contexto, Modo Maestro y eliminación; el título sigue siendo editable con doble clic. Cambiar el provider conserva conexiones, rol, piso y posición, cierra la conversación anterior e inicia una sesión limpia.`,
     },
     {
       id: 'provider-center',
@@ -698,6 +698,50 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '24 ago 2026 · 0.20.4',
+      title: 'Orkestrai 0.20.4: 4 temas de terminal nuevos',
+      summary: 'Monokai, Ayu Dark, Rosé Pine y Solarized Light se suman al selector de tema de la terminal, llegando a 15 en total.',
+      items: [
+        'Se agregaron Monokai, Ayu Dark, Rosé Pine y Solarized Light como temas ANSI de terminal.',
+      ],
+    },
+    {
+      date: '24 ago 2026 · 0.20.3',
+      title: 'Orkestrai 0.20.3: míralo antes de elegirlo',
+      summary: 'Configuración ahora muestra una vista previa en vivo del tema y la fuente de la terminal, y los atajos muestran la tecla modificadora correcta para tu SO.',
+      items: [
+        'El selector de tema de la terminal muestra una muestra de colores por opción y un panel de vista previa en vivo con el tema, fuente y padding elegidos.',
+        'Los atajos de teclado en Configuración ahora muestran ⌘ en macOS o "Ctrl" en el resto, en lugar de siempre "Cmd/Ctrl".',
+      ],
+    },
+    {
+      date: '24 ago 2026 · 0.20.2',
+      title: 'Orkestrai 0.20.2: una lista predeterminada real de skills',
+      summary: 'La pestaña de Skills ya no simula una búsqueda de "agent" al cargar — ahora muestra una lista curada de skills populares, como ya hacía MCP.',
+      items: [
+        'El marketplace de Skills muestra una lista curada de skills populares por defecto, en lugar de precargar la búsqueda con "agent" y buscarlo automáticamente.',
+        'Escribir un término ahora combina esa lista curada con resultados en vivo de skills.sh, en lugar de reemplazarla por completo.',
+      ],
+    },
+    {
+      date: '24 ago 2026 · 0.20.1',
+      title: 'Orkestrai 0.20.1: íconos consistentes en el Canvas',
+      summary: 'El menú "agregar agente" y la barra inferior del Canvas ahora muestran íconos consistentes y correctos para cada provider y herramienta.',
+      items: [
+        'El menú "agregar agente" ahora muestra el logo real de cada provider en lugar de un ícono genérico para OpenCode, Cursor, Antigravity, Cline, Devin y Copilot.',
+        'Los íconos de la barra inferior ahora comparten el mismo brillo, y el ícono de Portal es visible en el tema claro.',
+      ],
+    },
+    {
+      date: '24 ago 2026 · 0.20.0',
+      title: 'Orkestrai 0.20.0: servidores MCP y skills llegan a todos los providers',
+      summary: 'Un servidor MCP agregado a mano o una skill instalada ahora llega al provider que el workspace realmente ejecuta, no solo Claude y Kimi.',
+      items: [
+        'Los servidores MCP y las skills agregados a un workspace ahora se propagan a los formatos nativos de Cursor, Cline, Devin, Antigravity y OpenCode, los mismos providers que ya cubre el puente integrado de Orkestrai.',
+        'Las secciones de MCP en el Centro de Providers y en la página de Skills ahora usan la marca oficial del Model Context Protocol en lugar de un ícono genérico de enchufe.',
+      ],
+    },
     {
       date: '24 ago 2026 · 0.19.0',
       title: 'Orkestrai 0.19.0: cuentas, estado, identidad de providers y enrutamiento más claro',

@@ -5,6 +5,55 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.4 - 2026-08-24
+
+### Added
+
+- Added 4 new terminal ANSI themes — Monokai, Ayu Dark, Rosé Pine, and
+  Solarized Light — bringing the total to 15.
+
+## 0.20.3 - 2026-08-24
+
+### Added
+
+- Settings now shows a live preview of the selected terminal theme, font, and
+  padding (with color swatches on each theme option), and keyboard shortcuts
+  display the correct modifier for your OS — the ⌘ symbol on macOS, "Ctrl"
+  everywhere else — instead of always showing "Cmd/Ctrl".
+
+## 0.20.2 - 2026-08-24
+
+### Fixed
+
+- The Skills marketplace no longer pre-fills the search box with the literal
+  word "agent" and auto-searches it on page load. It now shows a curated list
+  of popular skills by default (matching how the MCP tab already worked) and
+  only queries skills.sh once you actually type something.
+
+## 0.20.1 - 2026-08-24
+
+### Fixed
+
+- The Canvas "add agent" menu now shows each provider's real logo (OpenCode,
+  Cursor, Antigravity, Cline, Devin, and Copilot were falling back to a
+  generic icon; only Claude, Codex, and Kimi had one).
+- Canvas bottom toolbar icons now share one consistent brightness: raster
+  icons (Shell, Portal, Loop) no longer look brighter than their neighboring
+  Lucide icons, the Agents and Design menu triggers match the same muted
+  color as the rest of the toolbar, and Portal's icon is now visible in light
+  theme.
+
+## 0.20.0 - 2026-08-24
+
+### Added
+
+- Manually added MCP servers and installed skills now propagate to every
+  provider's native config format (Cursor, Cline, Devin, Antigravity, and
+  OpenCode), not just the Claude/Kimi `.mcp.json` file, so a server or skill
+  added to a workspace actually reaches whichever provider that workspace is
+  configured to run. The MCP sections in Provider Center and the Skills page
+  now use the official Model Context Protocol mark instead of a generic icon.
+
 ## 0.19.0 - 2026-08-24
 
 ### Added

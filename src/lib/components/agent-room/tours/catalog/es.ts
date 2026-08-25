@@ -982,7 +982,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'terminal-options',
         title: 'Mantén organizadas las opciones',
-        body: 'Abre el menú de puntos suspensivos del encabezado para cambiar provider o rol, elegir visualmente 1 de 11 temas ANSI, recargar, alternar el Modo Maestro o eliminar la terminal.',
+        body: 'Abre el menú de puntos suspensivos del encabezado para cambiar provider o rol, elegir visualmente 1 de 15 temas ANSI, recargar, alternar el Modo Maestro o eliminar la terminal.',
       },
       {
         id: 'dictate-to-leader',

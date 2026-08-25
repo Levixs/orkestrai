@@ -1,10 +1,21 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import type { Workspace } from '../../domain/types.js';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 
 const SKILLS_SH_BASE = 'https://skills.sh';
 const FETCH_TIMEOUT_MS = 15_000;
+const MAX_SEARCH_RESULTS = 50;
+const MAX_SKILL_FILES = 200;
+const MAX_SKILL_FILE_BYTES = 1_000_000;
+const MAX_SKILL_TOTAL_BYTES = 5_000_000;
+
+/**
+ * Diretorios de skills convencionais dos agentes — o mesmo conjunto que a
+ * ponte usa para a skill "orkestrai" (menos ".orkestrai/", que é o fallback
+ * portavel sem convencao de skill por diretorio).
+ */
+const SKILL_DIRS = ['.claude/skills', '.cline/skills', '.devin/skills', '.agents/skills'] as const;
 
 export type SkillSearchResult = {
   /** "<owner>/<repo>/<skillId>" */
@@ -23,29 +34,97 @@ export type InstalledSkill = {
 
 type DownloadedSkillFile = { path: string; contents: string };
 
+function boundedString(value: unknown, maxLength: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function normalizeSearchResult(value: unknown): SkillSearchResult | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const skill = value as Record<string, unknown>;
+  const source = boundedString(skill.source, 160);
+  const skillId = boundedString(skill.skillId, 120);
+  if (!/^[\w.-]+\/[\w.-]+$/.test(source) || !/^[\w.-]+$/.test(skillId)) return null;
+  const installs = Number(skill.installs ?? 0);
+  return {
+    id: `${source}/${skillId}`,
+    skillId,
+    name: boundedString(skill.name, 120) || skillId,
+    source,
+    installs: Number.isFinite(installs) ? Math.max(0, Math.min(1_000_000_000, Math.trunc(installs))) : 0,
+  };
+}
+
+function validateDownloadedFiles(value: unknown): DownloadedSkillFile[] {
+  if (!Array.isArray(value) || value.length > MAX_SKILL_FILES) throw new Error('Skill com quantidade de arquivos invalida.');
+  let totalBytes = 0;
+  return value.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('Skill com arquivo invalido.');
+    const path = boundedString((entry as Record<string, unknown>).path, 500);
+    const contents = (entry as Record<string, unknown>).contents;
+    if (!path || isAbsolute(path) || path.split(/[\\/]+/).includes('..') || typeof contents !== 'string') {
+      throw new Error('Skill com caminho de arquivo inseguro.');
+    }
+    const fileBytes = Buffer.byteLength(contents);
+    totalBytes += fileBytes;
+    if (fileBytes > MAX_SKILL_FILE_BYTES || totalBytes > MAX_SKILL_TOTAL_BYTES) {
+      throw new Error('Skill excede o limite de tamanho permitido.');
+    }
+    return { path, contents };
+  });
+}
+
 /**
- * Marketplace de skills do skills.sh: busca no registry publico e instala
- * nos diretorios convencionais dos agentes (.claude/skills e .agents/skills)
- * do workspace. Nada vai no pacote do app — tudo sob demanda.
+ * Curadoria de skills populares (installs reais em skills.sh), usada quando
+ * a busca esta vazia — o endpoint publico de busca exige pelo menos 2
+ * caracteres e nao tem "listar tudo"/"em alta", entao sem isso a tela
+ * ficaria vazia no primeiro acesso.
+ */
+const CURATED: SkillSearchResult[] = [
+  { id: 'anthropics/skills/frontend-design', skillId: 'frontend-design', name: 'frontend-design', source: 'anthropics/skills', installs: 813657 },
+  { id: 'vercel-labs/agent-skills/web-design-guidelines', skillId: 'web-design-guidelines', name: 'web-design-guidelines', source: 'vercel-labs/agent-skills', installs: 571878 },
+  { id: 'mattpocock/skills/code-review', skillId: 'code-review', name: 'code-review', source: 'mattpocock/skills', installs: 405051 },
+  { id: 'mattpocock/skills/git-guardrails-claude-code', skillId: 'git-guardrails-claude-code', name: 'git-guardrails-claude-code', source: 'mattpocock/skills', installs: 264665 },
+  { id: 'obra/superpowers/systematic-debugging', skillId: 'systematic-debugging', name: 'systematic-debugging', source: 'obra/superpowers', installs: 235601 },
+  { id: 'obra/superpowers/requesting-code-review', skillId: 'requesting-code-review', name: 'requesting-code-review', source: 'obra/superpowers', installs: 208855 },
+  { id: 'obra/superpowers/test-driven-development', skillId: 'test-driven-development', name: 'test-driven-development', source: 'obra/superpowers', installs: 206694 },
+  { id: 'anthropics/skills/pdf', skillId: 'pdf', name: 'pdf', source: 'anthropics/skills', installs: 184123 },
+  { id: 'anthropics/skills/webapp-testing', skillId: 'webapp-testing', name: 'webapp-testing', source: 'anthropics/skills', installs: 140455 },
+];
+
+/**
+ * Marketplace de skills do skills.sh: curadoria local + busca no registry
+ * publico, instala nos diretorios convencionais dos agentes (SKILL_DIRS) do
+ * workspace. Nada vai no pacote do app — tudo sob demanda.
  */
 export class SkillMarketService {
   constructor(private readonly fetchFn: typeof fetch = fetch) {}
 
-  /** Busca skills no registry (endpoint legado, sem chave de API). */
+  /** Curadoria filtrada + registry (curadoria sempre primeiro). Sem termo: so a curadoria. */
   async search(query: string): Promise<SkillSearchResult[]> {
     const q = query.trim();
-    if (!q) return [];
-    const payload = await this.fetchJson(`${SKILLS_SH_BASE}/api/search?q=${encodeURIComponent(q)}`);
-    const skills = Array.isArray(payload?.skills) ? payload.skills : [];
-    return skills
-      .filter((skill: Record<string, unknown>) => skill?.id && skill?.skillId)
-      .map((skill: Record<string, unknown>) => ({
-        id: String(skill.id),
-        skillId: String(skill.skillId),
-        name: String(skill.name ?? skill.skillId),
-        source: String(skill.source ?? ''),
-        installs: Number(skill.installs ?? 0),
-      }));
+    const ql = q.toLowerCase();
+    const curated = CURATED.filter((skill) => !ql || `${skill.name} ${skill.skillId} ${skill.source}`.toLowerCase().includes(ql));
+    if (!q) return curated;
+    try {
+      const payload = await this.fetchJson(`${SKILLS_SH_BASE}/api/search?q=${encodeURIComponent(q)}`);
+      const remote = Array.isArray(payload?.skills) ? payload.skills : [];
+      const seen = new Set(curated.map((skill) => skill.id));
+      const deduped: SkillSearchResult[] = [];
+      for (const value of remote.slice(0, MAX_SEARCH_RESULTS)) {
+        const skill = normalizeSearchResult(value);
+        if (!skill || seen.has(skill.id)) continue;
+        seen.add(skill.id);
+        deduped.push(skill);
+      }
+      return [...curated, ...deduped];
+    } catch {
+      return curated; // skills.sh fora do ar: curadoria sempre funciona
+    }
+  }
+
+  /** Catalogo de curadoria completo (para testes e listagem sem busca). */
+  curated(): SkillSearchResult[] {
+    return CURATED.map((skill) => ({ ...skill }));
   }
 
   /** Skills instaladas no workspace (varre .claude/skills/<id>/SKILL.md). */
@@ -74,18 +153,19 @@ export class SkillMarketService {
     if (!/^[\w.-]+$/.test(skillId)) throw new Error('skillId invalido.');
 
     const payload = await this.fetchJson(`${SKILLS_SH_BASE}/api/download/${source}/${skillId}`);
-    const files = (Array.isArray(payload?.files) ? payload.files : []) as DownloadedSkillFile[];
+    const files = validateDownloadedFiles(payload?.files);
     if (!files.some((file) => file.path === 'SKILL.md')) {
       throw new Error('Skill sem SKILL.md no registry.');
     }
 
-    for (const base of ['.claude/skills', '.agents/skills']) {
+    for (const base of SKILL_DIRS) {
       const target = resolve(workspace.workingDir, base, skillId);
       rmSync(target, { recursive: true, force: true });
       for (const file of files) {
-        const safePath = file.path.replace(/(\.\.[/\\])+/g, '');
-        const destination = resolve(target, safePath);
-        if (!destination.startsWith(target)) continue;
+        const destination = resolve(target, file.path);
+        if (destination !== target && !destination.startsWith(`${target}${sep}`)) {
+          throw new Error('Skill com caminho de arquivo inseguro.');
+        }
         mkdirSync(dirname(destination), { recursive: true });
         writeFileSync(destination, file.contents);
       }
@@ -100,7 +180,7 @@ export class SkillMarketService {
   async uninstall(workspaceId: string, skillId: string): Promise<{ removed: boolean }> {
     const workspace = await this.requireWorkspace(workspaceId);
     if (!/^[\w.-]+$/.test(skillId)) throw new Error('skillId invalido.');
-    for (const base of ['.claude/skills', '.agents/skills']) {
+    for (const base of SKILL_DIRS) {
       rmSync(resolve(workspace.workingDir, base, skillId), { recursive: true, force: true });
     }
     return { removed: true };
@@ -119,7 +199,7 @@ export class SkillMarketService {
       if (!existsSync(gitDir)) return;
       const excludePath = resolve(gitDir, 'info', 'exclude');
       const current = existsSync(excludePath) ? readFileSync(excludePath, 'utf8') : '';
-      const additions = [`.claude/skills/${skillId}/`, `.agents/skills/${skillId}/`].filter((entry) => !current.includes(entry));
+      const additions = SKILL_DIRS.map((base) => `${base}/${skillId}/`).filter((entry) => !current.includes(entry));
       if (!additions.length) return;
       mkdirSync(resolve(gitDir, 'info'), { recursive: true });
       writeFileSync(excludePath, `${current.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);

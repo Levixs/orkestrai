@@ -12,7 +12,11 @@ export type TerminalThemeName =
   | 'catppuccin'
   | 'gruvbox'
   | 'one-dark'
-  | 'github-light';
+  | 'github-light'
+  | 'monokai'
+  | 'ayu'
+  | 'rose-pine'
+  | 'solarized-light';
 
 export type TerminalThemeDefinition = {
   label: string;
@@ -106,6 +110,38 @@ export const TERMINAL_THEMES: Record<TerminalThemeName, TerminalThemeDefinition>
       background: '#ffffff', foreground: '#24292f', cursor: '#0969da', selectionBackground: '#add6ff',
       black: '#24292f', red: '#cf222e', green: '#116329', yellow: '#4d2d00', blue: '#0969da', magenta: '#8250df', cyan: '#1b7c83', white: '#d0d7de',
       brightBlack: '#57606a', brightRed: '#a40e26', brightGreen: '#1a7f37', brightYellow: '#633c01', brightBlue: '#218bff', brightMagenta: '#a475f9', brightCyan: '#3192aa', brightWhite: '#f6f8fa',
+    },
+  },
+  monokai: {
+    label: 'Monokai',
+    theme: {
+      background: '#272822', foreground: '#fdfff1', cursor: '#c0c1b5', selectionBackground: '#57584f',
+      black: '#272822', red: '#f92672', green: '#a6e22e', yellow: '#e6db74', blue: '#fd971f', magenta: '#ae81ff', cyan: '#66d9ef', white: '#fdfff1',
+      brightBlack: '#6e7066', brightRed: '#f92672', brightGreen: '#a6e22e', brightYellow: '#e6db74', brightBlue: '#fd971f', brightMagenta: '#ae81ff', brightCyan: '#66d9ef', brightWhite: '#fdfff1',
+    },
+  },
+  ayu: {
+    label: 'Ayu Dark',
+    theme: {
+      background: '#0b0e14', foreground: '#bfbdb6', cursor: '#e6b450', selectionBackground: '#409fff',
+      black: '#11151c', red: '#ea6c73', green: '#7fd962', yellow: '#f9af4f', blue: '#53bdfa', magenta: '#cda1fa', cyan: '#90e1c6', white: '#c7c7c7',
+      brightBlack: '#686868', brightRed: '#f07178', brightGreen: '#aad94c', brightYellow: '#ffb454', brightBlue: '#59c2ff', brightMagenta: '#d2a6ff', brightCyan: '#95e6cb', brightWhite: '#ffffff',
+    },
+  },
+  'rose-pine': {
+    label: 'Rosé Pine',
+    theme: {
+      background: '#191724', foreground: '#e0def4', cursor: '#e0def4', selectionBackground: '#403d52',
+      black: '#26233a', red: '#eb6f92', green: '#31748f', yellow: '#f6c177', blue: '#9ccfd8', magenta: '#c4a7e7', cyan: '#ebbcba', white: '#e0def4',
+      brightBlack: '#6e6a86', brightRed: '#eb6f92', brightGreen: '#31748f', brightYellow: '#f6c177', brightBlue: '#9ccfd8', brightMagenta: '#c4a7e7', brightCyan: '#ebbcba', brightWhite: '#e0def4',
+    },
+  },
+  'solarized-light': {
+    label: 'Solarized Light',
+    theme: {
+      background: '#fdf6e3', foreground: '#657b83', cursor: '#657b83', selectionBackground: '#eee8d5',
+      black: '#073642', red: '#dc322f', green: '#859900', yellow: '#b58900', blue: '#268bd2', magenta: '#d33682', cyan: '#2aa198', white: '#bbb5a2',
+      brightBlack: '#002b36', brightRed: '#cb4b16', brightGreen: '#586e75', brightYellow: '#657b83', brightBlue: '#839496', brightMagenta: '#6c71c4', brightCyan: '#93a1a1', brightWhite: '#fdf6e3',
     },
   },
 };

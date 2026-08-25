@@ -247,7 +247,8 @@ body:has(.agent-room-shell) {
 html:not(.dark) img[src$="/images/claude.svg"],
 html:not(.dark) img[src$="/images/codex.svg"],
 html:not(.dark) img[src$="/images/cli.svg"],
-html:not(.dark) img[src$="/images/loop.svg"] {
+html:not(.dark) img[src$="/images/loop.svg"],
+html:not(.dark) img[src$="/images/portal.svg"] {
   filter: invert(1);
 }
 

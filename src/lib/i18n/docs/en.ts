@@ -23,7 +23,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'agentes',
       title: 'Agents: create, name, model & effort',
-      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider and profile switching, roles, a visual choice of 11 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
+      body: `The Agents menu in the bottom toolbar lists Claude, Codex, Kimi, OpenCode, Cursor, Antigravity, Cline, Devin, and GitHub Copilot without crowding the canvas. Pin up to four favorites to keep them beside the menu; the ordered preference persists across workspaces and restarts, and an unavailable pinned agent stays saved without occupying the toolbar. You do not need terminal expertise or every provider: start with a service you already use, then add another when you want an independent perspective. Agents that need setup lead to Provider Center, also available from the cable icon in the sidebar, Cmd/Ctrl+2, or the native Workspace menu. When you draw an agent, the dialog asks for name, model, and effort only when that provider offers them, plus Leader (Maestro Mode). After creation, the compact header menu holds provider and profile switching, roles, a visual choice of 15 ANSI themes, context-preserving reload, Maestro Mode, and removal; the title remains editable with a double-click. Changing provider preserves connections, role, floor, and position, closes the previous conversation, and starts a clean session.`,
     },
     {
       id: 'provider-center',
@@ -698,6 +698,50 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 24, 2026 · 0.20.4',
+      title: 'Orkestrai 0.20.4: 4 new terminal themes',
+      summary: 'Monokai, Ayu Dark, Rosé Pine, and Solarized Light join the terminal theme picker, bringing the total to 15.',
+      items: [
+        'Added Monokai, Ayu Dark, Rosé Pine, and Solarized Light as terminal ANSI themes.',
+      ],
+    },
+    {
+      date: 'Aug 24, 2026 · 0.20.3',
+      title: 'Orkestrai 0.20.3: see it before you pick it',
+      summary: 'Settings now previews your terminal theme and font live, and shortcuts show the right modifier key for your OS.',
+      items: [
+        'The terminal theme picker shows a color swatch per option and a live preview panel with your chosen theme, font, and padding.',
+        'Keyboard shortcuts in Settings now show ⌘ on macOS or "Ctrl" elsewhere, instead of always showing "Cmd/Ctrl".',
+      ],
+    },
+    {
+      date: 'Aug 24, 2026 · 0.20.2',
+      title: 'Orkestrai 0.20.2: a real default skills list',
+      summary: 'The Skills tab no longer fakes a search for "agent" on load — it now shows a curated list of popular skills, like MCP already did.',
+      items: [
+        'The Skills marketplace shows a curated list of popular skills by default instead of pre-filling the search box with "agent" and auto-searching it.',
+        'Typing a search term now merges that curated list with live skills.sh results instead of replacing it outright.',
+      ],
+    },
+    {
+      date: 'Aug 24, 2026 · 0.20.1',
+      title: 'Orkestrai 0.20.1: consistent Canvas icons',
+      summary: 'The Canvas "add agent" menu and bottom toolbar now show consistent, correct icons for every provider and tool.',
+      items: [
+        'The "add agent" menu now shows each provider’s real logo instead of a generic icon for OpenCode, Cursor, Antigravity, Cline, Devin, and Copilot.',
+        'Bottom toolbar icons now share one consistent brightness, and the Portal icon is visible in light theme.',
+      ],
+    },
+    {
+      date: 'Aug 24, 2026 · 0.20.0',
+      title: 'Orkestrai 0.20.0: MCP servers and skills reach every provider',
+      summary: 'A manually added MCP server or installed skill now reaches whichever provider the workspace actually runs, not just Claude and Kimi.',
+      items: [
+        'MCP servers and skills added or installed on a workspace now propagate to Cursor, Cline, Devin, Antigravity, and OpenCode’s native config formats, matching the same providers the built-in Orkestrai bridge already covers.',
+        'The MCP sections in Provider Center and the Skills page now show the official Model Context Protocol mark instead of a generic plug icon.',
+      ],
+    },
     {
       date: 'Aug 24, 2026 · 0.19.0',
       title: 'Orkestrai 0.19.0: provider accounts, status, identity, and clearer routing',
