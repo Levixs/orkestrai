@@ -15,10 +15,11 @@ export class UpdateWorkspaceGroupDto {
   constructor(
     public readonly name: string | undefined,
     public readonly parentId: string | null | undefined,
+    public readonly collapsed: boolean | undefined,
   ) {}
 
   static from(input: UpdateWorkspaceGroupInput): UpdateWorkspaceGroupDto {
-    return new UpdateWorkspaceGroupDto(input.name, input.parentId);
+    return new UpdateWorkspaceGroupDto(input.name, input.parentId, input.collapsed);
   }
 }
 

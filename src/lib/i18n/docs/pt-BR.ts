@@ -22,7 +22,7 @@ export const DOCS_PT: DocsCatalog = {
     {
       id: 'workspace-folders',
       title: 'Organize workspaces em pastas',
-      body: `Agrupe workspaces em pastas na barra lateral quando tiver vários projetos (por cliente, por time, por ambiente). Digite um nome em "Nova pasta" no fim da lista pra criar uma na raiz; arraste um workspace pro cabeçalho de uma pasta pra guardá-lo lá, ou arraste pro espaço vazio da lista pra mandar de volta pra raiz. Pastas aninham dentro de outras pastas do mesmo jeito — arraste uma pasta sobre outra pra transformá-la em subpasta; uma pasta nunca pode ser solta dentro dela mesma ou de uma subpasta sua. Dê duplo-clique no nome da pasta ou use o ícone de lápis pra renomear, e cada pasta lembra se está recolhida entre reinícios. Apagar uma pasta (ícone de lixeira, com confirmação) nunca é destrutivo: todo workspace e subpasta dentro dela sobe pra raiz em vez de ser removido.`,
+      body: `Agrupe workspaces em pastas na barra lateral quando tiver vários projetos (por cliente, por time, por ambiente). Digite um nome em "Nova pasta" no fim da lista pra criar uma na raiz; arraste um workspace pro cabeçalho de uma pasta pra guardá-lo lá, ou arraste pro espaço vazio da lista pra mandar de volta pra raiz. Pastas aninham dentro de outras pastas do mesmo jeito, sem limite de profundidade — arraste uma pasta sobre outra pra transformá-la em subpasta, ou use o ícone de "nova subpasta" no cabeçalho de qualquer pasta pra criar uma já dentro dela; uma pasta nunca pode ser solta dentro dela mesma ou de uma subpasta sua. Dê duplo-clique no nome da pasta ou use o ícone de lápis pra renomear, e cada pasta lembra se está recolhida entre reinícios. Apagar uma pasta (ícone de lixeira, com confirmação) nunca é destrutivo: todo workspace e subpasta dentro dela sobe pra raiz em vez de ser removido.`,
     },
     {
       id: 'wsl-runtime',
@@ -720,7 +720,7 @@ Header: Authorization = Bearer {{accessToken}}`,
       title: 'Orkestrai 0.21.0: organize workspaces em pastas',
       summary: 'Agrupe workspaces em pastas aninhadas na barra lateral do Canvas — arraste pra guardar, aninhar ou mandar de volta pra raiz.',
       items: [
-        'Adicionadas pastas aninhadas na barra lateral do Canvas pra organizar workspaces. Crie uma pela barra lateral, arraste um workspace pro cabeçalho dela pra guardá-lo, arraste uma pasta sobre outra pra aninhar, e renomeie ou apague pastas sem nunca perder o que tem dentro.',
+        'Adicionadas pastas aninhadas (sem limite de profundidade) na barra lateral do Canvas pra organizar workspaces. Crie uma pela barra lateral ou uma subpasta direto dentro de outra, arraste um workspace pro cabeçalho dela pra guardá-lo, arraste uma pasta sobre outra pra aninhar, e renomeie ou apague pastas sem nunca perder o que tem dentro. Cada pasta lembra se está recolhida entre reinícios.',
       ],
     },
     {

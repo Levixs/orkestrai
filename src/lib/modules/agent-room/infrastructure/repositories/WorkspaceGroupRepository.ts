@@ -13,6 +13,7 @@ function mapGroup(model: AgentWorkspaceGroup): WorkspaceGroup {
     name: model.getAttribute('name'),
     parentId: model.getAttribute('parent_id') ?? null,
     position: Number(model.getAttribute('position') ?? 0),
+    collapsed: Boolean(model.getAttribute('collapsed')),
     createdAt: toIso(model.getAttribute('created_at')),
     updatedAt: toIso(model.getAttribute('updated_at')),
   };
@@ -40,13 +41,14 @@ export class WorkspaceGroupRepository {
     return mapGroup(model);
   }
 
-  async update(id: string, input: { name?: string; parentId?: string | null; position?: number }): Promise<WorkspaceGroup | null> {
+  async update(id: string, input: { name?: string; parentId?: string | null; position?: number; collapsed?: boolean }): Promise<WorkspaceGroup | null> {
     const model = await AgentWorkspaceGroup.find(id);
     if (!model) return null;
     const changes: Record<string, unknown> = {};
     if (input.name !== undefined) changes.name = input.name;
     if (input.parentId !== undefined) changes.parent_id = input.parentId;
     if (input.position !== undefined) changes.position = input.position;
+    if (input.collapsed !== undefined) changes.collapsed = input.collapsed;
     await model.update(changes);
     return this.find(id);
   }

@@ -73,4 +73,35 @@ describe('WorkspaceGroupService', () => {
 
     await expect(workspaceGroupService.moveWorkspace('nao-existe', group.id)).rejects.toBeInstanceOf(WorkspaceGroupError);
   });
+
+  it('suporta arvore de 3+ niveis (Trabalho > Projeto 1 > workspaces)', async () => {
+    const trabalho = await workspaceGroupService.create({ name: 'Trabalho' });
+    const projeto1 = await workspaceGroupService.create({ name: 'Projeto 1', parentId: trabalho.id });
+    const workspace = await makeWorkspace('app-projeto-1');
+    await workspaceGroupService.moveWorkspace(workspace.id, projeto1.id);
+
+    const groups = await workspaceGroupService.list();
+    expect(groups.find((group) => group.id === trabalho.id)?.parentId).toBeNull();
+    expect(groups.find((group) => group.id === projeto1.id)?.parentId).toBe(trabalho.id);
+    expect((await workspaceRepository.getWorkspace(workspace.id))?.groupId).toBe(projeto1.id);
+
+    // Um 4o nivel tambem funciona — a arvore nao tem profundidade fixa.
+    const sprint1 = await workspaceGroupService.create({ name: 'Sprint 1', parentId: projeto1.id });
+    expect(sprint1.parentId).toBe(projeto1.id);
+  });
+
+  it('colapso nasce false e persiste no proprio registro da pasta', async () => {
+    const group = await workspaceGroupService.create({ name: 'Cliente A' });
+    expect(group.collapsed).toBe(false);
+
+    const collapsed = await workspaceGroupService.update(group.id, { collapsed: true });
+    expect(collapsed.collapsed).toBe(true);
+
+    // "Recarrega" como uma nova sessao faria — o estado veio do banco, nao de um cache em memoria.
+    const reloaded = (await workspaceGroupService.list()).find((item) => item.id === group.id);
+    expect(reloaded?.collapsed).toBe(true);
+
+    const expanded = await workspaceGroupService.update(group.id, { collapsed: false });
+    expect(expanded.collapsed).toBe(false);
+  });
 });

@@ -54,9 +54,9 @@ export class WorkspaceGroupService {
     return this.repository.create({ name, parentId, position });
   }
 
-  async update(id: string, input: { name?: string; parentId?: string | null }): Promise<WorkspaceGroup> {
+  async update(id: string, input: { name?: string; parentId?: string | null; collapsed?: boolean }): Promise<WorkspaceGroup> {
     const existing = await this.requireGroup(id);
-    const changes: { name?: string; parentId?: string | null } = {};
+    const changes: { name?: string; parentId?: string | null; collapsed?: boolean } = {};
 
     if (input.name !== undefined) {
       const name = input.name.trim();
@@ -71,6 +71,8 @@ export class WorkspaceGroupService {
       }
       changes.parentId = input.parentId;
     }
+
+    if (input.collapsed !== undefined) changes.collapsed = input.collapsed;
 
     const updated = await this.repository.update(id, changes);
     if (!updated) throw groupError('group_not_found');

@@ -18,7 +18,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'workspace-folders',
       title: 'Organiza workspaces en carpetas',
-      body: `Agrupa workspaces en carpetas en la barra lateral cuando tengas varios proyectos (por cliente, por equipo, por entorno). Escribe un nombre en "Nueva carpeta" al final de la lista para crear una en la raíz; arrastra un workspace sobre el encabezado de una carpeta para guardarlo ahí, o arrástralo al espacio vacío de la lista para devolverlo a la raíz. Las carpetas se anidan dentro de otras carpetas de la misma forma — arrastra una carpeta sobre otra para convertirla en subcarpeta; una carpeta nunca puede soltarse dentro de sí misma o de una subcarpeta suya. Haz doble clic en el nombre de la carpeta o usa su ícono de lápiz para renombrarla, y cada carpeta recuerda si está colapsada entre reinicios. Eliminar una carpeta (ícono de papelera, con confirmación) nunca es destructivo: cada workspace y subcarpeta dentro de ella sube a la raíz en lugar de eliminarse.`,
+      body: `Agrupa workspaces en carpetas en la barra lateral cuando tengas varios proyectos (por cliente, por equipo, por entorno). Escribe un nombre en "Nueva carpeta" al final de la lista para crear una en la raíz; arrastra un workspace sobre el encabezado de una carpeta para guardarlo ahí, o arrástralo al espacio vacío de la lista para devolverlo a la raíz. Las carpetas se anidan dentro de otras carpetas de la misma forma, sin límite de profundidad — arrastra una carpeta sobre otra para convertirla en subcarpeta, o usa el ícono de "nueva subcarpeta" en el encabezado de cualquier carpeta para crear una ya dentro de ella; una carpeta nunca puede soltarse dentro de sí misma o de una subcarpeta suya. Haz doble clic en el nombre de la carpeta o usa su ícono de lápiz para renombrarla, y cada carpeta recuerda si está colapsada entre reinicios. Eliminar una carpeta (ícono de papelera, con confirmación) nunca es destructivo: cada workspace y subcarpeta dentro de ella sube a la raíz en lugar de eliminarse.`,
     },
     {
       id: 'wsl-runtime',
@@ -716,7 +716,7 @@ Header: Authorization = Bearer {{accessToken}}`,
       title: 'Orkestrai 0.21.0: organiza workspaces en carpetas',
       summary: 'Agrupa workspaces en carpetas anidadas en la barra lateral del Canvas — arrastra para archivar, anidar o devolver a la raíz.',
       items: [
-        'Se agregaron carpetas anidadas en la barra lateral del Canvas para organizar workspaces. Crea una desde la barra lateral, arrastra un workspace sobre su encabezado para archivarlo, arrastra una carpeta sobre otra para anidarla, y renombra o elimina carpetas sin perder nunca lo que hay dentro.',
+        'Se agregaron carpetas anidadas (sin límite de profundidad) en la barra lateral del Canvas para organizar workspaces. Crea una desde la barra lateral o una subcarpeta directo dentro de otra, arrastra un workspace sobre su encabezado para archivarlo, arrastra una carpeta sobre otra para anidarla, y renombra o elimina carpetas sin perder nunca lo que hay dentro. Cada carpeta recuerda si está colapsada entre reinicios.',
       ],
     },
     {

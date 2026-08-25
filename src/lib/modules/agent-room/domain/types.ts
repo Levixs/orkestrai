@@ -617,6 +617,8 @@ export type WorkspaceGroup = {
   name: string;
   parentId: string | null;
   position: number;
+  /** Estado de expandido/recolhido na arvore da barra lateral, persistido no servidor. */
+  collapsed: boolean;
   createdAt: string;
   updatedAt: string;
 };
