@@ -1,7 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { NodeProps } from '@xyflow/svelte';
-  import { ArrowRight, Globe, MousePointer2, Navigation, RotateCcw, Send, X } from '@lucide/svelte';
+  import { ArrowRight, Globe, MousePointer2, Navigation, RotateCcw, RotateCw, Send, Smartphone, X } from '@lucide/svelte';
+  import {
+    clampPortalViewportDimension,
+    findPortalDevicePreset,
+    PORTAL_DEVICE_PRESETS,
+    PORTAL_VIEWPORT_MAX,
+    PORTAL_VIEWPORT_MIN,
+    swapPortalViewportOrientation,
+    type PortalViewport,
+  } from './portal-device-presets.js';
   import { getCsrfToken } from '@beeblock/svelar/http';
   import { toast } from '@beeblock/svelar/ui';
   import DOMPurify from 'dompurify';
@@ -36,7 +45,7 @@
   export type PortalNodeData = {
     title: string;
     workspaceId: string;
-    payload: { url?: string };
+    payload: { url?: string; viewport?: PortalViewport | null };
     connections?: NodeConnection[];
     onDelete: (id: string) => void;
     onResize?: (id: string, params: { x: number; y: number; width: number; height: number }) => void;
@@ -44,6 +53,7 @@
     onRename?: (id: string, title: string) => void;
     onJumpToNode?: (nodeId: string) => void;
     onRemoveConnection?: (edgeId: string) => void;
+    onPayloadChange?: (id: string, partial: Record<string, unknown>) => void;
   };
 
   type WebviewLoadFailure = Event & {
@@ -65,6 +75,8 @@
   let { id, data, selected } = $props<NodeProps & { data: PortalNodeData }>();
 
   let address = $state(data.payload.url ?? '');
+  let viewport = $state<PortalViewport | null>(data.payload.viewport ?? null);
+  let deviceToolbarOpen = $state(false);
   let frame: (PortalWebviewElement | HTMLIFrameElement) | null = $state(null);
   let pollTimer: ReturnType<typeof setInterval> | null = null;
   let retryTimer: ReturnType<typeof setInterval> | null = null;
@@ -275,6 +287,38 @@
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') void navigate();
+  }
+
+  const selectedPresetId = $derived.by(() => {
+    if (!viewport) return 'off';
+    const match = PORTAL_DEVICE_PRESETS.find((preset) => preset.width === viewport!.width && preset.height === viewport!.height);
+    return match?.id ?? 'custom';
+  });
+
+  function setViewport(next: PortalViewport | null) {
+    viewport = next;
+    data.onPayloadChange?.(id, { viewport: next });
+  }
+
+  function applyDevicePreset(presetId: string) {
+    if (presetId === 'off') {
+      setViewport(null);
+      return;
+    }
+    const preset = findPortalDevicePreset(presetId);
+    if (preset) setViewport({ width: preset.width, height: preset.height });
+  }
+
+  function updateViewportWidth(value: number) {
+    setViewport({ width: clampPortalViewportDimension(value), height: viewport?.height ?? 800 });
+  }
+
+  function updateViewportHeight(value: number) {
+    setViewport({ width: viewport?.width ?? 400, height: clampPortalViewportDimension(value) });
+  }
+
+  function rotateViewport() {
+    if (viewport) setViewport(swapPortalViewportOrientation(viewport));
   }
 
   async function loadTargets() {
@@ -503,6 +547,11 @@
   {#snippet actions()}
     <IconAction label={m['portal.navigate']()} disabled={inspecting} onclick={() => void navigate()}><ArrowRight size={13} /></IconAction>
     <IconAction
+      label={deviceToolbarOpen ? m['portal.device_toolbar_hide']() : m['portal.device_toolbar_show']()}
+      active={deviceToolbarOpen || viewport !== null}
+      onclick={() => (deviceToolbarOpen = !deviceToolbarOpen)}
+    ><Smartphone size={13} /></IconAction>
+    <IconAction
       label={isDesktop ? (inspecting ? m['portal.design_cancel']() : m['portal.design_inspect']()) : m['portal.design_desktop_only']()}
       active={inspecting}
       onclick={() => void startInspection()}
@@ -511,6 +560,44 @@
   {/snippet}
 
   <div class="portal-body nodrag nowheel" class:inspecting>
+    {#if deviceToolbarOpen}
+      <div class="device-toolbar nodrag" role="toolbar" aria-label={m['portal.device_toolbar_show']()}>
+        <select
+          class="device-preset-select"
+          value={selectedPresetId}
+          onchange={(event) => applyDevicePreset(event.currentTarget.value)}
+          aria-label={m['portal.device_preset']()}
+        >
+          <option value="off">{m['portal.device_off']()}</option>
+          {#each PORTAL_DEVICE_PRESETS as preset (preset.id)}
+            <option value={preset.id}>{preset.label} ({preset.width}×{preset.height})</option>
+          {/each}
+          <option value="custom" disabled>{m['portal.device_custom']()}</option>
+        </select>
+        {#if viewport}
+          <input
+            class="device-dimension"
+            type="number"
+            min={PORTAL_VIEWPORT_MIN}
+            max={PORTAL_VIEWPORT_MAX}
+            value={viewport.width}
+            aria-label={m['portal.device_width']()}
+            onchange={(event) => updateViewportWidth(event.currentTarget.valueAsNumber)}
+          />
+          <span class="device-dimension-sep" aria-hidden="true">×</span>
+          <input
+            class="device-dimension"
+            type="number"
+            min={PORTAL_VIEWPORT_MIN}
+            max={PORTAL_VIEWPORT_MAX}
+            value={viewport.height}
+            aria-label={m['portal.device_height']()}
+            onchange={(event) => updateViewportHeight(event.currentTarget.valueAsNumber)}
+          />
+          <IconAction label={m['portal.device_rotate']()} onclick={rotateViewport}><RotateCw size={13} /></IconAction>
+        {/if}
+      </div>
+    {/if}
     {#if inspecting}
       <div class="inspection-bar" role="status">
         <span class="inspection-pulse"></span>
@@ -518,23 +605,34 @@
         <button type="button" onclick={() => void cancelInspection()}>{m['portal.design_cancel']()}</button>
       </div>
     {/if}
-    <div class="portal-stage">
-      {#if data.payload.url}
-        {#if isDesktop}
-          <webview
-            bind:this={frame}
-            src={data.payload.url}
-            class="portal-frame"
-            class:portal-frame-hidden={reviewOpen}
-            partition="persist:orkestrai-portals"
-            webpreferences="contextIsolation=yes, sandbox=yes, nodeIntegration=no"
-          ></webview>
+    <div class="portal-stage" class:portal-stage-device={viewport !== null}>
+      <div class="portal-scroll">
+        {#if data.payload.url}
+          {#if isDesktop}
+            <webview
+              bind:this={frame}
+              src={data.payload.url}
+              class="portal-frame"
+              class:portal-frame-hidden={reviewOpen}
+              class:portal-frame-device={viewport !== null}
+              style={viewport ? `width:${viewport.width}px;height:${viewport.height}px;` : ''}
+              partition="persist:orkestrai-portals"
+              webpreferences="contextIsolation=yes, sandbox=yes, nodeIntegration=no"
+            ></webview>
+          {:else}
+            <iframe
+              bind:this={frame}
+              src={data.payload.url}
+              title={data.title || m['portal.default_title']()}
+              class="portal-frame"
+              class:portal-frame-device={viewport !== null}
+              style={viewport ? `width:${viewport.width}px;height:${viewport.height}px;` : ''}
+            ></iframe>
+          {/if}
         {:else}
-          <iframe bind:this={frame} src={data.payload.url} title={data.title || m['portal.default_title']()} class="portal-frame"></iframe>
+          <p class="portal-empty">{m['portal.empty']()}</p>
         {/if}
-      {:else}
-        <p class="portal-empty">{m['portal.empty']()}</p>
-      {/if}
+      </div>
       {#if !portalReady && data.payload.url && isDesktop && portalError}
         <div class="portal-status" role="status">
           <Navigation size={15} />
@@ -710,6 +808,22 @@
     overflow: hidden;
   }
 
+  .portal-scroll {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Modo dispositivo: o frame vira tamanho fixo (nao 100%), entao o palco
+     rola se o dispositivo emulado for maior que a area visivel do no — sem
+     escalar/transformar o webview, que teria coordenadas de mouse erradas
+     dentro da pagina carregada (mesma classe de bug ja vista com zoom do
+     canvas em outro lugar do app). */
+  .portal-stage-device .portal-scroll {
+    overflow: auto;
+    display: flex;
+    background: repeating-conic-gradient(var(--app-surface) 0% 25%, var(--app-canvas) 0% 50%) 0 0 / 16px 16px;
+  }
+
   .portal-frame {
     width: 100%;
     height: 100%;
@@ -717,7 +831,51 @@
     display: flex;
   }
 
+  .portal-frame-device {
+    flex: none;
+    margin: auto;
+    box-shadow: 0 0 0 1px var(--app-border);
+  }
+
   .portal-frame-hidden { visibility: hidden; }
+
+  .device-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 4px 8px;
+    background: var(--app-surface);
+    border-bottom: 1px solid var(--app-border);
+    font-size: 11px;
+  }
+
+  .device-preset-select {
+    flex: 1;
+    min-width: 0;
+    max-width: 220px;
+    padding: 3px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--app-border);
+    background: var(--app-canvas);
+    color: var(--app-text);
+    font-size: 11px;
+  }
+
+  .device-dimension {
+    width: 56px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    border: 1px solid var(--app-border);
+    background: var(--app-canvas);
+    color: var(--app-text);
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .device-dimension-sep {
+    color: var(--app-text-muted);
+  }
 
   .portal-empty {
     color: var(--app-text-muted);

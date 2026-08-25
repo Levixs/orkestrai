@@ -342,7 +342,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'portal',
       title: "Portal (the agents' browser)",
-      body: `The Portal node is an embedded browser. Connected to an agent, it becomes the agent's eyes: orkestrai portal <nodeId> navigate (open URL), eval (run JS on the page), dom (read the HTML), screenshot. Use it to test the app the team is building (point the portal at the dev server) or to research the web. In the desktop app, links and login flows that request a new window open in a sandboxed Orkestrai Portal window instead of the system browser, preserving window.opener and the shared Portal session. Persistent cookies and web storage are flushed to disk, and the node restores its last navigated URL after restart; sites may still intentionally use session-only cookies that expire on close. Full automation runs in Electron; in a regular browser the portal is viewer-only.`,
+      body: `The Portal node is an embedded browser. Connected to an agent, it becomes the agent's eyes: orkestrai portal <nodeId> navigate (open URL), eval (run JS on the page), dom (read the HTML), screenshot. Use it to test the app the team is building (point the portal at the dev server) or to research the web. In the desktop app, links and login flows that request a new window open in a sandboxed Orkestrai Portal window instead of the system browser, preserving window.opener and the shared Portal session. Persistent cookies and web storage are flushed to disk, and the node restores its last navigated URL after restart; sites may still intentionally use session-only cookies that expire on close. Full automation runs in Electron; in a regular browser the portal is viewer-only. The phone icon in the Portal header opens a responsiveness toolbar, similar to a browser's device toolbar: pick a device preset (iPhone, Pixel, iPad, laptop, desktop) or type an exact width/height, rotate orientation, or turn it off to go back to filling the node. The page's real viewport changes to that exact size — the same as resizing a real window — so its own responsive CSS reacts normally; if the emulated size is larger than the node, the Portal scrolls to it rather than shrinking or distorting the page.`,
     },
     {
       id: 'mcp',
@@ -703,6 +703,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 25, 2026 · 0.22.0',
+      title: 'Orkestrai 0.22.0: test responsiveness inside Portal',
+      summary: 'Portal now has a device toolbar, like a browser\'s — pick a device or type an exact size to see how a page really responds.',
+      items: [
+        'Added a responsiveness toolbar to Portal: device presets (iPhone, Pixel, iPad, laptop, desktop), a custom width/height, and an orientation toggle, driving the page\'s real viewport size instead of just scaling the view.',
+      ],
+    },
     {
       date: 'Aug 25, 2026 · 0.21.0',
       title: 'Orkestrai 0.21.0: organize workspaces into folders',

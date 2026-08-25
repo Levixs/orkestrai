@@ -346,7 +346,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'portal',
       title: 'Portal (browser dos agentes)',
-      body: `O nó Portal é um navegador embutido. Conectado a um agente, ele vira os olhos do agente: orkestrai portal <nodeId> navigate (abrir URL), eval (rodar JS na página), dom (ler o HTML), screenshot. Use para testar a aplicação que o time está construindo (aponte o portal para o dev server) ou pesquisar na web. No desktop, links e logins que pedem uma nova janela abrem num Portal sandboxed do Orkestrai, não no browser do sistema, preservando window.opener e a mesma sessão. Cookies persistentes e web storage são gravados em disco, e o nó restaura a última URL navegada após reiniciar; sites ainda podem usar cookies somente de sessão que expiram ao fechar. A automação completa roda no Electron; no browser comum o portal é só visualizador.`,
+      body: `O nó Portal é um navegador embutido. Conectado a um agente, ele vira os olhos do agente: orkestrai portal <nodeId> navigate (abrir URL), eval (rodar JS na página), dom (ler o HTML), screenshot. Use para testar a aplicação que o time está construindo (aponte o portal para o dev server) ou pesquisar na web. No desktop, links e logins que pedem uma nova janela abrem num Portal sandboxed do Orkestrai, não no browser do sistema, preservando window.opener e a mesma sessão. Cookies persistentes e web storage são gravados em disco, e o nó restaura a última URL navegada após reiniciar; sites ainda podem usar cookies somente de sessão que expiram ao fechar. A automação completa roda no Electron; no browser comum o portal é só visualizador. O ícone de celular no cabeçalho do Portal abre uma barra de responsividade, parecida com o device toolbar de um navegador: escolha um dispositivo (iPhone, Pixel, iPad, laptop, desktop) ou digite largura/altura exatas, gire a orientação, ou desligue pra voltar a preencher o nó. O viewport real da página muda pro tamanho escolhido — igual redimensionar uma janela de verdade — então o CSS responsivo dela reage normalmente; se o tamanho emulado for maior que o nó, o Portal rola até lá em vez de encolher ou distorcer a página.`,
     },
     {
       id: 'mcp',
@@ -707,6 +707,14 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '25 ago 2026 · 0.22.0',
+      title: 'Orkestrai 0.22.0: teste responsividade dentro do Portal',
+      summary: 'O Portal agora tem uma barra de dispositivos, igual a de um navegador — escolha um aparelho ou digite um tamanho exato pra ver como a página responde de verdade.',
+      items: [
+        'Adicionada uma barra de responsividade ao Portal: presets de dispositivo (iPhone, Pixel, iPad, laptop, desktop), largura/altura personalizadas e um botão de girar orientação, mudando o viewport real da página em vez de só escalar a visualização.',
+      ],
+    },
     {
       date: '25 ago 2026 · 0.21.0',
       title: 'Orkestrai 0.21.0: organize workspaces em pastas',

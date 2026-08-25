@@ -133,6 +133,11 @@ export const TOURS_ES: Tour[] = [
         check: { kind: 'nodeExists', nodeType: 'portal' },
       },
       {
+        id: 'responsive-check',
+        title: 'Revisa la responsividad tú también',
+        body: 'El ícono de teléfono en el encabezado del portal abre una barra de dispositivos, como la de un navegador: elige iPhone, Pixel, iPad, laptop o desktop, o escribe un ancho/alto exacto. El viewport real de la página cambia a ese tamaño, igual que redimensionar una ventana, así que su propio CSS responsivo reacciona de verdad.',
+      },
+      {
         id: 'qa',
         title: 'El agente de QA',
         body: 'Creo el agente que va a probar. Conéctalo al portal para que vea la página.',
