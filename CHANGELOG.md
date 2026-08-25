@@ -40,6 +40,9 @@ pt-BR, English, and Spanish translations.
   before reaching the UI or filesystem.
 - Workbench file-loading placeholders now expose valid status semantics to
   assistive technologies.
+- Deleting the active workspace now switches to a valid remaining workspace
+  route after terminating its PTYs instead of leaving the desktop window on a
+  stale workspace and node URL.
 
 ## 0.19.0 - 2026-08-24
 

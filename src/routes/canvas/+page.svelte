@@ -1442,7 +1442,14 @@
       activeWorkspace = null;
       nodes = [];
       edges = [];
-      if (workspaces.length) await selectWorkspace(workspaces[0].id);
+      const nextWorkspace = workspaces[0] ?? null;
+      if (nextWorkspace) {
+        await selectWorkspace(nextWorkspace.id);
+        history.replaceState(null, '', `/canvas?workspace=${encodeURIComponent(nextWorkspace.id)}`);
+      } else {
+        localStorage.removeItem('orkestrai.activeWorkspaceId');
+        history.replaceState(null, '', '/canvas');
+      }
     }
   }
 

@@ -717,7 +717,7 @@ Header: Authorization = Bearer {{accessToken}}`,
         'Workspaces podem ser organizados em pastas aninhadas persistentes na barra lateral do Canvas, com arrastar e soltar, subpastas, renomeação, estado recolhido, prevenção de ciclos e exclusão não destrutiva.',
         'O Portal ganhou um viewport responsivo real com presets, dimensões personalizadas, rotação de orientação e rolagem contida sem distorcer a página embutida.',
         'Configurações mostra uma prévia de cores, fonte e padding do terminal, usa o modificador correto do sistema e adiciona Monokai, Ayu Dark, Rosé Pine e Solarized Light.',
-        'A seleção no terminal ficou precisa em qualquer zoom do Canvas, o Uso de Perfis do Claude lê credenciais específicas do Keychain no macOS, os ícones de providers e ferramentas permanecem consistentes entre temas e os estados de carregamento do Workbench têm semântica assistiva válida.',
+        'A seleção no terminal ficou precisa em qualquer zoom do Canvas, o Uso de Perfis do Claude lê credenciais específicas do Keychain no macOS, os ícones de providers e ferramentas permanecem consistentes entre temas, os estados de carregamento do Workbench têm semântica assistiva válida e excluir o workspace ativo troca com segurança para longe dos PTYs encerrados.',
       ],
     },
     {

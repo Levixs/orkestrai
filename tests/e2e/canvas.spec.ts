@@ -441,4 +441,43 @@ test.describe('canvas de workspaces', () => {
 
     await request.delete(`/api/agent-room/workspaces/${created.id}`);
   });
+
+  test('excluir o workspace ativo com PTY troca a rota sem derrubar a janela', async ({ page, request }) => {
+    const fallbackResponse = await request.post('/api/agent-room/workspaces', {
+      data: { name: `E2E delete fallback ${Date.now()}`, workingDir: '/tmp' },
+    });
+    const fallback = (await fallbackResponse.json()).data as { id: string };
+    const disposableResponse = await request.post('/api/agent-room/workspaces', {
+      data: { name: `E2E delete active ${Date.now()}`, workingDir: '/tmp' },
+    });
+    const disposable = (await disposableResponse.json()).data as { id: string };
+    const terminalResponse = await request.post(`/api/agent-room/workspaces/${disposable.id}/nodes`, {
+      data: {
+        type: 'terminal',
+        title: 'Shell descartavel',
+        x: 120,
+        y: 100,
+        width: 560,
+        height: 360,
+        payload: { command: '/bin/sh', args: [] },
+      },
+    });
+    const terminal = (await terminalResponse.json()).data as { id: string };
+
+    try {
+      await page.goto(`/canvas?workspace=${disposable.id}&node=${terminal.id}`);
+      await expect(page.locator('.canvas-terminal .xterm-helper-textarea')).toBeAttached({ timeout: 15_000 });
+
+      await page.locator('.workspace-list li.active').getByRole('button', { name: 'Apagar workspace' }).click();
+      await page.getByRole('alertdialog').getByRole('button', { name: 'Apagar' }).click();
+
+      await expect.poll(() => new URL(page.url()).searchParams.get('workspace')).not.toBe(disposable.id);
+      await expect(page).toHaveURL(/\/canvas\?workspace=/);
+      await expect(page.locator('.workspace-list li.active')).toHaveCount(1);
+      await expect(page.locator('.canvas-page')).toBeVisible();
+    } finally {
+      await request.delete(`/api/agent-room/workspaces/${fallback.id}`);
+      await request.delete(`/api/agent-room/workspaces/${disposable.id}`).catch(() => undefined);
+    }
+  });
 });
