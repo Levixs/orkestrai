@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
+import { z } from 'zod';
 import { workspaceRepository } from '../../infrastructure/repositories/WorkspaceRepository.js';
 import { ptySessionManager } from '../../infrastructure/pty/PtySessionManager.ts';
 import { builtinRoleCatalog } from '../catalogs/BuiltinRoleCatalog.js';
@@ -12,6 +13,14 @@ export type AgentRole = {
   color: string;
   prompt: string;
 };
+
+const MAX_ROLE_FILE_BYTES = 256 * 1024;
+const MAX_DISCOVERED_ROLES = 100;
+const roleInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  color: z.string().trim().regex(/^#[0-9a-f]{6}$/i).default('#7C4DFF'),
+  prompt: z.string().max(200_000).default(''),
+});
 
 function slugify(text: string): string {
   return (
@@ -34,6 +43,22 @@ function instructionFileContents(role: AgentRole): string {
     role.prompt.trim(),
     '',
   ].join('\n');
+}
+
+function readRoleFile(file: string, fallbackName: string, slug: string): AgentRole | null {
+  try {
+    const stat = lstatSync(file);
+    if (!stat.isFile() || stat.size > MAX_ROLE_FILE_BYTES) return null;
+    const raw = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+    const parsed = roleInputSchema.safeParse({
+      name: raw.name ?? fallbackName,
+      color: raw.color ?? '#7C4DFF',
+      prompt: raw.prompt ?? '',
+    });
+    return parsed.success ? { slug, ...parsed.data } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -76,17 +101,8 @@ export class RoleService {
       if (!entry.isDirectory()) continue;
       const file = resolve(dir, entry.name, 'role.json');
       if (!existsSync(file)) continue;
-      try {
-        const raw = JSON.parse(readFileSync(file, 'utf8'));
-        roles.push({
-          slug: entry.name,
-          name: String(raw.name ?? entry.name),
-          color: String(raw.color ?? '#7C4DFF'),
-          prompt: String(raw.prompt ?? ''),
-        });
-      } catch {
-        // role.json inválido e ignorado
-      }
+      const role = readRoleFile(file, entry.name, entry.name);
+      if (role) roles.push(role);
     }
     return roles.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -120,14 +136,11 @@ export class RoleService {
   }
 
   async save(workspaceId: string, input: { name: string; color?: string; prompt: string }): Promise<AgentRole> {
-    const name = input.name.trim();
-    if (!name) throw new Error('Informe o nome da responsabilidade.');
-    const slug = slugify(name);
+    const parsed = roleInputSchema.parse({ ...input, color: input.color ?? '#7C4DFF' });
+    const slug = slugify(parsed.name);
     const role: AgentRole = {
       slug,
-      name,
-      color: input.color ?? '#7C4DFF',
-      prompt: input.prompt,
+      ...parsed,
     };
     const dir = resolve(await this.rolesDir(workspaceId), slug);
     mkdirSync(dir, { recursive: true });
@@ -166,25 +179,29 @@ export class RoleService {
   async discover(workspaceId: string, fromDir?: string): Promise<{ imported: number; roles: AgentRole[] }> {
     const workspace = await workspaceRepository.getWorkspace(workspaceId);
     if (!workspace) throw new Error('Workspace não encontrado.');
-    const source = resolve(fromDir ?? workspace.workingDir, '.orkestrai', 'roles');
+    const base = fromDir ?? workspace.workingDir;
+    if (fromDir && !isAbsolute(fromDir)) throw new Error('O diretório de origem deve ser absoluto.');
+    const source = resolve(base, '.orkestrai', 'roles');
     if (!existsSync(source)) return { imported: 0, roles: [] };
 
+    const realBase = realpathSync(base);
+    const realSource = realpathSync(source);
+    const relativeSource = relative(realBase, realSource);
+    if (relativeSource.startsWith('..') || isAbsolute(relativeSource)) {
+      throw new Error('O diretório de roles deve permanecer dentro da pasta selecionada.');
+    }
+
+    const entries = readdirSync(realSource, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+    if (entries.length > MAX_DISCOVERED_ROLES) {
+      throw new Error(`A pasta possui mais de ${MAX_DISCOVERED_ROLES} roles.`);
+    }
+
     const found: AgentRole[] = [];
-    for (const entry of readdirSync(source, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const file = resolve(source, entry.name, 'role.json');
+    for (const entry of entries) {
+      const file = resolve(realSource, entry.name, 'role.json');
       if (!existsSync(file)) continue;
-      try {
-        const raw = JSON.parse(readFileSync(file, 'utf8'));
-        found.push({
-          slug: entry.name,
-          name: String(raw.name ?? entry.name),
-          color: String(raw.color ?? '#7C4DFF'),
-          prompt: String(raw.prompt ?? ''),
-        });
-      } catch {
-        // ignora inválido
-      }
+      const parsed = readRoleFile(file, entry.name, entry.name);
+      if (parsed) found.push({ ...parsed, slug: slugify(parsed.name) });
     }
 
     const existing = new Set((await this.list(workspaceId)).map((role) => role.slug));
@@ -192,6 +209,7 @@ export class RoleService {
     for (const role of found) {
       if (existing.has(role.slug)) continue;
       await this.save(workspaceId, role);
+      existing.add(role.slug);
       imported += 1;
     }
     return { imported, roles: found };

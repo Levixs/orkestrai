@@ -38,7 +38,7 @@ export const DOCS_ES: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (papeles del equipo)',
-      body: `Los roles son instrucciones guardadas en .orkestrai/roles/<slug>/role.json, por lo que viajan con el repositorio. En el panel Roles, Catálogo ofrece funciones completas de liderazgo, producto, arquitectura, frontend, backend, Svelar, QA, seguridad, accesibilidad, documentación, release y rendimiento; instala con + y personaliza en En el workspace. En presets, Claude recibe el rol como system prompt, Codex como instrucciones de developer y Kimi mediante su archivo de agente antes del primer mensaje; los demás providers reciben solo una referencia breve al AGENTS.md del rol, sin pegar el prompt largo en la terminal. El líder también puede reasignar roles con orkestrai reassign.`,
+      body: `Los roles son instrucciones guardadas en .orkestrai/roles/<slug>/role.json, por lo que viajan con el repositorio. En el panel Roles, Catálogo ofrece funciones completas de liderazgo, producto, arquitectura, frontend, backend, Svelar, QA, seguridad, accesibilidad, documentación, release y rendimiento; instala con + y personaliza en En el workspace. En presets, Claude recibe el rol como system prompt, Codex como instrucciones de developer y Kimi mediante su archivo de agente antes del primer mensaje; los demás providers reciben solo una referencia breve al AGENTS.md del rol, sin pegar el prompt largo en la terminal. El líder también puede reasignar roles con orkestrai reassign. "Descubrir en otra carpeta..." elige cualquier directorio e importa los role.json encontrados dentro de su .orkestrai/roles/, para reutilizar un rol creado en un proyecto desde otro sin relación.`,
     },
     {
       id: 'times',
@@ -474,6 +474,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Biblioteca de presets', 'roles/skills', 'bootstrap'],
     },
     {
+      id: 'portable-role-library',
+      title: 'Reutilizar un rol especialista de otro proyecto',
+      body: 'Abre Roles, elige "Descubrir en otra carpeta..." y selecciona el proyecto que contiene el rol. Orkestrai valida los archivos limitados en .orkestrai/roles de ese proyecto, importa solo nombres nuevos y nunca sobrescribe un rol existente en el workspace.',
+      tags: ['Roles', 'instrucciones portátiles', 'importación segura'],
+    },
+    {
       id: 'custom-workflow',
       title: 'Un tablero con las etapas de tu proceso',
       body: 'Abre Etapas en el encabezado de Tareas y crea el flujo que corresponde a tu trabajo: Ideas → Producción → Revisión → Aprobación → Publicado. El líder y los especialistas leen y actualizan esas etapas automáticamente, sin que tengas que aprender comandos.',
@@ -709,6 +715,15 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '25 ago 2026 · 0.21.0',
+      title: 'Orkestrai 0.21.0: descubre Roles desde cualquier carpeta',
+      summary: 'Reutiliza un Role creado en un proyecto desde otro sin relación, sin copiar archivos a mano.',
+      items: [
+        'Agregado el botón "Descubrir en otra carpeta..." junto al discover del repositorio ya existente en Roles: elige cualquier carpeta en un diálogo nativo y Orkestrai importa cada `role.json` encontrada dentro de `.orkestrai/roles/` ahí.',
+        'Los archivos de rol importados tienen límites de tamaño y cantidad, se validan antes de persistir, quedan confinados al proyecto seleccionado y nunca sobrescriben un rol existente en el workspace.',
+      ],
+    },
     {
       date: '25 ago 2026 · 0.20.1',
       title: 'Orkestrai 0.20.1: configuración MCP segura en Codex',

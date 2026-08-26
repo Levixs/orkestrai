@@ -73,6 +73,10 @@ export const changeTerminalRuntimeSchema = z.object({
   wslWorkingDir: z.string().trim().nullish(),
 });
 
+export const discoverRolesSchema = z.object({
+  fromDir: z.string().trim().min(1).max(4_000).optional(),
+});
+
 export const canvasEdgeStyleSchema = z.enum(['cord', 'circuit']);
 
 export const createCanvasEdgeSchema = z.object({
@@ -91,5 +95,6 @@ export type CreateCanvasNodeInput = z.infer<typeof createCanvasNodeSchema>;
 export type UpdateCanvasNodeInput = z.infer<typeof updateCanvasNodeSchema>;
 export type ChangeTerminalProviderInput = z.infer<typeof changeTerminalProviderSchema>;
 export type ChangeTerminalRuntimeInput = z.infer<typeof changeTerminalRuntimeSchema>;
+export type DiscoverRolesInput = z.infer<typeof discoverRolesSchema>;
 export type CreateCanvasEdgeInput = z.infer<typeof createCanvasEdgeSchema>;
 export type UpdateCanvasEdgeInput = z.infer<typeof updateCanvasEdgeSchema>;

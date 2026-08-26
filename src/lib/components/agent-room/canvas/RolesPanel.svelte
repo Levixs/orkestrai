@@ -11,7 +11,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as Tabs from '$lib/components/ui/tabs';
   import * as Select from '$lib/components/ui/select';
-  import { BookOpen, Check, Pencil, Plus, ScanSearch, Search, Trash2, X } from '@lucide/svelte';
+  import { BookOpen, Check, FolderOpen, Pencil, Plus, ScanSearch, Search, Trash2, X } from '@lucide/svelte';
   import type { Workspace } from '$lib/modules/agent-room/domain/types.js';
   import type { AgentRole } from '$lib/modules/agent-room/application/services/RoleService.js';
   import * as m from '$lib/paraglide/messages.js';
@@ -139,21 +139,31 @@
     }
   }
 
-  async function discover() {
+  async function discover(fromDir?: string) {
     errorMessage = '';
     infoMessage = '';
     try {
       const result = await api<{ imported: number; roles: AgentRole[] }>(
         `/api/agent-room/workspaces/${workspace.id}/roles/discover`,
-        { method: 'POST' }
+        { method: 'POST', body: JSON.stringify({ fromDir }) }
       );
       infoMessage = result.imported
         ? m['roles.imported']({ count: result.imported })
-        : m['roles.none_found']();
+        : fromDir ? m['roles.none_found_in_folder']() : m['roles.none_found']();
       await refresh();
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : m['roles.error_discover']();
     }
+  }
+
+  const desktop = typeof window !== 'undefined'
+    ? (window as unknown as { orkestraiDesktop?: { pickDirectory: () => Promise<string | null> } }).orkestraiDesktop
+    : undefined;
+
+  async function discoverFromFolder() {
+    if (!desktop) return;
+    const dir = await desktop.pickDirectory();
+    if (dir) await discover(dir);
   }
 
   async function remove(role: AgentRole) {
@@ -171,7 +181,10 @@
   <header class="panel-header">
     <h3>{m['roles.title']()}</h3>
     <div class="panel-header-actions">
-      <HeaderIconButton label={m['roles.discover']()} class="node-action-btn" side="left" onclick={discover}><ScanSearch size={14} /></HeaderIconButton>
+      <HeaderIconButton label={m['roles.discover']()} class="node-action-btn" side="left" onclick={() => discover()}><ScanSearch size={14} /></HeaderIconButton>
+      {#if desktop}
+        <HeaderIconButton label={m['roles.discover_from_folder']()} class="node-action-btn" side="left" onclick={discoverFromFolder}><FolderOpen size={14} /></HeaderIconButton>
+      {/if}
       <HeaderIconButton label={m['roles.close']()} class="node-action-btn" side="left" onclick={onClose}><X size={14} /></HeaderIconButton>
     </div>
   </header>

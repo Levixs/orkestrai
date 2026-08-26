@@ -38,7 +38,7 @@ export const DOCS_EN: DocsCatalog = {
     {
       id: 'roles',
       title: 'Roles (team roles)',
-      body: `Roles are instruction sets saved in .orkestrai/roles/<slug>/role.json, so they travel with the repository. In the Roles panel, Catalog offers complete functions for leadership, product, architecture, frontend, backend, Svelar, QA, security, accessibility, documentation, release, and performance; install with + and customize under Workspace. In presets, Claude receives the role as a system prompt, Codex as developer instructions, and Kimi through its agent file before the first message; other providers receive only a short reference to the role AGENTS.md instead of a long terminal paste. The leader can also reassign roles with orkestrai reassign.`,
+      body: `Roles are instruction sets saved in .orkestrai/roles/<slug>/role.json, so they travel with the repository. In the Roles panel, Catalog offers complete functions for leadership, product, architecture, frontend, backend, Svelar, QA, security, accessibility, documentation, release, and performance; install with + and customize under Workspace. In presets, Claude receives the role as a system prompt, Codex as developer instructions, and Kimi through its agent file before the first message; other providers receive only a short reference to the role AGENTS.md instead of a long terminal paste. The leader can also reassign roles with orkestrai reassign. "Discover from another folder..." picks any directory and imports the role.json files found under its .orkestrai/roles/, so a role built in one project can be reused from an unrelated one.`,
     },
     {
       id: 'times',
@@ -474,6 +474,12 @@ Header: Authorization = Bearer {{accessToken}}`,
       tags: ['Preset library', 'roles/skills', 'bootstrap'],
     },
     {
+      id: 'portable-role-library',
+      title: 'Reuse a specialist role from another project',
+      body: 'Open Roles, choose "Discover from another folder...", and select the project that owns the role. Orkestrai validates the bounded role files under that project\'s .orkestrai/roles directory, imports only new role names, and never overwrites an existing workspace role.',
+      tags: ['Roles', 'portable instructions', 'safe import'],
+    },
+    {
       id: 'custom-workflow',
       title: 'A board with the stages of your process',
       body: 'Open Stages in the Tasks header and build the flow that fits your work: Ideas → Production → Review → Approval → Published. The lead and specialists automatically read and update those stages without requiring you to learn commands.',
@@ -709,6 +715,15 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 25, 2026 · 0.21.0',
+      title: 'Orkestrai 0.21.0: discover Roles from any folder',
+      summary: 'Reuse a Role built in one project from an unrelated one, without copying files by hand.',
+      items: [
+        'Added a "Discover from another folder..." button next to Roles\' existing repository discovery: pick any folder in a native dialog and Orkestrai imports every `role.json` found under its `.orkestrai/roles/` directory.',
+        'Imported role files are size- and count-bounded, validated before persistence, confined to the selected project, and never overwrite an existing workspace role.',
+      ],
+    },
     {
       date: 'Aug 25, 2026 · 0.20.1',
       title: 'Orkestrai 0.20.1: safe Codex MCP configuration',
