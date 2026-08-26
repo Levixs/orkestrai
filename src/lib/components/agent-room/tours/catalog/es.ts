@@ -850,7 +850,7 @@ export const TOURS_ES: Tour[] = [
       {
         id: 'multi-account',
         title: 'Usa una segunda cuenta con Perfiles',
-        body: 'Si el provider tiene un override verificado de directorio de cuenta, aparece la sección Perfiles: crea un perfil con nombre (ej.: "Trabajo") que apunte a la configuración oficial de esa cuenta. El menú de la terminal y el ruteo de Uso pueden seleccionarlo. Las credenciales permanecen en los archivos de la CLI y solo se resuelven al iniciar la PTY.',
+        body: 'Si el provider tiene un override verificado de directorio de cuenta, aparece la sección Perfiles: crea un perfil con nombre (ej.: "Trabajo") que apunte a la configuración oficial de esa cuenta. Elígelo directo en el diálogo de Nuevo agente, o después desde el menú de la terminal, y el ruteo de Uso también puede seleccionarlo. Las credenciales permanecen en los archivos de la CLI y solo se resuelven al iniciar la PTY.',
       },
     ],
   },

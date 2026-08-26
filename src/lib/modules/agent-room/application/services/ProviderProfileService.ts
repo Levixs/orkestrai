@@ -107,6 +107,26 @@ export class ProviderProfileService {
     return this.adapterProfileStrategy(providerId);
   }
 
+  async assertCompatible(profileId: string, expectedProviderId: string): Promise<void> {
+    const profile = await this.repository.find(profileId);
+    if (!profile || profile.providerId !== expectedProviderId) {
+      throw new ProviderProfileError('profile_not_found', 'Profile not found for this provider.');
+    }
+    const strategy = this.strategyFor(profile.providerId);
+    if (strategy.kind === 'configDir' && !profile.configDir) {
+      throw new ProviderProfileError('profile_config_required', 'Profile has no config directory.');
+    }
+    if (strategy.kind === 'configDirPair' && (!profile.configDir || !profile.dataDir)) {
+      throw new ProviderProfileError('profile_directories_required', 'Profile has incomplete config and data directories.');
+    }
+    if (strategy.kind === 'token' && !profile.hasToken) {
+      throw new ProviderProfileError('profile_token_required', 'Profile has no saved token.');
+    }
+    if (strategy.kind === 'unsupported') {
+      throw new ProviderProfileError('profile_unsupported', `Provider "${profile.providerId}" does not support profiles.`);
+    }
+  }
+
   async create(input: SaveProviderProfileInput): Promise<ProviderProfile> {
     const { name, normalizedName, configDir, dataDir, hasToken } = await this.validate(input, null);
     const created = await this.repository.create({

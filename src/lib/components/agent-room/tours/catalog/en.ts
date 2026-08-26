@@ -850,7 +850,7 @@ export const TOURS_EN: Tour[] = [
       {
         id: 'multi-account',
         title: 'Use a second account with Profiles',
-        body: 'If the provider has a verified account-directory override, a Profiles section appears when you expand it: create a named profile (e.g. "Work") pointing to that account\'s official config location. The terminal menu and Usage routing can select it. Credentials stay in provider-owned files and are resolved only when the PTY starts.',
+        body: 'If the provider has a verified account-directory override, a Profiles section appears when you expand it: create a named profile (e.g. "Work") pointing to that account\'s official config location. Pick it right in the New agent dialog, or later from the terminal menu, and Usage routing can select it too. Credentials stay in provider-owned files and are resolved only when the PTY starts.',
       },
     ],
   },

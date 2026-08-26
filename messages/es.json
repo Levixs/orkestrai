@@ -273,6 +273,8 @@
   "dlg.name": "Nombre",
   "dlg.working_dir": "Directorio de trabajo",
   "dlg.runtime_label": "Entorno de ejecución",
+  "dlg.profile_label": "Perfil",
+  "dlg.profile_loading": "Cargando perfiles...",
   "dlg.runtime_native": "Windows",
   "dlg.runtime_wsl": "WSL",
   "dlg.runtime_hint": "Define dónde se ejecutan los shells y proveedores.",

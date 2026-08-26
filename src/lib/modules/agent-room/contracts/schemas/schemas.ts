@@ -25,6 +25,7 @@ export const createAgentNodeSchema = z.object({
   title: z.string().trim().min(1, 'Informe o nome do agente.'),
   model: z.string().trim().nullish(),
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max', 'ultra']).nullish(),
+  profileId: z.string().uuid().nullish(),
   /** Lider da equipe = Modo Maestro (recruta/demite agentes sob demanda). */
   leader: z.boolean().default(false),
 });

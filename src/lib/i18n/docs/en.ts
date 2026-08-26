@@ -698,7 +698,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'provider-profiles',
       title: 'Keep work and personal provider accounts separate',
-      body: 'Open Provider Center, expand Claude, Codex, Kimi, GitHub Copilot, Cursor, Cline, or OpenCode, and add a named Profile that points to the account-specific config directory or directories documented by that CLI. Then select the Profile from the terminal menu or route new work to it through the Usage node. Orkestrai stores only the Profile reference and directory paths in its database; credentials remain in the provider-owned files and are resolved server-side only when the PTY starts. A Profile in use by a terminal or routing rule cannot be deleted. Antigravity and Devin remain unavailable here because no safe, documented cross-platform CLI account override has been verified.',
+      body: 'Open Provider Center, expand Claude, Codex, Kimi, GitHub Copilot, Cursor, Cline, or OpenCode, and add a named Profile that points to the account-specific config directory or directories documented by that CLI. Pick it in the New agent dialog when creating the agent, or select it later from the terminal menu, or route new work to it through the Usage node. Orkestrai stores only the Profile reference and directory paths in its database; credentials remain in the provider-owned files and are resolved server-side only when the PTY starts. A Profile in use by a terminal or routing rule cannot be deleted. Antigravity and Devin remain unavailable here because no safe, documented cross-platform CLI account override has been verified.',
       tags: ['Provider Profiles', 'multiple accounts', 'credential isolation'],
     },
     {
@@ -716,12 +716,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: 'Aug 25, 2026 · 0.21.0',
-      title: 'Orkestrai 0.21.0: discover Roles from any folder',
-      summary: 'Reuse a Role built in one project from an unrelated one, without copying files by hand.',
+      date: 'Aug 26, 2026 · 0.21.0',
+      title: 'Orkestrai 0.21.0: portable Roles and profile-first agents',
+      summary: 'Reuse specialist Roles across projects and select the right provider account when creating an agent.',
       items: [
         'Added a "Discover from another folder..." button next to Roles\' existing repository discovery: pick any folder in a native dialog and Orkestrai imports every `role.json` found under its `.orkestrai/roles/` directory.',
         'Imported role files are size- and count-bounded, validated before persistence, confined to the selected project, and never overwrite an existing workspace role.',
+        'Added a Profile field to the New agent dialog for providers with multi-account Provider Profiles configured.',
+        'The profile/provider pair is validated before the terminal is persisted; credentials remain in secure storage and never enter canvas data.',
       ],
     },
     {

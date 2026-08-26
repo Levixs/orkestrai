@@ -702,7 +702,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'provider-profiles',
       title: 'Separar contas pessoais e de trabalho dos providers',
-      body: 'Abra a Central de Providers, expanda Claude, Codex, Kimi, GitHub Copilot, Cursor, Cline ou OpenCode e adicione um Perfil nomeado apontando para o diretório ou os diretórios de configuração daquela conta, conforme documentado pela CLI. Depois, escolha o Perfil no menu do terminal ou roteie novos trabalhos para ele pelo nó Uso. O Orkestrai guarda no banco somente a referência do Perfil e os caminhos; as credenciais continuam nos arquivos da própria CLI e são resolvidas no servidor apenas quando a PTY inicia. Um Perfil usado por terminal ou regra de roteamento não pode ser excluído. Antigravity e Devin ficam indisponíveis aqui enquanto não houver um override de conta da CLI seguro, documentado e verificável em todas as plataformas.',
+      body: 'Abra a Central de Providers, expanda Claude, Codex, Kimi, GitHub Copilot, Cursor, Cline ou OpenCode e adicione um Perfil nomeado apontando para o diretório ou os diretórios de configuração daquela conta, conforme documentado pela CLI. Escolha-o no diálogo de Novo agente ao criar, ou depois no menu do terminal, ou roteie novos trabalhos para ele pelo nó Uso. O Orkestrai guarda no banco somente a referência do Perfil e os caminhos; as credenciais continuam nos arquivos da própria CLI e são resolvidas no servidor apenas quando a PTY inicia. Um Perfil usado por terminal ou regra de roteamento não pode ser excluído. Antigravity e Devin ficam indisponíveis aqui enquanto não houver um override de conta da CLI seguro, documentado e verificável em todas as plataformas.',
       tags: ['Perfis de provider', 'múltiplas contas', 'isolamento de credenciais'],
     },
     {
@@ -720,12 +720,14 @@ Header: Authorization = Bearer {{accessToken}}`,
   ],
   changelog: [
     {
-      date: '25 ago 2026 · 0.21.0',
-      title: 'Orkestrai 0.21.0: descubra Roles de qualquer pasta',
-      summary: 'Reuse uma Role feita em um projeto a partir de outro sem parentesco, sem copiar arquivo na mão.',
+      date: '26 ago 2026 · 0.21.0',
+      title: 'Orkestrai 0.21.0: Roles portáteis e agentes com Perfil na criação',
+      summary: 'Reuse Roles especialistas entre projetos e escolha a conta certa do provider ao criar um agente.',
       items: [
         'Adicionado o botão "Descobrir em outra pasta..." ao lado do discover do repositório já existente em Roles: escolha qualquer pasta num diálogo nativo e o Orkestrai importa toda `role.json` encontrada dentro de `.orkestrai/roles/` ali.',
         'Arquivos de role importados têm limites de tamanho e quantidade, são validados antes da persistência, ficam confinados ao projeto selecionado e nunca sobrescrevem uma role existente no workspace.',
+        'Adicionado um campo Perfil no diálogo de Novo agente para providers com Perfis de multi-conta configurados.',
+        'O par perfil/provider é validado antes de persistir o terminal; credenciais permanecem no armazenamento seguro e nunca entram nos dados do canvas.',
       ],
     },
     {

@@ -1472,7 +1472,7 @@
   async function addTerminal(
     provider?: AgentProviderInfo,
     rect?: { x: number; y: number; width: number; height: number },
-    creation?: { title: string; model: string | null; effort: string | null; leader: boolean; executionRuntime: import('$lib/modules/agent-room/domain/types.js').WorkspaceExecutionRuntime | null }
+    creation?: { title: string; model: string | null; effort: string | null; leader: boolean; executionRuntime: import('$lib/modules/agent-room/domain/types.js').WorkspaceExecutionRuntime | null; profileId?: string | null }
   ) {
     if (!activeWorkspace) return;
     const position = rect ? { x: rect.x, y: rect.y } : nextFreePosition();
@@ -1496,6 +1496,7 @@
       payload = { command: navigator.platform.startsWith('Win') ? 'powershell.exe' : '/bin/zsh', args: [] };
     }
     if (creation?.executionRuntime) payload.executionRuntime = creation.executionRuntime;
+    if (creation?.profileId) payload.profileId = creation.profileId;
     const node = await api<CanvasNode>(`/api/agent-room/workspaces/${activeWorkspace.id}/nodes`, {
       method: 'POST',
       body: JSON.stringify({
