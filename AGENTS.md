@@ -112,6 +112,9 @@
   - **Cross-cutting dimensions**: check a new feature against the dimensions this codebase already has (WSL runtime alongside native, all agent providers, all 3 UI languages), not only the one dimension the task happened to touch.
   - **Per-provider claims**: verify a provider-specific mechanism (env var, CLI flag, account model) against that provider's actual docs before implementing; do not assume symmetry with another provider's pattern.
   - **Backend/UI state parity**: if a service exposes a distinct state (e.g., a `checked`/`verified` flag for a failed vs. unknown vs. confirmed result), confirm the UI actually branches on it instead of defaulting to the "healthy" appearance.
+  - **Multi-target writes**: when a change fans out to several files or records (per-provider config files, MCP entries, etc.), validate every target before writing to any of them. A missing file and an invalid/malformed one are different cases — never silently coerce a parse failure into an empty default, since a later write could overwrite real user data with it.
+  - **Generated UI controls**: don't hand-roll a raw `<select>`, `<input type="number">`, or similar when a generated shadcn-svelte component already covers it; reuse the existing wrapper so interaction and accessibility stay consistent with the rest of the app.
+  - **Visual consistency**: check a new icon, mark, or color choice in both light and dark theme, and confirm it matches the same visual language everywhere it's reused (Provider Center, terminal headers, Usage, toolbar, etc.), not only the one surface the task happened to touch.
 
 <!-- orkestrai:begin -->
 ## Ponte Orkestrai (agentes)
