@@ -276,7 +276,9 @@ common credentials redacted; normal agent output is not persisted.
   and inspect each task title, stage, assignee, and Git state across every floor.
 - **Native agent bridge:** the bundled `orkestrai` CLI and MCP server expose
   typed commands for messages, tasks, notes, portals, mobile devices, floors,
-  roles, and desktop notifications.
+  roles, and desktop notifications. Codex receives the Orkestrai and official
+  Figma MCP definitions as ephemeral launch overrides, so workspace
+  provisioning never rewrites the user's global `~/.codex/config.toml`.
 - **Parallel workspaces:** agents continue running when you switch to another
   workspace, with activity indicators and native notifications.
 - **Mixed Windows and WSL runtimes:** choose a default runtime per workspace,

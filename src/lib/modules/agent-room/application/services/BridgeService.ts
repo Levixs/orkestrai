@@ -14,7 +14,9 @@ import { floorService } from './FloorService.js';
 import { getAgentAdapter, hasAgentAdapter, listAgentAdapters, materializeInteractiveAgentCommand } from '../adapters/registry.js';
 import { nativeNotificationService, type NativeNotificationKind } from './NativeNotificationService.js';
 import { defaultShell } from '../../infrastructure/workspace.js';
-import { FIGMA_MCP_URL, upsertCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
+import { FIGMA_MCP_URL, repairLegacyCodexMcpConfig } from '../../infrastructure/codex-mcp-config.js';
+import { repairConfigFileAtomically } from '../../infrastructure/atomic-config-repair.js';
+import { updateOrkestraiGitExclude } from '../../infrastructure/bridge-git-exclude.js';
 import { controlCenterService } from './ControlCenterService.js';
 import { AutomationTriggerReceived } from '../../domain/events/AutomationTriggerReceived.js';
 import { agentSessionService } from './AgentSessionService.js';
@@ -1296,35 +1298,24 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
         await this.provisionStandardMcp(resolve(workspace.workingDir, relativePath), wslRuntime, figmaFormat);
       }
       await this.provisionAgentsMd(workspace.workingDir);
-      await this.provisionCodexMcp(workspace, wslRuntime);
+      await this.repairLegacyCodexMcp(workspace, wslRuntime);
       await this.provisionOpenCodeMcp(workspace, wslRuntime);
-      // Em repos git, exclui os arquivos da ponte do status (info/exclude
-      // local) — senao o checkout fica "sujo" e o land de andares falha.
+      // Apenas artefatos inequivocamente gerados pela ponte ficam fora do
+      // status. Configs e AGENTS.md pertencem ao usuario e devem ser visiveis.
       const gitDir = resolve(workspace.workingDir, '.git');
       if (await this.pathExists(gitDir)) {
         const excludePath = resolve(gitDir, 'info', 'exclude');
         const currentExclude = await this.readText(excludePath);
-        const additions = [
-          '.orkestrai/',
-          '.claude/skills/orkestrai/',
-          '.cline/skills/orkestrai/',
-          '.devin/skills/orkestrai/',
-          '.agents/skills/orkestrai/',
-          '.mcp.json',
-          '.cursor/mcp.json',
-          '.cline/mcp.json',
-          '.devin/mcp_config.json',
-          '.agents/mcp_config.json',
-          'opencode.json',
-          'AGENTS.md',
-        ].filter((entry) => !currentExclude.includes(entry));
-        if (additions.length) {
+        const nextExclude = updateOrkestraiGitExclude(currentExclude);
+        if (nextExclude !== currentExclude) {
           await mkdir(resolve(gitDir, 'info'), { recursive: true });
-          await writeFile(excludePath, `${currentExclude.replace(/\n?$/, '\n')}${additions.join('\n')}\n`);
+          await writeFile(excludePath, nextExclude);
         }
       }
-    } catch {
-      // Sem permissao de escrita no working_dir não bloqueia a conexão.
+    } catch (error) {
+      // Sem permissao de escrita no working_dir não bloqueia a conexão, mas o
+      // diagnostico precisa explicar por que a ponte não foi provisionada.
+      console.error('[orkestrai] Failed to provision workspace bridge files:', error);
     }
     await this.writeBridgeConfig(workspace, token);
   }
@@ -1374,24 +1365,20 @@ Se uma tarefa exigir uma habilidade que você não tem, você pode AUTORAR uma s
     await writeFile(path, `${current.replace(/\s*$/, '\n\n')}${block}\n`);
   }
 
-  /** Codex le MCP de ~/.codex/config.toml ([mcp_servers.*]) — não le .mcp.json. */
-  private async provisionCodexMcp(
+  /**
+   * Repara somente a assinatura de corrupcao escrita por versoes antigas.
+   * Novas sessoes recebem os MCPs por overrides efemeros e não editam dotfiles.
+   */
+  private async repairLegacyCodexMcp(
     workspace: Workspace,
     wslRuntime: Extract<WorkspaceExecutionRuntime, { kind: 'wsl' }> | null,
   ): Promise<void> {
     if (process.env.VITEST) return;
     const dir = wslRuntime ? resolve(workspace.workingDir, '.codex') : resolve(homedir(), '.codex');
-    if (!wslRuntime && !(await this.pathExists(dir))) return; // codex não instalado — não polui o HOME
-    await mkdir(dir, { recursive: true });
+    if (!(await this.pathExists(dir))) return;
     const path = resolve(dir, 'config.toml');
-    const current = await this.readText(path);
-    const launch = this.mcpLaunch(wslRuntime);
-    const next = upsertCodexMcpConfig(current, {
-      command: launch.command,
-      args: launch.args,
-      electronRuntime: launch.electronRuntime,
-    });
-    if (next !== current) await writeFile(path, next);
+    const repaired = await repairConfigFileAtomically(path, repairLegacyCodexMcpConfig);
+    if (repaired) console.info(`[orkestrai] Repaired legacy Codex MCP config; backup: ${path}.before-orkestrai-repair`);
   }
 
   /** Formato MCP padrao usado por Claude/Kimi, Cursor, Cline, Devin e Antigravity. */

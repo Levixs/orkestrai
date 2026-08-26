@@ -5,6 +5,25 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
+## 0.20.1 - 2026-08-25
+
+### Fixed
+
+- Codex agents now receive the Orkestrai and official Figma MCP definitions as
+  ephemeral launch overrides on native and WSL runtimes. Orkestrai no longer
+  rewrites the user's global `~/.codex/config.toml` during workspace
+  provisioning.
+- Config files corrupted by Orkestrai 0.20.0 or earlier are repaired only when
+  they match the exact orphaned multiline `args` and duplicate inline `env`
+  signature. The original is backed up, the repaired TOML is validated, and the
+  replacement is serialized and atomic; unrelated malformed TOML is never
+  modified.
+- Workspace provisioning no longer hides user-owned `AGENTS.md`, MCP files, or
+  `opencode.json` through `.git/info/exclude`. Existing exact legacy exclude
+  blocks are narrowed to Orkestrai-owned runtime and skill directories, and
+  provisioning failures are recorded in desktop diagnostics instead of being
+  silently discarded.
+
 ## 0.20.0 - 2026-08-25
 
 ### Added

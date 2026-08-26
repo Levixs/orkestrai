@@ -167,7 +167,9 @@ normal de los agentes no se guarda.
   además del estado Git de cada piso.
 - **Puente nativo para agentes:** la CLI `orkestrai` y el servidor MCP incluidos
   exponen comandos tipados para mensajes, tareas, notas, portales, dispositivos
-  móviles, pisos, roles y notificaciones de escritorio.
+  móviles, pisos, roles y notificaciones de escritorio. Codex recibe las
+  definiciones MCP de Orkestrai y del Figma oficial como parámetros temporales
+  al iniciar, sin reescribir el `~/.codex/config.toml` global del usuario.
 - **Workspaces paralelos:** los agentes continúan trabajando cuando cambias de
   workspace, con indicadores de actividad y notificaciones nativas.
 - **Runtimes Windows y WSL combinados:** define el entorno predeterminado del

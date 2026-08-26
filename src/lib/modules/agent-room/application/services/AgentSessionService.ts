@@ -8,6 +8,7 @@ import { floorService } from './FloorService.js';
 import { preflightWslLaunch, terminalExecutionRuntime } from '../../infrastructure/WslRuntime.js';
 import type { WorkspaceExecutionRuntime } from '../../domain/types.js';
 import { providerProfileService } from './ProviderProfileService.js';
+import { codexMcpLaunchForRuntime, codexMcpOverrideArgs } from '../../infrastructure/codex-mcp-config.js';
 
 type AgentNodePayload = {
   sessionId?: string;
@@ -93,9 +94,12 @@ export class AgentSessionService {
           runtimeHome: wslContext?.linuxHomePath,
         })
       : {};
+    const mcpArgs = payload.provider === 'codex'
+      ? codexMcpOverrideArgs(codexMcpLaunchForRuntime(runtime))
+      : [];
     const session = ptySessionManager.create({
       command: payload.command,
-      args: [...(payload.args ?? []), ...(!resumableAgentSessionId ? (payload.initialRoleArgs ?? []) : []), ...conversationArgs],
+      args: [...(payload.args ?? []), ...mcpArgs, ...(!resumableAgentSessionId ? (payload.initialRoleArgs ?? []) : []), ...conversationArgs],
       cwd,
       label: title,
       workspace: workspace?.name ?? null,

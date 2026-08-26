@@ -347,7 +347,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'mcp',
       title: 'MCP (external tools for agents)',
-      body: `MCP is the standard for giving external tools to agents (GitHub, Gmail, Figma, Drive, Postgres...). THE EASY WAY: Skills page (sidebar) → MCPs tab — search the official curation or MCP registry and install with one click; when a server needs a key/token, the app explains where to get it. Remote servers require no command. ADVANCED: pencil next to the workspace → "MCP Servers". AUTOMATIC: Orkestrai provisions its own bridge for Claude/Kimi (.mcp.json), Codex (~/.codex/config.toml), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json), Devin (.devin/mcp_config.json), and Antigravity (.agents/mcp_config.json), plus skills and a preserved AGENTS.md block. Every agent receives typed canvas tools scoped to the correct workspace.`,
+      body: `MCP is the standard for giving external tools to agents (GitHub, Gmail, Figma, Drive, Postgres...). THE EASY WAY: Skills page (sidebar) → MCPs tab — search the official curation or MCP registry and install with one click; when a server needs a key/token, the app explains where to get it. Remote servers require no command. ADVANCED: pencil next to the workspace → "MCP Servers". AUTOMATIC: Orkestrai provisions its own bridge for Claude/Kimi (.mcp.json), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json), Devin (.devin/mcp_config.json), and Antigravity (.agents/mcp_config.json), plus skills and a preserved AGENTS.md block. Codex receives the Orkestrai bridge and official Figma MCP as ephemeral launch overrides, so the app does not rewrite ~/.codex/config.toml. Every agent receives typed canvas tools scoped to the correct workspace.`,
     },
     {
       id: 'cli',
@@ -709,6 +709,17 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: 'Aug 25, 2026 · 0.20.1',
+      title: 'Orkestrai 0.20.1: safe Codex MCP configuration',
+      summary: 'Codex keeps the automatic workspace bridge without surrendering control of its global dotfile or Git visibility.',
+      items: [
+        'Codex receives the Orkestrai and official Figma MCP definitions through ephemeral native and WSL launch overrides; workspace provisioning no longer rewrites ~/.codex/config.toml.',
+        'The exact malformed multiline args and duplicate env structure written by older Orkestrai builds is repaired after validation, with a backup, serialized access, and atomic replacement; unrelated malformed TOML stays untouched.',
+        'AGENTS.md, provider MCP files, and opencode.json are no longer hidden through .git/info/exclude; exact legacy blocks are narrowed to Orkestrai-owned runtime and skill directories.',
+        'Bridge provisioning failures now enter desktop diagnostics instead of disappearing silently.',
+      ],
+    },
     {
       date: 'Aug 25, 2026 · 0.20.0',
       title: 'Orkestrai 0.20.0: organized workspaces and sharper provider tools',

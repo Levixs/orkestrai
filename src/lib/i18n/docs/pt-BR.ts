@@ -351,7 +351,7 @@ Header: Authorization = Bearer {{accessToken}}`,
     {
       id: 'mcp',
       title: 'MCP (tools externas dos agentes)',
-      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app explica onde conseguir. Remotos instalam sem comando. AVANÇADO: lápis ao lado do workspace → "Servidores MCP". AUTOMÁTICO: o Orkestrai provisiona a própria ponte nos formatos de Claude/Kimi (.mcp.json), Codex (~/.codex/config.toml), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json), Devin (.devin/mcp_config.json) e Antigravity (.agents/mcp_config.json), além das skills e do bloco preservado em AGENTS.md. Cada agente recebe as ações do canvas como tools tipadas no workspace correto.`,
+      body: `MCP é o padrão para dar ferramentas externas aos agentes (GitHub, Gmail, Figma, Drive, Postgres...). O JEITO FÁCIL: página Skills (barra lateral) → aba MCPs — pesquise na curadoria oficial ou no registry MCP e instale com um clique; se o servidor pedir chave/token, o app explica onde conseguir. Remotos instalam sem comando. AVANÇADO: lápis ao lado do workspace → "Servidores MCP". AUTOMÁTICO: o Orkestrai provisiona a própria ponte nos formatos de Claude/Kimi (.mcp.json), OpenCode (opencode.json), Cursor (.cursor/mcp.json), Cline (.cline/mcp.json), Devin (.devin/mcp_config.json) e Antigravity (.agents/mcp_config.json), além das skills e do bloco preservado em AGENTS.md. O Codex recebe a ponte do Orkestrai e o MCP oficial do Figma como parâmetros temporários ao iniciar, sem reescrever ~/.codex/config.toml. Cada agente recebe as ações do canvas como tools tipadas no workspace correto.`,
     },
     {
       id: 'cli',
@@ -713,6 +713,17 @@ Header: Authorization = Bearer {{accessToken}}`,
     },
   ],
   changelog: [
+    {
+      date: '25 ago 2026 · 0.20.1',
+      title: 'Orkestrai 0.20.1: configuração MCP segura no Codex',
+      summary: 'O Codex mantém a ponte automática do workspace sem abrir mão do controle sobre o dotfile global ou a visibilidade no Git.',
+      items: [
+        'O Codex recebe as definições MCP do Orkestrai e do Figma oficial por parâmetros temporários ao iniciar em runtime nativo ou WSL; o provisionamento deixa de reescrever ~/.codex/config.toml.',
+        'A estrutura exata de args multilinha órfãos e env duplicado escrita por builds antigos é reparada após validação, com backup, acesso serializado e substituição atômica; TOML inválido sem relação com esse bug permanece intocado.',
+        'AGENTS.md, arquivos MCP dos providers e opencode.json deixam de ser ocultados pelo .git/info/exclude; blocos legados exatos são reduzidos aos diretórios de runtime e skills pertencentes ao Orkestrai.',
+        'Falhas ao provisionar a ponte agora entram nos diagnósticos do desktop em vez de desaparecer silenciosamente.',
+      ],
+    },
     {
       date: '25 ago 2026 · 0.20.0',
       title: 'Orkestrai 0.20.0: workspaces organizados e providers mais completos',

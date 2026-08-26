@@ -162,7 +162,9 @@ agentes não é persistida.
   além do estado Git de cada andar.
 - **Ponte nativa para agentes:** a CLI `orkestrai` e o servidor MCP incluídos no
   app expõem comandos tipados para mensagens, tarefas, notas, portais,
-  dispositivos móveis, andares, roles e notificações desktop.
+  dispositivos móveis, andares, roles e notificações desktop. O Codex recebe
+  as definições MCP do Orkestrai e do Figma oficial como parâmetros temporários
+  ao iniciar, sem reescrever o `~/.codex/config.toml` global do usuário.
 - **Workspaces paralelos:** os agentes continuam trabalhando quando você muda de
   workspace, com indicadores de atividade e notificações nativas.
 - **Runtimes Windows e WSL mistos:** defina o ambiente padrão do workspace e

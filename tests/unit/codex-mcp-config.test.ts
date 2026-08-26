@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { FIGMA_MCP_URL, upsertCodexMcpConfig } from '$lib/modules/agent-room/infrastructure/codex-mcp-config.js';
+import { parse } from 'smol-toml';
+import {
+  codexMcpLaunchForRuntime,
+  codexMcpOverrideArgs,
+  FIGMA_MCP_URL,
+  repairLegacyCodexMcpConfig,
+} from '$lib/modules/agent-room/infrastructure/codex-mcp-config.js';
 
 describe('configuracao MCP do Codex', () => {
   const windowsLaunch = {
@@ -8,48 +14,71 @@ describe('configuracao MCP do Codex', () => {
     electronRuntime: true,
   };
 
-  it('cria uma invocacao absoluta e autocontida no Windows', () => {
-    const config = upsertCodexMcpConfig('', windowsLaunch);
-
-    expect(config).toContain('command = "C:\\\\Program Files\\\\Orkestrai\\\\Orkestrai.exe"');
-    expect(config).toContain('args = ["C:\\\\Program Files\\\\Orkestrai\\\\resources');
-    expect(config).toContain('[mcp_servers.orkestrai.env]');
-    expect(config).toContain('ELECTRON_RUN_AS_NODE = "1"');
-    expect(config).toContain('[mcp_servers.figma]');
-    expect(config).toContain(`url = "${FIGMA_MCP_URL}"`);
-  });
-
-  it('migra command orkestrai sem apagar secoes ou chaves do usuario', () => {
-    const current = [
-      '[mcp_servers.github]',
-      'url = "https://example.test/mcp"',
-      '',
+  it('repara exatamente o TOML corrompido por versoes anteriores', () => {
+    const corrupted = [
       '[mcp_servers.orkestrai]',
-      'command = "orkestrai"',
-      'args = ["mcp"]',
-      'global = "windsurf"',
+      'command = "/Applications/Orkestrai.app/Contents/MacOS/Orkestrai"',
+      'args = ["/Applications/Orkestrai.app/Contents/Resources/app/packages/orkestrai-cli/bin/orkestrai.js", "mcp"]',
+      'default_tools_approval_mode = "approve"',
+      '  "/Applications/Orkestrai.app/Contents/Resources/app/packages/orkestrai-cli/bin/orkestrai.js",',
+      '  "mcp"',
+      ']',
+      'env = { ELECTRON_RUN_AS_NODE = "1" }',
+      '',
+      '[mcp_servers.orkestrai.env]',
+      'ELECTRON_RUN_AS_NODE = "1"',
       '',
       '[features]',
       'js_repl = false',
       '',
     ].join('\n');
 
-    const config = upsertCodexMcpConfig(current, windowsLaunch);
+    const result = repairLegacyCodexMcpConfig(corrupted);
 
-    expect(config).not.toContain('command = "orkestrai"');
-    expect(config).toContain('global = "windsurf"');
-    expect(config).toContain('[mcp_servers.github]');
-    expect(config).toContain('[features]\njs_repl = false');
-    expect(config.match(/\[mcp_servers\.orkestrai\]/g)).toHaveLength(1);
+    expect(result.repaired).toBe(true);
+    expect(result.content).not.toContain('\n  "/Applications/Orkestrai.app');
+    expect(result.content).not.toContain('env = { ELECTRON_RUN_AS_NODE');
+    expect(result.content).toContain('default_tools_approval_mode = "approve"');
+    expect(result.content).toContain('[features]\njs_repl = false');
+    expect(() => parse(result.content)).not.toThrow();
   });
 
-  it('atualiza configuracoes reparadas sem duplicar a secao de ambiente', () => {
-    const first = upsertCodexMcpConfig('', windowsLaunch);
-    const second = upsertCodexMcpConfig(first, { ...windowsLaunch, command: 'D:\\Orkestrai.exe' });
-
-    expect(second).toContain('command = "D:\\\\Orkestrai.exe"');
-    expect(second.match(/\[mcp_servers\.orkestrai\.env\]/g)).toHaveLength(1);
-    expect(second.match(/ELECTRON_RUN_AS_NODE/g)).toHaveLength(1);
-    expect(second.match(/\[mcp_servers\.figma\]/g)).toHaveLength(1);
+  it('nao altera TOML invalido que nao tenha a assinatura de corrupcao do Orkestrai', () => {
+    const malformed = '[features]\nthis is not toml\n';
+    expect(repairLegacyCodexMcpConfig(malformed)).toEqual({ content: malformed, repaired: false });
   });
+
+  it('nao altera configuracao global valida, inclusive uma secao Orkestrai customizada', () => {
+    const valid = [
+      '[mcp_servers.orkestrai]',
+      'command = "my-wrapper"',
+      'args = ["mcp"]',
+      'default_tools_approval_mode = "approve"',
+      '',
+    ].join('\n');
+    expect(repairLegacyCodexMcpConfig(valid)).toEqual({ content: valid, repaired: false });
+  });
+
+  it('gera overrides efemeros completos sem persistir configuracao', () => {
+    const args = codexMcpOverrideArgs(windowsLaunch);
+
+    expect(args).toContain('mcp_servers.orkestrai.command="C:\\\\Program Files\\\\Orkestrai\\\\Orkestrai.exe"');
+    expect(args).toContain('mcp_servers.orkestrai.env={ ELECTRON_RUN_AS_NODE = "1" }');
+    expect(args).toContain(`mcp_servers.figma.url="${FIGMA_MCP_URL}"`);
+  });
+
+  it('resolve o launcher dentro da distribuicao WSL sem reutilizar caminhos Windows', () => {
+    const launch = codexMcpLaunchForRuntime({
+      kind: 'wsl',
+      distribution: 'Ubuntu-24.04',
+      linuxWorkingDir: '/home/raoni/project',
+    });
+
+    expect(launch).toEqual({
+      command: '/home/raoni/project/.orkestrai/bin/orkestrai',
+      args: ['mcp'],
+      electronRuntime: false,
+    });
+  });
+
 });

@@ -6,6 +6,7 @@ import { assertWritableProjectPath, resolveSafeProjectPath } from '../infrastruc
 import { agentEnv, resolveCommand, IS_WIN } from '../infrastructure/agent-path.js';
 import { getAgentAdapter } from './adapters/registry.js';
 import { buildWslLaunch, currentWorkspaceExecutionRuntime, withWorkspaceExecutionRuntime } from '../infrastructure/WslRuntime.js';
+import { codexMcpLaunchForRuntime, codexMcpOverrideArgs } from '../infrastructure/codex-mcp-config.js';
 
 type CommandResult = {
   stdout: string;
@@ -190,7 +191,14 @@ export async function runAgentInWorkspace(
 async function executeAgent(request: AgentRunRequest, cwd: string, options: AgentRunOptions): Promise<AgentRunResult> {
   const adapter = getAgentAdapter(request.agent);
   const spec = adapter.buildCommand(request);
-  const result = await runCommand(spec.command, spec.args, cwd, {
+  const runtime = currentWorkspaceExecutionRuntime();
+  const mcpArgs = request.agent === 'codex'
+    ? codexMcpOverrideArgs(codexMcpLaunchForRuntime(runtime))
+    : [];
+  const commandArgs = request.agent === 'codex' && spec.args.at(-1) === '-'
+    ? [...spec.args.slice(0, -1), ...mcpArgs, '-']
+    : [...spec.args, ...mcpArgs];
+  const result = await runCommand(spec.command, commandArgs, cwd, {
     ...options,
     input: spec.promptDelivery === 'args' ? '' : request.prompt,
     displayArgs: spec.displayArgs,

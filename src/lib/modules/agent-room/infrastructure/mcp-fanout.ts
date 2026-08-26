@@ -101,9 +101,9 @@ async function loadFanoutConfigs(workingDir: string) {
 /**
  * Propaga um servidor MCP do workspace (`.mcp.json`) para os formatos nativos
  * dos outros providers com config por workspace: Cursor, Cline, Devin,
- * Antigravity e OpenCode. O Codex fica de fora de propósito — seu MCP é
- * global em `~/.codex/config.toml`, não por workspace, e propagar lá
- * vazaria o servidor para todas as outras sessões da máquina.
+ * Antigravity e OpenCode. O Codex fica de fora de propósito: o bridge e o
+ * Figma oficiais são passados por overrides efêmeros ao iniciar a CLI, e
+ * servidores adicionados pelo usuário não devem vazar para o config global.
  */
 export async function fanOutMcpServer(workingDir: string, name: string, def: McpFanoutDef): Promise<void> {
   // Parse every target before writing any of them. A malformed provider file
