@@ -161,6 +161,33 @@ describe('ProviderProfileService', () => {
     await expect(svc.resolveEnv(created.id, 'codex')).rejects.toMatchObject({ code: 'profile_not_found' });
   });
 
+  it('validates a profile reference without resolving its secret', async () => {
+    let secretReads = 0;
+    const repository = fakeRepository();
+    const svc = new ProviderProfileService({
+      repository,
+      secrets: {
+        get: async () => { secretReads += 1; return 'secret'; },
+        set: async () => undefined,
+        delete: async () => undefined,
+      },
+      isProfileReferenced: async () => false,
+      adapterProfileStrategy: () => STRATEGIES.tokenProvider,
+    });
+    const profile = await repository.create({
+      providerId: 'tokenProvider',
+      name: 'Work',
+      normalizedName: 'work',
+      configDir: null,
+      dataDir: null,
+      hasToken: true,
+    });
+
+    await expect(svc.assertCompatible(profile.id, 'tokenProvider')).resolves.toBeUndefined();
+    await expect(svc.assertCompatible(profile.id, 'other')).rejects.toMatchObject({ code: 'profile_not_found' });
+    expect(secretReads).toBe(0);
+  });
+
   it('rolls back the database row when secure token storage fails', async () => {
     const repository = fakeRepository();
     const svc = new ProviderProfileService({

@@ -313,6 +313,13 @@ export class WorkspaceService {
     const payload = dto.type === 'terminal'
       ? await this.normalizeTerminalPayloadRuntime(workspace, dto.payload)
       : dto.payload;
+    if (dto.type === 'terminal') {
+      const terminalPayload = (payload ?? {}) as Record<string, unknown>;
+      const profileId = typeof terminalPayload.profileId === 'string' ? terminalPayload.profileId : null;
+      const provider = typeof terminalPayload.provider === 'string' ? terminalPayload.provider : null;
+      if (profileId && !provider) throw new Error('A provider profile requires an agent provider.');
+      if (profileId && provider) await providerProfileService.assertCompatible(profileId, provider);
+    }
     const node = await workspaceRepository.createNode({
       workspaceId: dto.workspaceId,
       type: dto.type,

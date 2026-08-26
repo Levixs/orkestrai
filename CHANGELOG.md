@@ -5,7 +5,7 @@ oldest. Public GitHub Release notes are generated directly from the matching
 version section in this file. In-app and website changelogs provide equivalent
 pt-BR, English, and Spanish translations.
 
-## 0.21.0 - 2026-08-25
+## 0.21.0 - 2026-08-26
 
 ### Added
 
@@ -17,6 +17,13 @@ pt-BR, English, and Spanish translations.
   hand.
 - Imported role files are bounded and validated before persistence, stay inside
   the selected project, and never overwrite an existing workspace role.
+- The "New agent" dialog now has a Profile field for providers with
+  multi-account Provider Profiles configured, so a specific account can be
+  chosen right when the agent is created instead of switching it afterward
+  from the terminal's context menu.
+- Profile references are validated against the selected provider before a
+  terminal is persisted, while credential values remain in secure storage and
+  enter only the spawned process environment.
 
 ## 0.20.1 - 2026-08-25
 

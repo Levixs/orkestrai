@@ -273,6 +273,8 @@
   "dlg.name": "Name",
   "dlg.working_dir": "Working directory",
   "dlg.runtime_label": "Execution environment",
+  "dlg.profile_label": "Profile",
+  "dlg.profile_loading": "Loading profiles...",
   "dlg.runtime_native": "Windows",
   "dlg.runtime_wsl": "WSL",
   "dlg.runtime_hint": "Controls where shells and providers are executed.",

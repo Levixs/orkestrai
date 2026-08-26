@@ -10,7 +10,7 @@
   import { Label } from '$lib/components/ui/label';
   import ModelCombobox from './ModelCombobox.svelte';
   import { createAgentNodeSchema } from '$lib/modules/agent-room/contracts/schemas/schemas.js';
-  import type { AgentProviderInfo, Workspace, WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
+  import type { AgentProviderInfo, ProviderProfile, Workspace, WorkspaceExecutionRuntime } from '$lib/modules/agent-room/domain/types.js';
   import { workspaceExecutionRuntime } from '$lib/modules/agent-room/domain/runtime.js';
   import * as m from '$lib/paraglide/messages.js';
 
@@ -20,6 +20,7 @@
     effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'ultra' | null;
     leader: boolean;
     executionRuntime: WorkspaceExecutionRuntime | null;
+    profileId: string | null;
   };
 
   type Props = {
@@ -39,6 +40,9 @@
   let wslWorkingDir = $state('');
   let runtimeProvider = $state<AgentProviderInfo | null>(null);
   let runtimeChecking = $state(false);
+  let profiles = $state<ProviderProfile[]>([]);
+  let profilesLoading = $state(false);
+  let profileLoadGeneration = 0;
   let wsl = $state<{ supported: boolean; distributions: Array<{ name: string }>; inferred: { distribution: string; linuxWorkingDir: string } | null; error: string | null }>({
     supported: false,
     distributions: [],
@@ -69,6 +73,32 @@
     return efforts.map((value) => ({ value, label: EFFORT_LABELS[value] ?? value }));
   });
   const supportsEffort = $derived(effortOptions.length > 0);
+  const supportsProfiles = $derived(Boolean(selectedProvider?.profileStrategy && selectedProvider.profileStrategy.kind !== 'unsupported'));
+
+  async function loadProfiles(providerId: string) {
+    const generation = ++profileLoadGeneration;
+    profilesLoading = true;
+    profiles = [];
+    try {
+      const response = await fetch(`/api/agent-room/provider-profiles?providerId=${encodeURIComponent(providerId)}`);
+      const payload = await response.json() as { data?: unknown; error?: string };
+      if (!response.ok) throw new Error(payload.error || 'Profile request failed.');
+      if (generation !== profileLoadGeneration) return;
+      profiles = Array.isArray(payload.data)
+        ? payload.data.filter((item): item is ProviderProfile => (
+            Boolean(item)
+            && typeof item === 'object'
+            && typeof (item as ProviderProfile).id === 'string'
+            && typeof (item as ProviderProfile).name === 'string'
+            && (item as ProviderProfile).providerId === providerId
+          )).slice(0, 100)
+        : [];
+    } catch {
+      if (generation === profileLoadGeneration) profiles = [];
+    } finally {
+      if (generation === profileLoadGeneration) profilesLoading = false;
+    }
+  }
 
   const schema = createAgentNodeSchema as unknown as Parameters<typeof zod>[0];
 
@@ -87,6 +117,7 @@
           : runtimeMode === 'native'
             ? { kind: 'native' }
             : { kind: 'wsl', distribution: wslDistribution, linuxWorkingDir: wslWorkingDir.trim() },
+        profileId: f.data.profileId ?? null,
       });
     },
   });
@@ -101,13 +132,24 @@
         title: provider?.displayName ?? 'Shell',
         model: '',
         effort: null,
+        profileId: null,
         leader: provider ? defaultLeader : false,
       });
       runtimeMode = 'default';
       runtimeProvider = provider;
       wslDistribution = defaultRuntime.kind === 'wsl' ? defaultRuntime.distribution : '';
       wslWorkingDir = defaultRuntime.kind === 'wsl' ? defaultRuntime.linuxWorkingDir : '';
+      if (provider?.profileStrategy && provider.profileStrategy.kind !== 'unsupported') {
+        void loadProfiles(provider.id);
+      } else {
+        profileLoadGeneration += 1;
+        profiles = [];
+        profilesLoading = false;
+      }
       if (workspace) void loadWslAvailability(workspace.workingDir);
+    } else if (!open && lastOpen) {
+      profileLoadGeneration += 1;
+      profilesLoading = false;
     }
     lastOpen = open;
   });
@@ -229,6 +271,33 @@
               {/snippet}
             </Form.Control>
             <Form.FieldErrors />
+          </Form.Field>
+        {/if}
+
+        {#if provider && supportsProfiles}
+          <Form.Field {form} name="profileId">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Form.Label>{m['dlg.profile_label']()}</Form.Label>
+                <Select.Root type="single" value={$formData!.profileId || '__default__'} onValueChange={(value: string) => ($formData!.profileId = value === '__default__' ? null : value)}>
+                  <Select.Trigger {...props} class="w-full">
+                    {$formData!.profileId ? (profiles.find((item) => item.id === $formData!.profileId)?.name ?? $formData!.profileId) : m['term.profile_default']()}
+                  </Select.Trigger>
+                  <Select.Content>
+                    <Select.Item value="__default__" label={m['term.profile_default']()} />
+                    {#each profiles as profileOption (profileOption.id)}
+                      <Select.Item value={profileOption.id} label={profileOption.name} />
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+            {#if profilesLoading}
+              <p class="text-xs text-muted-foreground">{m['dlg.profile_loading']()}</p>
+            {:else if !profiles.length}
+              <p class="text-xs text-muted-foreground">{m['term.profile_empty']()}</p>
+            {/if}
           </Form.Field>
         {/if}
 
